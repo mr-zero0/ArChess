@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en" data-theme="wood">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" id="themeColor" content="#2b1810">
+  <script>
+    (() => {
+      try {
+        const saved = localStorage.getItem("archess-theme");
+        const allowed = ["wood", "dark", "light"];
+        document.documentElement.dataset.theme = allowed.includes(saved) ? saved : "wood";
+      } catch (_) {
+        document.documentElement.dataset.theme = "wood";
+      }
+    })();
+  </script>
+  <title>ArChess — Physics Chess Battle</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='14' font-size='14'%3E%26%239820;%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="noise" aria-hidden="true"></div>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">♜</div>
+        <div>
+          <div class="brand-name">ARCHESS</div>
+          <div class="brand-sub">PHYSICS CHESS BATTLE</div>
+        </div>
+      </div>
+      <div class="top-actions">
+        <div class="board-size-control" aria-label="Board size">
+          <span class="board-size-title">BOARD</span>
+          <button class="size-step" id="boardSizeDown" type="button" aria-label="Make board smaller">−</button>
+          <span class="board-size-value" id="boardSizeValue">100%</span>
+          <button class="size-step" id="boardSizeUp" type="button" aria-label="Make board larger">+</button>
+        </div>
+        <button class="theme-btn" id="themeBtn" type="button" title="Switch theme" aria-label="Switch theme">
+          <span class="theme-icon" id="themeIcon" aria-hidden="true">◆</span>
+          <span class="theme-label" id="themeLabel">WOOD</span>
+        </button>
+        <button class="icon-btn debug-btn" id="debugBtn" type="button" title="Toggle Physics Debug Overlay (Shortcut: D)" aria-label="Toggle Physics Debug Overlay">⚡</button>
+        <button class="icon-btn quality-btn" id="qualityBtn" type="button" title="Toggle Graphics Quality (Shortcut: Q)" aria-label="Toggle Graphics Quality">▦</button>
+        <button class="icon-btn help-btn" id="helpBtn" type="button" title="How to play" aria-label="How to play">?</button>
+        <button class="new-btn" id="newGameBtn" type="button">NEW GAME</button>
+      </div>
+    </header>
+
+    <main class="game-layout">
+      <aside class="player-panel left-panel">
+        <section class="player-card active" id="whiteCard">
+          <div class="player-head">
+            <span class="status-dot white-dot"></span>
+            <span>WHITE</span>
+            <span class="player-pill">PLAYER 1</span>
+          </div>
+          <div class="king-line">
+            <span class="mini-piece">♔</span>
+            <div><strong>King Core</strong><small id="whiteKingText">120 / 120 HP</small></div>
+          </div>
+          <div class="hp-track"><div id="whiteHp" class="hp-fill white-hp"></div></div>
+        </section>
+
+        <div class="side-stat"><span>CURRENT TURN</span><strong id="turnText">WHITE</strong></div>
+        <div class="side-stat"><span>PHASE</span><strong id="statusText">AIM &amp; LAUNCH</strong></div>
+
+        <section class="selected-card" id="selectedCard">
+          <div class="section-label">SELECTED PIECE</div>
+          <div class="selected-main">
+            <div class="big-glyph" id="selectedGlyph">—</div>
+            <div><strong id="selectedName">None</strong><small id="selectedStats">Select a living white piece</small></div>
+          </div>
+          <div class="power-wrap">
+            <div class="power-label"><span>LAUNCH POWER</span><b id="powerValue">0%</b></div>
+            <div class="power-track"><div id="powerBar"></div></div>
+          </div>
+        </section>
+
+        <div class="tip">
+          <span>⌁</span>
+          <div><b>Slingshot rule</b><p>Pull backward from the piece. Release to fire in the opposite direction. Walls bounce. Friends are not magically immune.</p></div>
+        </div>
+      </aside>
+
+      <section class="board-zone">
+        <div class="board-frame">
+          <div class="board-wrap" id="boardWrap">
+            <canvas id="glCanvas" aria-hidden="true"></canvas>
+            <canvas id="gameCanvas" aria-label="ArChess physics battle board"></canvas>
+          </div>
+        </div>
+        <div class="board-footer">
+          <div class="turn-badge"><span class="turn-dot" id="turnDot"></span><span id="turnBadge">WHITE TO MOVE</span></div>
+          <div class="hint" id="hintText">Select a white piece, drag backward, release</div>
+        </div>
+      </section>
+
+      <aside class="right-panel">
+        <section class="player-card black-card" id="blackCard">
+          <div class="player-head">
+            <span class="status-dot black-dot"></span>
+            <span>BLACK</span>
+            <span class="player-pill enemy-pill">PLAYER 2</span>
+          </div>
+          <div class="king-line">
+            <span class="mini-piece dark">♚</span>
+            <div><strong>King Core</strong><small id="blackKingText">120 / 120 HP</small></div>
+          </div>
+          <div class="hp-track"><div id="blackHp" class="hp-fill black-hp"></div></div>
+        </section>
+
+        <section class="history-panel">
+          <div class="panel-title"><span>BATTLE LOG</span><span id="moveCount">0</span></div>
+          <div id="battleLog" class="battle-log" aria-live="polite"></div>
+        </section>
+
+        <section class="piece-info">
+          <div class="panel-title"><span>PIECE ARMORY</span><span>HP / POW</span></div>
+          <div id="armory" class="armory"></div>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <div class="modal hidden" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="modal-card">
+      <button class="modal-close" id="closeHelp" type="button" aria-label="Close">×</button>
+      <div class="modal-kicker">HOW TO PLAY</div>
+      <h2 id="helpTitle">Launch. Collide. Survive.</h2>
+      <p>ArChess starts like chess and immediately stops behaving like chess. Select one of the current player’s living pieces, pull backward, and release. Every piece becomes a physical projectile.</p>
+      <div class="rules-grid">
+        <div><b>01</b><span>Drag backward to aim and charge power.</span></div>
+        <div><b>02</b><span>Release to launch opposite the drag.</span></div>
+        <div><b>03</b><span>Impacts damage both pieces, including allies.</span></div>
+        <div><b>04</b><span>Reduce the enemy King to 0 HP to win.</span></div>
+      </div>
+      <div class="modal-note">There is no check, checkmate, capture movement, castling, en passant, or piece-specific movement after launch. Physics gets the final vote.</div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="gameOverModal" role="dialog" aria-modal="true" aria-labelledby="winnerTitle">
+    <div class="modal-card result-card">
+      <div class="result-kicker">BATTLE COMPLETE</div>
+      <div id="winnerGlyph" class="winner-glyph">♔</div>
+      <h2 id="winnerTitle">WHITE WINS</h2>
+      <p id="winnerSub">The opposing King has been destroyed.</p>
+      <button class="new-btn large" id="playAgainBtn" type="button">NEW GAME</button>
+    </div>
+  </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "{{ url_for('static', filename='vendor/three.module.min.js') }}"
+      }
+    }
+  </script>
+  <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/pieces.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/board.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/physics.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/input.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/renderer.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+  <script type="module" src="{{ url_for('static', filename='js/render3d.js') }}"></script>
+  <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
