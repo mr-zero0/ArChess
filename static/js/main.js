@@ -17,6 +17,8 @@ import { ThreeDScene } from "./render3d.js";
       glCanvas.style.display = "none";
       threeDScene = null;
     }
+  } else if (glCanvas) {
+    glCanvas.style.display = "none";
   }
 
   const gameState = {
@@ -471,6 +473,34 @@ import { ThreeDScene } from "./render3d.js";
   document.getElementById("debugBtn")?.addEventListener("click", toggleDebugOverlay);
   document.getElementById("qualityBtn")?.addEventListener("click", toggleQuality);
   applyQuality();
+
+  const boardFrame = document.querySelector(".board-frame");
+
+  function toggleFullscreen() {
+    if (!document.fullscreenEnabled) {
+      setFeedback("Fullscreen is not supported in this browser.", 1.2);
+      return;
+    }
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      boardFrame?.requestFullscreen();
+    }
+  }
+
+  function updateFullscreenControl() {
+    const btn = document.getElementById("fullscreenBtn");
+    if (btn) {
+      btn.classList.toggle("active", Boolean(document.fullscreenElement));
+      btn.title = document.fullscreenElement
+        ? "Exit fullscreen (F)"
+        : "Toggle Fullscreen (F)";
+    }
+  }
+
+  document.getElementById("fullscreenBtn")?.addEventListener("click", toggleFullscreen);
+  document.addEventListener("fullscreenchange", updateFullscreenControl);
+
   document.getElementById("newGameBtn").addEventListener("click", resetGame);
   document.getElementById("playAgainBtn").addEventListener("click", resetGame);
   document.getElementById("helpBtn").addEventListener("click", () => UI.modal("helpModal", true));
@@ -484,6 +514,7 @@ import { ThreeDScene } from "./render3d.js";
     if (event.key.toLowerCase() === "r" && !isInput) resetGame();
     if (event.key.toLowerCase() === "d" && !isInput) toggleDebugOverlay();
     if (event.key.toLowerCase() === "q" && !isInput) toggleQuality();
+    if (event.key.toLowerCase() === "f" && !isInput) toggleFullscreen();
     if (event.key === "Escape") {
       UI.modal("helpModal", false);
       if (gameState.dragging) input.cancel();
