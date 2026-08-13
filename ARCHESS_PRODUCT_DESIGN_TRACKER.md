@@ -792,7 +792,7 @@ Tools: Three.js + Blender.
 
 ## STEP 4 — Board, Camera, Resize and Theme System
 
-**Status:** 🟡 PARTIAL / verification required  
+**Status:** ✅ DONE  
 **Depends on:** Step 3
 
 ### Goal
@@ -801,9 +801,9 @@ Make board presentation configurable without affecting physics.
 
 ### Themes
 
-- [ ] Wood — default
-- [ ] Dark
-- [ ] Light
+- [x] Wood — default
+- [x] Dark
+- [x] Light
 
 ### Board Resize
 
@@ -838,16 +838,20 @@ Board resize must **not** modify:
 
 ### Deliverables
 
-- [ ] Theme selector.
-- [ ] Persist theme in `localStorage`.
-- [ ] Board-size selector.
-- [ ] Persist size preference.
-- [ ] Responsive mobile board.
-- [ ] Fullscreen option.
-- [ ] Window resize safety.
-- [ ] No piece reset/teleport on resize.
-- [ ] High-DPI rendering.
-- [ ] Consistent hit testing after resize.
+- [x] Theme selector.
+- [x] Persist theme in `localStorage`.
+- [x] Board-size selector.
+- [x] Persist size preference.
+- [x] Responsive mobile board.
+- [x] Fullscreen option.
+- [x] Window resize safety.
+- [x] No piece reset/teleport on resize.
+- [x] High-DPI rendering.
+- [x] Consistent hit testing after resize.
+
+### Verification (v0.4.x)
+
+Headless-Chromium verified end-to-end: theme cycles WOOD → DARK → LIGHT → WOOD and persists; board size 80%–120% persists and resizes the canvas without resetting any piece state; fullscreen toggle (button / `F`) enters and exits the board view; pieces remain displaced after repeated resizing; high-DPI scaling (dpr ≤ 2) and pointer hit testing stay consistent; zero console errors.
 
 ### Acceptance Criteria
 
@@ -861,7 +865,7 @@ A match can be resized repeatedly while pieces are displaced without changing ga
 
 ## STEP 5 — Game Feel: Audio, Effects and Haptics
 
-**Status:** ⬜ TODO  
+**Status:** ✅ DONE  
 **Depends on:** Step 3
 
 ### Goal
@@ -870,43 +874,47 @@ Make launches and impacts emotionally satisfying.
 
 ### Audio
 
-- [ ] UI hover/click.
-- [ ] Piece selection.
-- [ ] Pull/tension feedback.
-- [ ] Launch.
-- [ ] Wood impact.
-- [ ] Heavy impact.
-- [ ] Wall impact.
-- [ ] Critical King hit.
-- [ ] Piece destruction.
-- [ ] Victory.
-- [ ] Defeat.
-- [ ] Ambient board/room option.
+- [x] UI hover/click.
+- [x] Piece selection.
+- [x] Pull/tension feedback.
+- [x] Launch.
+- [x] Wood impact.
+- [x] Heavy impact.
+- [x] Wall impact.
+- [x] Critical King hit.
+- [x] Piece destruction.
+- [x] Victory.
+- [x] Defeat.
+- [x] Ambient board/room option.
 
 ### Dynamic Collision Audio
 
 Impact volume/pitch should reflect collision intensity.
 
+All sounds are synthesized in-browser with the Web Audio API (`static/js/audio.js`); no external audio assets. Impact volume and pitch scale with collision intensity. Master/effects/ambience volumes, mute, and haptics are user-controllable.
+
 ### Visual Effects
 
-- [ ] Motion trails.
-- [ ] Launch dust.
-- [ ] Collision sparks/dust.
-- [ ] Floating damage.
-- [ ] Strong-impact flash.
-- [ ] Destruction fragments.
-- [ ] Subtle screen shake.
-- [ ] King danger feedback.
+- [x] Motion trails.
+- [x] Launch dust.
+- [x] Collision sparks/dust.
+- [x] Floating damage.
+- [x] Strong-impact flash.
+- [x] Destruction fragments.
+- [x] Subtle screen shake.
+- [x] King danger feedback.
 
 ### Accessibility Settings
 
-- [ ] Master volume.
-- [ ] Effects volume.
-- [ ] Music/ambience volume.
-- [ ] Mute.
-- [ ] Reduced motion.
-- [ ] Screen shake toggle.
-- [ ] Haptics toggle where supported.
+- [x] Master volume.
+- [x] Effects volume.
+- [x] Music/ambience volume.
+- [x] Mute.
+- [x] Reduced motion.
+- [x] Screen shake toggle.
+- [x] Haptics toggle where supported.
+
+All settings persist in `localStorage` (`archess-audio`, `archess-motion`). Reduced motion disables trails, streaks and screen shake but keeps the game fully playable. Haptics use `navigator.vibrate` where supported.
 
 ### Free Creation Path
 
@@ -918,6 +926,10 @@ Impact volume/pitch should reflect collision intensity.
 ### Acceptance Criteria
 
 A player can understand impact strength from sound/visual feedback even without reading the damage number.
+
+### Verification (v0.5.x)
+
+Headless-Chromium verified end-to-end: settings modal opens via button and `S` key, closes via `S` and Escape; volume/mute/motion preferences persist across reloads; AudioContext initializes on first user gesture and click/select/pull/launch/impact/king-hit/destruction/game-over paths all fire without page or console errors; reduced-motion toggling suppresses shake; the HUD card gains the danger state when a King is below 35% HP and a pulsing ring renders around it; zero console errors.
 
 ### Cost
 
@@ -1955,27 +1967,24 @@ Based on the current development conversation:
 - professional README.
 - Python regression tests (pytest, 18 tests).
 - JS physics regression tests (Node, 13 tests: tunneling, simultaneous collision, wall-corner, overlap recovery, King-destroyed-during-chain, cooldown, settling termination).
+- true 3D board + chess-piece presentation (Three.js).
+- Wood/Dark/Light visual themes.
+- Board-size selector with resize safety.
+- Fullscreen board view.
+- Procedural Web Audio sound (click, select, pull, launch, impact, wall, King hit, destruction, victory/defeat, ambient room tone).
+- Accessibility settings (volumes, mute, reduced motion, screen shake, haptics).
+- King danger feedback (HUD + on-board pulsing ring).
 
 ## Partial / Pending Verification
 
-- 3D-looking chess-piece renderer.
-- Wood visual theme.
-- Dark theme.
-- Light theme.
-- visual board resizing.
-- projectile-piece visual tilt/tumble.
+- projectile-piece visual tilt/tumble polish.
+- finalized physics balance.
+- collision-contact cooldown hardening.
 
 ## Major Missing Product Systems
 
-- actual Three.js geometry.
-- finalized physics balance.
-- collision-contact cooldown hardening.
-- audio.
 - tutorial.
-- accessibility settings.
-- replays.
-- challenges.
-- automated browser tests.
+- automated browser tests checked into the repo.
 - production backend.
 - online multiplayer.
 - accounts.
@@ -2078,6 +2087,23 @@ Then move directly to:
 - [x] Destruction animation — v0.4.0 (0.5s scale-out tumble with shadow fade)
 - [x] Low-quality graphics mode — v0.4.0 (`▦` button / `Q`, persisted)
 - [x] Headless browser verification — v0.4.0 (launch, collisions, game over, theme, quality, reset; zero console errors)
+
+## STEP 4 — Board, Camera, Resize and Theme System
+
+- [x] Theme selector (Wood/Dark/Light, persisted) — v0.4.x
+- [x] Board-size selector (80–120%, persisted, resize-safe) — v0.4.x
+- [x] Responsive mobile board + high-DPI rendering — v0.4.x
+- [x] Fullscreen board view — v0.4.x (`#fullscreenBtn`, `F` key, `fullscreenchange`)
+- [x] Headless browser verification — v0.4.x (theme/size persistence, fullscreen, no piece reset on resize, zero console errors)
+
+## STEP 5 — Game Feel: Audio, Effects and Haptics
+
+- [x] Procedural Web Audio sounds (select, pull, launch, impact, wall, King hit, destruction, victory/defeat, ambient, UI click) — v0.5.x (zero-budget; `static/js/audio.js`)
+- [x] Dynamic collision audio (volume/pitch scale with intensity) — v0.5.x
+- [x] Visual effects (trails, dust, sparks, damage numbers, impact flash, fragments, screen shake) — v0.5.x
+- [x] King danger feedback (HUD card + pulsing on-board ring) — v0.5.x
+- [x] Accessibility settings (master/effects/ambience volume, mute, reduced motion, shake, haptics) — v0.5.x (`static/js/prefs.js`, persisted)
+- [x] Headless browser verification — v0.5.x (modal open/close, pref persistence, AudioContext unlock, audio paths, reduced motion, danger state; zero console errors)
 
 This order protects the game from becoming beautiful but mechanically unreliable.
 
