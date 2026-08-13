@@ -612,7 +612,7 @@ Every completed deliverable, logged for traceability. Format: date — scope —
 - Python pytest: 18/18 pass.
 - Node physics tests: 13/13 pass.
 - Playwright headless: 25/25 (3D path) + 16/16 (2D flow) pass.
-- Live preview: https://5000-ebd0214a14bef80a.monkeycode-ai.live
+- Live preview served locally via the Flask dev server on port 5000 (temporary preview URL omitted here).
 - Current HEAD: `90cc882` (4 commits ahead of `origin/main` at this writing; pushed together with this log).
 
 ### Pending From the Start (structured)
