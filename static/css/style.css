@@ -158,6 +158,13 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 }
 .player-card { padding: 14px; transition: .2s ease; }
 .player-card.active { border-color: rgba(77,230,255,.48); box-shadow: 0 0 0 1px rgba(77,230,255,.06), 0 0 24px rgba(77,230,255,.06); }
+.player-card.danger { border-color: rgba(255,48,64,.6); box-shadow: 0 0 0 1px rgba(255,48,64,.1), 0 0 24px rgba(255,48,64,.22); }
+.player-card.danger .mini-piece { color: #ff5a66; text-shadow: 0 0 16px rgba(255,48,64,.55); }
+.player-card.danger .hp-fill { animation: hp-danger-pulse 1s ease-in-out infinite; }
+@keyframes hp-danger-pulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.45); }
+}
 .player-head { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 950; letter-spacing: 1.2px; }
 .status-dot { width: 7px; height: 7px; border-radius: 50%; }
 .white-dot { background: #bff7ff; box-shadow: 0 0 10px rgba(191,247,255,.75); }

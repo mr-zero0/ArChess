@@ -474,6 +474,22 @@ window.GameRenderer = class GameRenderer {
 
     ctx.restore();
     this.drawHp(piece, cell);
+
+    // King danger feedback: a pulsing red ring when a living King is near death.
+    if (piece.type === "king" && piece.alive) {
+      const hpRatio = piece.hp / piece.maxHp;
+      if (hpRatio < 0.35) {
+        const pulse = 1 + Math.sin(game.simTime * 6) * 0.14;
+        ctx.save();
+        ctx.globalAlpha = 0.45 + Math.sin(game.simTime * 6) * 0.2;
+        ctx.strokeStyle = "#ff3040";
+        ctx.lineWidth = Math.max(2, r * 0.07);
+        ctx.beginPath();
+        ctx.arc(x, y - r * 0.05, r * (1.18 * pulse), 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
   }
 
   drawPieceSculpture(piece, r) {

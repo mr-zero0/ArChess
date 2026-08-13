@@ -536,6 +536,11 @@ import { ThreeDScene } from "./render3d.js";
     if (event.target.id === "settingsModal") UI.modal("settingsModal", false);
   });
 
+  // Subtle click feedback for UI chrome (buttons only, not the board canvas).
+  document.addEventListener("click", (event) => {
+    if (event.target.closest("button")) AudioManager?.click();
+  });
+
   window.addEventListener("keydown", (event) => {
     const isInput = ["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName);
     if (event.key.toLowerCase() === "r" && !isInput) resetGame();

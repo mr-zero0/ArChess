@@ -70,6 +70,8 @@ window.UI = {
 
     this.nodes.whiteCard.classList.toggle("active", this.game.currentPlayer === "white" && !this.game.gameOver);
     this.nodes.blackCard.classList.toggle("active", this.game.currentPlayer === "black" && !this.game.gameOver);
+    if (whiteKing) this.nodes.whiteCard.classList.toggle("danger", whiteKing.hp / whiteKing.maxHp < 0.35 && !this.game.gameOver);
+    if (blackKing) this.nodes.blackCard.classList.toggle("danger", blackKing.hp / blackKing.maxHp < 0.35 && !this.game.gameOver);
 
     const phaseText = this.game.gameOver ? "GAME OVER" : this.game.phase === "physics" ? "PHYSICS ACTIVE" : this.game.dragging ? "AIMING" : "AIM & LAUNCH";
     this.text("statusText", phaseText);
