@@ -28,6 +28,8 @@ window.UI = {
     this.buildArmory();
     if (window.ThemeManager) ThemeManager.init();
     if (window.BoardSizeManager) BoardSizeManager.init();
+    if (window.AudioManager) AudioManager.init();
+    if (window.PrefsManager) PrefsManager.init();
   },
 
   king(team) {

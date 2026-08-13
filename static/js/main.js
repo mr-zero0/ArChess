@@ -119,6 +119,8 @@ import { ThreeDScene } from "./render3d.js";
     gameState.powerRatio = 0;
     gameState.feedback = null;
     canvas.classList.add("is-dragging");
+    AudioManager?.unlock();
+    AudioManager?.select();
     UI.update();
     return true;
   }
@@ -128,6 +130,7 @@ import { ThreeDScene } from "./render3d.js";
     gameState.pointer = point;
     const distance = Math.hypot(gameState.selectedPiece.x - point.x, gameState.selectedPiece.y - point.y);
     gameState.powerRatio = Math.min(1, distance / GAME_CONFIG.maxDragDistance);
+    AudioManager?.pull(gameState.powerRatio);
     UI.update();
   }
 
@@ -153,6 +156,7 @@ import { ThreeDScene } from "./render3d.js";
 
     spawnLaunchEffects(piece);
     addHistory(`${capitalize(piece.team)} ${PIECES[piece.type].name} launched.`);
+    AudioManager?.launch(gameState.powerRatio);
     gameState.phase = "physics";
     gameState.settledFor = 0;
     gameState.selectedPiece = null;
@@ -188,6 +192,12 @@ import { ThreeDScene } from "./render3d.js";
     spawnImpactEffects(x, y, impactSpeed, Math.max(damageToA, damageToB));
     addHistory(`${PIECES[a.type].name} -${damageToA} HP · ${PIECES[b.type].name} -${damageToB} HP.`);
 
+    if (a.type === "king" || b.type === "king") {
+      AudioManager?.kingHit();
+    } else {
+      AudioManager?.impact(impactSpeed);
+    }
+
     if (a.hp <= 0) destroyPiece(a);
     if (b.hp <= 0) destroyPiece(b);
   };
@@ -195,6 +205,7 @@ import { ThreeDScene } from "./render3d.js";
   gameState.onWallImpact = (piece, impact) => {
     gameState.collisionCount += 1;
     spawnWallEffects(piece.x, piece.y, piece.team, impact);
+    AudioManager?.wall(impact);
   };
 
   function destroyPiece(piece) {
@@ -205,6 +216,7 @@ import { ThreeDScene } from "./render3d.js";
     piece.vy = 0;
     spawnDestructionEffects(piece);
     addHistory(`${capitalize(piece.team)} ${PIECES[piece.type].name} destroyed.`);
+    AudioManager?.destroy(piece.type);
   }
 
   function addHistory(message) {
@@ -347,6 +359,11 @@ import { ThreeDScene } from "./render3d.js";
       ? "Both Kings were destroyed in the same resolution. The active player wins the double knockout."
       : "The opposing King has been destroyed.";
     addHistory(`${winner.toUpperCase()} WINS.`);
+    if (winner === "white") {
+      AudioManager?.victory();
+    } else {
+      AudioManager?.defeat();
+    }
     UI.update(true);
     UI.modal("gameOverModal", true);
   }
@@ -509,14 +526,29 @@ import { ThreeDScene } from "./render3d.js";
     if (event.target.id === "helpModal") UI.modal("helpModal", false);
   });
 
+  document.getElementById("settingsBtn").addEventListener("click", () => {
+    PrefsManager?.applyControls();
+    AudioManager?.unlock();
+    UI.modal("settingsModal", true);
+  });
+  document.getElementById("closeSettings").addEventListener("click", () => UI.modal("settingsModal", false));
+  document.getElementById("settingsModal").addEventListener("click", (event) => {
+    if (event.target.id === "settingsModal") UI.modal("settingsModal", false);
+  });
+
   window.addEventListener("keydown", (event) => {
     const isInput = ["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName);
     if (event.key.toLowerCase() === "r" && !isInput) resetGame();
     if (event.key.toLowerCase() === "d" && !isInput) toggleDebugOverlay();
     if (event.key.toLowerCase() === "q" && !isInput) toggleQuality();
     if (event.key.toLowerCase() === "f" && !isInput) toggleFullscreen();
+    if (event.key.toLowerCase() === "s" && !isInput) {
+      AudioManager?.unlock();
+      UI.modal("settingsModal", document.getElementById("settingsModal").classList.contains("hidden"));
+    }
     if (event.key === "Escape") {
       UI.modal("helpModal", false);
+      UI.modal("settingsModal", false);
       if (gameState.dragging) input.cancel();
     }
   });

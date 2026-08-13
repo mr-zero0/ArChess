@@ -44,6 +44,7 @@
         <button class="icon-btn debug-btn" id="debugBtn" type="button" title="Toggle Physics Debug Overlay (Shortcut: D)" aria-label="Toggle Physics Debug Overlay">⚡</button>
         <button class="icon-btn quality-btn" id="qualityBtn" type="button" title="Toggle Graphics Quality (Shortcut: Q)" aria-label="Toggle Graphics Quality">▦</button>
         <button class="icon-btn fullscreen-btn" id="fullscreenBtn" type="button" title="Toggle Fullscreen (Shortcut: F)" aria-label="Toggle Fullscreen">⛶</button>
+        <button class="icon-btn settings-btn" id="settingsBtn" type="button" title="Sound & Accessibility Settings (Shortcut: S)" aria-label="Sound and Accessibility Settings">⚙</button>
         <button class="icon-btn help-btn" id="helpBtn" type="button" title="How to play" aria-label="How to play">?</button>
         <button class="new-btn" id="newGameBtn" type="button">NEW GAME</button>
       </div>
@@ -141,6 +142,40 @@
     </div>
   </div>
 
+  <div class="modal hidden" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="modal-card settings-card">
+      <button class="modal-close" id="closeSettings" type="button" aria-label="Close">×</button>
+      <div class="modal-kicker">SETTINGS</div>
+      <h2 id="settingsTitle">Sound &amp; Accessibility</h2>
+
+      <div class="settings-section">
+        <div class="settings-heading">AUDIO</div>
+        <label class="settings-row" for="volMaster"><span>Master volume</span>
+          <input type="range" id="volMaster" min="0" max="100" step="1"></label>
+        <label class="settings-row" for="volEffects"><span>Effects volume</span>
+          <input type="range" id="volEffects" min="0" max="100" step="1"></label>
+        <label class="settings-row" for="volMusic"><span>Ambience volume</span>
+          <input type="range" id="volMusic" min="0" max="100" step="1"></label>
+        <label class="settings-row" for="toggleMute"><span>Mute all sound</span>
+          <input type="checkbox" id="toggleMute" class="switch"></label>
+        <label class="settings-row" for="toggleAmbient"><span>Ambient room tone</span>
+          <input type="checkbox" id="toggleAmbient" class="switch"></label>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-heading">MOTION</div>
+        <label class="settings-row" for="toggleShake"><span>Screen shake</span>
+          <input type="checkbox" id="toggleShake" class="switch"></label>
+        <label class="settings-row" for="toggleReduced"><span>Reduced motion</span>
+          <input type="checkbox" id="toggleReduced" class="switch"></label>
+        <label class="settings-row" id="hapticRow" for="toggleHaptics"><span>Haptics (supported devices)</span>
+          <input type="checkbox" id="toggleHaptics" class="switch"></label>
+      </div>
+
+      <p class="settings-note">All sounds are synthesized in-browser. No external audio assets are loaded.</p>
+    </div>
+  </div>
+
   <div class="modal hidden" id="gameOverModal" role="dialog" aria-modal="true" aria-labelledby="winnerTitle">
     <div class="modal-card result-card">
       <div class="result-kicker">BATTLE COMPLETE</div>
@@ -160,6 +195,8 @@
   </script>
   <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
   <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/audio.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/prefs.js') }}"></script>
   <script src="{{ url_for('static', filename='js/pieces.js') }}"></script>
   <script src="{{ url_for('static', filename='js/board.js') }}"></script>
   <script src="{{ url_for('static', filename='js/physics.js') }}"></script>

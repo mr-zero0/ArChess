@@ -11,6 +11,11 @@ window.GameRenderer = class GameRenderer {
     return value === "light" || value === "dark" || value === "wood" ? value : "wood";
   }
 
+  motionPrefs() {
+    if (window.PrefsManager) return PrefsManager.getMotion();
+    return { shake: true, reducedMotion: false };
+  }
+
   palette() {
     const theme = this.theme();
     if (theme === "wood") {
@@ -85,6 +90,8 @@ window.GameRenderer = class GameRenderer {
   }
 
   getShake(game, cell) {
+    const motion = this.motionPrefs();
+    if (!motion.shake || motion.reducedMotion) return { x: 0, y: 0 };
     if (game.screenShake.time <= 0 || game.screenShake.magnitude <= 0) return { x: 0, y: 0 };
     const strength = Math.min(7, game.screenShake.magnitude * cell * 0.012);
     return {
@@ -207,6 +214,7 @@ window.GameRenderer = class GameRenderer {
   }
 
   drawTrails(game, cell) {
+    if (this.motionPrefs().reducedMotion) return;
     const ctx = this.ctx;
     const p = this.palette();
     for (const piece of game.pieces) {
@@ -418,7 +426,7 @@ window.GameRenderer = class GameRenderer {
     ctx.restore();
 
     // A restrained streak behind fast pieces reinforces projectile motion without drawing a coin-like halo.
-    if (moving && speedRatio > 0.12) {
+    if (moving && speedRatio > 0.12 && !this.motionPrefs().reducedMotion) {
       const streak = ctx.createLinearGradient(-nx * r * 2.2, -ny * r * 2.2, 0, 0);
       streak.addColorStop(0, "rgba(255,255,255,0)");
       streak.addColorStop(1, piece.team === "white"

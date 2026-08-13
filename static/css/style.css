@@ -85,6 +85,8 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 .quality-btn.active { border-color: #71f0a2; color: #71f0a2; background: rgba(113, 240, 162, .16); box-shadow: 0 0 14px rgba(113, 240, 162, .28); }
 .fullscreen-btn { font-size: 15px; color: #a9c2d6; }
 .fullscreen-btn.active { border-color: #4de6ff; color: #4de6ff; background: rgba(77, 230, 255, .16); box-shadow: 0 0 14px rgba(77, 230, 255, .28); }
+.settings-btn { font-size: 14px; color: #a9c2d6; }
+.settings-btn.active, .settings-btn:hover { border-color: #4de6ff; color: #4de6ff; }
 .theme-btn { min-width: 82px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; color: #a9bdcf; font-size: 9px; font-weight: 950; letter-spacing: 1px; }
 .theme-icon { width: 15px; font-size: 15px; line-height: 1; }
 .theme-label { transform: translateY(.5px); }
@@ -220,6 +222,54 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 .winner-glyph { margin: 18px 0 4px; color: #eefbff; font: 82px/1 "Times New Roman", serif; text-shadow: 0 0 28px rgba(77,230,255,.25); }
 .result-card h2 { font-size: 36px; letter-spacing: 2px; }
 .result-card .new-btn { margin-top: 12px; }
+
+.settings-card { width: min(460px, 100%); }
+.settings-section { margin: 18px 0 4px; }
+.settings-heading { color: #52dff4; font-size: 9px; font-weight: 950; letter-spacing: 2px; margin-bottom: 6px; }
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 9px 2px;
+  border-bottom: 1px solid rgba(43, 63, 80, .5);
+  color: #c7d6e2;
+  font-size: 12px;
+}
+.settings-row input[type="range"] { width: 46%; accent-color: #4de6ff; }
+.settings-row.disabled { opacity: .4; }
+.settings-note { margin-top: 16px; padding-top: 12px; border-top: 1px solid #263b4d; color: #728799; font-size: 9px; line-height: 1.55; }
+.settings-row input[type="checkbox"].switch {
+  appearance: none;
+  width: 36px;
+  height: 20px;
+  border-radius: 20px;
+  border: 1px solid #2b4152;
+  background: #0b131b;
+  position: relative;
+  cursor: pointer;
+  transition: .18s ease;
+  flex: none;
+}
+.settings-row input[type="checkbox"].switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #7d95a8;
+  transition: .18s ease;
+}
+.settings-row input[type="checkbox"].switch:checked {
+  background: rgba(77, 230, 255, .28);
+  border-color: #4de6ff;
+}
+.settings-row input[type="checkbox"].switch:checked::after {
+  left: 18px;
+  background: #4de6ff;
+}
 
 @media (max-width: 1100px) {
   .game-layout { grid-template-columns: 190px minmax(450px, 680px); }
