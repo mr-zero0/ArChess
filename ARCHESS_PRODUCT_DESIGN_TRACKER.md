@@ -567,6 +567,84 @@ They may be revisited only after traction/revenue or explicit budget approval.
 
 ---
 
+## Progress Log (Chronological)
+
+Every completed deliverable, logged for traceability. Format: date — scope — version — commit — verification.
+
+### v0.1.x — Core Prototype Baseline (prior session, pre-STEP 3)
+
+- **STEP 0 (partial):** Product identity frozen — physics chess battle, King HP win condition, friendly fire, no check/checkmate, piece-as-projectile, Wood/Dark/Light direction, HP/Power baseline, physical projectile behavior. Tracker committed to repo.
+- **STEP 1 (partial):** GitHub repo `mr-zero0/ArChess`, Flask project structure, README, modular JS (physics/render/input/UI), 8×8 board, 32-piece start, select → drag → launch loop, New Game/reset.
+- **STEP 2 (core):** Delta-time motion, wall bouncing, friction, physics substeps, circle collisions, bilateral damage, friendly fire, tunable per-type mass, min impact threshold (`minDamageImpact`), max damage clamp (`maxCollisionDamage`), duplicate-damage prevention (`collisionCooldown`), impulse propagation, physics debug overlay (`D` key), collision settle logic.
+- **Regression tests:** 18 Python pytest (`tests/test_game.py`) + 13 Node physics tests (`tests/physics.test.js`) — tunneling, simultaneous collision, wall-corner, overlap recovery, King-destroyed-during-chain, cooldown, settling termination.
+
+### v0.4.0 — STEP 3: True 3D Chess Presentation (prior session — commit `ca4a2cb`)
+
+- Vendored Three.js 0.185.1 locally (import map, no CDN).
+- 6 procedural piece models (pawn/rook/bishop/knight/queen/king) via lathe/extrude; low-poly, shared geometries/materials, 32-instance friendly.
+- Rosewood/ebony/ivory theme materials; board frame + 64 tiles.
+- Key/fill/rim lights, PCFSoft 2048px shadows, contact blob shadows, velocity-stretched moving shadows.
+- Velocity tilt, projectile tumble, upright rest pose, 0.5s destruction animation.
+- Low-quality graphics mode (`▦` / `Q`, persisted in localStorage).
+- Headless-Chromium verified: WebGL2, drag-launch physics, collisions/damage, game over, theme cycle, quality toggle, reset — zero console errors.
+
+### v0.4.x — STEP 4: Board, Camera, Resize and Theme System (this session — commit `786407c`)
+
+- Theme selector (Wood/Dark/Light) persisted in localStorage; Wood is default.
+- Board-size selector 80–120% persisted; resize-safe (no piece reset/teleport), responsive mobile board, high-DPI (dpr ≤ 2), consistent hit-testing.
+- Fullscreen board view (button + `F` key, `.board-frame:fullscreen`, `fullscreenchange`).
+- Fixed real bug: `glCanvas` not hidden when WebGL2 unavailable (missing fallback branch).
+- Headless-Chromium verified: theme/size persistence, fullscreen enter/exit, resize safety, zero console errors.
+
+### v0.4.x — STEP 5: Game Feel — Audio, Effects and Haptics (this session — commits `e5fcc10`, `8e4145d`)
+
+- `static/js/audio.js` — `window.AudioManager`: procedural Web Audio synthesis (click, select, pull/tension, launch, wood impact, heavy impact, wall, King hit, destruction, victory, defeat, ambient room tone). Impact volume/pitch scale with collision intensity. Lazy AudioContext + gesture unlock. Zero external audio assets ($0 budget).
+- `static/js/prefs.js` — `window.PrefsManager`: master/effects/ambience volume, mute, ambient tone, screen shake, reduced motion, haptics toggles; persisted in `archess-audio` and `archess-motion`.
+- Settings modal (gear button / `S` key / Escape) wired in `templates/index.html` + `static/css/style.css`.
+- Renderer respects reduced motion (no trails/streaks/shake) and shake prefs.
+- Haptics via `navigator.vibrate` where supported; toggle dimmed under reduced motion.
+- King danger feedback: HUD player card danger state + pulsing red on-board ring below 35% King HP.
+- UI button click sounds for all chrome buttons.
+- Headless-Chromium verified: modal open/close (button/`S`/Escape), pref persistence across reload, AudioContext unlock on gesture, all audio paths, danger state, reduced-motion suppression — zero console errors.
+
+### Verification Snapshot (current, v0.4.x)
+
+- Python pytest: 18/18 pass.
+- Node physics tests: 13/13 pass.
+- Playwright headless: 25/25 (3D path) + 16/16 (2D flow) pass.
+- Live preview: https://5000-ebd0214a14bef80a.monkeycode-ai.live
+- Current HEAD: `90cc882` (4 commits ahead of `origin/main` at this writing; pushed together with this log).
+
+### Pending From the Start (structured)
+
+#### Housekeeping to close early steps
+
+- **STEP 0:** Freeze v1 scope in repo; add GitHub milestones for roadmap steps; decide final public tagline; name/trademark conflict review before commercial branding.
+- **STEP 1:** Verify `.gitignore`; add `.env.example`; ensure secrets can never be committed; add `CONTRIBUTING.md`, `CHANGELOG.md`, `ASSET_LICENSES.md`; add issue templates (bug/balance/feature); add `/api/version` endpoint + version in game UI; create Git tags from `v0.1.0`; add CI syntax/test workflow; decide source-code licensing.
+- **STEP 2:** Acceptance-criteria audit — no unexplained energy gain, no continuous-contact HP drain, repeatable outcomes, normal shots do not auto-activate most pieces, intentional chain reactions remain possible, 32 active pieces stay performant.
+
+#### Feature roadmap (next → later)
+
+- **STEP 6** ⬜ — Combat roles, HP/Power balance, combo system. **← NEXT**
+- **STEP 7** ⬜ — UX, tutorial, accessibility polish.
+- **STEP 8** ⬜ — Local modes, challenges, replay foundation.
+- **STEP 9** ⬜ — Automated testing, QA, performance.
+- **STEP 10** ⬜ — Production-ready Flask architecture.
+- **STEP 11** ⬜ — Accounts, profiles, persistence.
+- **STEP 12** ⬜ — Private online multiplayer MVP.
+- **STEP 13** ⬜ — Authoritative simulation, anti-cheat.
+- **STEP 14** ⬜ — Public matchmaking, ranked.
+- **STEP 15** ⬜ — Progression, cosmetics.
+- **STEP 16** ⬜ — Analytics, telemetry, balance dashboard.
+- **STEP 17** ⬜ — Security, privacy, legal, license hygiene.
+- **STEP 18** ⬜ — Zero-cost alpha distribution.
+- **STEP 19** ⬜ — Closed alpha → public beta → product-market fit.
+- **STEP 20** ⬜ — Strict $0 public launch (conditional).
+- **STEP 21** ⛔ — Paid platform gates, only after validation (cost gate).
+- **STEP 22** ⬜ — Market-ready v1.
+
+---
+
 ## STEP 0 — Freeze Product Identity and Rules
 
 **Status:** 🟡 PARTIAL  
@@ -588,7 +666,7 @@ Prevent ArChess from drifting into "random chess features."
 - [x] Define piece itself as projectile.
 - [x] Position product as physics combat rather than ordinary chess.
 - [ ] Freeze v1 scope in repository.
-- [ ] Create `ARCHESS_PRODUCT_DESIGN_TRACKER.md` in repo.
+- [x] Create `ARCHESS_PRODUCT_DESIGN_TRACKER.md` in repo.
 - [ ] Add GitHub milestones corresponding to roadmap steps.
 - [ ] Decide final public tagline.
 - [ ] Perform name/trademark conflict review before commercial branding.
@@ -708,7 +786,7 @@ settle timer
 
 ## STEP 3 — True 3D Chess Presentation
 
-**Status:** 🟡 PARTIAL  
+**Status:** ✅ DONE  
 **Depends on:** Step 2
 
 ### Current Situation
@@ -927,7 +1005,7 @@ All settings persist in `localStorage` (`archess-audio`, `archess-motion`). Redu
 
 A player can understand impact strength from sound/visual feedback even without reading the damage number.
 
-### Verification (v0.5.x)
+### Verification (v0.4.x)
 
 Headless-Chromium verified end-to-end: settings modal opens via button and `S` key, closes via `S` and Escape; volume/mute/motion preferences persist across reloads; AudioContext initializes on first user gesture and click/select/pull/launch/impact/king-hit/destruction/game-over paths all fire without page or console errors; reduced-motion toggling suppresses shake; the HUD card gains the danger state when a King is below 35% HP and a pulsing ring renders around it; zero console errors.
 
@@ -2062,9 +2140,9 @@ The project should then fund only infrastructure justified by actual usage.
 
 # 18. Next Concrete Work Package
 
-## NEXT: STEP 2 — Physics Stabilization
+## DONE: STEP 2 — Physics Stabilization
 
-Before adding more market features, complete:
+Record of completed work before feature work continues:
 
 - [x] contact-pair collision state (deferred — current time-cooldown hitPairs model active) — deferred per STEP 3 priority
 - [x] duplicate-damage prevention — v0.1.x (collisionCooldown)
@@ -2098,14 +2176,18 @@ Then move directly to:
 
 ## STEP 5 — Game Feel: Audio, Effects and Haptics
 
-- [x] Procedural Web Audio sounds (select, pull, launch, impact, wall, King hit, destruction, victory/defeat, ambient, UI click) — v0.5.x (zero-budget; `static/js/audio.js`)
-- [x] Dynamic collision audio (volume/pitch scale with intensity) — v0.5.x
-- [x] Visual effects (trails, dust, sparks, damage numbers, impact flash, fragments, screen shake) — v0.5.x
-- [x] King danger feedback (HUD card + pulsing on-board ring) — v0.5.x
-- [x] Accessibility settings (master/effects/ambience volume, mute, reduced motion, shake, haptics) — v0.5.x (`static/js/prefs.js`, persisted)
-- [x] Headless browser verification — v0.5.x (modal open/close, pref persistence, AudioContext unlock, audio paths, reduced motion, danger state; zero console errors)
+- [x] Procedural Web Audio sounds (select, pull, launch, impact, wall, King hit, destruction, victory/defeat, ambient, UI click) — v0.4.x (zero-budget; `static/js/audio.js`)
+- [x] Dynamic collision audio (volume/pitch scale with intensity) — v0.4.x
+- [x] Visual effects (trails, dust, sparks, damage numbers, impact flash, fragments, screen shake) — v0.4.x
+- [x] King danger feedback (HUD card + pulsing on-board ring) — v0.4.x
+- [x] Accessibility settings (master/effects/ambience volume, mute, reduced motion, shake, haptics) — v0.4.x (`static/js/prefs.js`, persisted)
+- [x] Headless browser verification — v0.4.x (modal open/close, pref persistence, AudioContext unlock, audio paths, reduced motion, danger state; zero console errors)
 
 This order protects the game from becoming beautiful but mechanically unreliable.
+
+## NEXT: STEP 6 — Combat Roles, Balance and Combo System
+
+Upcoming work package (detailed in the STEP 6 section above): assign per-piece combat roles (glass cannon, heavy tank, control, support), tune the HP/Power baseline for fair matchups, and design the combo system. This is the next milestone to start.
 
 ---
 
