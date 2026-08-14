@@ -727,3 +727,79 @@ html[data-theme="wood"] .rules-grid div { border-color: #5d3a28; background: #1a
 html[data-theme="wood"] .rules-grid span { color: #c3a893; }
 html[data-theme="wood"] .modal-note { border-top-color: #5b3928; color: #91715e; }
 html[data-theme="wood"] .winner-glyph { color: #d88a60; text-shadow: 0 0 26px rgba(205,117,70,.20); }
+
+/* STEP 6 — Combo badge */
+.combo-badge {
+  position: absolute;
+  top: 34px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  padding: 6px 16px;
+  border: 1px solid rgba(255, 190, 74, .55);
+  border-radius: 999px;
+  background: rgba(18, 14, 5, .82);
+  color: #ffd37b;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  box-shadow: 0 0 24px rgba(255, 170, 40, .28);
+  animation: combo-pop .28s ease;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.combo-badge b { color: #fff; font-size: 15px; }
+@keyframes combo-pop {
+  0% { transform: translateX(-50%) scale(.6); opacity: 0; }
+  70% { transform: translateX(-50%) scale(1.12); }
+  100% { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+.board-zone { position: relative; }
+
+/* STEP 6 — Developer tuning panel */
+.tuning-card { width: min(640px, 100%); max-height: 86vh; overflow-y: auto; }
+.tuning-note { font-size: 10px !important; color: #728799 !important; }
+.tuning-section { margin: 16px 0 4px; }
+.tuning-heading { color: #52dff4; font-size: 9px; font-weight: 950; letter-spacing: 2px; margin-bottom: 8px; }
+.tuning-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 5px 2px;
+  border-bottom: 1px solid rgba(43, 63, 80, .5);
+  color: #c7d6e2;
+  font-size: 12px;
+}
+.tuning-row input[type="number"] { width: 90px; }
+.tuning-grid { display: grid; gap: 3px; }
+.tuning-grid-head,
+.tuning-grid-row {
+  display: grid;
+  grid-template-columns: 92px repeat(9, 1fr);
+  gap: 4px;
+  align-items: center;
+}
+.tuning-grid-head {
+  color: #728799;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .5px;
+  padding: 2px 2px 6px;
+}
+.tuning-grid-head span:first-child { grid-column: span 1; }
+.tuning-grid-row { padding: 2px; }
+.tuning-grid-row .tuning-piece-name { font-size: 11px; color: #dbe7f0; font-weight: 700; white-space: nowrap; }
+.tuning-grid input[type="number"] {
+  width: 100%;
+  min-width: 0;
+  padding: 3px 4px;
+  font-size: 11px;
+  border: 1px solid #2b4152;
+  border-radius: 5px;
+  background: #0b131b;
+  color: #cfe6f2;
+}
+.tuning-actions { display: flex; gap: 10px; margin-top: 18px; justify-content: flex-end; }
+.tuning-actions .new-btn { padding: 8px 14px; font-size: 11px; }
+.tune-btn { color: #c9b26a; }

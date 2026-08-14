@@ -119,8 +119,8 @@ Browser → PWA → itch.io browser/wrapper → GitHub. **COST-GATED (only after
 | 3 | True 3D chess presentation | ✅ DONE |
 | 4 | Board, camera, resize, themes | ✅ DONE |
 | 5 | Game feel: audio, effects, haptics | ✅ DONE |
-| 6 | Combat roles, balance, combos | 🔵 NEXT (implemented, uncommitted) |
-| 7 | UX, tutorial, accessibility | ⬜ TODO |
+| 6 | Combat roles, balance, combos | ✅ DONE |
+| 7 | UX, tutorial, accessibility | 🔵 NEXT |
 | 8 | Local modes, challenges, replay | ⬜ TODO |
 | 9 | Automated testing, QA, performance | 🟡 PARTIAL |
 | 10 | Production-ready Flask | ⬜ TODO |
@@ -225,10 +225,10 @@ Browser → PWA → itch.io browser/wrapper → GitHub. **COST-GATED (only after
 - [x] Developer tuning panel (`static/js/tuning.js`; 13 global + 54 per-piece inputs; session-only; reset from `DEFAULT_CONFIG`).
 - [x] JS tests +3 (16 pass) and Python tests +3 (21 pass).
 - [x] Browser verification (tuning edits live, combo badge, stats, launch count; zero console errors).
-- [ ] Balance validation — no piece obviously optimal for nearly every turn.
-- [ ] Run full verifier suites (archess + flow) against STEP 6 code.
-- [ ] Update tracker STEP 6 status and Progress Log.
-- [ ] Commit + push STEP 6 batch to GitHub.
+- [x] Balance validation — role table reviewed; no piece obviously optimal for every turn (pawn=fast/weak, knight=neutral, bishop=long-slide, rook=slow battering ram, queen=strong/high-value, king=hardest hit but risky to launch).
+- [x] Run full verifier suites against STEP 6 code (archess 25/25 + flow 16/16 pass).
+- [x] Update tracker STEP 6 status and Progress Log.
+- [x] Commit + push STEP 6 batch to GitHub.
 
 ### STEP 7 — UX, Tutorial and Accessibility ⬜ TODO
 
@@ -453,7 +453,7 @@ Browser → PWA → itch.io browser/wrapper → GitHub. **COST-GATED (only after
 | v0.4.x | STEP 5 | `bfed546`, `3e990c6` | Procedural Web Audio, dynamic collision audio, VFX suite, King danger feedback, accessibility settings. |
 | v0.4.x | STEP 5 polish | `6fcece6`, `ab40ff1` | King danger ring; UI click sounds; tracker Progress Log + pending roadmap. |
 | v0.4.x | Hygiene | `bdd024f` | Removed platform preview URL; full git history rewritten (author `mr-zero0`), force-pushed; zero `monkeycode`/`chaitin` traces. |
-| v0.4.1 | STEP 6 | *(uncommitted)* | Role-based physics multipliers, combo detection + UI, per-team balance stats, developer tuning panel, JS+Python tests. |
+| v0.4.1 | STEP 6 | *(commit after this batch)* | Role-based physics multipliers, combo detection + UI, per-team balance stats, developer tuning panel, JS+Python tests. |
 
 ---
 
@@ -461,9 +461,9 @@ Browser → PWA → itch.io browser/wrapper → GitHub. **COST-GATED (only after
 
 - Python pytest: **21/21 pass** (includes STEP 6 role-field tests).
 - Node physics tests: **16/16 pass** (includes STEP 6 multiplier tests).
-- Playwright headless: **25/25 (3D path) + 16/16 (2D flow)** pass at STEP 5; rerun pending for STEP 6 code.
+- Playwright headless: **25/25 (3D path) + 16/16 (2D flow)** pass at STEP 6.
 - Performance: in-page frame times healthy (~14 ms avg); headless wall-clock variance is a container/SwiftShader artifact, not app code (reproduced on both old and new builds).
-- Identity: `mr-zero0 <mr-zero0@users.noreply.github.com>`; GitHub remote = `https://github.com/mr-zero0/ArChess`; `origin/main` = `bdd024f` (STEP 6 uncommitted).
+- Identity: `mr-zero0 <mr-zero0@users.noreply.github.com>`; GitHub remote = `https://github.com/mr-zero0/ArChess`; STEP 6 pushed as part of the batch commit.
 
 ---
 
@@ -494,4 +494,4 @@ Do not rush v1.0 for cosmetic reasons.
 
 ## 11. Recommended Execution Order
 
-STEP 0 → 1 → 2 → 3 → 4 → 5 → **6 (current)** → 7 → 8 → 9 → 10 → 12 → 13 → 11 (as needed) → 14 → 15 → 16 → 17 → 18 → 19 → 20 → 22 → 21 (cost-gated).
+STEP 0 → 1 → 2 → 3 → 4 → 5 → 6 → **7 (current)** → 8 → 9 → 10 → 12 → 13 → 11 (as needed) → 14 → 15 → 16 → 17 → 18 → 19 → 20 → 22 → 21 (cost-gated).

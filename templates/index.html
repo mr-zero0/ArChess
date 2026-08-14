@@ -45,6 +45,7 @@
         <button class="icon-btn quality-btn" id="qualityBtn" type="button" title="Toggle Graphics Quality (Shortcut: Q)" aria-label="Toggle Graphics Quality">▦</button>
         <button class="icon-btn fullscreen-btn" id="fullscreenBtn" type="button" title="Toggle Fullscreen (Shortcut: F)" aria-label="Toggle Fullscreen">⛶</button>
         <button class="icon-btn settings-btn" id="settingsBtn" type="button" title="Sound & Accessibility Settings (Shortcut: S)" aria-label="Sound and Accessibility Settings">⚙</button>
+        <button class="icon-btn tune-btn" id="tuneBtn" type="button" title="Developer Balance Tuning Panel" aria-label="Developer Balance Tuning Panel">⚗</button>
         <button class="icon-btn help-btn" id="helpBtn" type="button" title="How to play" aria-label="How to play">?</button>
         <button class="new-btn" id="newGameBtn" type="button">NEW GAME</button>
       </div>
@@ -87,6 +88,7 @@
       </aside>
 
       <section class="board-zone">
+        <div class="combo-badge hidden" id="comboBadge" aria-hidden="true">COMBO <b id="comboValue">2</b></div>
         <div class="board-frame">
           <div class="board-wrap" id="boardWrap">
             <canvas id="glCanvas" aria-hidden="true"></canvas>
@@ -176,6 +178,23 @@
     </div>
   </div>
 
+  <div class="modal hidden" id="tuningModal" role="dialog" aria-modal="true" aria-labelledby="tuningTitle">
+    <div class="modal-card tuning-card">
+      <button class="modal-close" id="closeTuning" type="button" aria-label="Close">×</button>
+      <div class="modal-kicker">DEVELOPER</div>
+      <h2 id="tuningTitle">Balance Tuning Panel</h2>
+      <p class="tuning-note">Live edits: global physics apply immediately; per-piece stats apply to current pieces and future launches. Changes persist for the session only.</p>
+
+      <div class="tuning-section" id="globalTuning"></div>
+      <div class="tuning-section" id="pieceTuning"></div>
+
+      <div class="tuning-actions">
+        <button class="new-btn" id="tuningReset" type="button">RESET DEFAULTS</button>
+        <button class="new-btn" id="closeTuning2" type="button">CLOSE</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal hidden" id="gameOverModal" role="dialog" aria-modal="true" aria-labelledby="winnerTitle">
     <div class="modal-card result-card">
       <div class="result-kicker">BATTLE COMPLETE</div>
@@ -203,6 +222,7 @@
   <script src="{{ url_for('static', filename='js/input.js') }}"></script>
   <script src="{{ url_for('static', filename='js/renderer.js') }}"></script>
   <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/tuning.js') }}"></script>
   <script type="module" src="{{ url_for('static', filename='js/render3d.js') }}"></script>
   <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>

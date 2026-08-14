@@ -56,6 +56,30 @@ def test_piece_stats_all_present():
         assert "power" in stats, f"Missing power for {piece_type}"
 
 
+def test_piece_role_fields_present():
+    """Every piece type must define its STEP 6 combat-role profile."""
+    required = ["launchMul", "friction", "restitution", "damageMul", "collisionMul"]
+    for piece_type, stats in PIECE_STATS.items():
+        for field in required:
+            assert field in stats, f"Missing {field} for {piece_type}"
+
+
+def test_piece_role_fields_in_ranges():
+    """Role multipliers must be physically sane (no energy gains)."""
+    for piece_type, stats in PIECE_STATS.items():
+        assert 0.5 <= stats["launchMul"] <= 1.5, f"{piece_type} launchMul out of range"
+        assert 0 < stats["friction"] <= 1.0, f"{piece_type} friction must be in (0, 1]"
+        assert 0 < stats["restitution"] <= 1.0, f"{piece_type} restitution must be in (0, 1]"
+        assert stats["damageMul"] > 0, f"{piece_type} damageMul must be positive"
+        assert stats["collisionMul"] > 0, f"{piece_type} collisionMul must be positive"
+
+
+def test_combo_window_in_config():
+    """Combo window must be configured and positive."""
+    assert "comboWindow" in GAME_CONFIG, "Missing comboWindow in GAME_CONFIG"
+    assert GAME_CONFIG["comboWindow"] > 0
+
+
 def test_game_config_required_fields():
     """GAME_CONFIG should have all required physics fields."""
     required = [

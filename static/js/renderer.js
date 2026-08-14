@@ -1,5 +1,17 @@
 "use strict";
 
+function formatBalanceStats(stats) {
+  if (!stats) return [];
+  const lines = [];
+  for (const team of ["white", "black"]) {
+    const s = stats[team];
+    if (!s) continue;
+    const label = team === "white" ? "W" : "B";
+    lines.push(`stats ${label}: dmg ${s.damage} · frnd ${s.friendlyDamage} · king ${s.kingDamage} · kills ${s.destroyed} · cmb ${s.maxCombo}`);
+  }
+  return lines;
+}
+
 window.GameRenderer = class GameRenderer {
   constructor(board) {
     this.board = board;
@@ -829,7 +841,6 @@ window.GameRenderer = class GameRenderer {
 
   drawDebugOverlay(game, cell, size) {
     if (!game.debugOverlay || !game.debugMetrics) return;
-
     const ctx = this.ctx;
     const padding = 10;
     const lineHeight = 16;
@@ -844,6 +855,8 @@ window.GameRenderer = class GameRenderer {
       `collision count: ${m.collisionCount}`,
       `contact pairs: ${m.contactPairs}`,
       `settle timer: ${m.settleTimer}`,
+      `combo: ${m.combo || 0}`,
+      ...formatBalanceStats(m.stats),
     ];
 
     ctx.save();

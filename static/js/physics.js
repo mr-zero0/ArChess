@@ -7,8 +7,9 @@ window.Physics = Object.freeze({
 
     const clampedDistance = Math.min(distance, GAME_CONFIG.maxDragDistance);
     const scale = clampedDistance / distance;
-    let vx = dx * scale * GAME_CONFIG.launchStrength;
-    let vy = dy * scale * GAME_CONFIG.launchStrength;
+    const response = piece.launchMul ?? 1;
+    let vx = dx * scale * GAME_CONFIG.launchStrength * response;
+    let vy = dy * scale * GAME_CONFIG.launchStrength * response;
     const speed = Math.hypot(vx, vy);
 
     if (speed > GAME_CONFIG.maxLaunchSpeed) {
@@ -54,7 +55,7 @@ window.Physics = Object.freeze({
     piece.x += piece.vx * deltaTime;
     piece.y += piece.vy * deltaTime;
 
-    const decay = Math.pow(GAME_CONFIG.friction, deltaTime * 60);
+    const decay = Math.pow(piece.friction ?? GAME_CONFIG.friction, deltaTime * 60);
     piece.vx *= decay;
     piece.vy *= decay;
 
@@ -69,6 +70,7 @@ window.Physics = Object.freeze({
   resolveBoundary(game, piece) {
     const min = piece.radius;
     const max = GAME_CONFIG.boardSize - piece.radius;
+    const restitution = piece.restitution ?? GAME_CONFIG.bounceFactor;
     let hitX = false;
     let hitY = false;
     let impact = 0;
@@ -76,24 +78,24 @@ window.Physics = Object.freeze({
     if (piece.x < min) {
       impact = Math.max(impact, Math.abs(piece.vx));
       piece.x = min;
-      if (piece.vx < 0) piece.vx *= -GAME_CONFIG.bounceFactor;
+      if (piece.vx < 0) piece.vx *= -restitution;
       hitX = true;
     } else if (piece.x > max) {
       impact = Math.max(impact, Math.abs(piece.vx));
       piece.x = max;
-      if (piece.vx > 0) piece.vx *= -GAME_CONFIG.bounceFactor;
+      if (piece.vx > 0) piece.vx *= -restitution;
       hitX = true;
     }
 
     if (piece.y < min) {
       impact = Math.max(impact, Math.abs(piece.vy));
       piece.y = min;
-      if (piece.vy < 0) piece.vy *= -GAME_CONFIG.bounceFactor;
+      if (piece.vy < 0) piece.vy *= -restitution;
       hitY = true;
     } else if (piece.y > max) {
       impact = Math.max(impact, Math.abs(piece.vy));
       piece.y = max;
-      if (piece.vy > 0) piece.vy *= -GAME_CONFIG.bounceFactor;
+      if (piece.vy > 0) piece.vy *= -restitution;
       hitY = true;
     }
 
@@ -154,8 +156,9 @@ window.Physics = Object.freeze({
         const impactSpeed = Math.max(0, -relativeNormalVelocity);
 
         if (relativeNormalVelocity < 0) {
+          const restitution = ((a.restitution ?? GAME_CONFIG.bounceFactor) + (b.restitution ?? GAME_CONFIG.bounceFactor)) * 0.5;
           const impulseMagnitude =
-            (-(1 + GAME_CONFIG.collisionRestitution) * relativeNormalVelocity) /
+            (-(1 + restitution) * relativeNormalVelocity) /
             invMassTotal;
           const impulseX = impulseMagnitude * nx;
           const impulseY = impulseMagnitude * ny;
@@ -194,9 +197,16 @@ window.Physics = Object.freeze({
   },
 
   calculateDamage(attacker, relativeVelocity) {
-    const impactForce = relativeVelocity * GAME_CONFIG.collisionMultiplier;
+    const impactForce =
+      relativeVelocity *
+      GAME_CONFIG.collisionMultiplier *
+      (attacker.collisionMul ?? 1);
     const normalizedImpactForce = Math.min(1.6, impactForce / GAME_CONFIG.impactReferenceSpeed);
-    const rawDamage = attacker.power * normalizedImpactForce * GAME_CONFIG.damageMultiplier;
+    const rawDamage =
+      attacker.power *
+      normalizedImpactForce *
+      GAME_CONFIG.damageMultiplier *
+      (attacker.damageMul ?? 1);
     return Math.max(1, Math.min(GAME_CONFIG.maxCollisionDamage, Math.round(rawDamage)));
   },
 

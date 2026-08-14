@@ -42,12 +42,22 @@ import { ThreeDScene } from "./render3d.js";
     debugMetrics: null,
     feedback: null,
     screenShake: { time: 0, magnitude: 0 },
+    combo: 0,
+    comboTimer: 0,
+    maxCombo: 0,
+    stats: null,
     onImpact: null,
     onWallImpact: null,
   };
 
   window.gameState = gameState;
   UI.init(gameState);
+  if (window.TuningPanel) TuningPanel.init();
+
+  function newStats() {
+    const make = () => ({ launches: 0, damage: 0, friendlyDamage: 0, kingDamage: 0, destroyed: 0, maxCombo: 0 });
+    return { white: make(), black: make() };
+  }
 
   function resetGame() {
     input?.cancel();
@@ -71,6 +81,10 @@ import { ThreeDScene } from "./render3d.js";
     gameState.feedback = null;
     gameState.screenShake.time = 0;
     gameState.screenShake.magnitude = 0;
+    gameState.combo = 0;
+    gameState.comboTimer = 0;
+    gameState.maxCombo = 0;
+    gameState.stats = newStats();
     canvas.classList.remove("is-dragging");
     UI.modal("gameOverModal", false);
     UI.clearLog();
@@ -163,6 +177,12 @@ import { ThreeDScene } from "./render3d.js";
     gameState.pointer = null;
     gameState.powerRatio = 0;
     gameState.feedback = null;
+    gameState.combo = 0;
+    gameState.comboTimer = 0;
+    gameState.maxCombo = 0;
+    if (gameState.stats && gameState.stats[piece.team]) {
+      gameState.stats[piece.team].launches += 1;
+    }
     UI.update();
   }
 
@@ -182,6 +202,14 @@ import { ThreeDScene } from "./render3d.js";
     pointerCancel: () => cancelDrag(),
   });
 
+  function recordStat(team, target, damage) {
+    const stats = gameState.stats && gameState.stats[team];
+    if (!stats || damage <= 0) return;
+    stats.damage += damage;
+    if (target.team === team) stats.friendlyDamage += damage;
+    if (target.type === "king") stats.kingDamage += damage;
+  }
+
   gameState.onImpact = ({ a, b, impactSpeed, damageToA, damageToB, x, y }) => {
     if (!a.alive || !b.alive) return;
     gameState.collisionCount += 1;
@@ -198,8 +226,23 @@ import { ThreeDScene } from "./render3d.js";
       AudioManager?.impact(impactSpeed);
     }
 
-    if (a.hp <= 0) destroyPiece(a);
-    if (b.hp <= 0) destroyPiece(b);
+    // Chain-combo: every damaging impact inside the window raises the counter.
+    const damageDealt = Math.max(damageToA, damageToB);
+    if (damageDealt > 0) {
+      gameState.combo += 1;
+      gameState.comboTimer = GAME_CONFIG.comboWindow;
+      if (gameState.combo > gameState.maxCombo) {
+        gameState.maxCombo = gameState.combo;
+        if (gameState.combo >= 2) setFeedback(`COMBO ×${gameState.combo}!`, 1.0);
+      }
+    }
+
+    // Balance stats: damageToA was caused by b, damageToB by a.
+    recordStat(b.team, a, damageToA);
+    recordStat(a.team, b, damageToB);
+
+    if (a.hp <= 0) destroyPiece(a, b.team);
+    if (b.hp <= 0) destroyPiece(b, a.team);
   };
 
   gameState.onWallImpact = (piece, impact) => {
@@ -208,7 +251,7 @@ import { ThreeDScene } from "./render3d.js";
     AudioManager?.wall(impact);
   };
 
-  function destroyPiece(piece) {
+  function destroyPiece(piece, killerTeam) {
     if (!piece.alive) return;
     piece.alive = false;
     piece.moving = false;
@@ -217,6 +260,9 @@ import { ThreeDScene } from "./render3d.js";
     spawnDestructionEffects(piece);
     addHistory(`${capitalize(piece.team)} ${PIECES[piece.type].name} destroyed.`);
     AudioManager?.destroy(piece.type);
+    if (gameState.stats && killerTeam && gameState.stats[killerTeam]) {
+      gameState.stats[killerTeam].destroyed += 1;
+    }
   }
 
   function addHistory(message) {
@@ -353,6 +399,9 @@ import { ThreeDScene } from "./render3d.js";
     gameState.powerRatio = 0;
     canvas.classList.remove("is-dragging");
 
+    const playedTeam = gameState.stats ? gameState.stats[gameState.currentPlayer] : null;
+    if (playedTeam) playedTeam.maxCombo = Math.max(playedTeam.maxCombo, gameState.maxCombo);
+
     document.getElementById("winnerGlyph").textContent = winner === "white" ? "♔" : "♚";
     document.getElementById("winnerTitle").textContent = `${winner.toUpperCase()} WINS`;
     document.getElementById("winnerSub").textContent = doubleKO
@@ -379,6 +428,14 @@ import { ThreeDScene } from "./render3d.js";
     gameState.settledFor += deltaTime;
     if (gameState.settledFor < GAME_CONFIG.settleDelay) return;
 
+    const playedTeam = gameState.currentPlayer;
+    if (gameState.stats && gameState.stats[playedTeam]) {
+      gameState.stats[playedTeam].maxCombo = Math.max(gameState.stats[playedTeam].maxCombo, gameState.maxCombo);
+    }
+    gameState.combo = 0;
+    gameState.comboTimer = 0;
+    gameState.maxCombo = 0;
+
     gameState.currentPlayer = gameState.currentPlayer === "white" ? "black" : "white";
     gameState.phase = "aim";
     gameState.settledFor = 0;
@@ -399,6 +456,10 @@ import { ThreeDScene } from "./render3d.js";
     }
 
     updateEffects(deltaTime);
+    if (gameState.comboTimer > 0) {
+      gameState.comboTimer -= deltaTime;
+      if (gameState.comboTimer <= 0) gameState.combo = 0;
+    }
     checkWinCondition();
     settleTurn(deltaTime);
     updateDebugMetrics(deltaTime);
@@ -450,6 +511,8 @@ import { ThreeDScene } from "./render3d.js";
       collisionCount: gameState.collisionCount || 0,
       contactPairs: gameState.hitPairs ? gameState.hitPairs.size : 0,
       settleTimer: `${gameState.settledFor.toFixed(2)}s`,
+      combo: gameState.combo,
+      stats: gameState.stats,
     };
   }
 
@@ -554,6 +617,7 @@ import { ThreeDScene } from "./render3d.js";
     if (event.key === "Escape") {
       UI.modal("helpModal", false);
       UI.modal("settingsModal", false);
+      UI.modal("tuningModal", false);
       if (gameState.dragging) input.cancel();
     }
   });

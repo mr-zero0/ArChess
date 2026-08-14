@@ -89,6 +89,55 @@ test("zero-distance drag does not launch", () => {
 });
 
 // ---------------------------------------------------------------------------
+// STEP 6 — per-piece combat role profile
+// ---------------------------------------------------------------------------
+
+test("launch response scales with the piece launch multiplier", () => {
+  const pawn = makePiece("pawn", "white", 2, 4);
+  const king = makePiece("king", "white", 2, 4);
+  Physics.launch(pawn, -1, 0);
+  Physics.launch(king, -1, 0);
+  assert.ok(
+    speed(pawn) > speed(king),
+    `light pawn should launch faster than the heavy king (pawn ${speed(pawn).toFixed(2)} vs king ${speed(king).toFixed(2)})`
+  );
+});
+
+test("per-piece friction slows heavy pieces more than sliding pieces", () => {
+  const rook = makePiece("rook", "white", 4, 4);
+  const bishop = makePiece("bishop", "white", 4, 4);
+  rook.vx = 6;
+  bishop.vx = 6;
+  rook.moving = true;
+  bishop.moving = true;
+  const game = makeGame([rook, bishop]);
+
+  Physics.step(game, 1 / 60);
+  Physics.step(game, 1 / 60);
+
+  assert.ok(
+    bishop.vx > rook.vx,
+    `low-drag bishop should retain more speed than the rook (bishop ${bishop.vx.toFixed(3)} vs rook ${rook.vx.toFixed(3)})`
+  );
+});
+
+test("calculateDamage applies per-piece damage and collision multipliers", () => {
+  const pawn = makePiece("pawn", "white", 4, 4);
+  const queen = makePiece("queen", "black", 4, 4);
+  const pawnDamage = Physics.calculateDamage(pawn, 8);
+  const queenDamage = Physics.calculateDamage(queen, 8);
+  assert.ok(pawnDamage >= 1, "pawn damage must be at least the floor of 1");
+  assert.ok(
+    queenDamage > pawnDamage,
+    `high-value pieces must out-damage pawns (queen ${queenDamage} vs pawn ${pawnDamage})`
+  );
+  assert.ok(
+    pawnDamage < GAME_CONFIG.maxCollisionDamage,
+    "pawn damage must be clamped below the ceiling"
+  );
+});
+
+// ---------------------------------------------------------------------------
 // High-speed tunneling
 // ---------------------------------------------------------------------------
 

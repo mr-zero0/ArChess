@@ -23,6 +23,8 @@ window.UI = {
       armory: document.getElementById("armory"),
       whiteCard: document.getElementById("whiteCard"),
       blackCard: document.getElementById("blackCard"),
+      comboBadge: document.getElementById("comboBadge"),
+      comboValue: document.getElementById("comboValue"),
     };
     this.cache = new Map();
     this.buildArmory();
@@ -92,6 +94,10 @@ window.UI = {
     const power = this.game.dragging ? this.game.powerRatio * 100 : 0;
     this.width("powerBar", power);
     this.text("powerValue", `${Math.round(power)}%`);
+
+    const combo = this.game.maxCombo >= 2 ? this.game.maxCombo : 0;
+    if (this.nodes.comboBadge) this.nodes.comboBadge.classList.toggle("hidden", combo < 2);
+    if (combo >= 2) this.text("comboValue", String(combo));
 
     let hint = `Select a ${this.game.currentPlayer} piece, drag backward, release`;
     if (this.game.gameOver) hint = "Battle complete. Start a new game to reset everything.";
