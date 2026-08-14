@@ -120,8 +120,8 @@ Browser → PWA → itch.io browser/wrapper → GitHub. **COST-GATED (only after
 | 4 | Board, camera, resize, themes | ✅ DONE |
 | 5 | Game feel: audio, effects, haptics | ✅ DONE |
 | 6 | Combat roles, balance, combos | ✅ DONE |
-| 7 | UX, tutorial, accessibility | 🔵 NEXT (implemented, uncommitted) |
-| 8 | Local modes, challenges, replay | ⬜ TODO |
+| 7 | UX, tutorial, accessibility | ✅ DONE |
+| 8 | Local modes, challenges, replay | 🔵 NEXT |
 | 9 | Automated testing, QA, performance | 🟡 PARTIAL |
 | 10 | Production-ready Flask | ⬜ TODO |
 | 11 | Accounts, profiles, persistence | ⬜ TODO |
@@ -456,7 +456,7 @@ Browser → PWA → itch.io browser/wrapper → GitHub. **COST-GATED (only after
 | v0.4.x | STEP 5 polish | `6fcece6`, `ab40ff1` | King danger ring; UI click sounds; tracker Progress Log + pending roadmap. |
 | v0.4.x | Hygiene | `bdd024f` | Removed platform preview URL; full git history rewritten (author `mr-zero0`), force-pushed; zero `monkeycode`/`chaitin` traces. |
 | v0.4.1 | STEP 6 | `a239dd0` | Role-based physics multipliers, combo detection + UI, per-team balance stats, developer tuning panel, JS+Python tests. |
-| v0.5.x | STEP 7 | *(commit after this batch)* | First-time interactive tutorial + replay, keyboard-accessible modals (focus trap), non-color team markers, mobile touch targets, text-scaling tolerance. |
+| v0.5.x | STEP 7 | `fb1f968` | First-time interactive tutorial + replay, keyboard-accessible modals (focus trap), non-color team markers, mobile touch targets, text-scaling tolerance. |
 
 ---
 
@@ -497,4 +497,4 @@ Do not rush v1.0 for cosmetic reasons.
 
 ## 11. Recommended Execution Order
 
-STEP 0 → 1 → 2 → 3 → 4 → 5 → 6 → **7 (current)** → 8 → 9 → 10 → 12 → 13 → 11 (as needed) → 14 → 15 → 16 → 17 → 18 → 19 → 20 → 22 → 21 (cost-gated).
+STEP 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → **8 (current)** → 9 → 10 → 12 → 13 → 11 (as needed) → 14 → 15 → 16 → 17 → 18 → 19 → 20 → 22 → 21 (cost-gated).
