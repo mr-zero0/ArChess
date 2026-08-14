@@ -16,6 +16,7 @@ window.UI = {
       powerBar: document.getElementById("powerBar"),
       powerValue: document.getElementById("powerValue"),
       turnBadge: document.getElementById("turnBadge"),
+      turnTimer: document.getElementById("turnTimer"),
       turnDot: document.getElementById("turnDot"),
       hintText: document.getElementById("hintText"),
       moveCount: document.getElementById("moveCount"),
@@ -69,6 +70,17 @@ window.UI = {
     this.text("turnText", turn);
     this.text("turnBadge", this.game.gameOver ? "BATTLE COMPLETE" : `${turn} TO MOVE`);
     this.nodes.turnDot.style.background = this.game.currentPlayer === "white" ? "#c7f8ff" : "#ff7485";
+
+    if (this.nodes.turnTimer) {
+      if (this.game.turnTime > 0 && !this.game.gameOver) {
+        this.nodes.turnTimer.classList.remove("hidden");
+        const remaining = Math.max(0, Math.ceil(this.game.turnTimeLeft));
+        this.text("turnTimer", `T-${remaining}s`);
+        this.nodes.turnTimer.classList.toggle("danger", remaining <= 5);
+      } else {
+        this.nodes.turnTimer.classList.add("hidden");
+      }
+    }
 
     this.nodes.whiteCard.classList.toggle("active", this.game.currentPlayer === "white" && !this.game.gameOver);
     this.nodes.blackCard.classList.toggle("active", this.game.currentPlayer === "black" && !this.game.gameOver);

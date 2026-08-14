@@ -146,6 +146,8 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 .board-wrap canvas.is-dragging { cursor: grabbing; }
 .board-footer { min-height: 52px; display: flex; align-items: center; justify-content: space-between; padding: 0 4px; gap: 12px; }
 .turn-badge { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 950; letter-spacing: 1.1px; }
+.turn-timer { font-variant-numeric: tabular-nums; letter-spacing: 0; color: #52dff4; font-weight: 800; }
+.turn-timer.danger { color: #ff7485; animation: dangerPulse 1s infinite; }
 .turn-dot { width: 8px; height: 8px; border-radius: 50%; background: #eafaff; box-shadow: 0 0 10px currentColor; }
 .hint { color: #698095; font-size: 11px; text-align: right; }
 
@@ -327,6 +329,16 @@ html[data-theme="wood"] .tutorial-dot.active { background: #f0b878; }
   font-size: 12px;
 }
 .settings-row input[type="range"] { width: 46%; accent-color: #4de6ff; }
+.settings-row .settings-select {
+  padding: 5px 8px;
+  border: 1px solid #294257;
+  border-radius: 6px;
+  background: #0b1219;
+  color: #c7d6e2;
+  font-size: 12px;
+}
+.settings-row .settings-select:focus-visible { outline: 2px solid #4de6ff; outline-offset: 2px; }
+.settings-row input[type="radio"] { accent-color: #4de6ff; width: 16px; height: 16px; }
 .settings-row.disabled { opacity: .4; }
 .settings-note { margin-top: 16px; padding-top: 12px; border-top: 1px solid #263b4d; color: #728799; font-size: 9px; line-height: 1.55; }
 .settings-row input[type="checkbox"].switch {

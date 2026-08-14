@@ -96,7 +96,7 @@
           </div>
         </div>
         <div class="board-footer">
-          <div class="turn-badge"><span class="turn-dot" id="turnDot"></span><span id="turnBadge">WHITE TO MOVE</span></div>
+          <div class="turn-badge"><span class="turn-dot" id="turnDot"></span><span id="turnBadge">WHITE TO MOVE</span><span class="turn-timer hidden" id="turnTimer"></span></div>
           <div class="hint" id="hintText">Select a white piece, drag backward, release</div>
         </div>
 
@@ -165,6 +165,21 @@
       <h2 id="settingsTitle">Sound &amp; Accessibility</h2>
 
       <div class="settings-section">
+        <div class="settings-heading">GAME MODE</div>
+        <label class="settings-row" for="modeMatch"><span>Match — destroy the enemy King to win</span>
+          <input type="radio" name="gameMode" id="modeMatch" value="match"></label>
+        <label class="settings-row" for="modePractice"><span>Practice — no win condition, keep experimenting</span>
+          <input type="radio" name="gameMode" id="modePractice" value="practice"></label>
+        <label class="settings-row" for="turnTime"><span>Turn timer</span>
+          <select id="turnTime" class="settings-select">
+            <option value="0">Off</option>
+            <option value="20">20 seconds</option>
+            <option value="45">45 seconds</option>
+            <option value="90">90 seconds</option>
+          </select></label>
+      </div>
+
+      <div class="settings-section">
         <div class="settings-heading">AUDIO</div>
         <label class="settings-row" for="volMaster"><span>Master volume</span>
           <input type="range" id="volMaster" min="0" max="100" step="1"></label>
@@ -230,6 +245,7 @@
   <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
   <script src="{{ url_for('static', filename='js/audio.js') }}"></script>
   <script src="{{ url_for('static', filename='js/prefs.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/mode.js') }}"></script>
   <script src="{{ url_for('static', filename='js/pieces.js') }}"></script>
   <script src="{{ url_for('static', filename='js/board.js') }}"></script>
   <script src="{{ url_for('static', filename='js/physics.js') }}"></script>

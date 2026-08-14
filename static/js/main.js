@@ -27,6 +27,9 @@ import { ThreeDScene } from "./render3d.js";
     dragging: false,
     gameOver: false,
     winner: null,
+    mode: "match",
+    turnTime: 0,
+    turnTimeLeft: 0,
     pieces: [],
     effects: [],
     pointer: null,
@@ -54,6 +57,19 @@ import { ThreeDScene } from "./render3d.js";
   UI.init(gameState);
   if (window.TuningPanel) TuningPanel.init();
   if (window.TutorialManager) TutorialManager.init(gameState);
+  if (window.GameModeManager) {
+    GameModeManager.init();
+    gameState.mode = GameModeManager.get().mode;
+    gameState.turnTime = GameModeManager.get().turnTime;
+    gameState.turnTimeLeft = gameState.turnTime;
+    GameModeManager.setChangeHandler((prefs) => {
+      gameState.mode = prefs.mode;
+      gameState.turnTime = prefs.turnTime;
+      gameState.turnTimeLeft = prefs.turnTime;
+      if (prefs.turnTime > 0 && gameState.phase !== "aim") gameState.turnTimeLeft = prefs.turnTime;
+      UI.update(true);
+    });
+  }
 
   function newStats() {
     const make = () => ({ launches: 0, damage: 0, friendlyDamage: 0, kingDamage: 0, destroyed: 0, maxCombo: 0 });
@@ -67,6 +83,12 @@ import { ThreeDScene } from "./render3d.js";
     gameState.dragging = false;
     gameState.gameOver = false;
     gameState.winner = null;
+    if (window.GameModeManager) {
+      const prefs = GameModeManager.get();
+      gameState.mode = prefs.mode;
+      gameState.turnTime = prefs.turnTime;
+    }
+    gameState.turnTimeLeft = gameState.turnTime;
     gameState.pieces = PieceFactory.setup();
     threeDScene?.reset(gameState);
     gameState.effects = [];
@@ -379,6 +401,7 @@ import { ThreeDScene } from "./render3d.js";
 
   function checkWinCondition() {
     if (gameState.gameOver) return;
+    if (gameState.mode === "practice") return;
     const whiteKing = gameState.pieces.find((piece) => piece.type === "king" && piece.team === "white");
     const blackKing = gameState.pieces.find((piece) => piece.type === "king" && piece.team === "black");
     const whiteDead = !whiteKing || whiteKing.hp <= 0 || !whiteKing.alive;
@@ -418,6 +441,36 @@ import { ThreeDScene } from "./render3d.js";
     UI.modal("gameOverModal", true);
   }
 
+  function switchTurn() {
+    gameState.currentPlayer = gameState.currentPlayer === "white" ? "black" : "white";
+    gameState.phase = "aim";
+    gameState.settledFor = 0;
+    gameState.turnTimeLeft = gameState.turnTime;
+    addHistory(`${capitalize(gameState.currentPlayer)} to move.`);
+    UI.update(true);
+  }
+
+  function expireTurnTimer() {
+    if (gameState.gameOver || gameState.phase !== "aim") return;
+    setFeedback(`Time up — ${gameState.currentPlayer.toUpperCase()}'s turn ended.`, 1.4);
+    addHistory(`Turn timer expired for ${capitalize(gameState.currentPlayer)}.`);
+    switchTurn();
+  }
+
+  function tickTurnTimer(deltaTime) {
+    if (gameState.turnTime <= 0 || gameState.gameOver) return;
+    if (gameState.phase !== "aim") {
+      if (gameState.turnTimeLeft !== gameState.turnTime) {
+        gameState.turnTimeLeft = gameState.turnTime;
+      }
+      return;
+    }
+    if (gameState.phase === "aim") {
+      gameState.turnTimeLeft = Math.max(0, gameState.turnTimeLeft - deltaTime);
+      if (gameState.turnTimeLeft <= 0) expireTurnTimer();
+    }
+  }
+
   function settleTurn(deltaTime) {
     if (gameState.gameOver || gameState.phase !== "physics") return;
     const allStopped = gameState.activeCollisions.size === 0 && gameState.pieces.every((piece) => !piece.alive || !piece.moving);
@@ -437,11 +490,7 @@ import { ThreeDScene } from "./render3d.js";
     gameState.comboTimer = 0;
     gameState.maxCombo = 0;
 
-    gameState.currentPlayer = gameState.currentPlayer === "white" ? "black" : "white";
-    gameState.phase = "aim";
-    gameState.settledFor = 0;
-    addHistory(`${capitalize(gameState.currentPlayer)} to move.`);
-    UI.update(true);
+    switchTurn();
   }
 
   let previousTime = performance.now();
@@ -463,6 +512,7 @@ import { ThreeDScene } from "./render3d.js";
     }
     checkWinCondition();
     settleTurn(deltaTime);
+    tickTurnTimer(deltaTime);
     if (window.TutorialManager) TutorialManager.tick(gameState);
     updateDebugMetrics(deltaTime);
     threeDScene?.render(gameState, deltaTime);
