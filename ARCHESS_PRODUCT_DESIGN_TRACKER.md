@@ -251,12 +251,12 @@ Browser → PWA → itch.io browser/wrapper → GitHub. **COST-GATED (only after
 - [x] Browser verification (auto-show, replay, skip, focus management, zero console errors).
 - [ ] Update tracker + commit batch.
 
-### STEP 8 — Local Modes, Challenges and Replay Foundation ⬜ TODO
+### STEP 8 — Local Modes, Challenges and Replay Foundation 🟡 PARTIAL
 
-- [ ] Local Pass & Play.
-- [ ] Practice / Sandbox.
+- [x] Local Pass & Play (default hotseat, both sides on one screen; formalized as the default "Match" mode).
+- [x] Practice / Sandbox (mode selector in settings; no win condition, keep playing after King destruction).
+- [x] Optional turn timer (settings selector, live countdown badge, auto turn-switch on expiry, persisted; Off / 20s / 45s / 90s).
 - [ ] Trick Shot Challenges.
-- [ ] Optional turn timer.
 - [ ] Replay capture (launch vectors, state snapshots, end state).
 - [ ] Replay Viewer (playback / speed controls).
 
@@ -457,6 +457,7 @@ Browser → PWA → itch.io browser/wrapper → GitHub. **COST-GATED (only after
 | v0.4.x | Hygiene | `bdd024f` | Removed platform preview URL; full git history rewritten (author `mr-zero0`), force-pushed; zero `monkeycode`/`chaitin` traces. |
 | v0.4.1 | STEP 6 | `a239dd0` | Role-based physics multipliers, combo detection + UI, per-team balance stats, developer tuning panel, JS+Python tests. |
 | v0.5.x | STEP 7 | `fb1f968` | First-time interactive tutorial + replay, keyboard-accessible modals (focus trap), non-color team markers, mobile touch targets, text-scaling tolerance. |
+| v0.5.1 | STEP 8 (1/2) | `18b5e2c` | Local modes: Match / Practice-Sandbox selector + optional persisted turn timer (live countdown, auto turn-switch), both surfaced in settings; regression suites pass. |
 
 ---
 
