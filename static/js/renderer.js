@@ -486,6 +486,7 @@ window.GameRenderer = class GameRenderer {
 
     ctx.restore();
     this.drawHp(piece, cell);
+    this.drawTeamMarker(piece, cell);
 
     // King danger feedback: a pulsing red ring when a living King is near death.
     if (piece.type === "king" && piece.alive) {
@@ -787,6 +788,32 @@ window.GameRenderer = class GameRenderer {
     ctx.fillRect(left, top, width, height);
     ctx.fillStyle = ratio > 0.5 ? "#55d991" : ratio > 0.25 ? "#f3b044" : "#f04f66";
     ctx.fillRect(left, top, width * ratio, height);
+  }
+
+  // Non-color team cue (STEP 7): a shape marker floats above every living piece so
+  // teams remain distinguishable without relying on color. White = triangle,
+  // black = square. The shape is high-contrast in every theme.
+  drawTeamMarker(piece, cell) {
+    const ctx = this.ctx;
+    const x = piece.x * cell;
+    const y = piece.y * cell;
+    const radius = piece.radius * cell;
+    const size = Math.max(4, cell * 0.06);
+    const top = y - radius * 1.85 - Math.max(7, cell * 0.07);
+    ctx.save();
+    ctx.fillStyle = this.theme() === "light" ? "#123" : "#eef7fb";
+    ctx.translate(x, top);
+    if (piece.team === "white") {
+      ctx.beginPath();
+      ctx.moveTo(0, -size * 1.15);
+      ctx.lineTo(size * 1.1, size * 0.7);
+      ctx.lineTo(-size * 1.1, size * 0.7);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.fillRect(-size * 0.85, -size * 0.85, size * 1.7, size * 1.7);
+    }
+    ctx.restore();
   }
 
   drawEffects(game, cell) {

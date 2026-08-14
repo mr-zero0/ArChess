@@ -147,6 +147,47 @@ window.UI = {
   },
 
   modal(id, show) {
-    document.getElementById(id).classList.toggle("hidden", !show);
+    const modal = document.getElementById(id);
+    modal.classList.toggle("hidden", !show);
+    if (!show) {
+      if (this._lastFocus && modal.contains(document.activeElement)) {
+        this._lastFocus.focus?.();
+      }
+      this.trapOff(modal);
+      return;
+    }
+    this._lastFocus = document.activeElement;
+    this.trapOn(modal);
+    const focusables = modal.querySelectorAll("button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex='-1'])");
+    const first = focusables[0];
+    if (first) {
+      first.focus();
+    } else {
+      modal.focus?.();
+    }
+  },
+
+  trapOn(modal) {
+    this._trapModal = modal;
+    document.addEventListener("keydown", this.trapKey = this.trapKey || ((event) => {
+      if (event.key !== "Tab" || !this._trapModal || this._trapModal.classList.contains("hidden")) return;
+      const focusables = this._trapModal.querySelectorAll("button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex='-1'])");
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }));
+  },
+
+  trapOff(modal) {
+    if (this._trapModal !== modal) return;
+    document.removeEventListener("keydown", this.trapKey);
+    this._trapModal = null;
   },
 };

@@ -53,6 +53,7 @@ import { ThreeDScene } from "./render3d.js";
   window.gameState = gameState;
   UI.init(gameState);
   if (window.TuningPanel) TuningPanel.init();
+  if (window.TutorialManager) TutorialManager.init(gameState);
 
   function newStats() {
     const make = () => ({ launches: 0, damage: 0, friendlyDamage: 0, kingDamage: 0, destroyed: 0, maxCombo: 0 });
@@ -462,6 +463,7 @@ import { ThreeDScene } from "./render3d.js";
     }
     checkWinCondition();
     settleTurn(deltaTime);
+    if (window.TutorialManager) TutorialManager.tick(gameState);
     updateDebugMetrics(deltaTime);
     threeDScene?.render(gameState, deltaTime);
     renderer.draw(gameState);
@@ -585,6 +587,10 @@ import { ThreeDScene } from "./render3d.js";
   document.getElementById("playAgainBtn").addEventListener("click", resetGame);
   document.getElementById("helpBtn").addEventListener("click", () => UI.modal("helpModal", true));
   document.getElementById("closeHelp").addEventListener("click", () => UI.modal("helpModal", false));
+  document.getElementById("helpTutorialBtn").addEventListener("click", () => {
+    UI.modal("helpModal", false);
+    if (window.TutorialManager) TutorialManager.start();
+  });
   document.getElementById("helpModal").addEventListener("click", (event) => {
     if (event.target.id === "helpModal") UI.modal("helpModal", false);
   });

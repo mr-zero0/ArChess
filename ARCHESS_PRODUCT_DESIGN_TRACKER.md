@@ -120,7 +120,7 @@ Browser → PWA → itch.io browser/wrapper → GitHub. **COST-GATED (only after
 | 4 | Board, camera, resize, themes | ✅ DONE |
 | 5 | Game feel: audio, effects, haptics | ✅ DONE |
 | 6 | Combat roles, balance, combos | ✅ DONE |
-| 7 | UX, tutorial, accessibility | 🔵 NEXT |
+| 7 | UX, tutorial, accessibility | 🔵 NEXT (implemented, uncommitted) |
 | 8 | Local modes, challenges, replay | ⬜ TODO |
 | 9 | Automated testing, QA, performance | 🟡 PARTIAL |
 | 10 | Production-ready Flask | ⬜ TODO |
@@ -230,24 +230,26 @@ Browser → PWA → itch.io browser/wrapper → GitHub. **COST-GATED (only after
 - [x] Update tracker STEP 6 status and Progress Log.
 - [x] Commit + push STEP 6 batch to GitHub.
 
-### STEP 7 — UX, Tutorial and Accessibility ⬜ TODO
+### STEP 7 — UX, Tutorial and Accessibility 🔵 NEXT
 
-- [ ] First-time interactive tutorial.
-- [ ] Tutorial replay in Help.
-- [ ] Aim direction clearly visible.
-- [ ] Power clearly visible.
-- [ ] Cancel drag.
-- [ ] Invalid-piece feedback.
-- [ ] Current turn unmistakable.
-- [ ] Physics-in-progress lock feedback.
-- [ ] King HP always readable.
-- [ ] Game-over overlay.
-- [ ] Rematch / new game.
-- [ ] Keyboard-accessible menus.
-- [ ] Team distinction not based on color alone.
-- [ ] Reduced-motion mode (settings exist; verify full coverage).
-- [ ] Text scaling tolerance.
-- [ ] Mobile touch targets.
+- [x] First-time interactive tutorial (`static/js/tutorial.js`): non-blocking bottom card, auto-shows on first visit, latched step advancement on real actions (select → aim → launch → chains → win), Skip/Next, persists `archess-tutorial` flag.
+- [x] Tutorial replay in Help (`#helpTutorialBtn`).
+- [x] Aim direction clearly visible (dashed pull line + solid launch arrow + direction dots).
+- [x] Power clearly visible (power bar + %).
+- [x] Cancel drag (Escape / pointercancel).
+- [x] Invalid-piece feedback (feedback text on empty/wrong-team selection).
+- [x] Current turn unmistakable (turn text, badge, dot, active player card).
+- [x] Physics-in-progress lock feedback (status "PHYSICS ACTIVE" + hint while resolving).
+- [x] King HP always readable (King HP text + HP tracks + danger pulse).
+- [x] Game-over overlay (winner modal, double-KO handling).
+- [x] Rematch / new game (New Game button, R key, Play Again).
+- [x] Keyboard-accessible menus (modal focus-on-open + Tab focus trap + Escape close + restore focus).
+- [x] Team distinction not based on color alone (shape marker above pieces: triangle = white, square = black; theme-independent).
+- [x] Reduced-motion mode (settings, persists).
+- [x] Text scaling tolerance (modal scroll at narrow widths).
+- [x] Mobile touch targets (≥40px controls on coarse pointers).
+- [x] Browser verification (auto-show, replay, skip, focus management, zero console errors).
+- [ ] Update tracker + commit batch.
 
 ### STEP 8 — Local Modes, Challenges and Replay Foundation ⬜ TODO
 
@@ -453,7 +455,8 @@ Browser → PWA → itch.io browser/wrapper → GitHub. **COST-GATED (only after
 | v0.4.x | STEP 5 | `bfed546`, `3e990c6` | Procedural Web Audio, dynamic collision audio, VFX suite, King danger feedback, accessibility settings. |
 | v0.4.x | STEP 5 polish | `6fcece6`, `ab40ff1` | King danger ring; UI click sounds; tracker Progress Log + pending roadmap. |
 | v0.4.x | Hygiene | `bdd024f` | Removed platform preview URL; full git history rewritten (author `mr-zero0`), force-pushed; zero `monkeycode`/`chaitin` traces. |
-| v0.4.1 | STEP 6 | *(commit after this batch)* | Role-based physics multipliers, combo detection + UI, per-team balance stats, developer tuning panel, JS+Python tests. |
+| v0.4.1 | STEP 6 | `a239dd0` | Role-based physics multipliers, combo detection + UI, per-team balance stats, developer tuning panel, JS+Python tests. |
+| v0.5.x | STEP 7 | *(commit after this batch)* | First-time interactive tutorial + replay, keyboard-accessible modals (focus trap), non-color team markers, mobile touch targets, text-scaling tolerance. |
 
 ---
 

@@ -99,6 +99,19 @@
           <div class="turn-badge"><span class="turn-dot" id="turnDot"></span><span id="turnBadge">WHITE TO MOVE</span></div>
           <div class="hint" id="hintText">Select a white piece, drag backward, release</div>
         </div>
+
+        <div class="tutorial-card hidden" id="tutorialCard" role="region" aria-live="polite" aria-label="Tutorial">
+          <div class="tutorial-top">
+            <span class="tutorial-kicker">TUTORIAL</span>
+            <div class="tutorial-dots" id="tutorialDots"></div>
+          </div>
+          <h3 id="tutorialTitle"></h3>
+          <p id="tutorialBody"></p>
+          <div class="tutorial-actions">
+            <button class="tutorial-btn ghost" id="tutorialSkip" type="button">SKIP</button>
+            <button class="tutorial-btn" id="tutorialNext" type="button">NEXT</button>
+          </div>
+        </div>
       </section>
 
       <aside class="right-panel">
@@ -141,6 +154,7 @@
         <div><b>04</b><span>Reduce the enemy King to 0 HP to win.</span></div>
       </div>
       <div class="modal-note">There is no check, checkmate, capture movement, castling, en passant, or piece-specific movement after launch. Physics gets the final vote.</div>
+      <button class="new-btn" id="helpTutorialBtn" type="button">REPLAY TUTORIAL</button>
     </div>
   </div>
 
@@ -222,6 +236,7 @@
   <script src="{{ url_for('static', filename='js/input.js') }}"></script>
   <script src="{{ url_for('static', filename='js/renderer.js') }}"></script>
   <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/tutorial.js') }}"></script>
   <script src="{{ url_for('static', filename='js/tuning.js') }}"></script>
   <script type="module" src="{{ url_for('static', filename='js/render3d.js') }}"></script>
   <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
