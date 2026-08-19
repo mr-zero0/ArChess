@@ -256,9 +256,9 @@ Browser → PWA → itch.io browser/wrapper → GitHub. **COST-GATED (only after
 - [x] Local Pass & Play (default hotseat, both sides on one screen; formalized as the default "Match" mode).
 - [x] Practice / Sandbox (mode selector in settings; no win condition, keep playing after King destruction).
 - [x] Optional turn timer (settings selector, live countdown badge, auto turn-switch on expiry, persisted; Off / 20s / 45s / 90s).
-- [ ] Trick Shot Challenges.
-- [ ] Replay capture (launch vectors, state snapshots, end state).
-- [ ] Replay Viewer (playback / speed controls).
+- [x] Trick Shot Challenges — pre-made board scenarios published as `static/js/challenges.js`.
+- [x] Replay capture (launch vectors, state snapshots, end state) — implemented in `static/js/replay.js`.
+- [x] Replay Viewer (playback / speed controls) — implemented in `static/js/replay.js`.
 
 ### STEP 9 — Automated Testing, QA and Performance 🟡 PARTIAL
 
