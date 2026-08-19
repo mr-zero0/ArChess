@@ -898,3 +898,84 @@ html[data-theme="wood"] .winner-glyph { color: #d88a60; text-shadow: 0 0 26px rg
 .tuning-actions { display: flex; gap: 10px; margin-top: 18px; justify-content: flex-end; }
 .tuning-actions .new-btn { padding: 8px 14px; font-size: 11px; }
 .tune-btn { color: #c9b26a; }
+
+/* ── STEP 8: Challenge modal & result overlay ── */
+.challenge-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.challenge-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; border-radius: 10px;
+  background: rgba(77, 230, 255, .06); border: 1px solid rgba(77, 230, 255, .12);
+  cursor: pointer; transition: background .18s, border-color .18s;
+}
+.challenge-item:hover, .challenge-item:focus-visible {
+  background: rgba(77, 230, 255, .13); border-color: var(--cyan);
+}
+.challenge-icon {
+  width: 38px; height: 38px; border-radius: 8px;
+  background: rgba(77, 230, 255, .12); display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.challenge-info { flex: 1; min-width: 0; }
+.challenge-info b { display: block; font-size: 13px; color: var(--text); margin-bottom: 2px; }
+.challenge-info small { font-size: 11px; color: var(--muted); display: block; line-height: 1.35; }
+.challenge-stars { font-size: 14px; letter-spacing: 1px; color: var(--amber); flex-shrink: 0; }
+.challenge-stars .empty { opacity: .28; }
+
+/* Challenge result overlay */
+.challenge-result {
+  text-align: center; padding: 24px 0 8px;
+}
+.challenge-result-stars {
+  font-size: 36px; letter-spacing: 4px; color: var(--amber); margin: 8px 0 12px;
+}
+.challenge-result-stars .empty { opacity: .22; }
+.challenge-result-msg {
+  font-size: 14px; color: var(--muted); margin: 6px 0 18px; line-height: 1.5;
+}
+.challenge-result.passed .challenge-result-msg { color: var(--green); }
+.challenge-result.failed .challenge-result-msg { color: var(--red); }
+.challenge-actions { display: flex; gap: 10px; justify-content: center; margin-top: 10px; }
+.challenge-actions .new-btn { padding: 8px 18px; font-size: 12px; }
+.challenge-actions .ghost-btn {
+  padding: 8px 18px; font-size: 12px; border-radius: 8px;
+  background: transparent; border: 1px solid var(--line);
+  color: var(--muted); cursor: pointer; transition: border-color .15s, color .15s;
+}
+.challenge-actions .ghost-btn:hover { border-color: var(--cyan); color: var(--text); }
+
+/* ── STEP 8: Replay viewer ── */
+.replay-transport {
+  display: flex; align-items: center; gap: 8px;
+  margin: 14px 0 8px; padding: 10px; border-radius: 10px;
+  background: rgba(0, 0, 0, .28); border: 1px solid rgba(77, 230, 255, .08);
+}
+.replay-transport button {
+  width: 34px; height: 34px; border: none; border-radius: 7px;
+  background: rgba(77, 230, 255, .10); color: var(--text); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; transition: background .15s;
+}
+.replay-transport button:hover { background: rgba(77, 230, 255, .22); }
+.replay-transport button.active { background: var(--cyan); color: #000; }
+.replay-scrubber {
+  flex: 1; height: 6px; border-radius: 3px;
+  -webkit-appearance: none; appearance: none;
+  background: rgba(77, 230, 255, .14); outline: none; cursor: pointer;
+}
+.replay-scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--cyan); border: 2px solid var(--panel);
+}
+.replay-speed {
+  font-size: 11px; font-weight: 700; color: var(--cyan); min-width: 32px; text-align: center;
+}
+.replay-turn-info {
+  font-size: 12px; color: var(--muted); text-align: center; margin: 4px 0 12px;
+}
+.replay-load-area {
+  display: flex; gap: 10px; align-items: center; justify-content: center;
+  margin: 14px 0 6px;
+}
+.replay-load-area .new-btn { padding: 8px 16px; font-size: 12px; }
+.replay-load-area input[type="file"] { display: none; }
+

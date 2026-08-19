@@ -24,7 +24,7 @@ window.GameModeManager = (() => {
     try {
       const stored = JSON.parse(window.localStorage.getItem(STORAGE_KEY));
       if (stored && typeof stored === "object") {
-        const mode = stored.mode === "practice" || stored.mode === "match" ? stored.mode : DEFAULT.mode;
+        const mode = stored.mode === "practice" || stored.mode === "match" || stored.mode === "challenge" ? stored.mode : DEFAULT.mode;
         const turnTime = Number.isFinite(Number(stored.turnTime)) ? Math.max(0, Number(stored.turnTime)) : 0;
         prefs = { mode, turnTime };
       }
@@ -42,7 +42,7 @@ window.GameModeManager = (() => {
   }
 
   function setMode(mode) {
-    if (mode !== "match" && mode !== "practice") return prefs;
+    if (mode !== "match" && mode !== "practice" && mode !== "challenge") return prefs;
     prefs = { ...prefs, mode };
     save();
     if (onChange) onChange({ ...prefs });

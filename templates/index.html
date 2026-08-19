@@ -45,6 +45,8 @@
         <button class="icon-btn quality-btn" id="qualityBtn" type="button" title="Toggle Graphics Quality (Shortcut: Q)" aria-label="Toggle Graphics Quality">▦</button>
         <button class="icon-btn fullscreen-btn" id="fullscreenBtn" type="button" title="Toggle Fullscreen (Shortcut: F)" aria-label="Toggle Fullscreen">⛶</button>
         <button class="icon-btn settings-btn" id="settingsBtn" type="button" title="Sound & Accessibility Settings (Shortcut: S)" aria-label="Sound and Accessibility Settings">⚙</button>
+        <button class="icon-btn" id="challengeBtn" type="button" title="Trick Shot Challenges" aria-label="Trick Shot Challenges" style="color:#ffbf5b">🎯</button>
+        <button class="icon-btn" id="replayBtn" type="button" title="Replay Viewer" aria-label="Replay Viewer" style="color:#71f0a2">⏵</button>
         <button class="icon-btn tune-btn" id="tuneBtn" type="button" title="Developer Balance Tuning Panel" aria-label="Developer Balance Tuning Panel">⚗</button>
         <button class="icon-btn help-btn" id="helpBtn" type="button" title="How to play" aria-label="How to play">?</button>
         <button class="new-btn" id="newGameBtn" type="button">NEW GAME</button>
@@ -230,7 +232,59 @@
       <div id="winnerGlyph" class="winner-glyph">♔</div>
       <h2 id="winnerTitle">WHITE WINS</h2>
       <p id="winnerSub">The opposing King has been destroyed.</p>
-      <button class="new-btn large" id="playAgainBtn" type="button">NEW GAME</button>
+      <div id="challengeResultArea"></div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button class="new-btn large" id="playAgainBtn" type="button">NEW GAME</button>
+        <button class="new-btn large" id="saveReplayBtn" type="button" style="background:rgba(77,230,255,.14);color:var(--cyan)">SAVE REPLAY</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Challenge selection modal -->
+  <div class="modal hidden" id="challengeModal" role="dialog" aria-modal="true" aria-labelledby="challengeTitle">
+    <div class="modal-card">
+      <button class="modal-close" id="closeChallenge" type="button" aria-label="Close">×</button>
+      <div class="modal-kicker">TRICK SHOTS</div>
+      <h2 id="challengeTitle">Challenges</h2>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:4px">Complete pre-made scenarios to sharpen your combat skills.</p>
+      <div class="challenge-list" id="challengeList"></div>
+    </div>
+  </div>
+
+  <!-- Challenge result modal -->
+  <div class="modal hidden" id="challengeResultModal" role="dialog" aria-modal="true" aria-labelledby="challengeResultTitle">
+    <div class="modal-card">
+      <div class="challenge-result" id="challengeResultCard">
+        <div class="modal-kicker">CHALLENGE</div>
+        <h2 id="challengeResultTitle">Result</h2>
+        <div class="challenge-result-stars" id="challengeResultStars"></div>
+        <div class="challenge-result-msg" id="challengeResultMsg"></div>
+        <div class="challenge-actions">
+          <button class="ghost-btn" id="challengeRetryBtn" type="button">RETRY</button>
+          <button class="new-btn" id="challengeExitBtn" type="button">EXIT</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Replay viewer modal -->
+  <div class="modal hidden" id="replayModal" role="dialog" aria-modal="true" aria-labelledby="replayTitle">
+    <div class="modal-card">
+      <button class="modal-close" id="closeReplay" type="button" aria-label="Close">×</button>
+      <div class="modal-kicker">REPLAY</div>
+      <h2 id="replayTitle">Match Replay</h2>
+      <div class="replay-turn-info" id="replayTurnInfo">Turn 0 / 0</div>
+      <div class="replay-transport">
+        <button id="replayPrev" type="button" title="Previous turn" aria-label="Previous turn">⏮</button>
+        <button id="replayPlay" type="button" title="Play / Pause" aria-label="Play or Pause">▶</button>
+        <button id="replayNext" type="button" title="Next turn" aria-label="Next turn">⏭</button>
+        <input type="range" class="replay-scrubber" id="replayScrubber" min="0" max="0" value="0" aria-label="Replay progress">
+        <button id="replaySpeed" type="button" class="replay-speed" title="Change speed">×1</button>
+      </div>
+      <div class="replay-load-area">
+        <button class="new-btn" id="replayLoadBtn" type="button">LOAD REPLAY</button>
+        <input type="file" id="replayFileInput" accept=".json">
+      </div>
     </div>
   </div>
 
@@ -254,6 +308,8 @@
   <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
   <script src="{{ url_for('static', filename='js/tutorial.js') }}"></script>
   <script src="{{ url_for('static', filename='js/tuning.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/challenges.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/replay.js') }}"></script>
   <script type="module" src="{{ url_for('static', filename='js/render3d.js') }}"></script>
   <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>

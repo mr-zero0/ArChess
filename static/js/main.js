@@ -49,6 +49,7 @@ import { ThreeDScene } from "./render3d.js";
     comboTimer: 0,
     maxCombo: 0,
     stats: null,
+    challenge: null,
     onImpact: null,
     onWallImpact: null,
   };
@@ -88,8 +89,17 @@ import { ThreeDScene } from "./render3d.js";
       gameState.mode = prefs.mode;
       gameState.turnTime = prefs.turnTime;
     }
+    // Challenge mode: use challenge pieces instead of standard setup
+    const challenge = window.ChallengeManager?.getActive();
+    gameState.challenge = challenge || null;
+    if (challenge) {
+      gameState.mode = "challenge";
+      gameState.pieces = ChallengeManager.buildPieces(challenge);
+      ChallengeManager.storeInitialFriendlyHp(gameState.pieces);
+    } else {
+      gameState.pieces = PieceFactory.setup();
+    }
     gameState.turnTimeLeft = gameState.turnTime;
-    gameState.pieces = PieceFactory.setup();
     threeDScene?.reset(gameState);
     gameState.effects = [];
     gameState.pointer = null;
@@ -110,8 +120,15 @@ import { ThreeDScene } from "./render3d.js";
     gameState.stats = newStats();
     canvas.classList.remove("is-dragging");
     UI.modal("gameOverModal", false);
+    UI.modal("challengeResultModal", false);
     UI.clearLog();
-    addHistory("Battle initialized. White to move.");
+    if (challenge) {
+      addHistory(`Challenge: ${challenge.name}. White to move.`);
+    } else {
+      addHistory("Battle initialized. White to move.");
+    }
+    // Start replay recording
+    if (window.ReplayRecorder) ReplayRecorder.startRecording(gameState.pieces, gameState.mode);
     UI.update(true);
   }
 
@@ -206,6 +223,8 @@ import { ThreeDScene } from "./render3d.js";
     if (gameState.stats && gameState.stats[piece.team]) {
       gameState.stats[piece.team].launches += 1;
     }
+    // Record launch for replay
+    if (window.ReplayRecorder) ReplayRecorder.recordLaunch({ pieceId: piece.id, team: piece.team, dx, dy, power: gameState.powerRatio });
     UI.update();
   }
 
@@ -432,6 +451,14 @@ import { ThreeDScene } from "./render3d.js";
       ? "Both Kings were destroyed in the same resolution. The active player wins the double knockout."
       : "The opposing King has been destroyed.";
     addHistory(`${winner.toUpperCase()} WINS.`);
+
+    // Record game over for replay
+    if (window.ReplayRecorder) ReplayRecorder.recordGameOver(winner, gameState.stats, doubleKO);
+
+    // Show challenge result in game-over modal area
+    const challengeArea = document.getElementById("challengeResultArea");
+    if (challengeArea) challengeArea.innerHTML = "";
+
     if (winner === "white") {
       AudioManager?.victory();
     } else {
@@ -486,6 +513,20 @@ import { ThreeDScene } from "./render3d.js";
     if (gameState.stats && gameState.stats[playedTeam]) {
       gameState.stats[playedTeam].maxCombo = Math.max(gameState.stats[playedTeam].maxCombo, gameState.maxCombo);
     }
+
+    // Record turn end for replay
+    if (window.ReplayRecorder) ReplayRecorder.recordTurnEnd(gameState.pieces);
+
+    // Challenge check after each turn settles
+    if (window.ChallengeManager && gameState.challenge) {
+      ChallengeManager.recordTurn();
+      const result = ChallengeManager.check(gameState);
+      if (result) {
+        showChallengeResult(result);
+        return; // Don't switch turn — challenge ended
+      }
+    }
+
     gameState.combo = 0;
     gameState.comboTimer = 0;
     gameState.maxCombo = 0;
@@ -633,8 +674,133 @@ import { ThreeDScene } from "./render3d.js";
   document.getElementById("fullscreenBtn")?.addEventListener("click", toggleFullscreen);
   document.addEventListener("fullscreenchange", updateFullscreenControl);
 
-  document.getElementById("newGameBtn").addEventListener("click", resetGame);
-  document.getElementById("playAgainBtn").addEventListener("click", resetGame);
+  // ── Challenge integration ──
+  function showChallengeResult(result) {
+    gameState.gameOver = true;
+    gameState.phase = "gameover";
+    const card = document.getElementById("challengeResultCard");
+    const title = document.getElementById("challengeResultTitle");
+    const stars = document.getElementById("challengeResultStars");
+    const msg = document.getElementById("challengeResultMsg");
+    card.className = `challenge-result ${result.passed ? "passed" : "failed"}`;
+    title.textContent = result.passed ? "CHALLENGE COMPLETE" : "CHALLENGE FAILED";
+    let starHtml = "";
+    for (let i = 0; i < 3; i++) starHtml += `<span class="${i < result.stars ? '' : 'empty'}">★</span>`;
+    stars.innerHTML = starHtml;
+    msg.textContent = result.message;
+    UI.modal("challengeResultModal", true);
+  }
+
+  function buildChallengeList() {
+    const list = document.getElementById("challengeList");
+    if (!list || !window.ChallengeManager) return;
+    list.replaceChildren();
+    const icons = ["⚔", "⚡", "🔗", "🎳", "🎯"];
+    ChallengeManager.list().forEach((ch, i) => {
+      const item = document.createElement("button");
+      item.className = "challenge-item";
+      item.type = "button";
+      let starsHtml = "";
+      for (let s = 0; s < 3; s++) starsHtml += `<span class="${s < ch.difficulty ? '' : 'empty'}">★</span>`;
+      item.innerHTML = `
+        <div class="challenge-icon">${icons[i] || "⚔"}</div>
+        <div class="challenge-info"><b>${ch.name}</b><small>${ch.description}</small></div>
+        <div class="challenge-stars">${starsHtml}</div>`;
+      item.addEventListener("click", () => {
+        ChallengeManager.start(ch.id);
+        UI.modal("challengeModal", false);
+        resetGame();
+      });
+      list.appendChild(item);
+    });
+  }
+
+  document.getElementById("challengeBtn")?.addEventListener("click", () => {
+    buildChallengeList();
+    UI.modal("challengeModal", true);
+  });
+  document.getElementById("closeChallenge")?.addEventListener("click", () => UI.modal("challengeModal", false));
+  document.getElementById("challengeModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "challengeModal") UI.modal("challengeModal", false);
+  });
+  document.getElementById("challengeRetryBtn")?.addEventListener("click", () => {
+    UI.modal("challengeResultModal", false);
+    resetGame();
+  });
+  document.getElementById("challengeExitBtn")?.addEventListener("click", () => {
+    UI.modal("challengeResultModal", false);
+    if (window.ChallengeManager) ChallengeManager.reset();
+    gameState.challenge = null;
+    resetGame();
+  });
+
+  // ── Replay integration ──
+  document.getElementById("saveReplayBtn")?.addEventListener("click", () => {
+    if (window.ReplayRecorder) ReplayRecorder.exportReplay();
+  });
+  document.getElementById("replayBtn")?.addEventListener("click", () => {
+    UI.modal("replayModal", true);
+    if (window.ReplayViewer) ReplayViewer.updateUI();
+  });
+  document.getElementById("closeReplay")?.addEventListener("click", () => {
+    UI.modal("replayModal", false);
+    if (window.ReplayViewer) ReplayViewer.stop();
+  });
+  document.getElementById("replayModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "replayModal") {
+      UI.modal("replayModal", false);
+      if (window.ReplayViewer) ReplayViewer.stop();
+    }
+  });
+  document.getElementById("replayLoadBtn")?.addEventListener("click", () => {
+    document.getElementById("replayFileInput")?.click();
+  });
+  document.getElementById("replayFileInput")?.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (window.ReplayViewer) {
+          ReplayViewer.load(data, gameState, resetGame);
+          ReplayViewer.updateUI();
+        }
+      } catch (err) {
+        console.error("Invalid replay file:", err);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  });
+
+  // Replay transport controls
+  document.getElementById("replayPlay")?.addEventListener("click", () => {
+    if (window.ReplayViewer) ReplayViewer.togglePlay();
+  });
+  document.getElementById("replayPrev")?.addEventListener("click", () => {
+    if (window.ReplayViewer) ReplayViewer.prev();
+  });
+  document.getElementById("replayNext")?.addEventListener("click", () => {
+    if (window.ReplayViewer) ReplayViewer.next();
+  });
+  document.getElementById("replayScrubber")?.addEventListener("input", (e) => {
+    if (window.ReplayViewer) ReplayViewer.seek(Number(e.target.value));
+  });
+  document.getElementById("replaySpeed")?.addEventListener("click", () => {
+    if (window.ReplayViewer) ReplayViewer.cycleSpeed();
+  });
+
+  document.getElementById("newGameBtn").addEventListener("click", () => {
+    if (window.ChallengeManager) ChallengeManager.reset();
+    gameState.challenge = null;
+    resetGame();
+  });
+  document.getElementById("playAgainBtn").addEventListener("click", () => {
+    if (window.ChallengeManager) ChallengeManager.reset();
+    gameState.challenge = null;
+    resetGame();
+  });
   document.getElementById("helpBtn").addEventListener("click", () => UI.modal("helpModal", true));
   document.getElementById("closeHelp").addEventListener("click", () => UI.modal("helpModal", false));
   document.getElementById("helpTutorialBtn").addEventListener("click", () => {
@@ -674,6 +840,10 @@ import { ThreeDScene } from "./render3d.js";
       UI.modal("helpModal", false);
       UI.modal("settingsModal", false);
       UI.modal("tuningModal", false);
+      UI.modal("challengeModal", false);
+      UI.modal("challengeResultModal", false);
+      UI.modal("replayModal", false);
+      if (window.ReplayViewer) ReplayViewer.stop();
       if (gameState.dragging) input.cancel();
     }
   });
