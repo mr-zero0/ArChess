@@ -230,7 +230,7 @@ Browser → PWA → itch.io browser/wrapper → GitHub. **COST-GATED (only after
 - [x] Update tracker STEP 6 status and Progress Log.
 - [x] Commit + push STEP 6 batch to GitHub.
 
-### STEP 7 — UX, Tutorial and Accessibility 🔵 NEXT
+### STEP 7 — UX, Tutorial and Accessibility ✅ DONE
 
 - [x] First-time interactive tutorial (`static/js/tutorial.js`): non-blocking bottom card, auto-shows on first visit, latched step advancement on real actions (select → aim → launch → chains → win), Skip/Next, persists `archess-tutorial` flag.
 - [x] Tutorial replay in Help (`#helpTutorialBtn`).
@@ -249,7 +249,7 @@ Browser → PWA → itch.io browser/wrapper → GitHub. **COST-GATED (only after
 - [x] Text scaling tolerance (modal scroll at narrow widths).
 - [x] Mobile touch targets (≥40px controls on coarse pointers).
 - [x] Browser verification (auto-show, replay, skip, focus management, zero console errors).
-- [ ] Update tracker + commit batch.
+- [x] Update tracker + commit batch.
 
 ### STEP 8 — Local Modes, Challenges and Replay Foundation 🟡 PARTIAL
 
