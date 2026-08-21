@@ -2,6 +2,8 @@ from flask import Flask, jsonify, render_template
 
 from game import BOARD_SIZE, GAME_CONFIG, PIECE_STATS
 
+VERSION = "v0.5.1"
+
 app = Flask(__name__)
 
 
@@ -14,11 +16,17 @@ def index():
 def game_config():
     return jsonify(
         {
+            "version": VERSION,
             "boardSize": BOARD_SIZE,
             "pieceStats": PIECE_STATS,
             "gameConfig": GAME_CONFIG,
         }
     )
+
+
+@app.get("/api/version")
+def get_version():
+    return jsonify({"version": VERSION})
 
 
 # Backward-compatible alias for the starter project.

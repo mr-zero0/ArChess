@@ -26,6 +26,7 @@ window.UI = {
       blackCard: document.getElementById("blackCard"),
       comboBadge: document.getElementById("comboBadge"),
       comboValue: document.getElementById("comboValue"),
+      versionTag: document.getElementById("versionTag"),
     };
     this.cache = new Map();
     this.buildArmory();
@@ -52,8 +53,13 @@ window.UI = {
     this.nodes[key].style.width = normalized;
   },
 
+  setVersion(version) {
+    if (this.nodes.versionTag) this.nodes.versionTag.textContent = version;
+  },
+
   update(force = false) {
     if (force) this.cache.clear();
+
     const whiteKing = this.king("white");
     const blackKing = this.king("black");
 
