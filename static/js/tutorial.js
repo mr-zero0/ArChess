@@ -4,8 +4,7 @@
 // A non-blocking bottom card walks the player through select → aim → launch →
 // chain reactions → win condition. Steps with a `when` predicate auto-advance as
 // soon as the player performs the corresponding real action on the board.
-// The card is pointer-transparent except its buttons, so it never blocks board
-// interaction (and never disturbs headless verification that clicks the canvas).
+// The card stays compact and can be dismissed without interrupting the match.
 
 window.TutorialManager = (() => {
   const STORAGE_KEY = "archess-tutorial-v2";
@@ -53,8 +52,9 @@ window.TutorialManager = (() => {
     nodes.card.classList.remove("hidden");
     nodes.title.textContent = step.title;
     nodes.body.textContent = step.body;
-    nodes.nextBtn.classList.toggle("hidden", Boolean(step.when));
     nodes.nextBtn.textContent = step.cta || "NEXT";
+    nodes.nextBtn.setAttribute("aria-label", `${step.cta || "Next"} tutorial step`);
+    nodes.progress.textContent = `STEP ${String(current + 1).padStart(2, "0")} / ${String(STEPS.length).padStart(2, "0")}`;
     nodes.dots.replaceChildren();
     STEPS.forEach((_, i) => {
       const dot = document.createElement("span");
@@ -118,6 +118,7 @@ window.TutorialManager = (() => {
       title: document.getElementById("tutorialTitle"),
       body: document.getElementById("tutorialBody"),
       dots: document.getElementById("tutorialDots"),
+      progress: document.getElementById("tutorialProgress"),
       nextBtn: document.getElementById("tutorialNext"),
       skipBtn: document.getElementById("tutorialSkip"),
     };

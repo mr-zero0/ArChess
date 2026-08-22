@@ -170,6 +170,8 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 .tutorial-card p { margin: 0 0 12px; font-size: 12px; line-height: 1.55; color: #93a6b6; }
 .tutorial-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .tutorial-kicker { color: #52dff4; font-size: 9px; font-weight: 950; letter-spacing: 2px; }
+.tutorial-progress-wrap { display: flex; align-items: center; gap: 10px; }
+.tutorial-progress { color: #7893a4; font-size: 9px; font-weight: 800; letter-spacing: 1px; }
 .tutorial-dots { display: flex; gap: 5px; }
 .tutorial-dot { width: 6px; height: 6px; border-radius: 50%; background: #2c4455; }
 .tutorial-dot.active { background: #67ecff; box-shadow: 0 0 8px rgba(103, 236, 255, .7); }
