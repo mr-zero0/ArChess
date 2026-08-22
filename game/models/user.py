@@ -3,10 +3,11 @@ from datetime import datetime
 
 class User(db.Model):
     __tablename__ = 'users'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     guest_id = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    room_id = db.Column(db.Integer, db.ForeignKey('rooms.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def __repr__(self):
         return f'<User {self.guest_id}>'
