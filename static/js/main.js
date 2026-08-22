@@ -852,12 +852,25 @@ import { ThreeDScene } from "./render3d.js";
     board.resize();
     threeDScene?.resize();
   }
+
+  async function loadVersion() {
+    try {
+      const response = await fetch("/api/version");
+      if (!response.ok) return;
+      const data = await response.json();
+      UI.setVersion(data.version || "");
+    } catch (_) {
+      // The game remains playable when the version endpoint is unavailable.
+    }
+  }
+
   if ("ResizeObserver" in window) {
     const resizeObserver = new ResizeObserver(handleResize);
     resizeObserver.observe(canvas);
   }
   window.addEventListener("resize", handleResize);
 
+  loadVersion();
   resetGame();
   requestAnimationFrame(gameLoop);
 })();

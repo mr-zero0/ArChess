@@ -118,7 +118,7 @@ ArChess is **not ordinary chess with animations**. It is a turn-based physics co
 | STEP | Title | Status | Progress |
 |---|---|---|---|
 | 0 | Product identity & rules | 🟡 PARTIAL | 8/12 done |
-| 1 | Repository & engineering baseline | 🟡 PARTIAL | 4/10 done |
+| 1 | Repository & engineering baseline | 🟡 PARTIAL | 5/10 done |
 | 2 | Core physics & damage stabilization | ✅ DONE | 9/10 done (1 deferred) |
 | 3 | True 3D chess presentation | ✅ DONE | 8/8 done |
 | 4 | Board, camera, resize, themes | ✅ DONE | 5/5 done |
@@ -168,7 +168,7 @@ ArChess is **not ordinary chess with animations**. It is a turn-based physics co
 - 7.2.4 ✅ Add `.env.example` and guarantee secrets can never be committed.
 - 7.2.5 ⬜ Add `CONTRIBUTING.md`, `CHANGELOG.md`, `ASSET_LICENSES.md`.
 - 7.2.6 ⬜ Add issue templates (bug / balance / feature).
-- 7.2.7 🟡 `/api/version` endpoint exists (`app.py`); version shown in game UI not wired yet.
+- 7.2.7 ✅ `/api/version` endpoint exists (`app.py`) and the current version is shown in the game header.
 - 7.2.8 ⬜ Create Git tags from `v0.1.0` onward.
 - 7.2.9 ⬜ Add CI syntax/test workflow.
 - 7.2.10 ⬜ Decide source-code licensing.
@@ -510,6 +510,6 @@ STEP 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → **9 (current)** → 1
 
 ## 13. Overall Progress Summary
 
-- **Local game (STEPs 0–8):** 7/9 steps fully done; STEP 0 partial (8/12), STEP 1 partial (4/10), STEP 2 done with 1 item deferred to STEP 9.
+- **Local game (STEPs 0–8):** 7/9 steps fully done; STEP 0 partial (8/12), STEP 1 partial (5/10), STEP 2 done with 1 item deferred to STEP 9.
 - **Next up:** STEP 9 — Automated Testing, QA and Performance (browser matrix, performance targets, benchmark harness).
-- **Overall roadmap completion:** **84/233 subtasks done (~36%)** — everything done is in the local single-player game; all multiplayer/online/production steps are still TODO.
+- **Overall roadmap completion:** **85/233 subtasks done (~36%)** — everything done is in the local single-player game; all multiplayer/online/production steps are still TODO.
