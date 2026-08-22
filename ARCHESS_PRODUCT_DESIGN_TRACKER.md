@@ -165,7 +165,7 @@ ArChess is **not ordinary chess with animations**. It is a turn-based physics co
 - 7.2.1 ✅ README, .gitignore, requirements.txt, pyproject.toml, PATCH_NOTES.txt.
 - 7.2.2 ✅ Flask app serving game; tests directory with Node + pytest harness.
 - 7.2.3 ✅ Verified `.gitignore` covers caches/secrets.
-- 7.2.4 ⬜ Add `.env.example` and guarantee secrets can never be committed.
+- 7.2.4 ✅ Add `.env.example` and guarantee secrets can never be committed.
 - 7.2.5 ⬜ Add `CONTRIBUTING.md`, `CHANGELOG.md`, `ASSET_LICENSES.md`.
 - 7.2.6 ⬜ Add issue templates (bug / balance / feature).
 - 7.2.7 🟡 `/api/version` endpoint exists (`app.py`); version shown in game UI not wired yet.
