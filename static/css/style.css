@@ -151,8 +151,7 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 .turn-dot { width: 8px; height: 8px; border-radius: 50%; background: #eafaff; box-shadow: 0 0 10px currentColor; }
 .hint { color: #698095; font-size: 11px; text-align: right; }
 
-/* Non-blocking first-time tutorial card (STEP 7). Pointer-transparent so the
-   board stays fully interactive; only its buttons capture pointer events. */
+/* Non-blocking first-time tutorial card (STEP 7). */
 .tutorial-card {
   position: fixed;
   left: 50%;
@@ -165,7 +164,7 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
   border-radius: 12px;
   background: linear-gradient(145deg, rgba(13, 26, 36, .97), rgba(6, 12, 18, .97));
   box-shadow: 0 18px 50px rgba(0, 0, 0, .5);
-  pointer-events: none;
+  pointer-events: auto;
 }
 .tutorial-card h3 { margin: 0 0 6px; font-size: 16px; color: #e9f6ff; }
 .tutorial-card p { margin: 0 0 12px; font-size: 12px; line-height: 1.55; color: #93a6b6; }
@@ -176,7 +175,6 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 .tutorial-dot.active { background: #67ecff; box-shadow: 0 0 8px rgba(103, 236, 255, .7); }
 .tutorial-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .tutorial-btn {
-  pointer-events: auto;
   min-height: 40px;
   padding: 0 18px;
   border: 1px solid #67ecff;

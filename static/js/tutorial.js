@@ -77,6 +77,11 @@ window.TutorialManager = (() => {
 
   function start() {
     if (!nodes) return;
+    try {
+      window.localStorage.removeItem(STORAGE_KEY);
+    } catch (_) {
+      // Replay remains available for this session without storage.
+    }
     current = 0;
     dwell = 0;
     satisfied = false;
