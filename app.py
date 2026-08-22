@@ -2,7 +2,7 @@ from flask import Flask, jsonify, render_template
 
 from game import BOARD_SIZE, GAME_CONFIG, PIECE_STATS
 
-VERSION = "v0.5.1"
+VERSION = "v0.5.2"
 
 app = Flask(__name__)
 
