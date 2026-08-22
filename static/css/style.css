@@ -193,6 +193,7 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 }
 .tutorial-btn:hover { filter: brightness(1.08); }
 .tutorial-btn.hidden { display: none; }
+.tutorial-card.hidden { display: none; }
 
 html[data-theme="light"] .tutorial-card {
   border-color: rgba(0, 138, 170, .35);

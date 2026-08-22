@@ -8,7 +8,7 @@
 // interaction (and never disturbs headless verification that clicks the canvas).
 
 window.TutorialManager = (() => {
-  const STORAGE_KEY = "archess-tutorial";
+  const STORAGE_KEY = "archess-tutorial-v2";
 
   const STEPS = [
     {
