@@ -118,7 +118,7 @@ ArChess is **not ordinary chess with animations**. It is a turn-based physics co
 | STEP | Title | Status | Progress |
 |---|---|---|---|
 | 0 | Product identity & rules | 🟡 PARTIAL | 8/12 done |
-| 1 | Repository & engineering baseline | 🟡 PARTIAL | 6/10 done |
+| 1 | Repository & engineering baseline | 🟡 PARTIAL | 9/10 done |
 | 2 | Core physics & damage stabilization | ✅ DONE | 9/10 done (1 deferred) |
 | 3 | True 3D chess presentation | ✅ DONE | 8/8 done |
 | 4 | Board, camera, resize, themes | ✅ DONE | 5/5 done |
@@ -167,11 +167,11 @@ ArChess is **not ordinary chess with animations**. It is a turn-based physics co
 - 7.2.3 ✅ Verified `.gitignore` covers caches/secrets.
 - 7.2.4 ✅ Add `.env.example` and guarantee secrets can never be committed.
 - 7.2.5 ✅ Add `CONTRIBUTING.md`, `CHANGELOG.md`, `ASSET_LICENSES.md`.
-- 7.2.6 ⬜ Add issue templates (bug / balance / feature).
+- 7.2.6 ✅ Add issue templates (bug / balance / feature).
 - 7.2.7 ✅ `/api/version` endpoint exists (`app.py`) and the current version is shown in the game header.
-- 7.2.8 ⬜ Create Git tags from `v0.1.0` onward.
-- 7.2.9 ⬜ Add CI syntax/test workflow.
-- 7.2.10 ⬜ Decide source-code licensing.
+- 7.2.8 🟡 Created annotated tags `v0.3.0`, `v0.4.0`, `v0.4.1`, `v0.5.1`, and `v0.5.2` at verified milestone commits; `v0.1.x` and `v0.2.x` remain unavailable because the rewritten history begins at STEP 3.
+- 7.2.9 ✅ Add CI syntax/test workflow (`.github/workflows/tests.yml`) for Python and Node test suites.
+- 7.2.10 ✅ Decide source-code licensing: MIT License added at repository root.
 
 ### 7.3 STEP 2 — Stabilize Core Physics and Damage ✅ DONE (9/10; 1 deferred)
 
@@ -268,43 +268,43 @@ ArChess is **not ordinary chess with animations**. It is a turn-based physics co
 ### 7.10 STEP 9 — Automated Testing, QA and Performance 🔵 NEXT (2/6)
 
 - 7.10.1 ✅ Unit tests: launch vector, speed clamp, friction, wall bounce, overlap resolution, collision impulse, damage calc, collision cooldown, piece death, King death, turn switch, game reset, theme persistence, board-resize state safety.
-- 7.10.2 ⬜ Browser matrix: Chromium / Firefox / WebKit (scaffold exists in `tests/test_browser_matrix.py`; Playwright not installed — 3 tests skip).
-- 7.10.3 ⬜ Browser matrix: desktop / tablet / mobile viewports.
-- 7.10.4 ⬜ Browser matrix: pointer + touch input.
+- 7.10.2 ⬜ Browser matrix: executable parametrized coverage for Chromium / Firefox / WebKit added in `tests/test_browser_matrix.py`; CI now installs all runtimes and runs the matrix, with a passing CI result still pending.
+- 7.10.3 ⬜ Browser matrix: executable desktop / tablet / mobile viewport checks added and wired into CI; runtime verification pending.
+- 7.10.4 ⬜ Browser matrix: pointer coverage added and Chromium mobile touch-tap coverage added; Firefox/WebKit and full device-touch execution pending.
 - 7.10.5 ⬜ Performance targets met (32-piece board, no frame-time cliffs on mid hardware).
 - 7.10.6 ✅ Performance regression benchmark harness (`performance_benchmark.py`); verified with a 50-frame, 32-piece run and no threshold violations.
 
-### 7.11 STEP 10 — Production-Ready Flask Architecture ⬜ TODO (0/12)
+### 7.11 STEP 10 — Production-Ready Flask Architecture ✅ DONE (12/12)
 
-- 7.11.1 ⬜ Flask app factory pattern.
-- 7.11.2 ⬜ Development / test / production config classes.
-- 7.11.3 ⬜ Structured logging.
-- 7.11.4 ⬜ Health endpoint.
-- 7.11.5 ⬜ Version endpoint.
-- 7.11.6 ⬜ Input validation.
-- 7.11.7 ⬜ Error handlers.
-- 7.11.8 ⬜ Request size limits.
-- 7.11.9 ⬜ Production server configuration (Gunicorn).
-- 7.11.10 ⬜ Security headers.
-- 7.11.11 ⬜ Rate-limit design.
-- 7.11.12 ⬜ No secrets in source; no debug mode in production.
+- 7.11.1 ✅ Flask app factory pattern (`create_app()` in `app.py`) with backward-compatible module-level `app`.
+- 7.11.2 ✅ Development / test / production config classes (`config.py`) wired into `create_app()`.
+- 7.11.3 ✅ Structured JSON logging (`logging_config.py`) attached by `create_app()`.
+- 7.11.4 ✅ Health endpoint (`GET /api/health`) returns service status and version.
+- 7.11.5 ✅ Version endpoint (`GET /api/version`) with explicit API test and header integration.
+- 7.11.6 ✅ Input validation boundary rejects non-JSON bodies for future body-bearing API methods.
+- 7.11.7 ✅ JSON 404 and 500 error handlers added in `create_app()`; 404 response covered by tests.
+- 7.11.8 ✅ Request size limit configured at 1 MiB with a JSON 413 handler.
+- 7.11.9 ✅ Production server configuration (`gunicorn.conf.py`) added.
+- 7.11.10 ✅ Security headers added for content type, framing, referrer, and permissions policy.
+- 7.11.11 ✅ Rate-limit design documented in `SECURITY.md` for current and future API surfaces.
+- 7.11.12 ✅ Production requires `SECRET_KEY` and keeps debug mode disabled.
 
-### 7.12 STEP 11 — Accounts, Profiles and Persistence ⬜ TODO (0/10)
+### 7.12 STEP 11 — Accounts, Profiles and Persistence 🟡 PARTIAL (6/10)
 
-- 7.12.1 ⬜ Guest identity.
-- 7.12.2 ⬜ Registration/login only when needed.
+- 7.12.1 ✅ Anonymous guest identity persisted locally in `static/js/identity.js`; no account or personal data collected.
+- 7.12.2 ✅ Registration/login intentionally deferred until private multiplayer requires identity beyond the local guest ID.
 - 7.12.3 ⬜ Password/auth strategy (hashing, sessions).
 - 7.12.4 ⬜ Profile page.
-- 7.12.5 ⬜ Persistent settings.
-- 7.12.6 ⬜ Match history.
-- 7.12.7 ⬜ Database migrations.
+- 7.12.5 ✅ Persistent settings: theme, board size, game mode, timer, audio, accessibility, and tutorial state persist locally and are browser-verified.
+- 7.12.6 ✅ Local match history stores capped recent guest-match summaries, renders them in Help, and supports local clearing without remote account persistence.
+- 7.12.7 ✅ Database migrations (Flask-SQLAlchemy + Flask-Migrate initialized).
 - 7.12.8 ⬜ Account deletion.
-- 7.12.9 ⬜ Data export strategy.
-- 7.12.10 ⬜ Minimal personal-data collection.
+- 7.12.9 ✅ Local data export downloads guest match history as `archess-match-history.json` without server transfer.
+- 7.12.10 ✅ Minimal personal-data collection: current guest mode stores only a random local identifier and collects no personal account data.
 
-### 7.13 STEP 12 — Private Online Multiplayer MVP ⬜ TODO (0/14)
+### 7.13 STEP 12 — Private Online Multiplayer MVP 🟡 PARTIAL (1/14)
 
-- 7.13.1 ⬜ Create room.
+- 7.13.1 ✅ Create room: ephemeral guest-only `POST /api/rooms` returns a six-character room code and assigns the creator to white.
 - 7.13.2 ⬜ Join room.
 - 7.13.3 ⬜ Player assignment.
 - 7.13.4 ⬜ Match start handshake.
@@ -470,12 +470,29 @@ ArChess is **not ordinary chess with animations**. It is a turn-based physics co
 
 ## 9. Verification Snapshot
 
-- 9.1 — Python pytest: **25 passed, 3 skipped** (`test_game.py` 21 pass; `test_browser_matrix.py` 4 pass + 3 skip — Playwright not installed).
+- 9.1 — Python pytest: **37 passed, 19 skipped** (`test_game.py` 33 pass; `test_browser_matrix.py` 4 pass + 19 skip — Playwright not installed).
 - 9.2 — Node physics tests: **16/16 pass** (includes STEP 6 multiplier tests).
 - 9.3 — Playwright headless: **25/25 (3D path) + 16/16 (2D flow)** pass at STEP 6 (not re-run since Playwright was uninstalled).
 - 9.4 — Performance: in-page frame times healthy (~14 ms avg); headless wall-clock variance is a container/SwiftShader artifact, not app code (reproduced on both old and new builds).
 - 9.5 — Identity: `mr-zero0 <mr-zero0@users.noreply.github.com>`; GitHub remote = `https://github.com/mr-zero0/ArChess`.
 - 9.6 — Performance benchmark: **PASS** (`performance_benchmark.py`, 50 frames / 32 pieces; 0 frames over threshold).
+- 9.7 — Integrated Chromium manual check: **PASS** at desktop (1920×1080), tablet (1024×768), and mobile (375×667); board stayed visible/in bounds and tutorial pointer dismissal worked. Firefox, WebKit, and device-touch execution remain pending.
+- 9.8 — Integrated Chromium frame sample: **14.56 ms average**, **20.9 ms p95**, **35 ms maximum**, with 1 frame over 25 ms across 120 frames at a 32-piece board; 7.10.5 remains open pending broader hardware/browser coverage.
+- 9.9 — Release metadata: annotated tags `v0.3.0` through `v0.5.2` created from preserved milestone commits; pre-STEP-3 tags cannot be reconstructed without inventing history.
+- 9.10 — CI browser matrix: workflow configured to install Chromium, Firefox, and WebKit, wait for Flask `/api/version`, and run `tests/test_browser_matrix.py`; GitHub Actions execution pending.
+- 9.11 — Source licensing: MIT License added at repository root for the ArChess source code; third-party asset notices remain tracked separately in `ASSET_LICENSES.md`.
+- 9.12 — Structured logging: `JsonFormatter` configuration verified by the application test suite.
+- 9.13 — Health endpoint: `GET /api/health` verified with status `ok` and current application version.
+- 9.14 — Version endpoint: `GET /api/version` verified with the current application version and consumed by the game header.
+- 9.15 — Error handling: JSON 404 response verified; matching 500 handler is registered for production-safe API errors.
+- 9.16 — Production hardening: request validation/limits, security headers, production secret enforcement, Gunicorn configuration, and rate-limit policy verified or documented.
+- 9.17 — Guest identity: integrated Chromium verified a stable anonymous ID is created, persisted in local storage, and exposed to game state across reloads.
+- 9.18 — Data minimization: guest mode stores only a random local identifier; no email, password, profile, or telemetry data is collected.
+- 9.19 — Persistent settings: integrated Chromium verified dark theme, 110% board size, Practice mode, and 45-second timer after reload.
+- 9.20 — Match history: integrated Chromium verified a guest match summary persists locally across reloads, remains linked to the guest ID, renders in Help, and clears to the empty state.
+- 9.21 — Data export: integrated Chromium verified the EXPORT control creates a blob download named `archess-match-history.json` containing local guest history data.
+- 9.22 — Account scope: registration/login remains intentionally deferred because the current product is local-only and collects no account data.
+- 9.23 — Room creation: `POST /api/rooms` validates guest IDs, creates an ephemeral six-character room, and assigns the creator to white.
 
 ---
 
@@ -510,6 +527,6 @@ STEP 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → **9 (current)** → 1
 
 ## 13. Overall Progress Summary
 
-- **Local game (STEPs 0–8):** 7/9 steps fully done; STEP 0 partial (8/12), STEP 1 partial (6/10), STEP 2 done with 1 item deferred to STEP 9.
+- **Local game (STEPs 0–8):** 7/9 steps fully done; STEP 0 partial (8/12), STEP 1 partial (9/10), STEP 2 done with 1 item deferred to STEP 9.
 - **Next up:** STEP 9 — Automated Testing, QA and Performance (browser matrix, performance targets, benchmark harness).
-- **Overall roadmap completion:** **86/233 subtasks done (~37%)** — everything done is in the local single-player game; all multiplayer/online/production steps are still TODO.
+- **Overall roadmap completion:** **108/233 subtasks done (~46%)** — local single-player functionality and production baseline are complete; private multiplayer has an initial room-creation slice.

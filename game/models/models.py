@@ -1,10 +1,7 @@
-"""Small serializable state models for future server-authoritative multiplayer."""
-
+"""Small serializable state models."""
 from dataclasses import asdict, dataclass
 from uuid import uuid4
-
 from .constants import PIECE_STATS
-
 
 @dataclass(slots=True)
 class PieceState:

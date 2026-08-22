@@ -13,6 +13,8 @@ This file provides the test structure and unit-level validation
 of the test configuration that can run without a full browser.
 """
 
+import os
+
 import pytest
 
 
@@ -66,51 +68,127 @@ def test_input_modes_are_valid():
 # are available in the test environment.
 
 try:
-    from playwright.sync_api import Page, expect
+    from playwright.sync_api import Error as PlaywrightError
+    from playwright.sync_api import sync_playwright
 
     BROWSER_AVAILABLE = True
 except ImportError:
     BROWSER_AVAILABLE = False
 
 
-def pytest_configure(config):
-    """Skip browser tests if Playwright is not available."""
-    if not BROWSER_AVAILABLE:
-        config.addinivalue_line(
-            "markers", "browser: mark test as requiring a browser"
-        )
-        # Auto-skip browser tests
-        for item in config.session.items:
-            if "browser" in item.nodeid.lower():
-                item.add_marker(pytest.mark.skip(reason="Playwright not available"))
+BASE_URL = os.environ.get("ARCHESS_BASE_URL", "http://127.0.0.1:5000")
 
 
-def test_chromium_desktop_smoke():
-    """Smoke test: verify Chromium can load the ArChess page."""
+def open_page(browser_name, viewport, touch=False):
+    """Open one matrix cell and skip cleanly when its runtime is unavailable."""
     if not BROWSER_AVAILABLE:
         pytest.skip("Playwright not available")
-    # This is a placeholder — actual test would navigate to the ArChess URL
-    assert True  # Pass if we reach here (Playwright available)
+
+    playwright = sync_playwright().start()
+    try:
+        browser = getattr(playwright, browser_name).launch(headless=True)
+    except PlaywrightError as error:
+        playwright.stop()
+        pytest.skip(f"{browser_name} browser is not installed: {error}")
+
+    context = browser.new_context(viewport=viewport, has_touch=touch, is_mobile=touch)
+    page = context.new_page()
+    try:
+        page.goto(BASE_URL, wait_until="networkidle")
+    except PlaywrightError as error:
+        context.close()
+        browser.close()
+        playwright.stop()
+        pytest.skip(f"ArChess server is unavailable: {error}")
+    return playwright, browser, context, page
 
 
-def test_responsive_viewports():
-    """Verify the game responds correctly across different viewports.
-
-    This test structure validates that the CSS/layout accommodates
-    the defined viewports. Actual viewport resizing validation
-    requires a browser.
-    """
-    if not BROWSER_AVAILABLE:
-        pytest.skip("Playwright not available")
-    assert True
+def close_page(playwright, browser, context):
+    context.close()
+    browser.close()
+    playwright.stop()
 
 
-def test_pointer_and_touch_input():
-    """Verify pointer (mouse) and touch input both work.
+@pytest.mark.parametrize("browser_name", BROWSERS)
+def test_browser_matrix_loads_page(browser_name):
+    """Every configured browser can load the game without page errors."""
+    playwright, browser, context, page = open_page(browser_name, VIEWPORTS[0])
+    errors = []
+    page.on("pageerror", errors.append)
+    assert page.title() == "ArChess — Physics Chess Battle"
+    assert page.locator("#gameCanvas").is_visible()
+    assert not errors
+    close_page(playwright, browser, context)
 
-    Structure for testing input modes across the browser matrix.
-    Actual interaction testing requires a browser with input simulation.
-    """
-    if not BROWSER_AVAILABLE:
-        pytest.skip("Playwright not available")
-    assert True
+
+@pytest.mark.parametrize("browser_name", BROWSERS)
+@pytest.mark.parametrize("viewport", VIEWPORTS, ids=[v["name"] for v in VIEWPORTS])
+def test_responsive_viewports(browser_name, viewport):
+    """The board remains visible and inside each configured viewport."""
+    playwright, browser, context, page = open_page(browser_name, viewport)
+    box = page.locator("#gameCanvas").bounding_box()
+    assert box and box["width"] > 0 and box["height"] > 0
+    assert box["x"] + box["width"] <= viewport["width"]
+    assert box["y"] + box["height"] <= viewport["height"]
+    close_page(playwright, browser, context)
+
+
+@pytest.mark.parametrize("browser_name", BROWSERS)
+def test_pointer_input(browser_name):
+    """The tutorial Skip control accepts pointer input in each browser."""
+    playwright, browser, context, page = open_page(browser_name, VIEWPORTS[-1])
+    page.evaluate("localStorage.removeItem('archess-tutorial-v2')")
+    page.reload(wait_until="networkidle")
+    page.wait_for_timeout(900)
+    assert page.locator("#tutorialSkip").is_visible()
+    page.locator("#tutorialSkip").click()
+    assert page.locator("#tutorialCard").is_hidden()
+    close_page(playwright, browser, context)
+
+
+def test_guest_identity_persists_in_browser():
+    """An anonymous guest ID persists without collecting account data."""
+    playwright, browser, context, page = open_page("chromium", VIEWPORTS[-1])
+    first_id = page.evaluate("localStorage.getItem('archess-guest-id')")
+    page.reload(wait_until="networkidle")
+    second_id = page.evaluate("localStorage.getItem('archess-guest-id')")
+    assert first_id and first_id == second_id
+    close_page(playwright, browser, context)
+
+
+def test_preferences_persist_in_browser():
+    """Theme, board size, and game-mode preferences survive a reload."""
+    playwright, browser, context, page = open_page("chromium", VIEWPORTS[-1])
+    page.evaluate("""() => {
+        localStorage.setItem('archess-theme', 'dark');
+        localStorage.setItem('archess-board-size', '840');
+        localStorage.setItem('archess-game', JSON.stringify({mode: 'practice', turnTime: 45}));
+    }""")
+    page.reload(wait_until="networkidle")
+    assert page.locator("html").get_attribute("data-theme") == "dark"
+    assert page.locator("#boardSizeValue").text_content() == "110%"
+    assert page.evaluate("window.GameModeManager.get()") == {"mode": "practice", "turnTime": 45}
+    close_page(playwright, browser, context)
+
+
+def test_match_history_persists_for_guest():
+    """Completed guest match results persist locally and remain capped data."""
+    playwright, browser, context, page = open_page("chromium", VIEWPORTS[-1])
+    page.evaluate("localStorage.removeItem('archess-match-history')")
+    page.reload(wait_until="networkidle")
+    page.evaluate("MatchHistory.record({winner: 'white', mode: 'match', turns: 1})")
+    page.reload(wait_until="networkidle")
+    assert page.evaluate("MatchHistory.getAll()[0].winner") == "white"
+    close_page(playwright, browser, context)
+
+
+def test_touch_input():
+    """A mobile touch context can dismiss the tutorial with a tap."""
+    playwright, browser, context, page = open_page("chromium", VIEWPORTS[-1], touch=True)
+    page.evaluate("localStorage.removeItem('archess-tutorial-v2')")
+    page.reload(wait_until="networkidle")
+    page.wait_for_timeout(900)
+    assert page.locator("#tutorialSkip").is_visible()
+    page.locator("#tutorialSkip").tap()
+    assert page.locator("#tutorialCard").is_hidden()
+    close_page(playwright, browser, context)

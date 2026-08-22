@@ -49,12 +49,14 @@ import { ThreeDScene } from "./render3d.js";
     comboTimer: 0,
     maxCombo: 0,
     stats: null,
+    guestId: window.GuestIdentity ? GuestIdentity.getId() : null,
     challenge: null,
     onImpact: null,
     onWallImpact: null,
   };
 
   window.gameState = gameState;
+  if (window.MatchHistory) MatchHistory.init();
   UI.init(gameState);
   if (window.TuningPanel) TuningPanel.init();
   if (window.TutorialManager) TutorialManager.init(gameState);
@@ -454,6 +456,10 @@ import { ThreeDScene } from "./render3d.js";
 
     // Record game over for replay
     if (window.ReplayRecorder) ReplayRecorder.recordGameOver(winner, gameState.stats, doubleKO);
+    if (window.MatchHistory) {
+      const turns = Object.values(gameState.stats || {}).reduce((total, stats) => total + stats.launches, 0);
+      MatchHistory.record({ winner, doubleKO, mode: gameState.mode, turns });
+    }
 
     // Show challenge result in game-over modal area
     const challengeArea = document.getElementById("challengeResultArea");
@@ -801,11 +807,21 @@ import { ThreeDScene } from "./render3d.js";
     gameState.challenge = null;
     resetGame();
   });
-  document.getElementById("helpBtn").addEventListener("click", () => UI.modal("helpModal", true));
+  document.getElementById("helpBtn").addEventListener("click", () => {
+    if (window.MatchHistory) MatchHistory.render(document.getElementById("matchHistoryList"));
+    UI.modal("helpModal", true);
+  });
   document.getElementById("closeHelp").addEventListener("click", () => UI.modal("helpModal", false));
   document.getElementById("helpTutorialBtn").addEventListener("click", () => {
     UI.modal("helpModal", false);
     if (window.TutorialManager) TutorialManager.start();
+  });
+  document.getElementById("clearHistoryBtn").addEventListener("click", () => {
+    if (window.MatchHistory) MatchHistory.clear();
+    window.MatchHistory?.render(document.getElementById("matchHistoryList"));
+  });
+  document.getElementById("exportHistoryBtn").addEventListener("click", () => {
+    window.MatchHistory?.exportData();
   });
   document.getElementById("helpModal").addEventListener("click", (event) => {
     if (event.target.id === "helpModal") UI.modal("helpModal", false);

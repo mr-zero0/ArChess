@@ -1,5 +1,7 @@
 import pytest
-from app import app
+from app import app, create_app
+from config import DevelopmentConfig, ProductionConfig, TestingConfig
+from logging_config import JsonFormatter
 from game.constants import BOARD_SIZE, GAME_CONFIG, PIECE_STATS
 from game.game_state import GameState
 from game.models import PieceState
@@ -13,6 +15,87 @@ def test_app_config_endpoint():
     assert data["boardSize"] == BOARD_SIZE
     assert "pawn" in data["pieceStats"]
     assert "maxLaunchSpeed" in data["gameConfig"]
+
+
+def test_app_factory_creates_independent_application():
+    application = create_app()
+    assert application is not app
+    assert application.test_client().get("/api/version").get_json() == {"version": "v0.5.2"}
+
+
+def test_app_config_profiles(monkeypatch):
+    monkeypatch.setenv("SECRET_KEY", "test-secret")
+    development = create_app(DevelopmentConfig)
+    testing = create_app(TestingConfig)
+    production = create_app(ProductionConfig)
+    assert development.debug is True
+    assert testing.testing is True
+    assert production.debug is False
+
+
+def test_health_endpoint():
+    response = app.test_client().get("/api/health")
+    assert response.status_code == 200
+    assert response.get_json() == {"status": "ok", "version": "v0.5.2"}
+
+
+def test_version_endpoint():
+    response = app.test_client().get("/api/version")
+    assert response.status_code == 200
+    assert response.get_json() == {"version": "v0.5.2"}
+
+
+def test_not_found_error_handler():
+    response = app.test_client().get("/api/missing")
+    assert response.status_code == 404
+    assert response.get_json() == {"error": "not_found", "message": "Resource not found"}
+
+
+def test_security_headers_are_present():
+    response = app.test_client().get("/api/health")
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "SAMEORIGIN"
+    assert response.headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
+
+
+def test_api_body_validation_rejects_non_json():
+    response = app.test_client().post("/api/example", data="not-json", content_type="text/plain")
+    assert response.status_code == 415
+    assert response.get_json()["error"] == "json_required"
+
+
+def test_request_size_limit_returns_json_error():
+    payload = b"x" * (app.config["MAX_CONTENT_LENGTH"] + 1)
+    response = app.test_client().post("/api/example", data=payload, content_type="application/json")
+    assert response.status_code == 413
+    assert response.get_json()["error"] == "request_too_large"
+
+
+def test_create_room_assigns_white_player():
+    response = app.test_client().post("/api/rooms", json={"guestId": "guest-test"})
+    assert response.status_code == 201
+    data = response.get_json()
+    assert len(data["roomId"]) == 6
+    assert data["status"] == "waiting"
+    assert data["players"] == [{"guestId": "guest-test", "team": "white"}]
+
+
+def test_create_room_validates_guest_id():
+    response = app.test_client().post("/api/rooms", json={"guestId": ""})
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "invalid_guest_id"
+
+
+def test_production_requires_secret_key(monkeypatch):
+    monkeypatch.delenv("SECRET_KEY", raising=False)
+    with pytest.raises(RuntimeError, match="SECRET_KEY"):
+        create_app(ProductionConfig)
+
+
+def test_app_uses_structured_logging():
+    application = create_app(TestingConfig)
+    formatters = [handler.formatter for handler in application.logger.handlers]
+    assert any(isinstance(formatter, JsonFormatter) for formatter in formatters)
 
 
 def test_legacy_config_endpoint():

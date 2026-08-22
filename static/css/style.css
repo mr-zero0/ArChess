@@ -311,6 +311,15 @@ html[data-theme="wood"] .tutorial-dot.active { background: #f0b878; }
 .rules-grid b { color: #56e3f6; font-size: 10px; }
 .rules-grid span { color: #afbfcb; font-size: 10px; line-height: 1.45; }
 .modal-note { padding-top: 14px; border-top: 1px solid #263b4d; color: #728799; font-size: 9px; line-height: 1.55; }
+.local-history { margin-top: 18px; padding-top: 14px; border-top: 1px solid #263b4d; }
+.local-history-head { display: flex; align-items: center; justify-content: space-between; color: #52dff4; font-size: 9px; font-weight: 900; letter-spacing: 1.5px; }
+.history-actions { display: flex; gap: 6px; }
+.history-clear { border: 1px solid #40566a; border-radius: 6px; background: transparent; color: #91a5b5; padding: 5px 8px; font-size: 9px; cursor: pointer; }
+.history-clear:hover { border-color: #52dff4; color: #e9f6ff; }
+.match-history-list { display: grid; gap: 6px; margin-top: 8px; max-height: 150px; overflow-y: auto; }
+.match-history-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border: 1px solid #263c4e; border-radius: 7px; background: #0a121a; }
+.match-history-row strong { color: #e3eef7; font-size: 10px; }
+.match-history-row span, .history-empty { color: #728799; font-size: 9px; }
 .result-card { text-align: center; }
 .winner-glyph { margin: 18px 0 4px; color: #eefbff; font: 82px/1 "Times New Roman", serif; text-shadow: 0 0 28px rgba(77,230,255,.25); }
 .result-card h2 { font-size: 36px; letter-spacing: 2px; }

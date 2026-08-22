@@ -160,6 +160,10 @@
       </div>
       <div class="modal-note">There is no check, checkmate, capture movement, castling, en passant, or piece-specific movement after launch. Physics gets the final vote.</div>
       <button class="new-btn" id="helpTutorialBtn" type="button">REPLAY TUTORIAL</button>
+      <div class="local-history">
+        <div class="local-history-head"><span>LOCAL MATCH HISTORY</span><span class="history-actions"><button class="history-clear" id="exportHistoryBtn" type="button">EXPORT</button><button class="history-clear" id="clearHistoryBtn" type="button">CLEAR</button></span></div>
+        <div id="matchHistoryList" class="match-history-list"></div>
+      </div>
     </div>
   </div>
 
@@ -302,6 +306,8 @@
   <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
   <script src="{{ url_for('static', filename='js/audio.js') }}"></script>
   <script src="{{ url_for('static', filename='js/prefs.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/identity.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/match_history.js') }}"></script>
   <script src="{{ url_for('static', filename='js/mode.js') }}"></script>
   <script src="{{ url_for('static', filename='js/pieces.js') }}"></script>
   <script src="{{ url_for('static', filename='js/board.js') }}"></script>
