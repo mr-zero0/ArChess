@@ -259,6 +259,7 @@ Browser → PWA → itch.io browser/wrapper → GitHub. **COST-GATED (only after
 - [x] Trick Shot Challenges — pre-made board scenarios published as `static/js/challenges.js`.
 - [x] Replay capture (launch vectors, state snapshots, end state) — implemented in `static/js/replay.js`.
 - [x] Replay Viewer (playback / speed controls) — implemented in `static/js/replay.js`.
+- [x] Replay Viewer playback crash fix (`turnInfo`/`scrubber` strict-mode ReferenceError in `animateNext`) — v0.5.2; speed ×1–×5 now advances playback.
 
 ### STEP 9 — Automated Testing, QA and Performance 🟡 PARTIAL
 
@@ -458,6 +459,7 @@ Browser → PWA → itch.io browser/wrapper → GitHub. **COST-GATED (only after
 | v0.4.1 | STEP 6 | `a239dd0` | Role-based physics multipliers, combo detection + UI, per-team balance stats, developer tuning panel, JS+Python tests. |
 | v0.5.x | STEP 7 | `fb1f968` | First-time interactive tutorial + replay, keyboard-accessible modals (focus trap), non-color team markers, mobile touch targets, text-scaling tolerance. |
 | v0.5.1 | STEP 8 (1/2) | `18b5e2c` | Local modes: Match / Practice-Sandbox selector + optional persisted turn timer (live countdown, auto turn-switch), both surfaced in settings; regression suites pass. |
+| v0.5.2 | STEP 8 (2/2) | — | Replay Viewer playback fix: replaced strict-mode `ReferenceError` (assignment to undeclared `turnInfo`/`scrubber` in `animateNext`) with declared element lookups; speed multiplier (×1–×5) now actually advances playback rate; turn counter/scrubber/prev/next states stay in sync. |
 
 ---
 

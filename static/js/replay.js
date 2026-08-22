@@ -137,16 +137,16 @@ window.ReplayViewer = (() => {
 
     if (modal) modal.classList.remove("hidden");
     if (turnInfo) {
-      turnInfo.textContent = `Turn 0 / ${replayData.recordings.length}`;
+      turnInfo.textContent = `Turn ${currentTurn} / ${replayData.recordings.length}`;
     }
     if (scrubber) {
       scrubber.max = replayData.recordings.length;
-      scrubber.value = 0;
+      scrubber.value = currentTurn;
     }
     if (playBtn) playBtn.dataset.state = "paused";
     if (speedBtn) speedBtn.textContent = `×${speedMultiplier}`;
-    if (prevBtn) prevBtn.disabled = true;
-    if (nextBtn) nextBtn.disabled = replayData.recordings.length <= 0;
+    if (prevBtn) prevBtn.disabled = currentTurn <= 0;
+    if (nextBtn) nextBtn.disabled = currentTurn >= replayData.recordings.length - 1;
   }
 
   function togglePlay() {
@@ -171,15 +171,21 @@ window.ReplayViewer = (() => {
       updateUI();
       return;
     }
-    const rec = replayData.recordings[currentTurn];
-    // apply replay step
-    applyReplayRecord(rec);
-    currentTurn++;
-    if (turnInfo = document.getElementById("replayTurnInfo")) {
-      turnInfo.textContent = `Turn ${currentTurn} / ${replayData.recordings.length}`;
+    // Apply one record per animation frame; the speed multiplier skips
+    // frames so higher speeds advance turns faster.
+    let steps = Math.max(1, speedMultiplier);
+    while (steps-- > 0 && currentTurn < replayData.recordings.length) {
+      const rec = replayData.recordings[currentTurn];
+      applyReplayRecord(rec);
+      currentTurn++;
     }
-    if (scrubber = document.getElementById("replayScrubber")) {
-      scrubber.value = currentTurn;
+    const turnInfoEl = document.getElementById("replayTurnInfo");
+    if (turnInfoEl) {
+      turnInfoEl.textContent = `Turn ${currentTurn} / ${replayData.recordings.length}`;
+    }
+    const scrubberEl = document.getElementById("replayScrubber");
+    if (scrubberEl) {
+      scrubberEl.value = currentTurn;
     }
     animationId = requestAnimationFrame(animateNext);
   }
