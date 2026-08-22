@@ -842,6 +842,7 @@ html[data-theme="wood"] .winner-glyph { color: #d88a60; text-shadow: 0 0 26px rg
   pointer-events: none;
   white-space: nowrap;
 }
+.combo-badge.hidden { display: none; }
 .combo-badge b { color: #fff; font-size: 15px; }
 @keyframes combo-pop {
   0% { transform: translateX(-50%) scale(.6); opacity: 0; }

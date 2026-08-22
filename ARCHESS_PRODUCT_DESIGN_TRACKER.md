@@ -118,7 +118,7 @@ ArChess is **not ordinary chess with animations**. It is a turn-based physics co
 | STEP | Title | Status | Progress |
 |---|---|---|---|
 | 0 | Product identity & rules | 🟡 PARTIAL | 8/12 done |
-| 1 | Repository & engineering baseline | 🟡 PARTIAL | 3/10 done |
+| 1 | Repository & engineering baseline | 🟡 PARTIAL | 4/10 done |
 | 2 | Core physics & damage stabilization | ✅ DONE | 9/10 done (1 deferred) |
 | 3 | True 3D chess presentation | ✅ DONE | 8/8 done |
 | 4 | Board, camera, resize, themes | ✅ DONE | 5/5 done |
@@ -126,7 +126,7 @@ ArChess is **not ordinary chess with animations**. It is a turn-based physics co
 | 6 | Combat roles, balance, combos | ✅ DONE | 16/16 done |
 | 7 | UX, tutorial, accessibility | ✅ DONE | 18/18 done |
 | 8 | Local modes, challenges, replay | ✅ DONE | 7/7 done |
-| 9 | Automated testing, QA, performance | 🔵 NEXT | 1/6 done |
+| 9 | Automated testing, QA, performance | 🔵 NEXT | 2/6 done |
 | 10 | Production-ready Flask | ⬜ TODO | 0/12 done |
 | 11 | Accounts, profiles, persistence | ⬜ TODO | 0/10 done |
 | 12 | Private online multiplayer MVP | ⬜ TODO | 0/14 done |
@@ -236,7 +236,7 @@ ArChess is **not ordinary chess with animations**. It is a turn-based physics co
 
 ### 7.8 STEP 7 — UX, Tutorial and Accessibility ✅ DONE (18/18; v0.5.x)
 
-- 7.8.1 ✅ First-time interactive tutorial (`static/js/tutorial.js`): non-blocking bottom card, auto-shows on first visit, latched step advancement on real actions (select → aim → launch → chains → win), Skip/Next, persists `archess-tutorial` flag.
+- 7.8.1 ✅ First-time interactive tutorial (`static/js/tutorial.js`): non-blocking bottom card, auto-shows on first visit, latched step advancement on real actions (select → aim → launch → chains → win), Skip/Next, persists `archess-tutorial-v2` flag.
 - 7.8.2 ✅ Tutorial replay in Help (`#helpTutorialBtn`).
 - 7.8.3 ✅ Aim direction clearly visible (dashed pull line + solid launch arrow + direction dots).
 - 7.8.4 ✅ Power clearly visible (power bar + %).
@@ -265,14 +265,14 @@ ArChess is **not ordinary chess with animations**. It is a turn-based physics co
 - 7.9.6 ✅ Replay Viewer (playback / speed controls) — implemented in `static/js/replay.js`.
 - 7.9.7 ✅ Replay Viewer playback crash fix (`turnInfo`/`scrubber` strict-mode ReferenceError in `animateNext`) — v0.5.2; speed ×1–×5 now advances playback.
 
-### 7.10 STEP 9 — Automated Testing, QA and Performance 🔵 NEXT (1/6)
+### 7.10 STEP 9 — Automated Testing, QA and Performance 🔵 NEXT (2/6)
 
 - 7.10.1 ✅ Unit tests: launch vector, speed clamp, friction, wall bounce, overlap resolution, collision impulse, damage calc, collision cooldown, piece death, King death, turn switch, game reset, theme persistence, board-resize state safety.
 - 7.10.2 ⬜ Browser matrix: Chromium / Firefox / WebKit (scaffold exists in `tests/test_browser_matrix.py`; Playwright not installed — 3 tests skip).
 - 7.10.3 ⬜ Browser matrix: desktop / tablet / mobile viewports.
 - 7.10.4 ⬜ Browser matrix: pointer + touch input.
 - 7.10.5 ⬜ Performance targets met (32-piece board, no frame-time cliffs on mid hardware).
-- 7.10.6 ⬜ Performance regression benchmark harness.
+- 7.10.6 ✅ Performance regression benchmark harness (`performance_benchmark.py`); verified with a 50-frame, 32-piece run and no threshold violations.
 
 ### 7.11 STEP 10 — Production-Ready Flask Architecture ⬜ TODO (0/12)
 
@@ -475,6 +475,7 @@ ArChess is **not ordinary chess with animations**. It is a turn-based physics co
 - 9.3 — Playwright headless: **25/25 (3D path) + 16/16 (2D flow)** pass at STEP 6 (not re-run since Playwright was uninstalled).
 - 9.4 — Performance: in-page frame times healthy (~14 ms avg); headless wall-clock variance is a container/SwiftShader artifact, not app code (reproduced on both old and new builds).
 - 9.5 — Identity: `mr-zero0 <mr-zero0@users.noreply.github.com>`; GitHub remote = `https://github.com/mr-zero0/ArChess`.
+- 9.6 — Performance benchmark: **PASS** (`performance_benchmark.py`, 50 frames / 32 pieces; 0 frames over threshold).
 
 ---
 
@@ -509,6 +510,6 @@ STEP 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → **9 (current)** → 1
 
 ## 13. Overall Progress Summary
 
-- **Local game (STEPs 0–8):** 7/9 steps fully done; STEP 0 partial (8/12), STEP 1 partial (3/10), STEP 2 done with 1 item deferred to STEP 9.
+- **Local game (STEPs 0–8):** 7/9 steps fully done; STEP 0 partial (8/12), STEP 1 partial (4/10), STEP 2 done with 1 item deferred to STEP 9.
 - **Next up:** STEP 9 — Automated Testing, QA and Performance (browser matrix, performance targets, benchmark harness).
-- **Overall roadmap completion:** **82/233 subtasks done (~35%)** — everything done is in the local single-player game; all multiplayer/online/production steps are still TODO.
+- **Overall roadmap completion:** **84/233 subtasks done (~36%)** — everything done is in the local single-player game; all multiplayer/online/production steps are still TODO.
