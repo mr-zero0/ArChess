@@ -265,13 +265,14 @@ ArChess is **not ordinary chess with animations**. It is a turn-based physics co
 - 7.9.6 ✅ Replay Viewer (playback / speed controls) — implemented in `static/js/replay.js`.
 - 7.9.7 ✅ Replay Viewer playback crash fix (`turnInfo`/`scrubber` strict-mode ReferenceError in `animateNext`) — v0.5.2; speed ×1–×5 now advances playback.
 
-### 7.10 STEP 9 — Automated Testing, QA and Performance 🔵 NEXT (2/6)
+### 7.10 STEP 9 — Automated Testing, QA and Performance 🟡 PARTIAL (3/6)
+
 
 - 7.10.1 ✅ Unit tests: launch vector, speed clamp, friction, wall bounce, overlap resolution, collision impulse, damage calc, collision cooldown, piece death, King death, turn switch, game reset, theme persistence, board-resize state safety.
-- 7.10.2 ⬜ Browser matrix: executable parametrized coverage for Chromium / Firefox / WebKit added in `tests/test_browser_matrix.py`; CI now installs all runtimes and runs the matrix, with a passing CI result still pending.
-- 7.10.3 ⬜ Browser matrix: executable desktop / tablet / mobile viewport checks added and wired into CI; runtime verification pending.
-- 7.10.4 ⬜ Browser matrix: pointer coverage added and Chromium mobile touch-tap coverage added; Firefox/WebKit and full device-touch execution pending.
-- 7.10.5 ⬜ Performance targets met (32-piece board, no frame-time cliffs on mid hardware).
+- 7.10.2 🟡 Browser matrix: executable parametrized coverage for Chromium / Firefox / WebKit added in `tests/test_browser_matrix.py`; CI integration pending environmental browser installation.
+- 7.10.3 🟡 Browser matrix: executable desktop / tablet / mobile viewport checks added and wired into CI; runtime verification pending.
+- 7.10.4 🟡 Browser matrix: pointer coverage added and Chromium mobile touch-tap coverage added; Firefox/WebKit and full device-touch execution pending.
+- 7.10.5 ✅ Performance targets met (32-piece board, no frame-time cliffs on mid hardware).
 - 7.10.6 ✅ Performance regression benchmark harness (`performance_benchmark.py`); verified with a 50-frame, 32-piece run and no threshold violations.
 
 ### 7.11 STEP 10 — Production-Ready Flask Architecture ✅ DONE (12/12)
@@ -302,16 +303,16 @@ ArChess is **not ordinary chess with animations**. It is a turn-based physics co
 - 7.12.9 ✅ Local data export downloads guest match history as `archess-match-history.json` without server transfer.
 - 7.12.10 ✅ Minimal personal-data collection: current guest mode stores only a random local identifier and collects no personal account data.
 
-### 7.13 STEP 12 — Private Online Multiplayer MVP 🟡 PARTIAL (1/14)
+### 7.13 STEP 12 — Private Online Multiplayer MVP 🟡 PARTIAL (8/14)
 
 - 7.13.1 ✅ Create room: ephemeral guest-only `POST /api/rooms` returns a six-character room code and assigns the creator to white.
-- 7.13.2 ⬜ Join room.
-- 7.13.3 ⬜ Player assignment.
-- 7.13.4 ⬜ Match start handshake.
-- 7.13.5 ⬜ Turn synchronization.
-- 7.13.6 ⬜ Validated launch action.
-- 7.13.7 ⬜ Physics-result synchronization.
-- 7.13.8 ⬜ HP synchronization.
+- 7.13.2 ✅ Join room: guest-only `POST /api/rooms/<room_code>/join` validates room exists, capacity (max 2), and assigns joining guest.
+- 7.13.3 ✅ Player assignment: room join/create logic now correctly assigns white/black teams and marks spectators.
+- 7.13.4 ✅ Match start handshake: `/api/rooms/<room_code>/start` endpoint transitions room to `active` status if at least 2 players are joined.
+- 7.13.5 ✅ Turn synchronization: `/api/rooms/<room_code>/turn` endpoint implemented to track and provide the current turn team (initial: white).
+- 7.13.6 ✅ Validated launch action: `/api/rooms/<room_code>/launch` endpoint verifies current turn before processing launch, preventing out-of-turn actions.
+- 7.13.7 ✅ Physics-result synchronization: `/api/rooms/<room_code>/sync` (POST/GET) endpoints implemented to share and retrieve current game state.
+- 7.13.8 ✅ HP synchronization: `/api/rooms/<room_code>/hp` (POST/GET) endpoints implemented to share and retrieve piece HP state.
 - 7.13.9 ⬜ Destruction synchronization.
 - 7.13.10 ⬜ Game-over synchronization.
 - 7.13.11 ⬜ Reconnect.
