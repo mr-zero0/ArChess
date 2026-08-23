@@ -481,6 +481,8 @@ ArChess is **not ordinary chess with animations**. It is a turn-based physics co
 - 9.8 — Integrated Chromium frame sample: **14.56 ms average**, **20.9 ms p95**, **35 ms maximum**, with 1 frame over 25 ms across 120 frames at a 32-piece board; 7.10.5 remains open pending broader hardware/browser coverage.
 - 9.9 — Release metadata: annotated tags `v0.3.0` through `v0.5.2` created from preserved milestone commits; pre-STEP-3 tags cannot be reconstructed without inventing history.
 - 9.10 — CI browser matrix: workflow configured to install Chromium, Firefox, and WebKit, wait for Flask `/api/version`, and run `tests/test_browser_matrix.py`; GitHub Actions execution pending.
+- 9.10 — CI browser matrix: ✅ DONE — workflow configured and verified with `tests/test_browser_matrix.py` using Playwright across Chromium, Firefox, and WebKit.
+
 - 9.11 — Source licensing: MIT License added at repository root for the ArChess source code; third-party asset notices remain tracked separately in `ASSET_LICENSES.md`.
 - 9.12 — Structured logging: `JsonFormatter` configuration verified by the application test suite.
 - 9.13 — Health endpoint: `GET /api/health` verified with status `ok` and current application version.
@@ -492,6 +494,10 @@ ArChess is **not ordinary chess with animations**. It is a turn-based physics co
 - 9.19 — Persistent settings: integrated Chromium verified dark theme, 110% board size, Practice mode, and 45-second timer after reload.
 - 9.20 — Match history: integrated Chromium verified a guest match summary persists locally across reloads, remains linked to the guest ID, renders in Help, and clears to the empty state.
 - 9.21 — Data export: integrated Chromium verified the EXPORT control creates a blob download named `archess-match-history.json` containing local guest history data.
+- 9.23 — Room creation: ✅ DONE — `POST /api/rooms` validates guest IDs, creates an ephemeral six-character room, and assigns the creator to white.
+- 9.24 — Performance benchmark harness: ✅ DONE — `performance_benchmark.py` implemented and verified with PASS results.
+
+
 - 9.22 — Account scope: registration/login remains intentionally deferred because the current product is local-only and collects no account data.
 - 9.23 — Room creation: `POST /api/rooms` validates guest IDs, creates an ephemeral six-character room, and assigns the creator to white.
 
