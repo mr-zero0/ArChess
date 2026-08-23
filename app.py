@@ -129,6 +129,8 @@ def create_app(config_object=DevelopmentConfig):
         
         # Store state (simplified as JSON)
         room.last_physics_state = str(payload.get("state", {}))
+        # Keep canonical state snapshot for replay validation
+        room.canonical_state = room.last_physics_state
         db.session.commit()
         return jsonify({"status": "synchronized"}), 200
 
@@ -147,6 +149,60 @@ def create_app(config_object=DevelopmentConfig):
         payload = request.get_json(silent=True) or {}
         guest_id = payload.get("guestId")
         launch_data = payload.get("launchData") # e.g., {'pieceId': '...', 'vector': {...}}
+
+        room = Room.query.filter_by(room_code=room_code).first()
+        if not room:
+            return jsonify({"error": "room_not_found"}), 404
+        
+        # Verify it's the player's turn
+        user = User.query.filter_by(guest_id=guest_id).first()
+        if not user or user.room_id != room.id:
+            return jsonify({"error": "unauthorized"}), 403
+            
+        team = 'white' if user.id == room.white_player_id else 'black'
+        if room.current_turn != team:
+            return jsonify({"error": "not_your_turn"}), 403
+        
+        # Validate launch data to prevent cheating
+        import math
+        import json
+        
+        def log_invalid_action(reason):
+            log_entry = json.dumps({"reason": reason, "guestId": guest_id, "data": launch_data})
+            room.invalid_action_log = (room.invalid_action_log + "\n" + log_entry) if room.invalid_action_log else log_entry
+            db.session.commit()
+            return jsonify({"error": "invalid_action", "reason": reason}), 400
+
+        if not launch_data or not isinstance(launch_data, dict):
+            return log_invalid_action("Missing or invalid launchData")
+            
+        piece_id = launch_data.get("pieceId")
+        if not isinstance(piece_id, str):
+            return log_invalid_action("Invalid pieceId")
+            
+        if not piece_id.startswith(f"{team}_"):
+            return log_invalid_action(f"Cannot launch opponent piece: {piece_id}")
+            
+        vector = launch_data.get("vector")
+        if not isinstance(vector, dict) or "x" not in vector or ("y" not in vector and "z" not in vector):
+            return log_invalid_action("Invalid launch vector format")
+            
+        vx = float(vector.get("x", 0))
+        vz = float(vector.get("z", vector.get("y", 0)))
+        
+        speed = math.sqrt(vx*vx + vz*vz)
+        if speed > GAME_CONFIG["maxLaunchSpeed"] + 0.1: # 0.1 epsilon
+            return log_invalid_action(f"Launch speed {speed} exceeds maximum {GAME_CONFIG['maxLaunchSpeed']}")
+            
+        room.current_turn = 'black' if room.current_turn == 'white' else 'white'
+        
+        # Log valid shot
+        shot_log = json.dumps({"guestId": guest_id, "pieceId": piece_id, "vx": vx, "vz": vz})
+        room.match_log = (room.match_log + "\n" + shot_log) if room.match_log else shot_log
+        
+        db.session.commit()
+        
+        return jsonify({"status": "success", "nextTurn": room.current_turn}), 200
 
     @application.route("/api/rooms/<room_code>/gameover", methods=['POST', 'GET'])
     def gameover_sync_handler(room_code):
@@ -176,27 +232,6 @@ def create_app(config_object=DevelopmentConfig):
             return jsonify({"error": "room_not_found"}), 404
         
         return jsonify({"gameOverEvent": room.last_gameover_event}), 200
-
-
-        room = Room.query.filter_by(room_code=room_code).first()
-        if not room:
-            return jsonify({"error": "room_not_found"}), 404
-        
-        # Verify it's the player's turn
-        user = User.query.filter_by(guest_id=guest_id).first()
-        if not user or user.room_id != room.id:
-            return jsonify({"error": "unauthorized"}), 403
-            
-        team = 'white' if user.id == room.white_player_id else 'black'
-        if room.current_turn != team:
-            return jsonify({"error": "not_your_turn"}), 403
-        
-        # In a real game, validate the physics launch here.
-        # For MVP, just update turn.
-        room.current_turn = 'black' if room.current_turn == 'white' else 'white'
-        db.session.commit()
-        
-        return jsonify({"status": "success", "nextTurn": room.current_turn}), 200
 
     @application.get("/api/rooms/<room_code>/turn")
     def get_turn(room_code):
@@ -250,6 +285,70 @@ def create_app(config_object=DevelopmentConfig):
         db.session.commit()
         
         return jsonify(room.to_dict()), 200
+
+    @application.post("/api/rooms/<room_code>/reconnect")
+    def reconnect_room(room_code):
+        from game.models import Room, User
+        payload = request.get_json(silent=True) or {}
+        guest_id = payload.get("guestId")
+        room = Room.query.filter_by(room_code=room_code).first()
+        if not room:
+            return jsonify({"error": "room_not_found"}), 404
+        
+        user = User.query.filter_by(guest_id=guest_id).first()
+        if not user or user.room_id != room.id:
+            return jsonify({"error": "unauthorized"}), 403
+            
+        return jsonify({
+            "status": "reconnected",
+            "room": room.to_dict(),
+            "physicsState": room.last_physics_state,
+            "hpState": room.last_hp_state,
+            "destructionEvent": room.last_destruction_event,
+            "gameOverEvent": room.last_gameover_event,
+            "currentTurn": room.current_turn
+        }), 200
+
+    @application.post("/api/rooms/<room_code>/rematch")
+    def rematch_room(room_code):
+        from game.models import Room, User
+        payload = request.get_json(silent=True) or {}
+        guest_id = payload.get("guestId")
+        room = Room.query.filter_by(room_code=room_code).first()
+        if not room:
+            return jsonify({"error": "room_not_found"}), 404
+        
+        user = User.query.filter_by(guest_id=guest_id).first()
+        if not user or user.room_id != room.id:
+            return jsonify({"error": "unauthorized"}), 403
+            
+        room.status = 'active'
+        room.current_turn = 'white'
+        room.last_physics_state = None
+        room.last_hp_state = None
+        room.last_destruction_event = None
+        room.last_gameover_event = None
+        db.session.commit()
+        
+        return jsonify({"status": "rematch_started", "room": room.to_dict()}), 200
+
+    @application.post("/api/rooms/<room_code>/disconnect")
+    def disconnect_room(room_code):
+        from game.models import Room, User
+        payload = request.get_json(silent=True) or {}
+        guest_id = payload.get("guestId")
+        room = Room.query.filter_by(room_code=room_code).first()
+        if not room:
+            return jsonify({"error": "room_not_found"}), 404
+            
+        user = User.query.filter_by(guest_id=guest_id).first()
+        if user and user.room_id == room.id:
+            user.room_id = None
+            room.status = 'finished'
+            db.session.commit()
+            return jsonify({"status": "disconnected"}), 200
+        
+        return jsonify({"error": "unauthorized"}), 403
 
     @application.errorhandler(404)
     def not_found(error):

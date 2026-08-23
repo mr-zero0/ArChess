@@ -13,6 +13,12 @@ class Room(db.Model):
     last_hp_state = db.Column(db.Text, nullable=True)
     last_destruction_event = db.Column(db.Text, nullable=True)
     last_gameover_event = db.Column(db.Text, nullable=True)
+    last_activity = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Step 13 Anti-Cheat & Authority
+    canonical_state = db.Column(db.Text, nullable=True)
+    match_log = db.Column(db.Text, nullable=True)
+    invalid_action_log = db.Column(db.Text, nullable=True)
 
 
 

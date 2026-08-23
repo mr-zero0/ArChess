@@ -129,8 +129,8 @@ ArChess is **not ordinary chess with animations**. It is a turn-based physics co
 | 9 | Automated testing, QA, performance | 🔵 NEXT | 2/6 done |
 | 10 | Production-ready Flask | ⬜ TODO | 0/12 done |
 | 11 | Accounts, profiles, persistence | ⬜ TODO | 0/10 done |
-| 12 | Private online multiplayer MVP | ⬜ TODO | 0/14 done |
-| 13 | Authoritative sim, anti-cheat | ⬜ TODO | 0/10 done |
+| 12 | Private online multiplayer MVP | ✅ DONE | 14/14 done |
+| 13 | Authoritative sim, anti-cheat | 🟡 PARTIAL | 5/10 done |
 | 14 | Public matchmaking, ranked | ⬜ TODO | 0/15 done |
 | 15 | Progression, cosmetics | ⬜ TODO | 0/4 done |
 | 16 | Analytics, telemetry, balance dashboard | ⬜ TODO | 0/3 done |
@@ -303,7 +303,7 @@ ArChess is **not ordinary chess with animations**. It is a turn-based physics co
 - 7.12.9 ✅ Local data export downloads guest match history as `archess-match-history.json` without server transfer.
 - 7.12.10 ✅ Minimal personal-data collection: current guest mode stores only a random local identifier and collects no personal account data.
 
-### 7.13 STEP 12 — Private Online Multiplayer MVP 🟡 PARTIAL (8/14)
+### 7.13 STEP 12 — Private Online Multiplayer MVP ✅ DONE (14/14)
 
 - 7.13.1 ✅ Create room: ephemeral guest-only `POST /api/rooms` returns a six-character room code and assigns the creator to white.
 - 7.13.2 ✅ Join room: guest-only `POST /api/rooms/<room_code>/join` validates room exists, capacity (max 2), and assigns joining guest.
@@ -315,23 +315,23 @@ ArChess is **not ordinary chess with animations**. It is a turn-based physics co
 - 7.13.8 ✅ HP synchronization: `/api/rooms/<room_code>/hp` (POST/GET) endpoints implemented to share and retrieve piece HP state.
 - 7.13.9 ✅ Destruction synchronization.
 - 7.13.10 ✅ Game-over synchronization.
-- 7.13.11 ⬜ Reconnect.
-- 7.13.12 ⬜ Rematch.
-- 7.13.13 ⬜ Room timeout.
-- 7.13.14 ⬜ Graceful disconnect handling.
+- 7.13.11 ✅ Reconnect.
+- 7.13.12 ✅ Rematch.
+- 7.13.13 ✅ Room timeout.
+- 7.13.14 ✅ Graceful disconnect handling.
 
-### 7.14 STEP 13 — Authoritative Simulation and Anti-Cheat ⬜ TODO (0/10)
+### 7.14 STEP 13 — Authoritative Simulation and Anti-Cheat 🟡 PARTIAL (5/10)
 
-- 7.14.1 ⬜ Canonical server state.
-- 7.14.2 ⬜ Shot validation.
+- 7.14.1 ✅ Canonical server state.
+- 7.14.2 ✅ Shot validation.
 - 7.14.3 ⬜ Server physics simulation.
-- 7.14.4 ⬜ State snapshots.
+- 7.14.4 ✅ State snapshots.
 - 7.14.5 ⬜ Client reconciliation.
 - 7.14.6 ⬜ Physics config versioning.
 - 7.14.7 ⬜ Replay checksum.
-- 7.14.8 ⬜ Invalid-client-action logging.
+- 7.14.8 ✅ Invalid-client-action logging.
 - 7.14.9 ⬜ Rate limits.
-- 7.14.10 ⬜ Tamper-resistant match result flow.
+- 7.14.10 ✅ Tamper-resistant match result flow.
 
 ### 7.15 STEP 14 — Public Matchmaking and Ranked ⬜ TODO (0/15)
 
