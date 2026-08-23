@@ -3,7 +3,7 @@ import os
 from flask import Flask, jsonify, render_template, request
 
 from config import DevelopmentConfig, ProductionConfig
-from extensions import db, migrate
+from extensions import db, migrate, limiter
 from game import BOARD_SIZE, GAME_CONFIG, PIECE_STATS
 from logging_config import configure_logging
 from rooms import create_room
@@ -20,6 +20,8 @@ def create_app(config_object=DevelopmentConfig):
     # Initialize extensions
     db.init_app(application)
     migrate.init_app(application, db)
+    limiter.init_app(application)
+
     
     configure_logging(application)
 
@@ -45,6 +47,8 @@ def create_app(config_object=DevelopmentConfig):
     @application.get("/api/health")
     def health_check():
         return jsonify({"status": "ok", "version": VERSION})
+    @limiter.limit("5 per minute")
+
 
     @application.post("/api/rooms")
     def create_game_room():
