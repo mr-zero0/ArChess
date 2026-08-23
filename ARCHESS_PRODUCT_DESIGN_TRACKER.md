@@ -313,8 +313,8 @@ ArChess is **not ordinary chess with animations**. It is a turn-based physics co
 - 7.13.6 ✅ Validated launch action: `/api/rooms/<room_code>/launch` endpoint verifies current turn before processing launch, preventing out-of-turn actions.
 - 7.13.7 ✅ Physics-result synchronization: `/api/rooms/<room_code>/sync` (POST/GET) endpoints implemented to share and retrieve current game state.
 - 7.13.8 ✅ HP synchronization: `/api/rooms/<room_code>/hp` (POST/GET) endpoints implemented to share and retrieve piece HP state.
-- 7.13.9 ⬜ Destruction synchronization.
-- 7.13.10 ⬜ Game-over synchronization.
+- 7.13.9 ✅ Destruction synchronization.
+- 7.13.10 ✅ Game-over synchronization.
 - 7.13.11 ⬜ Reconnect.
 - 7.13.12 ⬜ Rematch.
 - 7.13.13 ⬜ Room timeout.

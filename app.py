@@ -82,6 +82,35 @@ def create_app(config_object=DevelopmentConfig):
 
         return jsonify({"hpState": room.last_hp_state}), 200
 
+
+    @application.route("/api/rooms/<room_code>/destruction", methods=['POST', 'GET'])
+    def destruction_sync_handler(room_code):
+        if request.method == 'POST':
+            return sync_destruction(room_code)
+        return get_destruction_state(room_code)
+
+    @application.post("/api/rooms/<room_code>/destruction")
+    def sync_destruction(room_code):
+        from game.models import Room
+        payload = request.get_json(silent=True) or {}
+        room = Room.query.filter_by(room_code=room_code).first()
+        if not room:
+            return jsonify({"error": "room_not_found"}), 404
+        
+        # Log destruction event for synchronization
+        room.last_destruction_event = str(payload.get("destructionEvent", {}))
+        db.session.commit()
+        return jsonify({"status": "destruction_synchronized"}), 200
+
+    @application.get("/api/rooms/<room_code>/destruction")
+    def get_destruction_state(room_code):
+        from game.models import Room
+        room = Room.query.filter_by(room_code=room_code).first()
+        if not room:
+            return jsonify({"error": "room_not_found"}), 404
+        
+        return jsonify({"destructionEvent": room.last_destruction_event}), 200
+
     @application.route("/api/rooms/<room_code>/sync", methods=['POST', 'GET'])
     def sync_physics_handler(room_code):
         if request.method == 'POST':
@@ -118,6 +147,36 @@ def create_app(config_object=DevelopmentConfig):
         payload = request.get_json(silent=True) or {}
         guest_id = payload.get("guestId")
         launch_data = payload.get("launchData") # e.g., {'pieceId': '...', 'vector': {...}}
+
+    @application.route("/api/rooms/<room_code>/gameover", methods=['POST', 'GET'])
+    def gameover_sync_handler(room_code):
+        if request.method == 'POST':
+            return sync_gameover(room_code)
+        return get_gameover_state(room_code)
+
+    @application.post("/api/rooms/<room_code>/gameover")
+    def sync_gameover(room_code):
+        from game.models import Room
+        payload = request.get_json(silent=True) or {}
+        room = Room.query.filter_by(room_code=room_code).first()
+        if not room:
+            return jsonify({"error": "room_not_found"}), 404
+        
+        # Log game-over event for synchronization
+        room.status = 'finished'
+        room.last_gameover_event = str(payload.get("gameOverEvent", {}))
+        db.session.commit()
+        return jsonify({"status": "gameover_synchronized"}), 200
+
+    @application.get("/api/rooms/<room_code>/gameover")
+    def get_gameover_state(room_code):
+        from game.models import Room
+        room = Room.query.filter_by(room_code=room_code).first()
+        if not room:
+            return jsonify({"error": "room_not_found"}), 404
+        
+        return jsonify({"gameOverEvent": room.last_gameover_event}), 200
+
 
         room = Room.query.filter_by(room_code=room_code).first()
         if not room:

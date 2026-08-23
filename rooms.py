@@ -9,12 +9,13 @@ def create_room(guest_id):
     if not user:
         user = User(guest_id=guest_id)
         db.session.add(user)
+        db.session.flush()
     
     room_code = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(6))
     while Room.query.filter_by(room_code=room_code).first():
         room_code = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(6))
     
-    room = Room(room_code=room_code)
+    room = Room(room_code=room_code, white_player_id=user.id)
     user.room = room
     db.session.add(room)
     db.session.commit()

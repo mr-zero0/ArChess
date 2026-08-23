@@ -11,6 +11,10 @@ class Room(db.Model):
     current_turn = db.Column(db.String(10), default='white') # white, black
     last_physics_state = db.Column(db.Text, nullable=True)
     last_hp_state = db.Column(db.Text, nullable=True)
+    last_destruction_event = db.Column(db.Text, nullable=True)
+    last_gameover_event = db.Column(db.Text, nullable=True)
+
+
 
 
 
