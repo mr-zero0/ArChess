@@ -1,39 +1,39 @@
-# ArChess — Remaining Feature Status
+# ArChess — Remaining Feature / Release Status
 
 This file supplements `ARCHESS_PRODUCT_DESIGN_TRACKER.md` with implementation status that is intentionally kept separate from the official verified score.
 
-## Current implementation batches
+## Engineering implementation status
 
-### Step 11 — Accounts, Profiles & Persistence
-**Implemented:** 7/10
+### Step 0 — Product rules
+**Implemented:** final v1 physics/combat rules and competitive exceptions are frozen in `PRODUCT_RULES.md`.
 
-Profile/stat presentation now has server APIs and client UI. Authenticated accounts, authenticated-session security, and account deletion remain pending because they require a real authentication boundary and deletion semantics.
+### Step 11 — Accounts, profiles & persistence
+**Implemented:** 7/10. Profile/stat presentation is implemented and verified by CI. Authenticated accounts, authenticated-session security, and true account deletion remain release gates because they require a selected identity provider and production data-deletion semantics.
 
-### Step 14 — Public Matchmaking & Ranked
-**Implemented:** 15/15
+### Step 14 — Public matchmaking & ranked
+**Implemented:** 15/15. Queue lifecycle, pairing, recovery, MMR expansion, ranked settlement, placement, tiers, leaderboard APIs/UI, surrender/timeout/abandonment handling, persistence hardening, stress coverage and full CI verification are implemented.
 
-Queue lifecycle, pairing, recovery, MMR expansion, ranked settlement, placement, tiers, leaderboard APIs/UI, surrender/timeout/abandonment handling, persistence hardening and regression/stress coverage are implemented. Full verification remains a separate gate.
+### Step 15 — Progression & cosmetics
+**Implemented:** 6/6. Server-owned XP, levels, unlock rules, ownership/equip APIs, persistence, ranked XP awards, progression payloads and UI are implemented and covered by tests/browser verification.
 
-### Step 15 — Progression & Cosmetics
-**Implemented:** 6/6
+### Step 16 — Analytics & telemetry
+**Implemented:** 5/5. Persistent telemetry, irreversible actor hashing, real gameplay/matchmaking/ranked/progression instrumentation, operator-key analytics summary and retention pruning are implemented. Production retention/database operations remain release gates.
 
-Server-owned XP, levels, unlock rules, cosmetic ownership/equip APIs, persistence, ranked XP awards, progression profile payloads and a client progression/equip panel are implemented. Competitive piece statistics remain untouched.
+### Step 17 — Security / privacy / legal
+**Implemented/documented:** core backend controls, privacy notice, community rules and release checklist are in-repo. Authenticated-session security, vulnerability review, asset/license/trademark review and deployed-data legal review remain human gates.
 
-### Step 16 — Analytics & Telemetry
-**Implemented:** 5/5
+### Step 18 — Deployment baseline
+**Implemented:** Docker/Gunicorn image, healthcheck, compose baseline, environment requirements and deployment runbook. External host, HTTPS/domain, backup, rollback and monitoring verification remain environment-dependent release gates.
 
-Persistent telemetry events, irreversible actor hashing, real matchmaking/ranked/progression instrumentation and an operator-key-protected summary endpoint are implemented. Production retention and database verification remain pending.
+## What cannot honestly be completed inside the repository alone
 
-### Step 17 — Security / Privacy / Legal
-**Implemented/documented:** 9/10
+- Selecting/provisioning an authentication provider and validating production session security.
+- Deploying to a real public host and verifying HTTPS, backups, monitoring and rollback.
+- Running a real external alpha cohort and collecting retention/PMF evidence.
+- Completing human legal/trademark/asset sign-off.
 
-Core backend hardening plus privacy and community-rule baselines are implemented. Full authenticated-session security and legal/asset review remain human/release gates.
-
-### Step 18 — Deployment Baseline
-**Implemented:** Docker/Gunicorn production baseline.
-
-External host selection, HTTPS/domain, backups, monitoring, rollback and actual zero-cost deployment remain environment-dependent release gates.
+These are not marked DONE merely because engineering scaffolding exists.
 
 ## Official score rule
 
-Implemented-but-unverified work does **not** increase the official verified completion percentage until its applicable test, browser, migration, security or production gate passes.
+Implemented-but-unverified or environment-dependent work does not increase the official verified completion percentage until its applicable test, browser, migration, security, legal, deployment, or external-product gate passes.
