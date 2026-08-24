@@ -12,7 +12,6 @@
     window.__ArChessCameraPatched = true;
     const proto = Scene.prototype;
     const originalRender = proto.render;
-
     proto.installCameraControls = function () {
       if (this.__cameraControlsInstalled) return;
       this.__cameraControlsInstalled = true;
@@ -50,13 +49,11 @@
       }, { passive: false });
       canvas.addEventListener("contextmenu", (event) => event.preventDefault());
     };
-
     proto.__applyOrbitGoal = function () {
       const r = this.__cameraRadius;
       this.__cameraGoal = { x: Math.sin(this.__cameraYaw) * r, y: Math.sin(this.__cameraPitch) * r, z: Math.cos(this.__cameraYaw) * r };
       this.__cameraTargetGoal = { x: 0, y: 0, z: 0 };
     };
-
     proto.setPreset = function (name) {
       const preset = presets[name] || presets.broadcast;
       this.__cameraGoal = { x: preset.position[0], y: preset.position[1], z: preset.position[2] };
@@ -65,12 +62,7 @@
       this.__cameraPitch = Math.atan2(this.__cameraGoal.y, Math.hypot(this.__cameraGoal.x, this.__cameraGoal.z));
       this.__cameraRadius = Math.hypot(this.__cameraGoal.x, this.__cameraGoal.z);
     };
-
-    proto.flip = function () {
-      this.__cameraYaw += Math.PI;
-      this.__applyOrbitGoal();
-    };
-
+    proto.flip = function () { this.__cameraYaw += Math.PI; this.__applyOrbitGoal(); };
     proto.updateCamera = function (deltaTime) {
       const ease = 1 - Math.pow(0.0008, Math.max(0.001, deltaTime));
       this.camera.position.x += (this.__cameraGoal.x - this.camera.position.x) * ease;
@@ -81,21 +73,15 @@
       this.__cameraTarget.z += (this.__cameraTargetGoal.z - this.__cameraTarget.z) * ease;
       this.camera.lookAt(this.__cameraTarget.x, this.__cameraTarget.y, this.__cameraTarget.z);
     };
-
     proto.render = function (game, deltaTime) {
-      if (!this.__cameraControlsInstalled) {
-        this.installCameraControls();
-        this.setPreset("broadcast");
-      }
+      if (!this.__cameraControlsInstalled) { this.installCameraControls(); this.setPreset("broadcast"); }
+      window.__ArChessThreeD = this;
       this.updateCamera(deltaTime);
       return originalRender.call(this, game, deltaTime);
     };
     return true;
   }
-
   if (!install()) {
-    const timer = setInterval(() => {
-      if (install()) clearInterval(timer);
-    }, 10);
+    const timer = setInterval(() => { if (install()) clearInterval(timer); }, 10);
   }
 })();
