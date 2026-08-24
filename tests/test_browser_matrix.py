@@ -1,14 +1,16 @@
-import pytest
 import os
+import time
+
+import pytest
 from playwright.sync_api import sync_playwright
 
-# Define browsers and viewports for matrix testing
 BROWSERS = ["chromium", "firefox", "webkit"]
 VIEWPORTS = [
     {"name": "desktop", "width": 1920, "height": 1080},
     {"name": "tablet", "width": 768, "height": 1024},
     {"name": "mobile", "width": 375, "height": 667},
 ]
+
 
 @pytest.mark.parametrize("browser_name", BROWSERS)
 @pytest.mark.parametrize("viewport", VIEWPORTS, ids=lambda v: v["name"])
@@ -17,27 +19,68 @@ def test_browser_matrix_viewports(browser_name, viewport):
     with sync_playwright() as p:
         browser_type = getattr(p, browser_name)
         browser = browser_type.launch()
-        
-        # Configure context with touch enabled for mobile/tablet viewports
         context_args = {"viewport": {"width": viewport["width"], "height": viewport["height"]}}
         if viewport["name"] in ["mobile", "tablet"]:
             context_args["has_touch"] = True
-            
+
         context = browser.new_context(**context_args)
         page = context.new_page()
-        
-        # Verify the application is responsive and reachable
         response = page.goto("http://localhost:5000/")
         assert response.status == 200
-        
-        # Verify viewport size
-        actual_size = page.viewport_size
-        assert actual_size["width"] == viewport["width"]
-        
-        # Check touch capability for mobile/tablet
+        assert page.viewport_size["width"] == viewport["width"]
+        assert page.viewport_size["height"] == viewport["height"]
+
         if viewport["name"] in ["mobile", "tablet"]:
-            # Simple check if ontouchstart is defined or similar in JS
-            has_touch = page.evaluate("() => 'ontouchstart' in window")
-            assert has_touch is True
-        
+            assert page.evaluate("() => 'ontouchstart' in window") is True
+
+        assert page.locator("#archessMultiPanel").count() == 1
+        browser.close()
+
+
+@pytest.mark.skipif(os.environ.get("CI") is None, reason="Only run in CI")
+def test_browser_authoritative_multiplayer_flow():
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page(viewport={"width": 1280, "height": 800})
+        response = page.goto("http://localhost:5000/")
+        assert response.status == 200
+
+        suffix = str(time.time_ns())
+        white_guest = f"browser-white-{suffix}"
+        black_guest = f"browser-black-{suffix}"
+
+        room = page.evaluate(
+            "async (guestId) => await (await fetch('/api/rooms', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({guestId})})).json()",
+            white_guest,
+        )
+        room_code = room["roomId"]
+        joined = page.evaluate(
+            "async ({room, guestId}) => await (await fetch(`/api/rooms/${room}/join`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({guestId})})).json()",
+            {"room": room_code, "guestId": black_guest},
+        )
+        assert joined["status"] == "waiting"
+
+        started = page.evaluate(
+            "async (room) => await (await fetch(`/api/rooms/${room}/start`, {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'})).json()",
+            room_code,
+        )
+        assert len(started["state"]["pieces"]) == 32
+
+        applied = page.evaluate(
+            "async ({room, guestId}) => { const data = await window.ArChessMultiplayer.startRoom(); return {active: window.ArChessMultiplayer.active, team: window.ArChessMultiplayer.team, pieces: window.gameState.pieces.length, current: window.gameState.currentPlayer, room: data.room.roomId}; }",
+            {"room": room_code, "guestId": white_guest},
+        )
+        assert applied["active"] is True
+        assert applied["team"] == "white"
+        assert applied["pieces"] == 32
+        assert applied["current"] == "white"
+        assert applied["room"] == room_code
+
+        launch_ok = page.evaluate(
+            "async () => { const piece = window.gameState.pieces.find(p => p.team === 'white' && p.alive); return await window.ArChessMultiplayer.launch(piece, 0.9, 0); }"
+        )
+        assert launch_ok is True
+
+        page.wait_for_timeout(150)
+        assert page.evaluate("() => window.gameState.currentPlayer") == "black"
         browser.close()
