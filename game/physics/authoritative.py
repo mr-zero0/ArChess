@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import math
 
 from game.constants import BOARD_SIZE, GAME_CONFIG, PIECE_STATS
+from game.physics.state_hash import shot_hash, state_hash
 
 
 @dataclass
@@ -57,6 +58,8 @@ class AuthoritativeSimulation:
         self.current_team = current_team
         self.sim_time = 0.0
         self._hit_pairs: dict[tuple[str, str], float] = {}
+        self._pending_integrity: dict | None = None
+        self.last_integrity: dict | None = None
         self.game_over = any(p.type == "king" and not p.alive for p in pieces)
 
     @classmethod
@@ -89,7 +92,33 @@ class AuthoritativeSimulation:
                     alive=bool(item.get("alive", True)),
                 )
             )
-        return cls(pieces, str(snapshot.get("currentTeam", "white")))
+        simulation = cls(pieces, str(snapshot.get("currentTeam", "white")))
+        simulation.game_over = bool(snapshot.get("gameOver", simulation.game_over))
+        simulation.last_integrity = snapshot.get("integrity")
+        return simulation
+
+    def _prepare_integrity(self, intent: dict) -> None:
+        self._pending_integrity = {
+            "pre": self.snapshot(include_integrity=False),
+            "intent": intent,
+        }
+        self.last_integrity = None
+
+    def _finalize_integrity(self) -> dict | None:
+        if not self._pending_integrity:
+            return None
+        post_state = self.snapshot(include_integrity=False)
+        pre_state = self._pending_integrity["pre"]
+        intent = self._pending_integrity["intent"]
+        integrity = {
+            "preHash": state_hash(pre_state),
+            "postHash": state_hash(post_state),
+            "shotHash": shot_hash(pre_state, intent, post_state),
+            "intent": intent,
+        }
+        self.last_integrity = integrity
+        self._pending_integrity = None
+        return integrity
 
     def validate_launch(self, team: str, piece_id: str, vx: float, vy: float) -> tuple[bool, str | None]:
         if self.game_over:
@@ -139,13 +168,16 @@ class AuthoritativeSimulation:
         vector, reason = self.resolve_drag(team, piece_id, dx, dy)
         if vector is None:
             return False, reason
-        return self.launch(team, piece_id, vector[0], vector[1])
+        self._prepare_integrity({"mode": "drag", "team": team, "pieceId": piece_id, "dx": dx, "dy": dy})
+        return self.launch(team, piece_id, vector[0], vector[1], _record_integrity=False)
 
-    def launch(self, team: str, piece_id: str, vx: float, vy: float) -> tuple[bool, str | None]:
-        """Apply a pre-resolved velocity; kept for API compatibility with legacy clients/tests."""
+    def launch(self, team: str, piece_id: str, vx: float, vy: float, _record_integrity: bool = True) -> tuple[bool, str | None]:
+        """Apply a pre-resolved velocity; retained for compatibility with legacy vector clients/tests."""
         valid, reason = self.validate_launch(team, piece_id, vx, vy)
         if not valid:
             return False, reason
+        if _record_integrity:
+            self._prepare_integrity({"mode": "vector", "team": team, "pieceId": piece_id, "vx": vx, "vy": vy})
         piece = next(p for p in self.pieces if p.id == piece_id)
         piece.vx = vx
         piece.vy = vy
@@ -159,6 +191,9 @@ class AuthoritativeSimulation:
             active = any(p.alive and math.hypot(p.vx, p.vy) >= GAME_CONFIG["minVelocity"] for p in self.pieces)
             if not active or self.game_over:
                 break
+        integrity = self._finalize_integrity()
+        if integrity:
+            events.append({"type": "integrity", **integrity})
         return events
 
     def step(self, dt: float) -> list[dict]:
@@ -280,8 +315,8 @@ class AuthoritativeSimulation:
         raw = attacker.power * normalized * GAME_CONFIG["damageMultiplier"] * attacker.damage_mul
         return max(1, min(GAME_CONFIG["maxCollisionDamage"], round(raw)))
 
-    def snapshot(self) -> dict:
-        return {
+    def snapshot(self, include_integrity: bool = True) -> dict:
+        snapshot = {
             "currentTeam": self.current_team,
             "gameOver": self.game_over,
             "pieces": [
@@ -300,3 +335,6 @@ class AuthoritativeSimulation:
                 for p in self.pieces
             ],
         }
+        if include_integrity and self.last_integrity:
+            snapshot["integrity"] = self.last_integrity
+        return snapshot
