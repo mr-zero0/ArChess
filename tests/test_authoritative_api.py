@@ -5,6 +5,7 @@ import pytest
 from config import TestingConfig
 from extensions import db
 from app import create_app
+from game.physics.state_hash import state_hash
 
 
 @pytest.fixture()
@@ -28,14 +29,15 @@ def make_room(client):
 
     started = client.post(f"/api/rooms/{room}/start")
     assert started.status_code == 200
-    return room, started.get_json()["state"]
+    return room, started.get_json()["state"], started.get_json()["room"]
 
 
 def test_start_creates_server_canonical_state(client):
-    room, state = make_room(client)
+    room, state, room_data = make_room(client)
     assert len(state["pieces"]) == 32
     assert state["currentTeam"] == "white"
     assert state["gameOver"] is False
+    assert room_data["canonicalHash"] == state_hash(state)
 
     stored = client.get(f"/api/rooms/{room}/sync")
     assert stored.status_code == 200
@@ -44,7 +46,7 @@ def test_start_creates_server_canonical_state(client):
 
 
 def test_client_cannot_overwrite_authoritative_state(client):
-    room, _ = make_room(client)
+    room, _, _ = make_room(client)
     response = client.post(
         f"/api/rooms/{room}/sync",
         json={"state": {"currentTeam": "black", "pieces": []}},
@@ -58,7 +60,7 @@ def test_client_cannot_overwrite_authoritative_state(client):
 
 
 def test_launch_runs_on_server_and_persists_result(client):
-    room, state = make_room(client)
+    room, state, _ = make_room(client)
     white_piece = next(piece for piece in state["pieces"] if piece["team"] == "white" and piece["type"] == "rook")
 
     response = client.post(
@@ -78,9 +80,13 @@ def test_launch_runs_on_server_and_persists_result(client):
     assert persisted == data["state"]
     assert persisted["currentTeam"] == "black"
 
+    reconnect = client.post(f"/api/rooms/{room}/reconnect", json={"guestId": "black-guest"})
+    assert reconnect.status_code == 200
+    assert reconnect.get_json()["room"]["canonicalHash"] == state_hash(persisted)
+
 
 def test_launch_rejects_wrong_player_before_simulation(client):
-    room, state = make_room(client)
+    room, state, _ = make_room(client)
     white_piece = next(piece for piece in state["pieces"] if piece["team"] == "white")
 
     response = client.post(
