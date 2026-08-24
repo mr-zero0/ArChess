@@ -2,9 +2,9 @@ import json
 
 import pytest
 
+from app import create_app
 from config import TestingConfig
 from extensions import db
-from app import create_app
 from game.physics.state_hash import state_hash
 
 
@@ -75,6 +75,10 @@ def test_launch_runs_on_server_and_persists_result(client):
     assert data["status"] == "success"
     assert data["nextTurn"] == "black"
     assert isinstance(data["events"], list)
+    integrity = data["state"]["integrity"]
+    assert integrity["preHash"] == state_hash(state)
+    assert integrity["postHash"] == state_hash(data["state"])
+    assert any(event.get("type") == "integrity" and event.get("shotHash") == integrity["shotHash"] for event in data["events"])
 
     persisted = json.loads(client.get(f"/api/rooms/{room}/sync").get_json()["state"])
     assert persisted == data["state"]
@@ -83,6 +87,7 @@ def test_launch_runs_on_server_and_persists_result(client):
     reconnect = client.post(f"/api/rooms/{room}/reconnect", json={"guestId": "black-guest"})
     assert reconnect.status_code == 200
     assert reconnect.get_json()["room"]["canonicalHash"] == state_hash(persisted)
+    assert reconnect.get_json()["state"] == json.dumps(persisted, separators=(",", ":"), sort_keys=True)
 
 
 def test_launch_rejects_wrong_player_before_simulation(client):
