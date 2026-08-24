@@ -7,6 +7,7 @@ from flask import Flask, jsonify, render_template, request
 from config import DevelopmentConfig, ProductionConfig
 from extensions import db, migrate, limiter
 from game import BOARD_SIZE, GAME_CONFIG, PIECE_STATS
+from game.matchmaking import get_queue_status, join_queue, leave_queue
 from game.physics.authoritative import AuthoritativeSimulation
 from logging_config import configure_logging
 from rooms import create_room
@@ -96,6 +97,35 @@ def create_app(config_object=DevelopmentConfig):
     def health_check():
         return jsonify({"status": "ok", "version": VERSION})
 
+    @limiter.limit("10 per minute")
+    @application.post("/api/matchmaking/join")
+    def matchmaking_join():
+        payload = request.get_json(silent=True) or {}
+        guest_id = payload.get("guestId")
+        if not isinstance(guest_id, str) or not guest_id.strip() or len(guest_id) > 100:
+            return jsonify({"error": "invalid_guest_id", "message": "A valid guestId is required"}), 400
+        result, status = join_queue(guest_id.strip())
+        return jsonify(result), status
+
+    @limiter.limit("20 per minute")
+    @application.post("/api/matchmaking/leave")
+    def matchmaking_leave():
+        payload = request.get_json(silent=True) or {}
+        guest_id = payload.get("guestId")
+        if not isinstance(guest_id, str) or not guest_id.strip() or len(guest_id) > 100:
+            return jsonify({"error": "invalid_guest_id", "message": "A valid guestId is required"}), 400
+        result, status = leave_queue(guest_id.strip())
+        return jsonify(result), status
+
+    @limiter.limit("60 per minute")
+    @application.get("/api/matchmaking/status")
+    def matchmaking_status():
+        guest_id = request.args.get("guestId", "")
+        if not isinstance(guest_id, str) or not guest_id.strip() or len(guest_id) > 100:
+            return jsonify({"error": "invalid_guest_id", "message": "A valid guestId is required"}), 400
+        result, status = get_queue_status(guest_id.strip())
+        return jsonify(result), status
+
     @limiter.limit("5 per minute")
     @application.post("/api/rooms")
     def create_game_room():
@@ -147,27 +177,22 @@ def create_app(config_object=DevelopmentConfig):
         payload = request.get_json(silent=True) or {}
         guest_id = payload.get("guestId")
         launch_data = payload.get("launchData")
-
         room = Room.query.filter_by(room_code=room_code).first()
         if not room:
             return jsonify({"error": "room_not_found"}), 404
         if room.status != "active":
             return jsonify({"error": "room_not_active"}), 409
-
         user = User.query.filter_by(guest_id=guest_id).first()
         if not user or user.room_id != room.id:
             return jsonify({"error": "unauthorized"}), 403
-
         team = "white" if user.id == room.white_player_id else "black" if user.id == room.black_player_id else None
         if team is None:
             return jsonify({"error": "unauthorized"}), 403
-
         if not isinstance(launch_data, dict):
             return jsonify({"error": "invalid_action", "reason": "Missing or invalid launchData"}), 400
         piece_id = launch_data.get("pieceId")
         if not isinstance(piece_id, str):
             return jsonify({"error": "invalid_action", "reason": "Invalid pieceId"}), 400
-
         simulation = load_simulation(room)
         mode = "drag" if "drag" in launch_data else "vector"
         try:
@@ -191,42 +216,18 @@ def create_app(config_object=DevelopmentConfig):
                 supplied = {"vx": vx, "vy": vy}
         except (TypeError, ValueError):
             return jsonify({"error": "invalid_action", "reason": "Launch intent must be numeric"}), 400
-
         if not valid:
-            entry = json.dumps({
-                "guestId": guest_id,
-                "team": team,
-                "pieceId": piece_id,
-                **supplied,
-                "reason": reason,
-            }, separators=(",", ":"), sort_keys=True)
+            entry = json.dumps({"guestId": guest_id, "team": team, "pieceId": piece_id, **supplied, "reason": reason}, separators=(",", ":"), sort_keys=True)
             room.invalid_action_log = entry if not room.invalid_action_log else room.invalid_action_log + "\n" + entry
             db.session.commit()
             status = 403 if reason in {"not_your_turn", "piece_not_owned", "piece_dead", "match_over"} else 400
             return jsonify({"error": "invalid_action", "reason": reason}), status
-
         events = simulation.advance_until_settled()
         snapshot = persist_simulation(room, simulation, events)
-
-        shot_log = json.dumps({
-            "guestId": guest_id,
-            "team": team,
-            "pieceId": piece_id,
-            **supplied,
-            "events": events,
-            "gameOver": simulation.game_over,
-        }, separators=(",", ":"), sort_keys=True)
+        shot_log = json.dumps({"guestId": guest_id, "team": team, "pieceId": piece_id, **supplied, "events": events, "gameOver": simulation.game_over}, separators=(",", ":"), sort_keys=True)
         room.match_log = shot_log if not room.match_log else room.match_log + "\n" + shot_log
         db.session.commit()
-
-        return jsonify({
-            "status": "success",
-            "state": snapshot,
-            "events": events,
-            "nextTurn": simulation.current_team,
-            "gameOver": simulation.game_over,
-            "winner": winner_from_snapshot(snapshot),
-        }), 200
+        return jsonify({"status": "success", "state": snapshot, "events": events, "nextTurn": simulation.current_team, "gameOver": simulation.game_over, "winner": winner_from_snapshot(snapshot)}), 200
 
     @application.get("/api/rooms/<room_code>/gameover")
     def get_gameover_state(room_code):
@@ -256,18 +257,13 @@ def create_app(config_object=DevelopmentConfig):
             return jsonify({"error": "room_not_found"}), 404
         if len(room.players) < 2:
             return jsonify({"error": "insufficient_players"}), 400
-
         simulation = AuthoritativeSimulation.new_match()
         snapshot = simulation.snapshot()
         room.status = "active"
         room.current_turn = "white"
         room.canonical_state = json.dumps(snapshot, separators=(",", ":"), sort_keys=True)
         room.last_physics_state = room.canonical_state
-        room.last_hp_state = json.dumps(
-            {piece["id"]: {"hp": piece["hp"], "alive": piece["alive"]} for piece in snapshot["pieces"]},
-            separators=(",", ":"),
-            sort_keys=True,
-        )
+        room.last_hp_state = json.dumps({piece["id"]: {"hp": piece["hp"], "alive": piece["alive"]} for piece in snapshot["pieces"]}, separators=(",", ":"), sort_keys=True)
         room.last_destruction_event = None
         room.last_gameover_event = None
         room.match_log = None
@@ -281,14 +277,12 @@ def create_app(config_object=DevelopmentConfig):
         guest_id = payload.get("guestId")
         if not isinstance(guest_id, str) or not guest_id.strip() or len(guest_id) > 100:
             return jsonify({"error": "invalid_guest_id", "message": "A valid guestId is required"}), 400
-
         from game.models import Room, User
         room = Room.query.filter_by(room_code=room_code).first()
         if not room:
             return jsonify({"error": "room_not_found"}), 404
         if room.status != "waiting":
             return jsonify({"error": "room_not_joinable"}), 409
-
         user = User.query.filter_by(guest_id=guest_id.strip()).first()
         if not user:
             user = User(guest_id=guest_id.strip())
@@ -298,7 +292,6 @@ def create_app(config_object=DevelopmentConfig):
             return jsonify(room.to_dict()), 200
         if len(room.players) >= 2:
             return jsonify({"error": "room_full"}), 403
-
         user.room = room
         if not room.black_player_id:
             room.black_player_id = user.id
@@ -316,15 +309,7 @@ def create_app(config_object=DevelopmentConfig):
         user = User.query.filter_by(guest_id=guest_id).first()
         if not user or user.room_id != room.id:
             return jsonify({"error": "unauthorized"}), 403
-        return jsonify({
-            "status": "reconnected",
-            "room": room.to_dict(),
-            "state": room.last_physics_state,
-            "hpState": room.last_hp_state,
-            "destructionEvent": room.last_destruction_event,
-            "gameOverEvent": room.last_gameover_event,
-            "currentTurn": room.current_turn,
-        }), 200
+        return jsonify({"status": "reconnected", "room": room.to_dict(), "state": room.last_physics_state, "hpState": room.last_hp_state, "destructionEvent": room.last_destruction_event, "gameOverEvent": room.last_gameover_event, "currentTurn": room.current_turn}), 200
 
     @application.post("/api/rooms/<room_code>/rematch")
     def rematch_room(room_code):
@@ -337,18 +322,13 @@ def create_app(config_object=DevelopmentConfig):
         user = User.query.filter_by(guest_id=guest_id).first()
         if not user or user.room_id != room.id:
             return jsonify({"error": "unauthorized"}), 403
-
         simulation = AuthoritativeSimulation.new_match()
         snapshot = simulation.snapshot()
         room.status = "active"
         room.current_turn = "white"
         room.canonical_state = json.dumps(snapshot, separators=(",", ":"), sort_keys=True)
         room.last_physics_state = room.canonical_state
-        room.last_hp_state = json.dumps(
-            {piece["id"]: {"hp": piece["hp"], "alive": piece["alive"]} for piece in snapshot["pieces"]},
-            separators=(",", ":"),
-            sort_keys=True,
-        )
+        room.last_hp_state = json.dumps({piece["id"]: {"hp": piece["hp"], "alive": piece["alive"]} for piece in snapshot["pieces"]}, separators=(",", ":"), sort_keys=True)
         room.last_destruction_event = None
         room.last_gameover_event = None
         room.match_log = None
@@ -382,7 +362,7 @@ def create_app(config_object=DevelopmentConfig):
 
     @application.errorhandler(413)
     def request_too_large(error):
-        return jsonify({"error": "request_too_large", "message": "Request payload is too large"}), 413
+        return jsonify({"error": "request_too_large", "message": "Request payload too large"}), 413
 
     @application.after_request
     def add_security_headers(response):
