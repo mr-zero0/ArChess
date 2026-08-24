@@ -30,6 +30,17 @@ def create_app(config_object=DevelopmentConfig):
             return AuthoritativeSimulation.from_snapshot(json.loads(room.canonical_state))
         return AuthoritativeSimulation.new_match()
 
+    def winner_from_snapshot(snapshot):
+        white_dead = next((not p["alive"] or p["hp"] <= 0 for p in snapshot["pieces"] if p["type"] == "king" and p["team"] == "white"), True)
+        black_dead = next((not p["alive"] or p["hp"] <= 0 for p in snapshot["pieces"] if p["type"] == "king" and p["team"] == "black"), True)
+        if white_dead and black_dead:
+            return snapshot.get("currentTeam", "white")
+        if white_dead:
+            return "black"
+        if black_dead:
+            return "white"
+        return None
+
     def persist_simulation(room, simulation, events=None):
         snapshot = simulation.snapshot()
         serialized = json.dumps(snapshot, separators=(",", ":"), sort_keys=True)
@@ -57,17 +68,6 @@ def create_app(config_object=DevelopmentConfig):
         room.current_turn = simulation.current_team
         db.session.commit()
         return snapshot
-
-    def winner_from_snapshot(snapshot):
-        white_dead = next((not p["alive"] or p["hp"] <= 0 for p in snapshot["pieces"] if p["type"] == "king" and p["team"] == "white"), True)
-        black_dead = next((not p["alive"] or p["hp"] <= 0 for p in snapshot["pieces"] if p["type"] == "king" and p["team"] == "black"), True)
-        if white_dead and black_dead:
-            return snapshot.get("currentTeam", "white")
-        if white_dead:
-            return "black"
-        if black_dead:
-            return "white"
-        return None
 
     def reject_client_state():
         return jsonify({
@@ -165,44 +165,46 @@ def create_app(config_object=DevelopmentConfig):
         if not isinstance(launch_data, dict):
             return jsonify({"error": "invalid_action", "reason": "Missing or invalid launchData"}), 400
         piece_id = launch_data.get("pieceId")
-        vector = launch_data.get("vector")
-        if not isinstance(piece_id, str) or not isinstance(vector, dict):
-            return jsonify({"error": "invalid_action", "reason": "Invalid launch intent"}), 400
-        if "x" not in vector or ("y" not in vector and "z" not in vector):
-            return jsonify({"error": "invalid_action", "reason": "Invalid launch vector format"}), 400
-
-        try:
-            vx = float(vector["x"])
-            vy = float(vector.get("y", vector.get("z")))
-        except (TypeError, ValueError):
-            return jsonify({"error": "invalid_action", "reason": "Launch vector must be numeric"}), 400
-
-        if not math.isfinite(vx) or not math.isfinite(vy):
-            return jsonify({"error": "invalid_action", "reason": "Launch vector must be finite"}), 400
+        if not isinstance(piece_id, str):
+            return jsonify({"error": "invalid_action", "reason": "Invalid pieceId"}), 400
 
         simulation = load_simulation(room)
-        valid, reason = simulation.validate_launch(team, piece_id, vx, vy)
+        mode = "drag" if "drag" in launch_data else "vector"
+        try:
+            if mode == "drag":
+                drag = launch_data.get("drag")
+                if not isinstance(drag, dict) or "x" not in drag or "y" not in drag:
+                    return jsonify({"error": "invalid_action", "reason": "Invalid drag intent"}), 400
+                dx = float(drag["x"])
+                dy = float(drag["y"])
+                valid, reason = simulation.launch_intent(team, piece_id, dx, dy)
+                supplied = {"dx": dx, "dy": dy}
+            else:
+                vector = launch_data.get("vector")
+                if not isinstance(vector, dict) or "x" not in vector or ("y" not in vector and "z" not in vector):
+                    return jsonify({"error": "invalid_action", "reason": "Invalid launch intent"}), 400
+                vx = float(vector["x"])
+                vy = float(vector.get("y", vector.get("z")))
+                valid, reason = simulation.validate_launch(team, piece_id, vx, vy)
+                if valid:
+                    valid, reason = simulation.launch(team, piece_id, vx, vy)
+                supplied = {"vx": vx, "vy": vy}
+        except (TypeError, ValueError):
+            return jsonify({"error": "invalid_action", "reason": "Launch intent must be numeric"}), 400
+
         if not valid:
-            room.invalid_action_log = json.dumps({
+            entry = json.dumps({
                 "guestId": guest_id,
                 "team": team,
                 "pieceId": piece_id,
-                "vx": vx,
-                "vy": vy,
-                "reason": reason,
-            }, separators=(",", ":"), sort_keys=True) if not room.invalid_action_log else room.invalid_action_log + "\n" + json.dumps({
-                "guestId": guest_id,
-                "team": team,
-                "pieceId": piece_id,
-                "vx": vx,
-                "vy": vy,
+                **supplied,
                 "reason": reason,
             }, separators=(",", ":"), sort_keys=True)
+            room.invalid_action_log = entry if not room.invalid_action_log else room.invalid_action_log + "\n" + entry
             db.session.commit()
             status = 403 if reason in {"not_your_turn", "piece_not_owned", "piece_dead", "match_over"} else 400
             return jsonify({"error": "invalid_action", "reason": reason}), status
 
-        simulation.launch(team, piece_id, vx, vy)
         events = simulation.advance_until_settled()
         snapshot = persist_simulation(room, simulation, events)
 
@@ -210,8 +212,7 @@ def create_app(config_object=DevelopmentConfig):
             "guestId": guest_id,
             "team": team,
             "pieceId": piece_id,
-            "vx": vx,
-            "vy": vy,
+            **supplied,
             "events": events,
             "gameOver": simulation.game_over,
         }, separators=(",", ":"), sort_keys=True)
@@ -272,7 +273,6 @@ def create_app(config_object=DevelopmentConfig):
         room.match_log = None
         room.invalid_action_log = None
         db.session.commit()
-
         return jsonify({"room": room.to_dict(), "state": snapshot}), 200
 
     @application.post("/api/rooms/<room_code>/join")
