@@ -127,7 +127,8 @@ Implemented:
 ✅ desktop/tablet/mobile viewport matrix  
 ✅ pointer/touch coverage  
 ✅ performance benchmark harness  
-✅ browser-level authoritative multiplayer scenario coverage
+✅ browser-level authoritative multiplayer scenario coverage  
+✅ dedicated `PhysicsEngine` regression coverage
 
 Current acceptance gate:
 
@@ -195,10 +196,11 @@ Current acceptance gate:
 - Launch validation: turn, ownership, existence, alive state, finite vector, speed limit.
 - Server calculates launch velocity from drag intent; client does not choose canonical velocity in the primary browser path.
 - Deterministic fixed-step server physics.
-- Boundary collision and friction.
+- Radius-aware boundary collision and friction.
 - Piece-piece collision and mass-based impulse.
 - Damage calculation, clamp, cooldown and destruction.
 - Canonical snapshots + persisted HP state.
+- `game/physics/engine.py` now performs substepped deterministic integration, collisions, damage/cooldown and full-state reconciliation over `GameState`/`PieceState`.
 - Invalid-client-action logging.
 - Flask-Limiter rate limiting.
 - Server-generated game-over result flow.
@@ -208,7 +210,7 @@ Current acceptance gate:
 
 - Fresh CI browser verification of the authoritative flow.
 - Replay checksum is currently not a cryptographic/deterministic match hash.
-- Multi-client reconciliation behavior needs dedicated drift tests.
+- Multi-client reconciliation behavior needs dedicated network/drift tests.
 
 ### Explicit security rule
 
@@ -311,7 +313,10 @@ Do not begin ranked matchmaking until the private authoritative loop is verified
 | Authoritative API integration | ✅ present |
 | Authoritative API regression tests | ✅ present |
 | Browser authority bridge | ✅ implemented |
-| Fresh CI execution after latest authority changes | 🟡 pending observation |
+| `PhysicsEngine` deterministic integration | ✅ implemented |
+| `PhysicsEngine` collision/damage/cooldown | ✅ implemented |
+| `PhysicsEngine` full-state reconciliation | ✅ implemented |
+| Fresh CI execution after latest physics changes | 🟡 pending observation |
 | Browser multiplayer end-to-end | 🟡 pending observation |
 | Multi-client drift/reconciliation | 🟡 pending |
 | Replay integrity checksum | 🟡 pending |
@@ -329,6 +334,8 @@ Do not begin ranked matchmaking until the private authoritative loop is verified
 - `b9cab1e` — integrated drag-intent support into Flask multiplayer API.
 - `2daa322` — added browser coverage for authoritative multiplayer flow.
 - `f53744e` — corrected browser flow test sequencing.
+- `57549a5` — fixed `PhysicsEngine` deterministic integration/collision/reconciliation.
+- `e988acc` — added `PhysicsEngine` regression tests.
 
 ## 15. Rules for Future Updates
 
