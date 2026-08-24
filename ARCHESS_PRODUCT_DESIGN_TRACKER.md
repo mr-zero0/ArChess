@@ -4,7 +4,7 @@
 **Stack:** Python + Flask + HTML/CSS/JS + Three.js  
 **Platform:** Browser / PWA  
 **Current code release:** `v0.5.2`  
-**Current engineering focus:** authoritative multiplayer + client reconciliation
+**Current engineering focus:** authoritative multiplayer + end-to-end verification
 
 > ArChess is a turn-based physics combat game played with chess armies: pull a piece back, launch it across the board, ricochet into enemy formations, create chain reactions, and destroy the enemy King.
 
@@ -50,8 +50,8 @@ A feature is only ✅ when implementation exists, normal-use errors are addresse
 | 9 | Automated testing, QA, performance | 🟡 implementation complete; fresh CI execution pending |
 | 10 | Production-ready Flask | ✅ 12/12 |
 | 11 | Accounts, profiles, persistence | 🟡 6/10 |
-| 12 | Private online multiplayer MVP | 🟡 API foundation complete; browser end-to-end integration pending |
-| 13 | Authoritative simulation, anti-cheat | 🟡 8/10 core items complete; client reconciliation/hash verification pending |
+| 12 | Private online multiplayer MVP | 🟡 server API + browser authority bridge implemented; end-to-end verification pending |
+| 13 | Authoritative simulation, anti-cheat | 🟡 8/10 core items complete; client/hash verification pending |
 | 14 | Public matchmaking, ranked | ⬜ 0/15 |
 | 15 | Progression, cosmetics | ✅ implementation exists; needs product-surface integration |
 | 16 | Analytics, telemetry, balance dashboard | ⬜ 0/3 |
@@ -126,7 +126,8 @@ Implemented:
 ✅ Chromium / Firefox / WebKit browser matrix definitions  
 ✅ desktop/tablet/mobile viewport matrix  
 ✅ pointer/touch coverage  
-✅ performance benchmark harness
+✅ performance benchmark harness  
+✅ browser-level authoritative multiplayer scenario coverage
 
 Current acceptance gate:
 
@@ -165,25 +166,26 @@ Still TODO:
 
 ## 9. STEP 12 — Private Multiplayer
 
-Implemented server API foundation:
+Implemented:
 
 ✅ room creation  
 ✅ room join  
 ✅ team assignment  
 ✅ match start  
 ✅ server turn state  
-✅ launch endpoint  
-✅ state synchronization API  
-✅ HP state API  
-✅ destruction state API  
-✅ game-over state API  
+✅ authoritative launch endpoint  
+✅ canonical state synchronization GET  
+✅ server-generated HP state  
+✅ server-generated destruction state  
+✅ server-generated game-over state  
 ✅ reconnect  
 ✅ rematch  
-✅ room lifecycle handling
+✅ room lifecycle handling  
+✅ browser authority bridge: start/join/create, server-issued piece IDs, server launch intent, snapshot application
 
-Current gap:
+Current acceptance gate:
 
-🟡 Browser multiplayer client is not yet fully switched to consume the new authoritative server snapshot and server-issued piece IDs.
+🟡 End-to-end browser execution across the full multiplayer flow must be observed in CI before promotion to ✅.
 
 ## 10. STEP 13 — Authoritative Simulation / Anti-Cheat
 
@@ -191,6 +193,7 @@ Current gap:
 
 - Canonical server match state.
 - Launch validation: turn, ownership, existence, alive state, finite vector, speed limit.
+- Server calculates launch velocity from drag intent; client does not choose canonical velocity in the primary browser path.
 - Deterministic fixed-step server physics.
 - Boundary collision and friction.
 - Piece-piece collision and mass-based impulse.
@@ -199,11 +202,13 @@ Current gap:
 - Invalid-client-action logging.
 - Flask-Limiter rate limiting.
 - Server-generated game-over result flow.
+- Browser authority bridge applies canonical snapshots returned by the server.
 
 ### 🟡 Still open
 
-- Client reconciliation must consume server snapshots in the browser multiplayer flow.
+- Fresh CI browser verification of the authoritative flow.
 - Replay checksum is currently not a cryptographic/deterministic match hash.
+- Multi-client reconciliation behavior needs dedicated drift tests.
 
 ### Explicit security rule
 
@@ -211,27 +216,24 @@ Client-submitted `/sync`, `/hp`, `/destruction`, and `/gameover` POSTs are rejec
 
 ## 11. Immediate Execution Queue
 
-### 🔵 A — Finish multiplayer authority integration
-
-1. Browser receives canonical state and server piece IDs at match start.
-2. Browser sends only launch intent.
-3. Browser applies returned canonical snapshot/events.
-4. Reconnect restores canonical state.
-5. Client-side drift triggers reconciliation from the server snapshot.
-
-### 🔵 B — Finish verification
+### 🔵 A — Verify multiplayer end-to-end
 
 1. Execute complete pytest suite.
 2. Execute Node physics suite.
 3. Execute browser matrix across Chromium/Firefox/WebKit.
-4. Execute performance benchmark.
+4. Verify create → join → start → launch → canonical snapshot → reconnect.
 5. Review CI results before promoting tracker items to ✅.
 
-### 🔵 C — Finish anti-cheat integrity
+### 🔵 B — Finish anti-cheat integrity
 
 1. Replace checksum placeholder with deterministic state hashing.
 2. Hash shot intent + canonical pre/post state.
 3. Add replay-integrity regression tests.
+4. Add multi-client drift/reconciliation tests.
+
+### 🔵 C — Then move to public matchmaking
+
+Do not begin ranked matchmaking until the private authoritative loop is verified in browsers.
 
 ## 12. Later Roadmap
 
@@ -247,7 +249,7 @@ Client-submitted `/sync`, `/hp`, `/destruction`, and `/gameover` POSTs are rejec
 ⬜ placement  
 ⬜ rating updates  
 ⬜ abandonment handling  
-⬜ leaderboard  
+⬜ leaderboard
 
 ### STEP 15 — Progression / Cosmetics
 
@@ -308,8 +310,10 @@ Client-submitted `/sync`, `/hp`, `/destruction`, and `/gameover` POSTs are rejec
 | Authoritative simulation module | ✅ present |
 | Authoritative API integration | ✅ present |
 | Authoritative API regression tests | ✅ present |
+| Browser authority bridge | ✅ implemented |
 | Fresh CI execution after latest authority changes | 🟡 pending observation |
-| Browser multiplayer end-to-end | 🟡 pending |
+| Browser multiplayer end-to-end | 🟡 pending observation |
+| Multi-client drift/reconciliation | 🟡 pending |
 | Replay integrity checksum | 🟡 pending |
 
 ## 14. Recent Implementation Commits
@@ -320,6 +324,11 @@ Client-submitted `/sync`, `/hp`, `/destruction`, and `/gameover` POSTs are rejec
 - `9534018` — added authoritative multiplayer API regression tests.
 - `a863809` — aligned Node package version to `0.5.2`.
 - `0f4afce` — added tracker verification record.
+- `5c4571b` — made server launch input drag-intent based.
+- `07353a3` — connected browser launch flow to multiplayer authority.
+- `b9cab1e` — integrated drag-intent support into Flask multiplayer API.
+- `2daa322` — added browser coverage for authoritative multiplayer flow.
+- `f53744e` — corrected browser flow test sequencing.
 
 ## 15. Rules for Future Updates
 
