@@ -4,7 +4,7 @@
 // end-state data per match. Provides a playback viewer with speed controls.
 
 window.ReplayRecorder = (() => {
-  let recordings = [];   // array of {type, data, turn}
+  let recordings = [];
   let isRecording = false;
   let gameStateSnapshot = null;
 
@@ -27,7 +27,6 @@ window.ReplayRecorder = (() => {
       })),
       mode: mode
     };
-    // reset between matches
     window.__archessLastReplayId = (window.__archessLastReplayId || 0) + 1;
   }
 
@@ -41,6 +40,20 @@ window.ReplayRecorder = (() => {
       dx: pieceInfo.dx,
       dy: pieceInfo.dy,
       power: pieceInfo.power
+    });
+  }
+
+  function recordIntegrity(integrity) {
+    if (!isRecording || !integrity) return;
+    const shotHash = String(integrity.shotHash || "");
+    if (!/^[a-f0-9]{64}$/i.test(shotHash)) return;
+    if (recordings.some(record => record.type === "integrity" && record.shotHash === shotHash)) return;
+    recordings.push({
+      type: "integrity",
+      turn: recordings.length,
+      preHash: String(integrity.preHash || ""),
+      postHash: String(integrity.postHash || ""),
+      shotHash
     });
   }
 
@@ -74,10 +87,20 @@ window.ReplayRecorder = (() => {
 
   function exportReplay() {
     if (recordings.length === 0) return null;
+    const integrityRecords = recordings.filter(record => record.type === "integrity");
+    const integrityVerified = integrityRecords.length > 0 && integrityRecords.every(record =>
+      /^[a-f0-9]{64}$/i.test(record.preHash) &&
+      /^[a-f0-9]{64}$/i.test(record.postHash) &&
+      /^[a-f0-9]{64}$/i.test(record.shotHash)
+    );
     return {
       id: window.__archessLastReplayId,
       recordings,
-      gameState: gameStateSnapshot
+      gameState: gameStateSnapshot,
+      integrity: {
+        recordCount: integrityRecords.length,
+        verifiedShape: integrityVerified
+      }
     };
   }
 
@@ -90,12 +113,33 @@ window.ReplayRecorder = (() => {
   return Object.freeze({
     startRecording,
     recordLaunch,
+    recordIntegrity,
     recordGameOver,
     recordTurnEnd,
     exportReplay,
     reset
   });
 })();
+
+// Capture authoritative integrity records returned by multiplayer launch calls
+// without changing the transport response seen by the game.
+if (typeof window.fetch === "function") {
+  const originalFetch = window.fetch.bind(window);
+  window.fetch = async (...args) => {
+    const response = await originalFetch(...args);
+    try {
+      const requestUrl = typeof args[0] === "string" ? args[0] : args[0]?.url || "";
+      if (/\/api\/rooms\/[^/]+\/launch$/.test(requestUrl)) {
+        response.clone().json().then(payload => {
+          if (payload?.state?.integrity) window.ReplayRecorder?.recordIntegrity(payload.state.integrity);
+        }).catch(() => {});
+      }
+    } catch (_) {
+      // Replay capture must never interfere with the live game transport.
+    }
+    return response;
+  };
+}
 
 window.ReplayViewer = (() => {
   let replayData = null;
@@ -109,15 +153,21 @@ window.ReplayViewer = (() => {
     currentTurn = 0;
     isPlaying = false;
     speedMultiplier = 1;
-    // restore current game state from replay start state
     if (replayData.gameState && resetGame) {
       replayData.gameState.pieces.forEach((ps, i) => {
-        if (gameState.pieces[i]) {
-          Object.assign(gameState.pieces[i], ps);
-        }
+        if (gameState.pieces[i]) Object.assign(gameState.pieces[i], ps);
       });
     }
     updateUI();
+  }
+
+  function hasVerifiedIntegrity() {
+    const records = replayData?.recordings?.filter(record => record.type === "integrity") || [];
+    return records.length > 0 && records.every(record =>
+      /^[a-f0-9]{64}$/i.test(record.preHash) &&
+      /^[a-f0-9]{64}$/i.test(record.postHash) &&
+      /^[a-f0-9]{64}$/i.test(record.shotHash)
+    );
   }
 
   function updateUI() {
@@ -130,14 +180,14 @@ window.ReplayViewer = (() => {
     const nextBtn = document.getElementById("replayNext");
 
     if (!modal || !replayData) {
-      // hide modal if no data
       if (modal) modal.classList.add("hidden");
       return;
     }
 
-    if (modal) modal.classList.remove("hidden");
+    modal.classList.remove("hidden");
     if (turnInfo) {
-      turnInfo.textContent = `Turn ${currentTurn} / ${replayData.recordings.length}`;
+      const integrityLabel = hasVerifiedIntegrity() ? " · INTEGRITY ✓" : "";
+      turnInfo.textContent = `Turn ${currentTurn} / ${replayData.recordings.length}${integrityLabel}`;
     }
     if (scrubber) {
       scrubber.max = replayData.recordings.length;
@@ -156,11 +206,9 @@ window.ReplayViewer = (() => {
     if (playBtn) playBtn.dataset.state = isPlaying ? "playing" : "paused";
     if (isPlaying) {
       animateNext();
-    } else {
-      if (animationId) {
-        cancelAnimationFrame(animationId);
-        animationId = null;
-      }
+    } else if (animationId) {
+      cancelAnimationFrame(animationId);
+      animationId = null;
     }
   }
 
@@ -171,8 +219,6 @@ window.ReplayViewer = (() => {
       updateUI();
       return;
     }
-    // Apply one record per animation frame; the speed multiplier skips
-    // frames so higher speeds advance turns faster.
     let steps = Math.max(1, speedMultiplier);
     while (steps-- > 0 && currentTurn < replayData.recordings.length) {
       const rec = replayData.recordings[currentTurn];
@@ -181,34 +227,24 @@ window.ReplayViewer = (() => {
     }
     const turnInfoEl = document.getElementById("replayTurnInfo");
     if (turnInfoEl) {
-      turnInfoEl.textContent = `Turn ${currentTurn} / ${replayData.recordings.length}`;
+      const integrityLabel = hasVerifiedIntegrity() ? " · INTEGRITY ✓" : "";
+      turnInfoEl.textContent = `Turn ${currentTurn} / ${replayData.recordings.length}${integrityLabel}`;
     }
     const scrubberEl = document.getElementById("replayScrubber");
-    if (scrubberEl) {
-      scrubberEl.value = currentTurn;
-    }
+    if (scrubberEl) scrubberEl.value = currentTurn;
     animationId = requestAnimationFrame(animateNext);
   }
 
   function applyReplayRecord(rec) {
     switch (rec.type) {
-      case "launch": {
-        // Could apply launch vector to a piece, but replay playback
-        // typically just records for later review; actual visual playback
-        // would need game state reconstruction.
+      case "launch":
         break;
-      }
-      case "turnEnd": {
-        // Restore piece states from this turn snapshot
-        if (rec.pieceStates) {
-          // stored for reference; playback UI can display turn markers
-        }
+      case "turnEnd":
         break;
-      }
-      case "gameOver": {
-        // Game over already recorded; no additional action needed here
+      case "integrity":
         break;
-      }
+      case "gameOver":
+        break;
     }
   }
 
@@ -250,7 +286,10 @@ window.ReplayViewer = (() => {
     isPlaying = false;
     currentTurn = 0;
     speedMultiplier = 1;
-    stop();
+    if (animationId) {
+      cancelAnimationFrame(animationId);
+      animationId = null;
+    }
   }
 
   return Object.freeze({

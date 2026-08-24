@@ -13,10 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -24,7 +24,12 @@ jobs:
       - name: Install Python dependencies
         run: python -m pip install -r requirements.txt
 
+      - name: Initialize clean development database
+        run: python -c "from app import app; from extensions import db; ctx = app.app_context(); ctx.push(); db.drop_all(); db.create_all(); ctx.pop()"
+
       - name: Run Python tests
+        env:
+          RUN_BROWSER_MATRIX: "0"
         run: python -m pytest -q
 
       - name: Install Playwright browsers
@@ -45,12 +50,17 @@ jobs:
           exit 1
 
       - name: Run browser matrix
+        env:
+          RUN_BROWSER_MATRIX: "1"
         run: python -m pytest tests/test_browser_matrix.py -q
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "24"
+          package-manager-cache: false
 
       - name: Run JavaScript tests
-        run: npm run test:physics
+        env:
+          NODE_OPTIONS: "--require ./tests/node-dom-shim.cjs"
+        run: node --test tests/physics.test.js tests/replay.test.js

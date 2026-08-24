@@ -2,6 +2,11 @@ from game.game_state import GameState
 from game.physics.engine import PhysicsEngine
 
 
+def align_piece_ids(server, client):
+    for server_piece, client_piece in zip(server.pieces, client.pieces):
+        client_piece.id = server_piece.id
+
+
 def test_engine_keeps_pieces_inside_radius_aware_board():
     state = GameState.new()
     piece = state.pieces[0]
@@ -48,6 +53,7 @@ def test_engine_collision_cooldown_prevents_repeated_damage():
 def test_reconcile_checks_turn_piece_set_hp_and_velocity():
     server = GameState.new()
     client = GameState.new()
+    align_piece_ids(server, client)
     engine = PhysicsEngine()
 
     assert engine.reconcile(server, client) == (True, None)
@@ -58,3 +64,12 @@ def test_reconcile_checks_turn_piece_set_hp_and_velocity():
     client.current_player = server.current_player
     client.pieces[0].hp -= 1
     assert engine.reconcile(server, client)[0] is False
+
+
+def test_reconcile_detects_velocity_drift():
+    server = GameState.new()
+    client = GameState.new()
+    align_piece_ids(server, client)
+    client.pieces[0].vx = 1.0
+
+    assert PhysicsEngine().reconcile(server, client, drift_threshold=0.1)[0] is False

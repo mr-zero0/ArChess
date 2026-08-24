@@ -1,5 +1,7 @@
+from datetime import datetime, timezone
+
 from extensions import db
-from datetime import datetime
+
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -7,8 +9,8 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     guest_id = db.Column(db.String(100), unique=True, nullable=False, index=True)
     room_id = db.Column(db.Integer, db.ForeignKey('rooms.id'), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
     # Ranked/Matchmaking stats
     mmr = db.Column(db.Integer, default=1200)
     matches_played = db.Column(db.Integer, default=0)
@@ -17,8 +19,7 @@ class User(db.Model):
     # Progression/Cosmetics
     xp = db.Column(db.Integer, default=0)
     level = db.Column(db.Integer, default=1)
-    cosmetics_owned = db.Column(db.JSON, default=dict) # {"boards": [], "trails": [], "skins": []}
-
+    cosmetics_owned = db.Column(db.JSON, default=dict)
 
     def __repr__(self):
         return f'<User {self.guest_id}>'
