@@ -6,6 +6,28 @@
   const style = document.createElement("style");
   style.id = "archess-presentation-fix-style";
   style.textContent = `
+    #boardWrap { position: relative; isolation: isolate; }
+    #boardWrap #glCanvas,
+    #boardWrap #gameCanvas {
+      position: absolute !important;
+      inset: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      display: block !important;
+    }
+    #boardWrap #glCanvas {
+      z-index: 2 !important;
+      pointer-events: none !important;
+      opacity: 1 !important;
+    }
+    #boardWrap #gameCanvas {
+      z-index: 3 !important;
+      pointer-events: auto !important;
+      opacity: 1 !important;
+      background: transparent !important;
+    }
+    body.archess-3d-ready #boardWrap #gameCanvas { opacity: 0 !important; }
+
     .archess-camera-dock {
       position:absolute;
       top:12px;
@@ -37,8 +59,8 @@
       width:6px;
       height:6px;
       border-radius:999px;
-      background:#475866;
-      box-shadow:0 0 0 transparent;
+      background:#ff677d;
+      box-shadow:0 0 8px rgba(255,103,125,.32);
     }
     .archess-camera-dock[data-ready="true"] .camera-status i {
       background:#71f0a2;
@@ -57,47 +79,27 @@
       cursor:pointer;
       transition:.18s ease;
     }
-    .archess-camera-dock button:hover {
-      border-color:rgba(77,230,255,.42);
-      color:#d8f7ff;
-      background:rgba(24,46,60,.86);
-      transform:translateY(-1px);
+    .archess-camera-dock button:hover { border-color:rgba(77,230,255,.42); color:#d8f7ff; background:rgba(24,46,60,.86); transform:translateY(-1px); }
+    .archess-camera-dock button.active { color:#ecfcff; border-color:rgba(77,230,255,.42); background:linear-gradient(135deg,rgba(77,230,255,.14),rgba(124,105,255,.12)); box-shadow:inset 0 0 0 1px rgba(126,161,255,.08),0 0 18px rgba(77,230,255,.05); }
+    .archess-camera-dock button[data-camera="flip"] { width:30px; padding:0; font-size:13px; letter-spacing:0; }
+    .archess-3d-error {
+      position:absolute;
+      inset:auto 18px 18px 18px;
+      z-index:22;
+      max-width:460px;
+      padding:12px 14px;
+      border:1px solid rgba(255,103,125,.22);
+      border-radius:12px;
+      color:#ffd5dc;
+      background:rgba(45,11,18,.84);
+      backdrop-filter:blur(14px);
+      box-shadow:0 12px 40px rgba(0,0,0,.25);
+      font:700 11px/1.4 Inter,system-ui,sans-serif;
     }
-    .archess-camera-dock button.active {
-      color:#ecfcff;
-      border-color:rgba(77,230,255,.42);
-      background:linear-gradient(135deg,rgba(77,230,255,.14),rgba(124,105,255,.12));
-      box-shadow:inset 0 0 0 1px rgba(126,161,255,.08),0 0 18px rgba(77,230,255,.05);
-    }
-    .archess-camera-dock button[data-camera="flip"] {
-      width:30px;
-      padding:0;
-      font-size:13px;
-      letter-spacing:0;
-    }
-
-    /* Presentation stack: WebGL is visual; the existing 2D canvas remains the input surface. */
-    #boardWrap #glCanvas {
-      z-index:2 !important;
-      pointer-events:none !important;
-      opacity:1 !important;
-      display:block !important;
-    }
-    #boardWrap #gameCanvas {
-      z-index:3 !important;
-      pointer-events:auto !important;
-    }
-    body.archess-3d-ready #boardWrap #gameCanvas {
-      opacity:0 !important;
-      background:transparent !important;
-    }
-
-    /* Remove the obsolete floating product-generation controls. */
     body.archess-final-ui #archessProgressionButton,
     body.archess-final-ui #archessProgressionPanel,
     body.archess-final-ui #archessRankedButton,
     body.archess-final-ui #archessRankedPanel { display:none !important; }
-
     @media (max-width:760px) {
       .archess-camera-dock { top:8px; right:8px; gap:3px; padding:5px; }
       .archess-camera-dock .camera-status { display:none; }
@@ -106,10 +108,53 @@
   `;
   document.head.appendChild(style);
 
+  function hideLegacyFloatingPanels() {
+    const known = ["#archessProgressionButton", "#archessProgressionPanel", "#archessRankedButton", "#archessRankedPanel"];
+    known.forEach((selector) => document.querySelectorAll(selector).forEach((node) => {
+      node.hidden = true;
+      node.style.display = "none";
+    }));
+
+    document.querySelectorAll(".app-shell *").forEach((node) => {
+      if (!(node instanceof HTMLElement)) return;
+      const text = (node.innerText || "").trim().replace(/\s+/g, " ");
+      if (text.length < 240 && /^ONLINE MATCH\b/i.test(text) && /ROOM CODE/i.test(text)) {
+        node.style.display = "none";
+        node.setAttribute("aria-hidden", "true");
+      }
+    });
+  }
+
+  function markReady(scene) {
+    window.__ArChessThreeD = scene;
+    document.body.classList.add("archess-3d-ready");
+    document.getElementById("archess3dError")?.remove();
+    const gl = document.getElementById("glCanvas");
+    const gameCanvas = document.getElementById("gameCanvas");
+    if (gl) { gl.style.display = "block"; gl.style.opacity = "1"; }
+    if (gameCanvas) gameCanvas.style.opacity = "0";
+    const dock = document.getElementById("archessCameraDock");
+    if (dock) dock.dataset.ready = "true";
+    hideLegacyFloatingPanels();
+  }
+
+  function installSceneBridge() {
+    const Scene = window.ThreeDScene;
+    if (!Scene?.prototype) return false;
+    if (Scene.prototype.__archessPresentationBridge) return true;
+
+    const originalRender = Scene.prototype.render;
+    Scene.prototype.__archessPresentationBridge = true;
+    Scene.prototype.render = function presentationRender(game, deltaTime) {
+      markReady(this);
+      return originalRender.call(this, game, deltaTime);
+    };
+    return true;
+  }
+
   function addControls() {
     const wrap = document.getElementById("boardWrap");
     if (!wrap || document.getElementById("archessCameraDock")) return;
-
     const dock = document.createElement("div");
     dock.id = "archessCameraDock";
     dock.className = "archess-camera-dock";
@@ -119,140 +164,52 @@
       <button type="button" data-camera="broadcast" class="active">BROADCAST</button>
       <button type="button" data-camera="top">TOP</button>
       <button type="button" data-camera="cinematic">CINEMATIC</button>
-      <button type="button" data-camera="flip" aria-label="Flip camera">↻</button>
-    `;
+      <button type="button" data-camera="flip" aria-label="Flip camera">↻</button>`;
     wrap.appendChild(dock);
-
     dock.addEventListener("pointerdown", (event) => event.stopPropagation());
     dock.addEventListener("pointermove", (event) => event.stopPropagation());
-    dock.addEventListener("wheel", (event) => event.stopPropagation(), { passive: true });
+    dock.addEventListener("wheel", (event) => event.stopPropagation(), { passive:true });
     dock.addEventListener("click", (event) => {
       const button = event.target.closest("button[data-camera]");
       if (!button) return;
       const scene = window.__ArChessThreeD;
       if (!scene) return;
       const mode = button.dataset.camera;
-      if (mode === "flip") scene.flip();
-      else scene.setPreset(mode);
+      if (mode === "flip") scene.flip?.();
+      else scene.setPreset?.(mode);
       if (mode !== "flip") dock.querySelectorAll("button[data-camera]").forEach((item) => item.classList.toggle("active", item === button));
     });
   }
 
-  function installOrbitBridge() {
+  function showError(message) {
     const wrap = document.getElementById("boardWrap");
-    if (!wrap || wrap.dataset.orbitBridge === "1") return;
-    wrap.dataset.orbitBridge = "1";
-
-    let dragging = false;
-    let pointer = null;
-    let yaw = 0.58;
-    let pitch = 0.68;
-    let radius = 11.8;
-
-    const apply = () => {
-      const scene = window.__ArChessThreeD;
-      if (!scene || !scene.camera) return;
-      const horizontal = Math.cos(pitch) * radius;
-      scene.camera.position.set(Math.sin(yaw) * horizontal, Math.sin(pitch) * radius, Math.cos(yaw) * horizontal);
-      scene.camera.lookAt(0, 0, 0);
-    };
-
-    const syncFromScene = () => {
-      const scene = window.__ArChessThreeD;
-      if (!scene?.camera) return;
-      const c = scene.camera.position;
-      radius = Math.max(7, Math.min(16, Math.hypot(c.x, c.z)));
-      yaw = Math.atan2(c.x, c.z);
-      pitch = Math.max(.38, Math.min(1.42, Math.atan2(c.y, Math.hypot(c.x, c.z))));
-    };
-
-    wrap.addEventListener("contextmenu", (event) => event.preventDefault());
-    wrap.addEventListener("pointerdown", (event) => {
-      if (event.target.closest(".archess-camera-dock")) return;
-      if (event.button !== 2) return;
-      syncFromScene();
-      dragging = true;
-      pointer = { x: event.clientX, y: event.clientY };
-      wrap.setPointerCapture?.(event.pointerId);
-    });
-    wrap.addEventListener("pointermove", (event) => {
-      if (!dragging) return;
-      const dx = event.clientX - pointer.x;
-      const dy = event.clientY - pointer.y;
-      pointer = { x: event.clientX, y: event.clientY };
-      yaw -= dx * .008;
-      pitch = Math.max(.38, Math.min(1.42, pitch + dy * .006));
-      apply();
-    });
-    const stop = () => { dragging = false; pointer = null; };
-    wrap.addEventListener("pointerup", stop);
-    wrap.addEventListener("pointercancel", stop);
-    wrap.addEventListener("wheel", (event) => {
-      if (event.target.closest(".archess-camera-dock")) return;
-      event.preventDefault();
-      syncFromScene();
-      radius = Math.max(7, Math.min(16, radius + event.deltaY * .008));
-      apply();
-    }, { passive:false });
-
-    const timer = setInterval(() => {
-      const scene = window.__ArChessThreeD;
-      if (!scene) return;
-      if (!dragging) syncFromScene();
-      clearInterval(timer);
-    }, 120);
+    if (!wrap || document.getElementById("archess3dError")) return;
+    const error = document.createElement("div");
+    error.id = "archess3dError";
+    error.className = "archess-3d-error";
+    error.textContent = message;
+    wrap.appendChild(error);
   }
 
-  function hideLegacyFloatingPanels() {
-    const known = [
-      "#archessProgressionButton",
-      "#archessProgressionPanel",
-      "#archessRankedButton",
-      "#archessRankedPanel",
-    ];
-    known.forEach((selector) => document.querySelectorAll(selector).forEach((node) => { node.hidden = true; node.style.display = "none"; }));
-
-    // The legacy room panel is generated dynamically in some builds. Hide only
-    // the exact player-facing panel, never the game board or product shell.
-    document.querySelectorAll("body > *:not(.app-shell):not(.archess-ui):not(.noise)").forEach((node) => {
-      if (!(node instanceof HTMLElement)) return;
-      const text = (node.innerText || "").trim().replace(/\s+/g, " ");
-      if (/^ONLINE MATCH\b/i.test(text) && /ROOM CODE/i.test(text)) {
-        node.style.display = "none";
-        node.setAttribute("aria-hidden", "true");
-      }
-    });
-  }
-
-  function waitFor3D() {
-    const sync = () => {
-      const ready = Boolean(window.__ArChessThreeD);
-      const dock = document.getElementById("archessCameraDock");
-      if (dock) {
-        dock.dataset.ready = ready ? "true" : "false";
-        dock.title = ready ? "3D camera controls" : "3D renderer is still initializing";
-      }
-      if (ready) {
-        document.body.classList.add("archess-3d-ready");
-        const gl = document.getElementById("glCanvas");
-        const gameCanvas = document.getElementById("gameCanvas");
-        if (gl) { gl.style.display = "block"; gl.style.opacity = "1"; gl.style.zIndex = "2"; }
-        if (gameCanvas) { gameCanvas.style.opacity = "0"; gameCanvas.style.zIndex = "3"; }
-        hideLegacyFloatingPanels();
-        installOrbitBridge();
-      }
-    };
-    sync();
+  function waitForSceneBridge() {
+    const started = performance.now();
     const timer = setInterval(() => {
-      sync();
-      if (window.__ArChessThreeD) clearInterval(timer);
-    }, 100);
+      if (installSceneBridge()) {
+        clearInterval(timer);
+        if (window.__ArChessThreeD) markReady(window.__ArChessThreeD);
+        return;
+      }
+      if (performance.now() - started > 5000) {
+        clearInterval(timer);
+        showError("3D renderer did not initialize. WebGL2 may be disabled in this browser; see the browser console for the exact error.");
+      }
+    }, 10);
   }
 
   function boot() {
     addControls();
     hideLegacyFloatingPanels();
-    waitFor3D();
+    waitForSceneBridge();
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once:true });
