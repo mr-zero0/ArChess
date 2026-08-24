@@ -6,9 +6,19 @@ import json
 from typing import Any
 
 
+_INTEGRITY_FIELDS = {"integrity"}
+
+
+def _hash_payload(state: dict[str, Any]) -> dict[str, Any]:
+    payload = dict(state)
+    for field in _INTEGRITY_FIELDS:
+        payload.pop(field, None)
+    return payload
+
+
 def canonical_state(state: dict[str, Any]) -> str:
-    """Return a stable JSON representation suitable for hashing."""
-    return json.dumps(state, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    """Return a stable JSON representation excluding self-referential integrity metadata."""
+    return json.dumps(_hash_payload(state), sort_keys=True, separators=(",", ":"), ensure_ascii=True)
 
 
 def state_hash(state: dict[str, Any]) -> str:
@@ -18,5 +28,5 @@ def state_hash(state: dict[str, Any]) -> str:
 
 def shot_hash(pre_state: dict[str, Any], intent: dict[str, Any], post_state: dict[str, Any]) -> str:
     """Bind a launch intent to its canonical pre/post states."""
-    payload = {"intent": intent, "post": post_state, "pre": pre_state}
+    payload = {"intent": intent, "post": _hash_payload(post_state), "pre": _hash_payload(pre_state)}
     return state_hash(payload)
