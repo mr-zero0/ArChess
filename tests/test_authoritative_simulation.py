@@ -1,3 +1,4 @@
+from game.constants import PIECE_STATS
 from game.physics.authoritative import AuthoritativeSimulation, ServerPiece
 
 
@@ -24,8 +25,8 @@ def test_three_piece_collision_chain_reaches_second_collision():
     damaged = [event for event in events if event.get("damaged")]
 
     assert len(damaged) >= 1
-    assert pieces[1].hp < pieces[1].max_hp
-    assert any(piece.id == "c" and piece.hp < piece.max_hp for piece in pieces)
+    assert pieces[1].hp < PIECE_STATS["pawn"]["hp"]
+    assert pieces[2].hp < PIECE_STATS["pawn"]["hp"]
 
 
 def test_collision_cooldown_prevents_stationary_hp_drain():
