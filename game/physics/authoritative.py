@@ -50,18 +50,51 @@ class ServerPiece:
 
 
 class AuthoritativeSimulation:
-    """Small deterministic 2D simulation used by the multiplayer authority."""
+    """Deterministic 2D combat simulation used by multiplayer authority."""
 
     def __init__(self, pieces: list[ServerPiece], current_team: str = "white"):
         self.pieces = pieces
         self.current_team = current_team
         self.sim_time = 0.0
         self._hit_pairs: dict[tuple[str, str], float] = {}
-        self.game_over = False
+        self.game_over = any(p.type == "king" and not p.alive for p in pieces)
+
+    @classmethod
+    def new_match(cls) -> "AuthoritativeSimulation":
+        pieces: list[ServerPiece] = []
+        back_rank = ("rook", "knight", "bishop", "queen", "king", "bishop", "knight", "rook")
+        from uuid import uuid4
+        for col, piece_type in enumerate(back_rank):
+            pieces.append(ServerPiece(str(uuid4()), piece_type, "black", col + 0.5, 0.5))
+            pieces.append(ServerPiece(str(uuid4()), "pawn", "black", col + 0.5, 1.5))
+            pieces.append(ServerPiece(str(uuid4()), "pawn", "white", col + 0.5, 6.5))
+            pieces.append(ServerPiece(str(uuid4()), piece_type, "white", col + 0.5, 7.5))
+        return cls(pieces)
+
+    @classmethod
+    def from_snapshot(cls, snapshot: dict) -> "AuthoritativeSimulation":
+        pieces = []
+        for item in snapshot.get("pieces", []):
+            pieces.append(
+                ServerPiece(
+                    id=str(item["id"]),
+                    type=str(item["type"]),
+                    team=str(item["team"]),
+                    x=float(item["x"]),
+                    y=float(item["y"]),
+                    vx=float(item.get("vx", 0.0)),
+                    vy=float(item.get("vy", 0.0)),
+                    hp=int(item.get("hp", PIECE_STATS[str(item["type"])]["hp"])),
+                    alive=bool(item.get("alive", True)),
+                )
+            )
+        return cls(pieces, str(snapshot.get("currentTeam", "white")))
 
     def validate_launch(self, team: str, piece_id: str, vx: float, vy: float) -> tuple[bool, str | None]:
         if self.game_over:
             return False, "match_over"
+        if team not in {"white", "black"}:
+            return False, "invalid_team"
         if team != self.current_team:
             return False, "not_your_turn"
         piece = next((p for p in self.pieces if p.id == piece_id), None)
@@ -74,6 +107,8 @@ class AuthoritativeSimulation:
         if not math.isfinite(vx) or not math.isfinite(vy):
             return False, "invalid_vector"
         speed = math.hypot(vx, vy)
+        if speed <= 0:
+            return False, "zero_velocity"
         if speed > GAME_CONFIG["maxLaunchSpeed"] + 1e-9:
             return False, "speed_exceeded"
         return True, None
@@ -83,22 +118,34 @@ class AuthoritativeSimulation:
         if not valid:
             return False, reason
         piece = next(p for p in self.pieces if p.id == piece_id)
-        piece.vx = vx
-        piece.vy = vy
+        response = PIECE_STATS[piece.type].get("launchMul", 1.0)
+        piece.vx = vx * response
+        piece.vy = vy * response
         self.current_team = "black" if team == "white" else "white"
         return True, None
+
+    def advance_until_settled(self, dt: float = 1.0 / 120.0, max_steps: int = 720) -> list[dict]:
+        """Advance the canonical shot until motion settles or the safety cap is reached."""
+        events: list[dict] = []
+        for _ in range(max_steps):
+            events.extend(self.step(dt))
+            active = any(p.alive and math.hypot(p.vx, p.vy) >= GAME_CONFIG["minVelocity"] for p in self.pieces)
+            if not active or self.game_over:
+                break
+        return events
 
     def step(self, dt: float) -> list[dict]:
         if dt <= 0 or not math.isfinite(dt):
             raise ValueError("dt must be positive and finite")
         self.sim_time += dt
         events: list[dict] = []
+
         for piece in self.pieces:
             if not piece.alive:
                 continue
             piece.x += piece.vx * dt
             piece.y += piece.vy * dt
-            decay = GAME_CONFIG["friction"] ** (dt * 60.0)
+            decay = PIECE_STATS[piece.type]["friction"] ** (dt * 60.0)
             piece.vx *= decay
             piece.vy *= decay
             self._bounce(piece)
@@ -180,13 +227,25 @@ class AuthoritativeSimulation:
         damage_b = self._damage(a, impact)
         a.hp = max(0, a.hp - damage_a)
         b.hp = max(0, b.hp - damage_b)
+        destroyed = []
         if a.hp == 0:
             a.alive = False
+            a.vx = a.vy = 0.0
+            destroyed.append(a.id)
         if b.hp == 0:
             b.alive = False
+            b.vx = b.vy = 0.0
+            destroyed.append(b.id)
         if any(p.type == "king" and not p.alive for p in self.pieces):
             self.game_over = True
-        return {"type": "collision", "impact": impact, "damaged": True, "damageToA": damage_a, "damageToB": damage_b}
+        return {
+            "type": "collision",
+            "impact": impact,
+            "damaged": True,
+            "damageToA": damage_a,
+            "damageToB": damage_b,
+            "destroyed": destroyed,
+        }
 
     @staticmethod
     def _damage(attacker: ServerPiece, impact: float) -> int:
@@ -199,8 +258,18 @@ class AuthoritativeSimulation:
             "currentTeam": self.current_team,
             "gameOver": self.game_over,
             "pieces": [
-                {"id": p.id, "type": p.type, "team": p.team, "x": p.x, "y": p.y,
-                 "vx": p.vx, "vy": p.vy, "hp": p.hp, "alive": p.alive}
+                {
+                    "id": p.id,
+                    "type": p.type,
+                    "team": p.team,
+                    "x": p.x,
+                    "y": p.y,
+                    "vx": p.vx,
+                    "vy": p.vy,
+                    "hp": p.hp,
+                    "maxHp": PIECE_STATS[p.type]["hp"],
+                    "alive": p.alive,
+                }
                 for p in self.pieces
             ],
         }
