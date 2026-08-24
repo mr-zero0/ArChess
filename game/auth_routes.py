@@ -4,6 +4,7 @@ import re
 import secrets
 
 from flask import Blueprint, current_app, jsonify, redirect, request, session, url_for
+from sqlalchemy import func, or_
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from extensions import db
@@ -117,9 +118,9 @@ def signup():
     if avatar_key not in AVATAR_PRESETS:
         avatar_key = 'knight'
     from game.models import User
-    if User.query.filter_by(username=username).first():
+    if User.query.filter(func.lower(User.username) == username.lower()).first():
         return jsonify({'error': 'username_taken'}), 409
-    if User.query.filter_by(email=email).first():
+    if User.query.filter(func.lower(User.email) == email.lower()).first():
         return jsonify({'error': 'email_taken'}), 409
     user = User.query.filter_by(guest_id=guest_id.strip()).first() if isinstance(guest_id, str) and guest_id.strip() else None
     if user and user.email:
@@ -145,12 +146,13 @@ def login():
     if not require_csrf():
         return jsonify({'error': 'csrf_required'}), 403
     payload = request.get_json(silent=True) or {}
-    identifier = (payload.get('identifier') or '').strip().lower()
+    raw_identifier = (payload.get('identifier') or '').strip()
+    identifier = raw_identifier.lower()
     password = payload.get('password')
     if not identifier or not isinstance(password, str):
         return jsonify({'error': 'invalid_credentials'}), 401
     from game.models import User
-    user = User.query.filter((User.email == identifier) | (User.username == identifier)).first()
+    user = User.query.filter(or_(func.lower(User.email) == identifier, func.lower(User.username) == identifier)).first()
     if user is None or not user.password_hash or not check_password_hash(user.password_hash, password):
         return jsonify({'error': 'invalid_credentials'}), 401
     session.clear(); session.permanent = True; session['user_id'] = user.id; session['csrf_token'] = secrets.token_urlsafe(32)
@@ -185,12 +187,12 @@ def google_callback():
     if not google_sub or not email:
         return jsonify({'error': 'google_identity_invalid'}), 400
     from game.models import User
-    user = User.query.filter_by(google_sub=str(google_sub)).first() or User.query.filter_by(email=email).first()
+    user = User.query.filter_by(google_sub=str(google_sub)).first() or User.query.filter(func.lower(User.email) == email.lower()).first()
     if user is None:
         user = User(guest_id=f'account-{secrets.token_urlsafe(18)}', email=email); db.session.add(user)
     if not user.username:
         base = re.sub(r'[^A-Za-z0-9_]', '', userinfo.get('name') or email.split('@')[0])[:18] or 'player'; candidate = base; suffix = 1
-        while User.query.filter(User.username == candidate, User.id != user.id).first():
+        while User.query.filter(func.lower(User.username) == candidate.lower(), User.id != user.id).first():
             suffix += 1; candidate = f'{base[:18-len(str(suffix))]}{suffix}'
         user.username = candidate
     user.google_sub = str(google_sub); user.auth_provider = 'google'
