@@ -41,3 +41,10 @@ class PieceState:
         data = asdict(self)
         data["maxHp"] = data.pop("max_hp")
         return data
+
+@dataclass(slots=True)
+class CosmeticItem:
+    id: str
+    category: str # "board", "trail", "skin"
+    name: str
+    rarity: str # "common", "rare", "legendary"

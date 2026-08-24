@@ -28,6 +28,8 @@ GAME_CONFIG = {
     "collisionCooldown": 0.16,
     "settleDelay": 0.34,
     "comboWindow": 1.2,
+    "version": "1.0.0",
 }
+
 
 BACK_RANK = ("rook", "knight", "bishop", "queen", "king", "bishop", "knight", "rook")

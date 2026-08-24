@@ -14,6 +14,11 @@ class User(db.Model):
     matches_played = db.Column(db.Integer, default=0)
     wins = db.Column(db.Integer, default=0)
     losses = db.Column(db.Integer, default=0)
+    # Progression/Cosmetics
+    xp = db.Column(db.Integer, default=0)
+    level = db.Column(db.Integer, default=1)
+    cosmetics_owned = db.Column(db.JSON, default=dict) # {"boards": [], "trails": [], "skins": []}
+
 
     def __repr__(self):
         return f'<User {self.guest_id}>'
