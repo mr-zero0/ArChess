@@ -139,7 +139,10 @@ class AuthoritativeSimulation:
         vector, reason = self.resolve_drag(team, piece_id, dx, dy)
         if vector is None:
             return False, reason
-        vx, vy = vector
+        return self.launch(team, piece_id, vector[0], vector[1])
+
+    def launch(self, team: str, piece_id: str, vx: float, vy: float) -> tuple[bool, str | None]:
+        """Apply a pre-resolved velocity; kept for API compatibility with legacy clients/tests."""
         valid, reason = self.validate_launch(team, piece_id, vx, vy)
         if not valid:
             return False, reason
