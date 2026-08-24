@@ -29,13 +29,7 @@ def configure_auth(app):
     app.extensions['archess_auth_configured'] = True
     if OAuth and app.config.get('GOOGLE_CLIENT_ID') and app.config.get('GOOGLE_CLIENT_SECRET'):
         oauth = OAuth(app)
-        oauth.register(
-            name='google',
-            client_id=app.config['GOOGLE_CLIENT_ID'],
-            client_secret=app.config['GOOGLE_CLIENT_SECRET'],
-            server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
-            client_kwargs={'scope': 'openid email profile'},
-        )
+        oauth.register(name='google', client_id=app.config['GOOGLE_CLIENT_ID'], client_secret=app.config['GOOGLE_CLIENT_SECRET'], server_metadata_url='https://accounts.google.com/.well-known/openid-configuration', client_kwargs={'scope': 'openid email profile'})
         app.extensions['archess_google_oauth'] = oauth
 
 
@@ -83,9 +77,7 @@ def user_payload(user, private=False):
     payload = user.public_dict()
     payload.update({'authenticated': True, 'csrfToken': csrf_token()})
     if private:
-        payload['email'] = user.email
-        payload['googleLinked'] = bool(user.google_sub)
-        payload['authProvider'] = user.auth_provider
+        payload.update({'email': user.email, 'googleLinked': bool(user.google_sub), 'authProvider': user.auth_provider, 'guestId': user.guest_id})
     return payload
 
 
@@ -143,10 +135,7 @@ def signup():
     user.avatar_url = avatar_url.strip() if isinstance(avatar_url, str) and avatar_url.strip() else None
     user.last_seen = datetime.now(timezone.utc)
     db.session.commit()
-    session.clear()
-    session.permanent = True
-    session['user_id'] = user.id
-    session['csrf_token'] = secrets.token_urlsafe(32)
+    session.clear(); session.permanent = True; session['user_id'] = user.id; session['csrf_token'] = secrets.token_urlsafe(32)
     return jsonify(user_payload(user, private=True)), 201
 
 
@@ -164,12 +153,8 @@ def login():
     user = User.query.filter((User.email == identifier) | (User.username == identifier)).first()
     if user is None or not user.password_hash or not check_password_hash(user.password_hash, password):
         return jsonify({'error': 'invalid_credentials'}), 401
-    session.clear()
-    session.permanent = True
-    session['user_id'] = user.id
-    session['csrf_token'] = secrets.token_urlsafe(32)
-    user.last_seen = datetime.now(timezone.utc)
-    db.session.commit()
+    session.clear(); session.permanent = True; session['user_id'] = user.id; session['csrf_token'] = secrets.token_urlsafe(32)
+    user.last_seen = datetime.now(timezone.utc); db.session.commit()
     return jsonify(user_payload(user, private=True)), 200
 
 
@@ -177,8 +162,7 @@ def login():
 def logout():
     if not require_csrf():
         return jsonify({'error': 'csrf_required'}), 403
-    session.clear()
-    session.permanent = False
+    session.clear(); session.permanent = False
     return jsonify({'authenticated': False}), 200
 
 
@@ -196,36 +180,24 @@ def google_callback():
     oauth = current_app.extensions.get('archess_google_oauth')
     if oauth is None:
         return jsonify({'error': 'google_oauth_not_configured'}), 503
-    token = oauth.google.authorize_access_token()
-    userinfo = token.get('userinfo') or {}
-    google_sub = userinfo.get('sub')
-    email = normalize_email(userinfo.get('email'))
+    token = oauth.google.authorize_access_token(); userinfo = token.get('userinfo') or {}
+    google_sub = userinfo.get('sub'); email = normalize_email(userinfo.get('email'))
     if not google_sub or not email:
         return jsonify({'error': 'google_identity_invalid'}), 400
     from game.models import User
     user = User.query.filter_by(google_sub=str(google_sub)).first() or User.query.filter_by(email=email).first()
     if user is None:
-        user = User(guest_id=f'account-{secrets.token_urlsafe(18)}', email=email)
-        db.session.add(user)
+        user = User(guest_id=f'account-{secrets.token_urlsafe(18)}', email=email); db.session.add(user)
     if not user.username:
-        base = re.sub(r'[^A-Za-z0-9_]', '', userinfo.get('name') or email.split('@')[0])[:18] or 'player'
-        candidate = base
-        suffix = 1
+        base = re.sub(r'[^A-Za-z0-9_]', '', userinfo.get('name') or email.split('@')[0])[:18] or 'player'; candidate = base; suffix = 1
         while User.query.filter(User.username == candidate, User.id != user.id).first():
-            suffix += 1
-            candidate = f'{base[:18-len(str(suffix))]}{suffix}'
+            suffix += 1; candidate = f'{base[:18-len(str(suffix))]}{suffix}'
         user.username = candidate
-    user.google_sub = str(google_sub)
-    user.auth_provider = 'google'
+    user.google_sub = str(google_sub); user.auth_provider = 'google'
     if not user.avatar_url:
-        picture = userinfo.get('picture')
-        user.avatar_url = picture if isinstance(picture, str) and picture.startswith('https://') else None
-    user.last_seen = datetime.now(timezone.utc)
-    db.session.commit()
-    session.clear()
-    session.permanent = True
-    session['user_id'] = user.id
-    session['csrf_token'] = secrets.token_urlsafe(32)
+        picture = userinfo.get('picture'); user.avatar_url = picture if isinstance(picture, str) and picture.startswith('https://') else None
+    user.last_seen = datetime.now(timezone.utc); db.session.commit()
+    session.clear(); session.permanent = True; session['user_id'] = user.id; session['csrf_token'] = secrets.token_urlsafe(32)
     return redirect('/profile')
 
 
