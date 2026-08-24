@@ -192,7 +192,7 @@ import * as THREE from "three";
       let e=entries.get(piece.id);
       if(!e){
         const pal=palettes[root.dataset.theme]||palettes.wood;
-        const mat=material(piece.team==="white"?pal.white:pal.black,piece.team==="white"?.18:.48,.28);
+        const mat=material(piece.team==="white"?pal.white:pal.black,(piece.team === "white" ? .18 : .48),.28);
         const group=makePiece(piece.type,mat); group.scale.setScalar(piece.radius/.30*1.18); pieceLayer.add(group);
         const halo=new THREE.Mesh(new THREE.RingGeometry(.34,.47,32),new THREE.MeshBasicMaterial({color:piece.team==="white"?0x8defff:0xff7187,transparent:true,opacity:.0,side:THREE.DoubleSide})); halo.rotation.x=-Math.PI/2; halo.position.y=.035; group.add(halo);
         e={piece,group,halo,dead:0,seed:Math.random()*Math.PI*2}; entries.set(piece.id,e);
@@ -207,7 +207,7 @@ import * as THREE from "three";
       e.group.position.z += (p.z-e.group.position.z)*Math.min(1,dt*16);
       e.group.position.y += (lift+bob-e.group.position.y)*Math.min(1,dt*13);
       const lean=Math.min(.32,speed*.018); e.group.rotation.x += ((piece.vy>0?1:-1)*lean-e.group.rotation.x)*Math.min(1,dt*9); e.group.rotation.z += ((piece.vx>0?-1:1)*lean-e.group.rotation.z)*Math.min(1,dt*9);
-      const selected=game.selectedPiece?.id===piece.id&&game.phase==="aim"; e.halo.material.opacity=selected?.62:0; if(selected)e.halo.scale.setScalar(1+Math.sin(performance.now()*.008)*.08);
+      const selected=game.selectedPiece?.id===piece.id&&game.phase==="aim"; e.halo.material.opacity=(selected ? .62 : 0); if(selected)e.halo.scale.setScalar(1+Math.sin(performance.now()*.008)*.08);
       if(!piece.alive){e.dead+=dt; e.group.rotation.y+=dt*5; e.group.position.y+=dt*.7; e.group.scale.multiplyScalar(Math.max(0,1-dt*2.2)); if(e.dead>.65){pieceLayer.remove(e.group);entries.delete(piece.id);}}
     }
     for(const [id,e] of entries){if(!seen.has(id)&&e.dead<=0){pieceLayer.remove(e.group);entries.delete(id);}}
