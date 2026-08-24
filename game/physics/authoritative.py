@@ -75,16 +75,17 @@ class AuthoritativeSimulation:
     def from_snapshot(cls, snapshot: dict) -> "AuthoritativeSimulation":
         pieces = []
         for item in snapshot.get("pieces", []):
+            piece_type = str(item["type"])
             pieces.append(
                 ServerPiece(
                     id=str(item["id"]),
-                    type=str(item["type"]),
+                    type=piece_type,
                     team=str(item["team"]),
                     x=float(item["x"]),
                     y=float(item["y"]),
                     vx=float(item.get("vx", 0.0)),
                     vy=float(item.get("vy", 0.0)),
-                    hp=int(item.get("hp", PIECE_STATS[str(item["type"])]["hp"])),
+                    hp=int(item.get("hp", PIECE_STATS[piece_type]["hp"])),
                     alive=bool(item.get("alive", True)),
                 )
             )
@@ -113,19 +114,42 @@ class AuthoritativeSimulation:
             return False, "speed_exceeded"
         return True, None
 
-    def launch(self, team: str, piece_id: str, vx: float, vy: float) -> tuple[bool, str | None]:
+    def resolve_drag(self, team: str, piece_id: str, dx: float, dy: float) -> tuple[tuple[float, float] | None, str | None]:
+        if not math.isfinite(dx) or not math.isfinite(dy):
+            return None, "invalid_drag"
+        distance = math.hypot(dx, dy)
+        if distance < GAME_CONFIG.get("minDragDistance", 0.10):
+            return None, "zero_drag"
+        piece = next((p for p in self.pieces if p.id == piece_id), None)
+        if piece is None:
+            return None, "piece_not_found"
+        clamped = min(distance, GAME_CONFIG["maxDragDistance"])
+        scale = clamped / distance
+        launch_mul = PIECE_STATS[piece.type].get("launchMul", 1.0)
+        vx = dx * scale * GAME_CONFIG["launchStrength"] * launch_mul
+        vy = dy * scale * GAME_CONFIG["launchStrength"] * launch_mul
+        speed = math.hypot(vx, vy)
+        if speed > GAME_CONFIG["maxLaunchSpeed"]:
+            speed_scale = GAME_CONFIG["maxLaunchSpeed"] / speed
+            vx *= speed_scale
+            vy *= speed_scale
+        return (vx, vy), None
+
+    def launch_intent(self, team: str, piece_id: str, dx: float, dy: float) -> tuple[bool, str | None]:
+        vector, reason = self.resolve_drag(team, piece_id, dx, dy)
+        if vector is None:
+            return False, reason
+        vx, vy = vector
         valid, reason = self.validate_launch(team, piece_id, vx, vy)
         if not valid:
             return False, reason
         piece = next(p for p in self.pieces if p.id == piece_id)
-        response = PIECE_STATS[piece.type].get("launchMul", 1.0)
-        piece.vx = vx * response
-        piece.vy = vy * response
+        piece.vx = vx
+        piece.vy = vy
         self.current_team = "black" if team == "white" else "white"
         return True, None
 
     def advance_until_settled(self, dt: float = 1.0 / 120.0, max_steps: int = 720) -> list[dict]:
-        """Advance the canonical shot until motion settles or the safety cap is reached."""
         events: list[dict] = []
         for _ in range(max_steps):
             events.extend(self.step(dt))
