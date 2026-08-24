@@ -31,11 +31,13 @@ def test_browser_matrix_viewports(browser_name, viewport):
         assert response.status == 200
         assert page.viewport_size["width"] == viewport["width"]
         assert page.viewport_size["height"] == viewport["height"]
+        assert page.locator("#gameCanvas").count() == 1
+        assert page.locator("#glCanvas").count() == 1
+        assert page.locator("#newGameBtn").count() == 1
 
         if viewport["name"] in ["mobile", "tablet"]:
             assert page.evaluate("() => 'ontouchstart' in window") is True
 
-        assert page.locator("#archessMultiPanel").count() == 1
         browser.close()
 
 
@@ -75,6 +77,7 @@ def test_browser_authoritative_multiplayer_flow():
         )
         assert started["state"]["currentTeam"] == "white"
         assert len(started["state"]["pieces"]) == 32
+        assert started["room"]["canonicalHash"]
 
         white_piece = next(piece for piece in started["state"]["pieces"] if piece["team"] == "white" and piece["alive"])
         launched = page_one.evaluate(
@@ -90,7 +93,9 @@ def test_browser_authoritative_multiplayer_flow():
             {"room": room_code, "guestId": black_guest},
         )
         assert reconnect["currentTurn"] == "black"
+        assert reconnect["room"]["canonicalHash"]
         assert reconnect["state"] == launched["state"]
+
         context_one.close()
         context_two.close()
         browser.close()
