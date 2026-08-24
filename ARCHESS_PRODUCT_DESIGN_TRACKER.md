@@ -1,539 +1,330 @@
 # ArChess — Product Design Tracker
 
-**Repository:** `mr-zero0/ArChess` · **Stack:** Python + Flask + HTML/CSS/JS (Three.js) · **Platform:** Browser / PWA
+**Repository:** `mr-zero0/ArChess`  
+**Stack:** Python + Flask + HTML/CSS/JS + Three.js  
+**Platform:** Browser / PWA  
+**Current code release:** `v0.5.2`  
+**Current engineering focus:** authoritative multiplayer + client reconciliation
 
-ArChess is **not ordinary chess with animations**. It is a turn-based physics combat game played with chess armies: pull a piece back, launch it across the board, ricochet into enemy formations, create chain reactions, and destroy the enemy King.
+> ArChess is a turn-based physics combat game played with chess armies: pull a piece back, launch it across the board, ricochet into enemy formations, create chain reactions, and destroy the enemy King.
 
-> **Guiding question for every feature:** *Does this make ArChess a better competitive physics chess battle game?*
+## 1. Frozen Product Rules
 
----
+- 8×8 board using normal chess opening arrangement.
+- The chess piece itself is the projectile.
+- Friendly fire is enabled.
+- No check/checkmate/castling/en-passant/traditional chess movement restrictions.
+- Win condition: opposing King HP reaches 0.
+- Physics simulation is logically 2D; presentation is 3D.
+- Competitive multiplayer must be server-authoritative.
+- Competitive stats cannot be changed by cosmetics.
+- Development target remains strict $0 until traction/budget justifies a cost gate.
 
-## 1. Overview
+## 2. Definition of Done
 
-### 1.1 Project Summary
+A feature is only ✅ when implementation exists, normal-use errors are addressed, reset/resize/input behavior is safe, regression coverage exists where practical, and browser verification is completed for user-facing behavior.
 
-- 1.1.1 — 8×8 board, chess opening arrangement, physics-based slingshot combat.
-- 1.1.2 — Win when the opposing King HP ≤ 0 (no check/checkmate/castling/en passant).
-- 1.1.3 — Friendly fire enabled; chain reactions are the core fantasy.
-- 1.1.4 — Status: **pre-alpha local game**; online multiplayer not yet built.
-
-### 1.2 Legend & Rules of Use
+## 3. Status Legend
 
 | Status | Meaning |
 |---|---|
 | ✅ DONE | Implemented and verified |
-| 🟡 PARTIAL | Implemented partly or awaiting verification/polish |
-| 🔵 NEXT | Immediate recommended priority |
+| 🟡 PARTIAL | Implemented but one or more acceptance checks remain |
+| 🔵 NEXT | Immediate engineering priority |
 | ⬜ TODO | Not started |
-| ⛔ COST GATE | Cannot honestly be guaranteed at strict $0 |
+| ⛔ COST GATE | Requires paid platform/service or later budget |
 
-- 1.2.1 — **Zero-Budget Rule:** development software costs $0; libraries must be free/open-source or commercially safe; art/audio created in-house or CC0; free cloud tiers only for prototype/alpha; paid items explicitly marked COST GATE; paid features never required to complete core game.
-- 1.2.2 — **Definition of Done (per feature):** implemented; no known normal-use console error; works after reset, resize, mouse, and touch; does not break physics; documented; regression-tested when automatable; tested in Chromium + one other browser for user-facing features.
-- 1.2.3 — **Tracker discipline:** work tracked as small subtasks; update this file as subtasks finish; commit to GitHub after each batch of ~5–10 finished subtasks; do NOT mark a subtask ✅ until its acceptance criterion is verified.
+## 4. Roadmap Dashboard
 
----
+| Step | Area | Current status |
+|---:|---|---|
+| 0 | Product identity & rules | 🟡 8/12 |
+| 1 | Repository & engineering baseline | 🟡 10/10 implementation; release-hygiene verification ongoing |
+| 2 | Core physics & damage stabilization | 🟡 9/10 verified, multi-impact coverage added and awaiting CI execution |
+| 3 | True 3D chess presentation | ✅ 8/8 |
+| 4 | Board, camera, resize, themes | ✅ 5/5 |
+| 5 | Audio, effects, haptics | ✅ 7/7 |
+| 6 | Combat roles, balance, combos | ✅ 16/16 |
+| 7 | UX, tutorial, accessibility | ✅ 18/18 |
+| 8 | Local modes, challenges, replay | ✅ 7/7 |
+| 9 | Automated testing, QA, performance | 🟡 implementation complete; fresh CI execution pending |
+| 10 | Production-ready Flask | ✅ 12/12 |
+| 11 | Accounts, profiles, persistence | 🟡 6/10 |
+| 12 | Private online multiplayer MVP | 🟡 API foundation complete; browser end-to-end integration pending |
+| 13 | Authoritative simulation, anti-cheat | 🟡 8/10 core items complete; client reconciliation/hash verification pending |
+| 14 | Public matchmaking, ranked | ⬜ 0/15 |
+| 15 | Progression, cosmetics | ✅ implementation exists; needs product-surface integration |
+| 16 | Analytics, telemetry, balance dashboard | ⬜ 0/3 |
+| 17 | Security, privacy, legal, licensing | 🟡 several controls already implemented; formal checklist remains |
+| 18 | Zero-cost alpha distribution | ⬜ 0/12 |
+| 19 | Closed alpha → beta → PMF | ⬜ 0/4 |
+| 20 | Strict $0 public launch | ⬜ 0/3 |
+| 21 | Paid platform gates | ⛔ COST GATE |
+| 22 | Market-ready v1 | ⬜ 0/25 |
 
-## 2. Core Design Pillars (Frozen)
+## 5. Completed Local Game Work
 
-- 2.1 — **A — Satisfying Physical Launches:** every shot feels good before progression matters. Aiming immediate, readable, predictable enough to reward skill.
-- 2.2 — **B — Tactical Chain Reactions:** one launch may create multiple collisions, but chains must stay understandable. Enable intentional direct hits, bank shots, sacrificial hits, friendly-fire manipulation, dominoes, King setup shots.
-- 2.3 — **C — Pieces Have Combat Identity:** pieces differ physically/strategically via HP, Power, mass, radius, launch response, friction, silhouette — not skins.
-- 2.4 — **D — Physical Chess Set Presentation:** default resembles a premium wood chess board turned battlefield (real 3D silhouettes, wood board, rosewood vs ebony sides, shadows). Themes: Wood / Dark / Light.
-- 2.5 — **E — Easy to Learn, Difficult to Master:** controls understood in under a minute; skill from angle, power, collision prediction, piece value, positioning, risk, chains, defense.
-- 2.6 — **F — No Pay-to-Win:** competitive physics/stats identical across cosmetic variants.
+### STEP 0 — Product Identity
 
----
+✅ Core slingshot-combat loop  
+✅ King HP win condition  
+✅ Friendly fire  
+✅ HP/Power baselines  
+✅ Piece-as-projectile rule  
+✅ Wood/Dark/Light direction  
+✅ Product positioned as physics combat  
+✅ Tracker established
 
-## 3. Canonical Game Rules (Frozen)
+Remaining: freeze repository v1 scope, GitHub milestones, final tagline, branding/trademark review.
 
-- 3.1 — **Board:** 8×8, normal chess opening arrangement. Physics coordinates independent of screen resolution/zoom; resizing board never changes gameplay physics.
-- 3.2 — **Turn flow:** current player selects a living piece → drag back → aim + power → release → launch → physics/impacts/settle → next player.
-- 3.3 — **Selection:** only the current player's living pieces selectable. Dead pieces cannot select or collide.
-- 3.4 — **Launch:** the chess piece itself is the projectile (no ball/puck/coin). `vx = (piece.x - pointer.x) * launchStrength`; speed clamped; zero-distance drag does not launch.
-- 3.5 — **Collision:** pieces are physical bodies (circle/capsule-like logical shapes). Detect overlap → normal → relative normal velocity → impact intensity → damage both → resolve overlap → impulse/bounce → feedback → prevent duplicate damage from same contact → continue chain.
-- 3.6 — **Friendly fire: enabled** — allied pieces can damage allies; core strategy, not a bug.
-- 3.7 — **Win condition:** no check/checkmate/castling/en passant/traditional capture/movement restriction. **Win when opposing King HP ≤ 0.**
-- 3.8 — **Chain reaction ideal:** spectacular multi-piece chains possible because the player created them, not because every ordinary launch destabilizes all 32 pieces.
+### STEP 1 — Engineering Baseline
 
----
+✅ README / gitignore / requirements / pytest config  
+✅ Flask application + tests  
+✅ secret/cache gitignore coverage  
+✅ `.env.example`  
+✅ contribution/changelog/license/asset docs  
+✅ issue templates  
+✅ `/api/version`  
+✅ CI workflow  
+✅ MIT source license  
+✅ dependency manifest repaired and package version aligned to `0.5.2`
 
-## 4. Piece Statistics & Damage Model (Frozen Baselines)
+### STEP 2 — Core Physics
 
-### 4.1 Canonical Stats
+✅ collision cooldown  
+✅ duplicate damage prevention  
+✅ mass + impulse propagation  
+✅ impact threshold + damage clamp  
+✅ physics debug overlay  
+✅ collision regression coverage  
+✅ settle-state coverage  
+✅ repeated wall-impact coverage  
+🟡 simultaneous three-piece impact coverage added; fresh CI execution pending
 
-| Piece | HP | Power | Combat concept |
-|---|---|---:|---:|---|
-| Pawn | 30 | 10 | expendable setup / light projectile |
-| Knight | 50 | 30 | mobile trick-shot piece |
-| Bishop | 40 | 25 | precision / long-slide |
-| Rook | 80 | 40 | heavy battering ram |
-| Queen | 90 | 70 | high-value offensive piece |
-| King | 120 | 100 | objective + dangerous heavy piece |
+### STEPs 3–8
 
-### 4.2 Damage Model
+✅ Three.js and procedural chess pieces  
+✅ board, lighting, shadows, themes  
+✅ resize/fullscreen/high-DPI support  
+✅ audio, VFX, haptics/accessibility  
+✅ per-piece combat roles and tuning  
+✅ combo/stat tracking  
+✅ tutorial, keyboard access, mobile targets  
+✅ local Match and Practice modes  
+✅ turn timer  
+✅ challenges  
+✅ replay capture + viewer  
+✅ replay crash fix
 
-- 4.2.1 — Formula: `relativeVelocity → normalizedImpact → attackerPower × normalizedImpact × damageMultiplier → clamp → damage`.
-- 4.2.2 — Both participants may take damage from the other's effective impact.
-- 4.2.3 — Required properties: weak+slow = small damage; strong+fast = large damage; damage clamped; stationary contact never repeatedly drains HP; one event not counted once per substep; sub-threshold impacts deal ~zero.
-- 4.2.4 — **Collision event cooldown:** a touching pair gets no fresh impact damage until separated and re-colliding meaningfully.
+## 6. STEP 9 — QA / Testing / Performance
 
-### 4.3 Combo / Skill Feedback
+Implemented:
 
-- 4.3.1 — Callouts (presentation/scoring first, never stat buffs): DIRECT HIT, BANK SHOT, DOUBLE/TRIPLE HIT, CHAIN REACTION, DOMINO, ROYAL STRIKE, SACRIFICE, FRIENDLY FIRE, KING BREAKER, LAST STAND.
-- 4.3.2 — Do not let combo multipliers distort ranked physics until extensively tested.
+✅ Python unit/integration test suite  
+✅ JavaScript physics suite  
+✅ Chromium / Firefox / WebKit browser matrix definitions  
+✅ desktop/tablet/mobile viewport matrix  
+✅ pointer/touch coverage  
+✅ performance benchmark harness
 
----
+Current acceptance gate:
 
-## 5. Technical Architecture (Frozen)
+🟡 Fresh GitHub Actions execution of the complete matrix must be observed before this section is promoted to fully verified DONE.
 
-- 5.1 — **Client:** HTML5, CSS3, Vanilla JS modules, Three.js for real 3D presentation, DOM for menus/HUD, Web Audio API for runtime audio, Pointer Events for mouse/touch.
-- 5.2 — **Physics:** core gameplay physics logically **2D** even with 3D visuals (simpler deterministic sim, sync, balance, CPU, mobile; visuals tumble/tilt independently).
-- 5.3 — **Backend:** Python 3 + Flask; Flask-SocketIO or equivalent WebSocket layer; Gunicorn for production.
-- 5.4 — **Persistence:** dev = JSON/SQLite; online = PostgreSQL free tier within limits.
-- 5.5 — **Multiplayer authority:** competitive MP server-authoritative. Client sends intent `{pieceId, aimX, aimY, power}`; server validates player/turn/piece/existence/ownership/power/aim/match-not-over, then determines canonical result.
+## 7. STEP 10 — Production Flask
 
-### 5.6 Free Toolchain
+✅ App factory  
+✅ environment configs  
+✅ structured logging  
+✅ health endpoint  
+✅ version endpoint  
+✅ JSON request validation  
+✅ JSON error handlers  
+✅ 1 MiB request limit  
+✅ Gunicorn configuration  
+✅ security headers  
+✅ rate-limit policy  
+✅ production `SECRET_KEY` requirement
 
-| Area | Choice |
+## 8. STEP 11 — Accounts / Persistence
+
+✅ anonymous guest identity  
+✅ registration/login deliberately deferred  
+✅ persistent local settings  
+✅ local match history  
+✅ database migrations  
+✅ local data export  
+✅ minimal personal-data model
+
+Still TODO:
+
+⬜ password/auth strategy  
+⬜ profile page  
+⬜ account deletion
+
+## 9. STEP 12 — Private Multiplayer
+
+Implemented server API foundation:
+
+✅ room creation  
+✅ room join  
+✅ team assignment  
+✅ match start  
+✅ server turn state  
+✅ launch endpoint  
+✅ state synchronization API  
+✅ HP state API  
+✅ destruction state API  
+✅ game-over state API  
+✅ reconnect  
+✅ rematch  
+✅ room lifecycle handling
+
+Current gap:
+
+🟡 Browser multiplayer client is not yet fully switched to consume the new authoritative server snapshot and server-issued piece IDs.
+
+## 10. STEP 13 — Authoritative Simulation / Anti-Cheat
+
+### ✅ Completed
+
+- Canonical server match state.
+- Launch validation: turn, ownership, existence, alive state, finite vector, speed limit.
+- Deterministic fixed-step server physics.
+- Boundary collision and friction.
+- Piece-piece collision and mass-based impulse.
+- Damage calculation, clamp, cooldown and destruction.
+- Canonical snapshots + persisted HP state.
+- Invalid-client-action logging.
+- Flask-Limiter rate limiting.
+- Server-generated game-over result flow.
+
+### 🟡 Still open
+
+- Client reconciliation must consume server snapshots in the browser multiplayer flow.
+- Replay checksum is currently not a cryptographic/deterministic match hash.
+
+### Explicit security rule
+
+Client-submitted `/sync`, `/hp`, `/destruction`, and `/gameover` POSTs are rejected for authoritative play. They cannot overwrite canonical match state.
+
+## 11. Immediate Execution Queue
+
+### 🔵 A — Finish multiplayer authority integration
+
+1. Browser receives canonical state and server piece IDs at match start.
+2. Browser sends only launch intent.
+3. Browser applies returned canonical snapshot/events.
+4. Reconnect restores canonical state.
+5. Client-side drift triggers reconciliation from the server snapshot.
+
+### 🔵 B — Finish verification
+
+1. Execute complete pytest suite.
+2. Execute Node physics suite.
+3. Execute browser matrix across Chromium/Firefox/WebKit.
+4. Execute performance benchmark.
+5. Review CI results before promoting tracker items to ✅.
+
+### 🔵 C — Finish anti-cheat integrity
+
+1. Replace checksum placeholder with deterministic state hashing.
+2. Hash shot intent + canonical pre/post state.
+3. Add replay-integrity regression tests.
+
+## 12. Later Roadmap
+
+### STEP 14 — Public Matchmaking / Ranked
+
+⬜ queue join/leave  
+⬜ match found flow  
+⬜ reconnect  
+⬜ surrender  
+⬜ timeout handling  
+⬜ hidden MMR  
+⬜ divisions  
+⬜ placement  
+⬜ rating updates  
+⬜ abandonment handling  
+⬜ leaderboard  
+
+### STEP 15 — Progression / Cosmetics
+
+✅ XP/level model exists  
+✅ cosmetic schema exists  
+✅ competitive stat parity preserved  
+✅ no stat-boosting purchase policy
+
+### STEP 16 — Analytics
+
+⬜ product metrics  
+⬜ explicit data-minimization policy tied to telemetry  
+⬜ free telemetry path
+
+### STEP 17 — Security / Privacy / Legal
+
+⬜ deployment HTTPS  
+⬜ secure cookies where applicable  
+⬜ CSRF strategy where applicable  
+⬜ authentication abuse controls  
+⬜ dependency update process  
+⬜ secret scanning  
+⬜ backups  
+⬜ privacy policy  
+⬜ data inventory  
+⬜ retention rules  
+⬜ full third-party license inventory  
+⬜ trademark/branding review
+
+### STEPs 18–20 — Alpha / Launch
+
+⬜ feedback loop  
+⬜ known-issues process  
+⬜ alpha distribution  
+⬜ broader alpha  
+⬜ public beta  
+⬜ retention/engagement decision gates  
+⬜ strict $0 browser/PWA/itch.io launch
+
+### STEP 21 — Paid Platforms
+
+⛔ Steam  
+⛔ Apple App Store  
+⛔ Google Play
+
+### STEP 22 — Market-ready v1
+
+⬜ product-wide acceptance pass after multiplayer, security, distribution and telemetry gates are complete.
+
+## 13. Current Verification Snapshot
+
+| Check | State |
 |---|---|
-| IDE / VCS / Repo | VS Code · Git · GitHub Free |
-| Backend / Frontend | Python + Flask · HTML/CSS/JS |
-| 3D / modeling / 2D / audio | Three.js (MIT) · Blender · Krita · Audacity |
-| Assets / fonts | Kenney CC0 · system fonts / licensed Google Fonts |
-| Browser tests / analytics | Playwright · Cloudflare Web Analytics |
-| Alpha host / DB / static | Render free · Supabase Free · Cloudflare Pages |
-| Distribution | itch.io (no upfront fee) |
-
-- 5.6.1 — **Asset License Rule:** maintain `ASSET_LICENSES.md` recording asset name, creator, source, license, commercial-use, attribution, modified, files, date. If unclear → do not use.
-
-### 5.7 Strict $0 Launch Targets
-
-- 5.7.1 — Browser → PWA → itch.io browser/wrapper → GitHub.
-- 5.7.2 — **COST-GATED (only after traction/budget):** Steam, App Store, Google Play, paid domain/CDN/cloud, paid legal/marketing.
-
----
-
-## 6. Roadmap — Status Dashboard
-
-| STEP | Title | Status | Progress |
-|---|---|---|---|
-| 0 | Product identity & rules | 🟡 PARTIAL | 8/12 done |
-| 1 | Repository & engineering baseline | 🟡 PARTIAL | 9/10 done |
-| 2 | Core physics & damage stabilization | ✅ DONE | 9/10 done (1 deferred) |
-| 3 | True 3D chess presentation | ✅ DONE | 8/8 done |
-| 4 | Board, camera, resize, themes | ✅ DONE | 5/5 done |
-| 5 | Game feel: audio, effects, haptics | ✅ DONE | 7/7 done |
-| 6 | Combat roles, balance, combos | ✅ DONE | 16/16 done |
-| 7 | UX, tutorial, accessibility | ✅ DONE | 18/18 done |
-| 8 | Local modes, challenges, replay | ✅ DONE | 7/7 done |
-| 9 | Automated testing, QA, performance | 🔵 NEXT | 2/6 done |
-| 10 | Production-ready Flask | ⬜ TODO | 0/12 done |
-| 11 | Accounts, profiles, persistence | ⬜ TODO | 0/10 done |
-| 12 | Private online multiplayer MVP | ✅ DONE | 14/14 done |
-| 13 | Authoritative sim, anti-cheat | 🟡 PARTIAL | 5/10 done |
-| 14 | Public matchmaking, ranked | ⬜ TODO | 0/15 done |
-| 15 | Progression, cosmetics | ⬜ TODO | 0/4 done |
-| 16 | Analytics, telemetry, balance dashboard | ⬜ TODO | 0/3 done |
-| 17 | Security, privacy, legal, licensing | ⬜ TODO | 0/18 done |
-| 18 | Zero-cost alpha distribution | ⬜ TODO | 0/12 done |
-| 19 | Alpha → beta → product-market fit | ⬜ TODO | 0/4 done |
-| 20 | Strict $0 public launch | ⬜ TODO (conditional) | 0/3 done |
-| 21 | Paid platform gates | ⛔ COST GATE | gated |
-| 22 | Market-ready v1 | ⬜ TODO | 0/25 done |
-
----
-
-## 7. Work Breakdown — Steps & Subtasks
-
-### 7.1 STEP 0 — Freeze Product Identity and Rules 🟡 PARTIAL (8/12)
-
-- 7.1.1 ✅ Define core loop (slingshot chess-piece combat).
-- 7.1.2 ✅ Define King HP win condition; remove check/checkmate.
-- 7.1.3 ✅ Enable friendly fire.
-- 7.1.4 ✅ Establish HP/Power baseline table.
-- 7.1.5 ✅ Define physical projectile behavior (piece itself is projectile).
-- 7.1.6 ✅ Define Wood / Dark / Light visual direction.
-- 7.1.7 ✅ Position product as physics combat, not chess-with-animations.
-- 7.1.8 ✅ Create tracker in repo.
-- 7.1.9 ⬜ Freeze v1 scope in repository.
-- 7.1.10 ⬜ Add GitHub milestones for roadmap steps.
-- 7.1.11 ⬜ Decide final public tagline.
-- 7.1.12 ⬜ Name/trademark conflict review before commercial branding.
-
-### 7.2 STEP 1 — Repository and Engineering Baseline 🟡 PARTIAL (3/10)
-
-- 7.2.1 ✅ README, .gitignore, requirements.txt, pyproject.toml, PATCH_NOTES.txt.
-- 7.2.2 ✅ Flask app serving game; tests directory with Node + pytest harness.
-- 7.2.3 ✅ Verified `.gitignore` covers caches/secrets.
-- 7.2.4 ✅ Add `.env.example` and guarantee secrets can never be committed.
-- 7.2.5 ✅ Add `CONTRIBUTING.md`, `CHANGELOG.md`, `ASSET_LICENSES.md`.
-- 7.2.6 ✅ Add issue templates (bug / balance / feature).
-- 7.2.7 ✅ `/api/version` endpoint exists (`app.py`) and the current version is shown in the game header.
-- 7.2.8 🟡 Created annotated tags `v0.3.0`, `v0.4.0`, `v0.4.1`, `v0.5.1`, and `v0.5.2` at verified milestone commits; `v0.1.x` and `v0.2.x` remain unavailable because the rewritten history begins at STEP 3.
-- 7.2.9 ✅ Add CI syntax/test workflow (`.github/workflows/tests.yml`) for Python and Node test suites.
-- 7.2.10 ✅ Decide source-code licensing: MIT License added at repository root.
-
-### 7.3 STEP 2 — Stabilize Core Physics and Damage ✅ DONE (9/10; 1 deferred)
-
-- 7.3.1 ✅ Collision cooldown (no continuous-contact HP drain) — v0.2.1.
-- 7.3.2 ✅ Duplicate-damage prevention (`collisionCooldown`).
-- 7.3.3 ✅ Impulse propagation (conservation of momentum).
-- 7.3.4 ✅ Piece mass configuration.
-- 7.3.5 ✅ Impact threshold (`minDamageImpact`) and damage clamp (`maxCollisionDamage`).
-- 7.3.6 ✅ Physics debug overlay (Shortcut `D`).
-- 7.3.7 ✅ Collision regression tests (18 config/launch/damage/turn tests).
-- 7.3.8 ✅ Settle-state regression tests (13 Node tests: tunneling, simultaneous collision, wall-corner, overlap recovery, King-destroyed-during-chain, cooldown, settling termination, launch clamp, in-bounds recovery).
-- 7.3.9 ✅ Rapid repeated wall impacts tested.
-- 7.3.10 ⬜ Test simultaneous three-piece impact (deferred to QA step / STEP 9).
-
-### 7.4 STEP 3 — True 3D Chess Presentation ✅ DONE (8/8; v0.4.0)
-
-- 7.4.1 ✅ Three.js integrated (vendored `three.module.min.js` + `three.core.min.js`, import map).
-- 7.4.2 ✅ 6 procedural piece models (lathe profiles + extruded knight head; no external assets).
-- 7.4.3 ✅ Board, lights, materials, shadows (rosewood/ebony/ivory palettes, key/fill/rim lights, PCF shadows, contact blobs).
-- 7.4.4 ✅ Velocity tilt + tumble, upright rest pose.
-- 7.4.5 ✅ Destruction animation (0.5s scale-out tumble, shadow fade).
-- 7.4.6 ✅ Low-quality graphics mode (`▦` button / `Q`, persisted).
-- 7.4.7 ✅ Headless browser verification (launch, collisions, game over, theme, quality, reset; zero console errors).
-- 7.4.8 ✅ WebGL fallback path hides glCanvas cleanly.
-
-### 7.5 STEP 4 — Board, Camera, Resize and Theme System ✅ DONE (5/5; v0.4.x)
-
-- 7.5.1 ✅ Theme selector (Wood/Dark/Light, persisted).
-- 7.5.2 ✅ Board-size selector (80–120%, persisted, resize-safe).
-- 7.5.3 ✅ Responsive mobile board + high-DPI rendering.
-- 7.5.4 ✅ Fullscreen board view (`#fullscreenBtn`, `F` key, `fullscreenchange`).
-- 7.5.5 ✅ Headless browser verification (theme/size persistence, fullscreen, no piece reset on resize, zero console errors).
-
-### 7.6 STEP 5 — Game Feel: Audio, Effects and Haptics ✅ DONE (7/7; v0.4.x)
-
-- 7.6.1 ✅ Procedural Web Audio sounds — select, pull, launch, impact, wall, King hit, destruction, victory/defeat, ambient, UI click (`static/js/audio.js`).
-- 7.6.2 ✅ Dynamic collision audio (volume/pitch scale with intensity).
-- 7.6.3 ✅ Visual effects — trails, launch dust, collision sparks/dust, floating damage, impact flash, destruction fragments, screen shake.
-- 7.6.4 ✅ King danger feedback (HUD card + pulsing on-board ring, <35% HP).
-- 7.6.5 ✅ Accessibility settings — master/effects/ambience volume, mute, reduced motion, shake toggle, haptics toggle (`static/js/prefs.js`, persisted).
-- 7.6.6 ✅ UI button click sounds via document-level listener.
-- 7.6.7 ✅ Headless browser verification (modal open/close, pref persistence, AudioContext unlock, audio paths, reduced motion, danger state; zero console errors).
-
-### 7.7 STEP 6 — Combat Roles, Balance and Combo System ✅ DONE (16/16; v0.4.1)
-
-- 7.7.1 ✅ Per-piece mass/radius profile configuration.
-- 7.7.2 ✅ Per-piece launch response (`launchMul`).
-- 7.7.3 ✅ Per-piece damage multiplier (`damageMul`) and collision multiplier (`collisionMul`).
-- 7.7.4 ✅ Per-piece bounce factor (`restitution`) and friction.
-- 7.7.5 ✅ Combo detection (`comboWindow` 1.2s; chain per damaging impact).
-- 7.7.6 ✅ Combo UI badge (shows max chain; resets on next launch).
-- 7.7.7 ✅ King damage tracked separately.
-- 7.7.8 ✅ Friendly-fire damage tracked.
-- 7.7.9 ✅ Per-team match-level balance stats (launches, damage, friendlyDamage, kingDamage, destroyed, maxCombo).
-- 7.7.10 ✅ Developer tuning panel (`static/js/tuning.js`; 13 global + 54 per-piece inputs; session-only; reset from `DEFAULT_CONFIG`).
-- 7.7.11 ✅ JS tests +3 (16 pass) and Python tests +3 (21 pass).
-- 7.7.12 ✅ Browser verification (tuning edits live, combo badge, stats, launch count; zero console errors).
-- 7.7.13 ✅ Balance validation — role table reviewed; no piece obviously optimal for every turn (pawn=fast/weak, knight=neutral, bishop=long-slide, rook=slow battering ram, queen=strong/high-value, king=hardest hit but risky to launch).
-- 7.7.14 ✅ Run full verifier suites against STEP 6 code (archess 25/25 + flow 16/16 pass).
-- 7.7.15 ✅ Update tracker STEP 6 status and Progress Log.
-- 7.7.16 ✅ Commit + push STEP 6 batch to GitHub.
-
-### 7.8 STEP 7 — UX, Tutorial and Accessibility ✅ DONE (18/18; v0.5.x)
-
-- 7.8.1 ✅ First-time interactive tutorial (`static/js/tutorial.js`): non-blocking bottom card, auto-shows on first visit, latched step advancement on real actions (select → aim → launch → chains → win), Skip/Next, persists `archess-tutorial-v2` flag.
-- 7.8.2 ✅ Tutorial replay in Help (`#helpTutorialBtn`).
-- 7.8.3 ✅ Aim direction clearly visible (dashed pull line + solid launch arrow + direction dots).
-- 7.8.4 ✅ Power clearly visible (power bar + %).
-- 7.8.5 ✅ Cancel drag (Escape / pointercancel).
-- 7.8.6 ✅ Invalid-piece feedback (feedback text on empty/wrong-team selection).
-- 7.8.7 ✅ Current turn unmistakable (turn text, badge, dot, active player card).
-- 7.8.8 ✅ Physics-in-progress lock feedback (status "PHYSICS ACTIVE" + hint while resolving).
-- 7.8.9 ✅ King HP always readable (King HP text + HP tracks + danger pulse).
-- 7.8.10 ✅ Game-over overlay (winner modal, double-KO handling).
-- 7.8.11 ✅ Rematch / new game (New Game button, R key, Play Again).
-- 7.8.12 ✅ Keyboard-accessible menus (modal focus-on-open + Tab focus trap + Escape close + restore focus).
-- 7.8.13 ✅ Team distinction not based on color alone (shape marker above pieces: triangle = white, square = black; theme-independent).
-- 7.8.14 ✅ Reduced-motion mode (settings, persists).
-- 7.8.15 ✅ Text scaling tolerance (modal scroll at narrow widths).
-- 7.8.16 ✅ Mobile touch targets (≥40px controls on coarse pointers).
-- 7.8.17 ✅ Browser verification (auto-show, replay, skip, focus management, zero console errors).
-- 7.8.18 ✅ Update tracker + commit batch.
-
-### 7.9 STEP 8 — Local Modes, Challenges and Replay Foundation ✅ DONE (7/7; v0.5.x)
-
-- 7.9.1 ✅ Local Pass & Play (default hotseat, both sides on one screen; formalized as the default "Match" mode).
-- 7.9.2 ✅ Practice / Sandbox (mode selector in settings; no win condition, keep playing after King destruction).
-- 7.9.3 ✅ Optional turn timer (settings selector, live countdown badge, auto turn-switch on expiry, persisted; Off / 20s / 45s / 90s).
-- 7.9.4 ✅ Trick Shot Challenges — pre-made board scenarios published as `static/js/challenges.js`.
-- 7.9.5 ✅ Replay capture (launch vectors, state snapshots, end state) — implemented in `static/js/replay.js`.
-- 7.9.6 ✅ Replay Viewer (playback / speed controls) — implemented in `static/js/replay.js`.
-- 7.9.7 ✅ Replay Viewer playback crash fix (`turnInfo`/`scrubber` strict-mode ReferenceError in `animateNext`) — v0.5.2; speed ×1–×5 now advances playback.
-
-### 7.10 STEP 9 — Automated Testing, QA and Performance ✅ DONE (6/6)
-
-
-- 7.10.1 ✅ Unit tests: launch vector, speed clamp, friction, wall bounce, overlap resolution, collision impulse, damage calc, collision cooldown, piece death, King death, turn switch, game reset, theme persistence, board-resize state safety.
-- 7.10.2 ✅ Browser matrix: executable parametrized coverage for Chromium / Firefox / WebKit added in `tests/test_browser_matrix.py`.
-- 7.10.3 ✅ Browser matrix: executable desktop / tablet / mobile viewport checks added and wired into CI.
-- 7.10.4 ✅ Browser matrix: pointer coverage added and Chromium mobile touch-tap coverage added; Firefox/WebKit touch-capability verified.
-- 7.10.5 ✅ Performance targets met (32-piece board, no frame-time cliffs on mid hardware).
-- 7.10.6 ✅ Performance regression benchmark harness (`performance_benchmark.py`); verified with a 50-frame, 32-piece run and no threshold violations.
-
-### 7.11 STEP 10 — Production-Ready Flask Architecture ✅ DONE (12/12)
-
-- 7.11.1 ✅ Flask app factory pattern (`create_app()` in `app.py`) with backward-compatible module-level `app`.
-- 7.11.2 ✅ Development / test / production config classes (`config.py`) wired into `create_app()`.
-- 7.11.3 ✅ Structured JSON logging (`logging_config.py`) attached by `create_app()`.
-- 7.11.4 ✅ Health endpoint (`GET /api/health`) returns service status and version.
-- 7.11.5 ✅ Version endpoint (`GET /api/version`) with explicit API test and header integration.
-- 7.11.6 ✅ Input validation boundary rejects non-JSON bodies for future body-bearing API methods.
-- 7.11.7 ✅ JSON 404 and 500 error handlers added in `create_app()`; 404 response covered by tests.
-- 7.11.8 ✅ Request size limit configured at 1 MiB with a JSON 413 handler.
-- 7.11.9 ✅ Production server configuration (`gunicorn.conf.py`) added.
-- 7.11.10 ✅ Security headers added for content type, framing, referrer, and permissions policy.
-- 7.11.11 ✅ Rate-limit design documented in `SECURITY.md` for current and future API surfaces.
-- 7.11.12 ✅ Production requires `SECRET_KEY` and keeps debug mode disabled.
-
-### 7.12 STEP 11 — Accounts, Profiles and Persistence 🟡 PARTIAL (6/10)
-
-- 7.12.1 ✅ Anonymous guest identity persisted locally in `static/js/identity.js`; no account or personal data collected.
-- 7.12.2 ✅ Registration/login intentionally deferred until private multiplayer requires identity beyond the local guest ID.
-- 7.12.3 ⬜ Password/auth strategy (hashing, sessions).
-- 7.12.4 ⬜ Profile page.
-- 7.12.5 ✅ Persistent settings: theme, board size, game mode, timer, audio, accessibility, and tutorial state persist locally and are browser-verified.
-- 7.12.6 ✅ Local match history stores capped recent guest-match summaries, renders them in Help, and supports local clearing without remote account persistence.
-- 7.12.7 ✅ Database migrations (Flask-SQLAlchemy + Flask-Migrate initialized).
-- 7.12.8 ⬜ Account deletion.
-- 7.12.9 ✅ Local data export downloads guest match history as `archess-match-history.json` without server transfer.
-- 7.12.10 ✅ Minimal personal-data collection: current guest mode stores only a random local identifier and collects no personal account data.
-
-### 7.13 STEP 12 — Private Online Multiplayer MVP ✅ DONE (14/14)
-
-- 7.13.1 ✅ Create room: ephemeral guest-only `POST /api/rooms` returns a six-character room code and assigns the creator to white.
-- 7.13.2 ✅ Join room: guest-only `POST /api/rooms/<room_code>/join` validates room exists, capacity (max 2), and assigns joining guest.
-- 7.13.3 ✅ Player assignment: room join/create logic now correctly assigns white/black teams and marks spectators.
-- 7.13.4 ✅ Match start handshake: `/api/rooms/<room_code>/start` endpoint transitions room to `active` status if at least 2 players are joined.
-- 7.13.5 ✅ Turn synchronization: `/api/rooms/<room_code>/turn` endpoint implemented to track and provide the current turn team (initial: white).
-- 7.13.6 ✅ Validated launch action: `/api/rooms/<room_code>/launch` endpoint verifies current turn before processing launch, preventing out-of-turn actions.
-- 7.13.7 ✅ Physics-result synchronization: `/api/rooms/<room_code>/sync` (POST/GET) endpoints implemented to share and retrieve current game state.
-- 7.13.8 ✅ HP synchronization: `/api/rooms/<room_code>/hp` (POST/GET) endpoints implemented to share and retrieve piece HP state.
-- 7.13.9 ✅ Destruction synchronization.
-- 7.13.10 ✅ Game-over synchronization.
-- 7.13.11 ✅ Reconnect.
-- 7.13.12 ✅ Rematch.
-- 7.13.13 ✅ Room timeout.
-- 7.13.14 ✅ Graceful disconnect handling.
-
-### 7.14 STEP 13 — Authoritative Simulation and Anti-Cheat ✅ DONE (10/10)
-
-- 7.14.1 ✅ Canonical server state.
-- 7.14.2 ✅ Shot validation.
-- 7.14.3 ✅ Server physics simulation: implemented basic integration (velocity, friction, boundaries) in `game/physics/engine.py`.
-- 7.14.4 ✅ State snapshots.
-- 7.14.5 ✅ Client reconciliation: implemented `reconcile` method in `PhysicsEngine` to detect state drift.
-- 7.14.6 ✅ Physics config versioning: added `version` key to `GAME_CONFIG`.
-- 7.14.7 ✅ Replay checksum: implemented placeholder for state hashing.
-- 7.14.8 ✅ Invalid-client-action logging.
-- 7.14.9 ✅ Rate limits: documented in `SECURITY.md` and integrated into API (Flask-Limiter).
-- 7.14.10 ✅ Tamper-resistant match result flow.
-
-### 7.15 STEP 14 — Public Matchmaking and Ranked ⬜ TODO (0/15)
-
-- 7.15.1 ⬜ Join queue.
-- 7.15.2 ⬜ Leave queue.
-- 7.15.3 ⬜ Region/ping consideration (later).
-- 7.15.4 ⬜ Match found flow.
-- 7.15.5 ⬜ Reconnect.
-- 7.15.6 ⬜ Surrender.
-- 7.15.7 ⬜ Turn timer.
-- 7.15.8 ⬜ Disconnect timeout.
-- 7.15.9 ⬜ Hidden MMR.
-- 7.15.10 ⬜ Visible divisions.
-- 7.15.11 ⬜ Placement logic.
-- 7.15.12 ⬜ Win/loss rating update.
-- 7.15.13 ⬜ Abandonment handling.
-- 7.15.14 ⬜ Seasonal reset strategy (only if useful).
-- 7.15.15 ⬜ Leaderboard.
-
-### 7.16 STEP 15 — Progression and Cosmetics ⬜ TODO (0/4)
-
-- 7.16.1 ✅ Free progression first: implemented initial leveling logic (xp/rank tracking) in `game/models/user.py`.
-- 7.16.2 ✅ Cosmetic-only categories: defined base schema for boards, trails, and piece skins in `game/models/models.py`.
-- 7.16.3 ✅ No pay-to-win: enforced competitive parity by separating stats from cosmetic variants.
-- 7.16.4 ✅ No stat-boosting purchases: explicit design policy documented in `SECURITY.md`.
-
-### 7.17 STEP 16 — Analytics, Telemetry and Balance Dashboard ⬜ TODO (0/3)
-
-- 7.17.1 ⬜ Product metrics (retention, win/loss, piece usage).
-- 7.17.2 ⬜ Do-not-collect-by-default policy.
-- 7.17.3 ⬜ Free telemetry path (Cloudflare Web Analytics or self-hosted).
-
-### 7.18 STEP 17 — Security, Privacy, Legal and License Hygiene ⬜ TODO (0/18)
-
-- 7.18.1 ⬜ HTTPS on deployed services.
-- 7.18.2 ⬜ Secure cookies.
-- 7.18.3 ⬜ CSRF strategy where relevant.
-- 7.18.4 ⬜ Rate limits.
-- 7.18.5 ⬜ Authentication abuse handling.
-- 7.18.6 ⬜ Input/schema validation.
-- 7.18.7 ⬜ Dependency update process.
-- 7.18.8 ⬜ Secret scanning.
-- 7.18.9 ⬜ No client-authoritative ranked results.
-- 7.18.10 ⬜ Backup/restore process.
-- 7.18.11 ⬜ Privacy policy.
-- 7.18.12 ⬜ Data inventory.
-- 7.18.13 ⬜ Account deletion.
-- 7.18.14 ⬜ Retention rules.
-- 7.18.15 ⬜ Minimal collection; analytics disclosure; cookie/storage disclosure where legally required.
-- 7.18.16 ⬜ `ASSET_LICENSES.md` + dependency/font/audio/model/texture license inventory.
-- 7.18.17 ⬜ Retain required third-party notices.
-- 7.18.18 ⬜ Trademark/branding conflict review (name, store searches; do not copy competitors).
-
-### 7.19 STEP 18 — Zero-Cost Alpha Distribution ⬜ TODO (0/12)
-
-- 7.19.1 ⬜ Tutorial.
-- 7.19.2 ⬜ Complete local match.
-- 7.19.3 ⬜ Private multiplayer if ready.
-- 7.19.4 ⬜ Feedback form.
-- 7.19.5 ⬜ Version displayed.
-- 7.19.6 ⬜ Changelog.
-- 7.19.7 ⬜ Known issues.
-- 7.19.8 ⬜ Privacy notice if telemetry/accounts exist.
-- 7.19.9 ⬜ No paid dependency required to play.
-- 7.19.10 ⬜ No copyrighted placeholder assets.
-- 7.19.11 ⬜ Crash-free first session target.
-- 7.19.12 ⬜ Replayable / rematch loop.
-
-### 7.20 STEP 19 — Closed Alpha → Public Beta → Product-Market Fit ⬜ TODO (0/4)
-
-- 7.20.1 ⬜ Phase A — small closed alpha (feedback pipeline, metrics on).
-- 7.20.2 ⬜ Phase B — wider alpha (bug bash, balance pass).
-- 7.20.3 ⬜ Phase C — public beta (scale checks, moderation).
-- 7.20.4 ⬜ Go / no-go decision against retention/engagement evidence.
-
-### 7.21 STEP 20 — Strict $0 Public Launch ⬜ TODO (0/3; conditional)
-
-- 7.21.1 ⬜ Launch on browser/PWA/itch.io/GitHub only.
-- 7.21.2 ⬜ No silent paid dependency; honor zero-budget rule.
-- 7.21.3 ⬜ Post-launch: version, changelog, known issues visible.
-
-### 7.22 STEP 21 — Paid Platform Gates ⛔ COST GATE
-
-- 7.22.1 ⛔ Steam — only after traction/revenue or budget approval.
-- 7.22.2 ⛔ Apple App Store — same gate.
-- 7.22.3 ⛔ Google Play — same gate.
-- 7.22.4 ⛔ Never gate the core free experience behind payment.
-
-### 7.23 STEP 22 — Market-Ready v1 ⬜ TODO (0/25)
-
-- 7.23.1 ⬜ Polished physical 3D board and pieces.
-- 7.23.2 ⬜ Wood / Dark / Light themes.
-- 7.23.3 ⬜ Board/camera sizing.
-- 7.23.4 ⬜ Satisfying audio/impact feedback.
-- 7.23.5 ⬜ Stable deterministic-enough physics.
-- 7.23.6 ⬜ Intentional chain reactions.
-- 7.23.7 ⬜ Balanced piece roles.
-- 7.23.8 ⬜ Tutorial.
-- 7.23.9 ⬜ Accessibility settings.
-- 7.23.10 ⬜ Local play.
-- 7.23.11 ⬜ Practice/challenges.
-- 7.23.12 ⬜ Replay foundation.
-- 7.23.13 ⬜ Private online matches.
-- 7.23.14 ⬜ Reconnect.
-- 7.23.15 ⬜ Production-safe backend.
-- 7.23.16 ⬜ Server-authoritative competitive outcomes.
-- 7.23.17 ⬜ Accounts only where useful.
-- 7.23.18 ⬜ Match history.
-- 7.23.19 ⬜ Public matchmaking.
-- 7.23.20 ⬜ Ranked if infrastructure is ready.
-- 7.23.21 ⬜ Telemetry.
-- 7.23.22 ⬜ Privacy/license documentation.
-- 7.23.23 ⬜ Automated tests.
-- 7.23.24 ⬜ Performance target met.
-- 7.23.25 ⬜ No pay-to-win.
-
----
-
-## 8. Progress Log (Chronological)
-
-| Version | Scope | Summary |
-|---|---|---|
-| v0.1.x | Core prototype | Pre-STEP-3 baseline: 2D canvas physics, slingshot, HP, friendly fire. |
-| v0.2.x | Combat physics | Collision cooldown, impulse propagation, mass config, damage thresholds/clamps, settle-state fixes, debug overlay (`D`). |
-| v0.3.x | 3D presentation (STEP 3) | Three.js integrated; 6 procedural models; board/lights/shadows; tilt/tumble/destruction; low-quality mode; WebGL fallback. |
-| v0.4.0 | STEP 4 | Fullscreen board, themes, board-size selector, responsive/high-DPI, resize safety. |
-| v0.4.x | STEP 5 | Procedural Web Audio, dynamic collision audio, VFX suite, King danger feedback, accessibility settings; King danger ring; UI click sounds; tracker Progress Log. |
-| v0.4.x | Hygiene | Removed platform preview URL; full git history rewritten (author `mr-zero0`), force-pushed. |
-| v0.4.1 | STEP 6 | Role-based physics multipliers, combo detection + UI, per-team balance stats, developer tuning panel, JS+Python tests. |
-| v0.5.x | STEP 7 | First-time interactive tutorial + replay, keyboard-accessible modals (focus trap), non-color team markers, mobile touch targets, text-scaling tolerance. |
-| v0.5.1 | STEP 8 (1/2) | Local modes: Match / Practice-Sandbox selector + optional persisted turn timer (live countdown, auto turn-switch), both surfaced in settings; regression suites pass. |
-| v0.5.2 | STEP 8 (2/2) | Replay Viewer playback fix: replaced strict-mode `ReferenceError` (assignment to undeclared `turnInfo`/`scrubber` in `animateNext`) with declared element lookups; speed multiplier (×1–×5) now actually advances playback rate; turn counter/scrubber/prev/next states stay in sync. |
-
-> **Note:** Git history was rewritten and force-pushed during hygiene (author `mr-zero0`); earlier SHAs are historical references only.
-
----
-
-## 9. Verification Snapshot
-
-- 9.1 — Python pytest: **37 passed, 19 skipped** (`test_game.py` 33 pass; `test_browser_matrix.py` 4 pass + 19 skip — Playwright not installed).
-- 9.2 — Node physics tests: **16/16 pass** (includes STEP 6 multiplier tests).
-- 9.3 — Playwright headless: **25/25 (3D path) + 16/16 (2D flow)** pass at STEP 6 (not re-run since Playwright was uninstalled).
-- 9.4 — Performance: in-page frame times healthy (~14 ms avg); headless wall-clock variance is a container/SwiftShader artifact, not app code (reproduced on both old and new builds).
-- 9.5 — Identity: `mr-zero0 <mr-zero0@users.noreply.github.com>`; GitHub remote = `https://github.com/mr-zero0/ArChess`.
-- 9.6 — Performance benchmark: **PASS** (`performance_benchmark.py`, 50 frames / 32 pieces; 0 frames over threshold).
-- 9.7 — Integrated Chromium manual check: **PASS** at desktop (1920×1080), tablet (1024×768), and mobile (375×667); board stayed visible/in bounds and tutorial pointer dismissal worked. Firefox, WebKit, and device-touch execution remain pending.
-- 9.8 — Integrated Chromium frame sample: **14.56 ms average**, **20.9 ms p95**, **35 ms maximum**, with 1 frame over 25 ms across 120 frames at a 32-piece board; 7.10.5 remains open pending broader hardware/browser coverage.
-- 9.9 — Release metadata: annotated tags `v0.3.0` through `v0.5.2` created from preserved milestone commits; pre-STEP-3 tags cannot be reconstructed without inventing history.
-- 9.10 — CI browser matrix: workflow configured to install Chromium, Firefox, and WebKit, wait for Flask `/api/version`, and run `tests/test_browser_matrix.py`; GitHub Actions execution pending.
-- 9.10 — CI browser matrix: ✅ DONE — workflow configured and verified with `tests/test_browser_matrix.py` using Playwright across Chromium, Firefox, and WebKit.
-
-- 9.11 — Source licensing: MIT License added at repository root for the ArChess source code; third-party asset notices remain tracked separately in `ASSET_LICENSES.md`.
-- 9.12 — Structured logging: `JsonFormatter` configuration verified by the application test suite.
-- 9.13 — Health endpoint: `GET /api/health` verified with status `ok` and current application version.
-- 9.14 — Version endpoint: `GET /api/version` verified with the current application version and consumed by the game header.
-- 9.15 — Error handling: JSON 404 response verified; matching 500 handler is registered for production-safe API errors.
-- 9.16 — Production hardening: request validation/limits, security headers, production secret enforcement, Gunicorn configuration, and rate-limit policy verified or documented.
-- 9.17 — Guest identity: integrated Chromium verified a stable anonymous ID is created, persisted in local storage, and exposed to game state across reloads.
-- 9.18 — Data minimization: guest mode stores only a random local identifier; no email, password, profile, or telemetry data is collected.
-- 9.19 — Persistent settings: integrated Chromium verified dark theme, 110% board size, Practice mode, and 45-second timer after reload.
-- 9.20 — Match history: integrated Chromium verified a guest match summary persists locally across reloads, remains linked to the guest ID, renders in Help, and clears to the empty state.
-- 9.21 — Data export: integrated Chromium verified the EXPORT control creates a blob download named `archess-match-history.json` containing local guest history data.
-- 9.23 — Room creation: ✅ DONE — `POST /api/rooms` validates guest IDs, creates an ephemeral six-character room, and assigns the creator to white.
-- 9.24 — Performance benchmark harness: ✅ DONE — `performance_benchmark.py` implemented and verified with PASS results.
-
-
-- 9.22 — Account scope: registration/login remains intentionally deferred because the current product is local-only and collects no account data.
-- 9.23 — Room creation: `POST /api/rooms` validates guest IDs, creates an ephemeral six-character room, and assigns the creator to white.
-
----
-
-## 10. Features Explicitly Deferred
-
-AI opponent · battle pass · clans/guilds · tournaments · spectator servers · voice chat · global chat · loot boxes · NFT/blockchain · complex economy · dozens of currencies · story campaign · UGC 3D models · advanced board editor · marketplace · esports tooling · native mobile app · Steam-specific integration.
-
----
-
-## 11. Release Version Plan
-
-```text
-v0.1.x  core physics prototype
-v0.2.x  stable combat physics
-v0.3.x  true 3D presentation
-v0.4.x  polished local game
-v0.5.x  tutorial + challenges + replay
-v0.6.x  private multiplayer
-v0.7.x  authoritative online matches
-v0.8.x  accounts + matchmaking
-v0.9.x  public beta / balance
-v1.0.0  market-ready release
-```
-
-- 11.1 — Do not rush v1.0 for cosmetic reasons.
-
----
-
-## 12. Recommended Execution Order
-
-STEP 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → **9 (current)** → 10 → 12 → 13 → 11 (as needed) → 14 → 15 → 16 → 17 → 18 → 19 → 20 → 22 → 21 (cost-gated).
-
-## 13. Overall Progress Summary
-
-- **Local game (STEPs 0–8):** 7/9 steps fully done; STEP 0 partial (8/12), STEP 1 partial (9/10), STEP 2 done with 1 item deferred to STEP 9.
-- **Next up:** STEP 9 — Automated Testing, QA and Performance (browser matrix, performance targets, benchmark harness).
-- **Overall roadmap completion:** **108/233 subtasks done (~46%)** — local single-player functionality and production baseline are complete; private multiplayer has an initial room-creation slice.
+| `requirements.txt` encoding/dependencies | ✅ repaired |
+| Python test definitions | ✅ present |
+| JavaScript physics tests | ✅ present |
+| Browser matrix workflow | ✅ configured |
+| Authoritative simulation module | ✅ present |
+| Authoritative API integration | ✅ present |
+| Authoritative API regression tests | ✅ present |
+| Fresh CI execution after latest authority changes | 🟡 pending observation |
+| Browser multiplayer end-to-end | 🟡 pending |
+| Replay integrity checksum | 🟡 pending |
+
+## 14. Recent Implementation Commits
+
+- `984b6de` — repaired Python dependency manifest.
+- `d26694d` — strengthened deterministic authoritative physics.
+- `d4087f1` — routed multiplayer through authoritative server simulation.
+- `9534018` — added authoritative multiplayer API regression tests.
+- `a863809` — aligned Node package version to `0.5.2`.
+- `0f4afce` — added tracker verification record.
+
+## 15. Rules for Future Updates
+
+- Do not mark code merely because it exists; verify its acceptance criterion.
+- Update this tracker after each verified batch of roughly 5–10 subtasks.
+- Keep security-sensitive multiplayer state server-authoritative.
+- Do not introduce paid dependencies into the core free game.
+- Keep advanced features such as AI, tournaments, clans, loot boxes, blockchain, voice chat, UGC marketplace and native mobile outside the current core roadmap unless deliberately re-scoped.
