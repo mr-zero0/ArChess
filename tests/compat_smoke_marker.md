@@ -1,1 +1,0 @@
-The compatibility renderer is presentation-only and consumes `window.gameState`; this marker exists solely to force CI verification of the current presentation stack.
