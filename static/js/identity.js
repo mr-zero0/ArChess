@@ -28,3 +28,25 @@ window.GuestIdentity = (() => {
 
   return Object.freeze({ init, getId });
 })();
+
+(() => {
+  const loadUi = (name, src, marker) => {
+    if (document.querySelector(`script[data-${marker}="1"]`)) return;
+    const script = document.createElement("script");
+    script.src = src;
+    script.dataset[marker] = "1";
+    script.defer = true;
+    document.head.appendChild(script);
+  };
+
+  const loadRankedAndProgressionUi = () => {
+    loadUi("ranked", "/static/js/ranked_ui.js", "archessRankedUi");
+    loadUi("progression", "/static/js/progression_ui.js", "archessProgressionUi");
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", loadRankedAndProgressionUi, { once: true });
+  } else {
+    loadRankedAndProgressionUi();
+  }
+})();

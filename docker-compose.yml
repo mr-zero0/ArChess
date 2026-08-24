@@ -1,0 +1,17 @@
+services:
+  archess:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY}
+      DATABASE_URL: ${DATABASE_URL:-sqlite:///prod.db}
+      TELEMETRY_SALT: ${TELEMETRY_SALT:?set TELEMETRY_SALT}
+      ANALYTICS_API_KEY: ${ANALYTICS_API_KEY:?set ANALYTICS_API_KEY}
+      TELEMETRY_RETENTION_DAYS: ${TELEMETRY_RETENTION_DAYS:-30}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
