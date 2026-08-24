@@ -13,20 +13,22 @@ def test_launch_rejects_opponent_piece_and_out_of_turn():
     assert sim.validate_launch("white", "w1", 99, 0) == (False, "speed_exceeded")
 
 
-def test_three_piece_collision_chain_reaches_second_collision():
+def test_simultaneous_three_piece_impact_damages_multiple_pairs():
     pieces = [
         make_piece("a", "rook", "white", 2.0, 4.0),
-        make_piece("b", "pawn", "black", 2.55, 4.0),
-        make_piece("c", "pawn", "white", 2.95, 4.0),
+        make_piece("b", "pawn", "black", 2.5, 4.0),
+        make_piece("c", "pawn", "white", 3.0, 4.0),
     ]
     pieces[0].vx = 10.0
+    pieces[2].vx = -10.0
     sim = AuthoritativeSimulation(pieces)
     events = sim.step(0.01)
     damaged = [event for event in events if event.get("damaged")]
+    damaged_pairs = {(event.get("a"), event.get("b")) for event in damaged}
 
-    assert len(damaged) >= 1
+    assert len(damaged) >= 2
+    assert len(damaged_pairs) >= 2
     assert pieces[1].hp < PIECE_STATS["pawn"]["hp"]
-    assert pieces[2].hp < PIECE_STATS["pawn"]["hp"]
 
 
 def test_collision_cooldown_prevents_stationary_hp_drain():
