@@ -83,36 +83,50 @@ A feature is ✅ only after implementation, regression coverage where practical,
 ✅ `game/physics/engine.py` uses substeps, radius-aware boundaries, collisions, damage, cooldown and reconciliation.  
 ✅ `tests/test_physics_engine.py` covers the main regression cases.
 
-## Current Step 13 Integrity Batch
+## Current CI Repair Batch
 
-### ✅ Completed in this batch
+### ✅ Implemented
 
-✅ Added deterministic canonical JSON serialization.  
-✅ Added SHA-256 canonical state hashing.  
-✅ Added shot-intent + pre/post-state integrity hash.  
-✅ Added regression tests for deterministic hashes and intent binding.
+✅ Removed the tracked development database from the repository.  
+✅ Repaired `.gitignore` so `instance/` and local SQLite databases stay untracked.  
+✅ CI now initializes a clean development schema before Python tests.  
+✅ Browser tests are gated behind `RUN_BROWSER_MATRIX=1`, so base pytest no longer launches Playwright.  
+✅ CI installs Playwright browsers before the browser matrix step.  
+✅ Node test runner moved to Node 24 in CI.  
+✅ Restored validated legacy vector-launch compatibility on the authoritative simulation.  
+✅ Corrected three-piece, King-destruction, and reconciliation regression fixtures.  
+✅ Browser multiplayer test now exercises two contexts through create → join → start → launch → reconnect.
 
 ### 🟡 Still open
 
-- Browser multiplayer end-to-end execution in CI.
-- Multi-client drift/reconciliation test with two browser clients.
-- Wire shot/state hashes into persisted match logs and replay records.
+- Fresh CI run after this repair batch.
+- Persist state/shot integrity hashes into match logs and reconnect state.
+- Dedicated multi-client drift/reconciliation assertions against canonical hashes.
+
+## Step 13 Integrity Work
+
+✅ Deterministic canonical JSON serialization.  
+✅ SHA-256 canonical state hashing.  
+✅ Shot-intent + pre/post-state integrity hash.  
+✅ Hash regression tests.
 
 ## Immediate Execution Order
 
-1. Run fresh Python + Node + browser matrix + performance CI.
-2. Add two-client reconciliation test.
-3. Persist pre-state hash, shot intent, post-state hash and shot hash in match log.
-4. Verify reconnect restores the same canonical hash.
-5. Only then promote Steps 12/13 to ✅ and begin Step 14 ranked matchmaking.
+1. Verify the CI repair batch.
+2. Wire pre-state hash, intent, post-state hash and shot hash into the authoritative match log.
+3. Return the canonical hash from start/launch/reconnect.
+4. Add two-client drift detection against that hash.
+5. Promote Steps 12/13 only after all of the above pass.
+6. Then begin Step 14 public matchmaking/ranked work.
 
-## Recent Batch Commits
+## Recent Work
 
-- `57549a5` — fixed `PhysicsEngine` deterministic integration/collision/reconciliation.
-- `e988acc` — added `PhysicsEngine` regression tests.
-- `1820045` — updated tracker after PhysicsEngine fix.
-- Current batch — deterministic state/shot integrity hashing + tests.
+- PhysicsEngine deterministic integration/collision/reconciliation.
+- Authoritative multiplayer server simulation.
+- Client authority bridge.
+- Deterministic state/shot integrity hashing.
+- CI/test stabilization batch.
 
 ## Future Update Rule
 
-Make several related code/test changes first, update this tracker with the verified batch, then create one final commit for that batch. Do not commit every individual file change.
+Make several related code/test changes first, update this tracker with the verified batch, then create one final squash commit for the batch. Do not treat an intermediate branch commit as a final release commit.
