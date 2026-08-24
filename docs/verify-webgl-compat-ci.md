@@ -1,0 +1,1 @@
+CI verification marker for the presentation-only WebGL compatibility path.
