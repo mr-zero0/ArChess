@@ -10,6 +10,14 @@ from game.auth_routes import current_user, login_required, require_csrf
 SOCIAL_BP = Blueprint('social', __name__)
 
 
+def _utc(value):
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
 def public_user(user):
     return user.public_dict()
 
@@ -272,7 +280,7 @@ def challenge_accept(user, challenge_id):
         return jsonify({'error': 'challenge_not_found'}), 404
     if challenge.status != 'pending':
         return jsonify({'error': 'challenge_not_pending'}), 409
-    if challenge.expires_at and challenge.expires_at < datetime.now(timezone.utc):
+    if _utc(challenge.expires_at) and _utc(challenge.expires_at) < datetime.now(timezone.utc):
         challenge.status = 'expired'
         db.session.commit()
         return jsonify({'error': 'challenge_expired'}), 409
