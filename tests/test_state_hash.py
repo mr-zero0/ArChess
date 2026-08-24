@@ -16,6 +16,12 @@ def test_state_hash_changes_when_match_state_changes():
     assert state_hash(state) != original
 
 
+def test_integrity_metadata_does_not_change_canonical_state_hash():
+    state = GameState.new().snapshot()
+    decorated = {**state, "integrity": {"preHash": "x", "postHash": "y", "shotHash": "z"}}
+    assert state_hash(decorated) == state_hash(state)
+
+
 def test_shot_hash_binds_intent_and_states():
     state = GameState.new().snapshot()
     intent = {"pieceId": state["pieces"][0]["id"], "dx": 1.5, "dy": -0.5}
