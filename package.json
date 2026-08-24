@@ -1,6 +1,6 @@
 {
   "name": "archess",
-  "version": "0.4.1",
+  "version": "0.5.2",
   "private": true,
   "description": "ArChess - Physics Chess Battle",
   "scripts": {
