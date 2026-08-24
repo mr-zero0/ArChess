@@ -46,35 +46,23 @@ def test_browser_authoritative_multiplayer_flow():
         assert response.status == 200
 
         suffix = str(time.time_ns())
-        white_guest = f"browser-white-{suffix}"
         black_guest = f"browser-black-{suffix}"
 
-        room = page.evaluate(
-            "async (guestId) => await (await fetch('/api/rooms', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({guestId})})).json()",
-            white_guest,
-        )
-        room_code = room["roomId"]
+        created = page.evaluate("async () => await window.ArChessMultiplayer.createRoom()")
+        room_code = created["roomId"]
+        assert page.evaluate("() => window.ArChessMultiplayer.team") == "white"
+
         joined = page.evaluate(
             "async ({room, guestId}) => await (await fetch(`/api/rooms/${room}/join`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({guestId})})).json()",
             {"room": room_code, "guestId": black_guest},
         )
         assert joined["status"] == "waiting"
 
-        started = page.evaluate(
-            "async (room) => await (await fetch(`/api/rooms/${room}/start`, {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'})).json()",
-            room_code,
-        )
+        started = page.evaluate("async () => await window.ArChessMultiplayer.startRoom()")
         assert len(started["state"]["pieces"]) == 32
-
-        applied = page.evaluate(
-            "async ({room, guestId}) => { const data = await window.ArChessMultiplayer.startRoom(); return {active: window.ArChessMultiplayer.active, team: window.ArChessMultiplayer.team, pieces: window.gameState.pieces.length, current: window.gameState.currentPlayer, room: data.room.roomId}; }",
-            {"room": room_code, "guestId": white_guest},
-        )
-        assert applied["active"] is True
-        assert applied["team"] == "white"
-        assert applied["pieces"] == 32
-        assert applied["current"] == "white"
-        assert applied["room"] == room_code
+        assert page.evaluate("() => window.ArChessMultiplayer.active") is True
+        assert page.evaluate("() => window.gameState.pieces.length") == 32
+        assert page.evaluate("() => window.gameState.currentPlayer") == "white"
 
         launch_ok = page.evaluate(
             "async () => { const piece = window.gameState.pieces.find(p => p.team === 'white' && p.alive); return await window.ArChessMultiplayer.launch(piece, 0.9, 0); }"
