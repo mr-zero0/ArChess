@@ -1,7 +1,5 @@
 (() => {
   "use strict";
-  let scene = null;
-
   const presets = {
     broadcast: { position: [5.2, 7.8, 9.6], target: [0, 0, 0] },
     top: { position: [0, 11.8, 0.01], target: [0, 0, 0] },
@@ -9,26 +7,26 @@
   };
 
   function install() {
-    if (!window.ThreeDScene || !window.ThreeDScene.prototype || window.__ArChessCameraPatched) return;
+    const Scene = window.ThreeDScene;
+    if (!Scene || !Scene.prototype || window.__ArChessCameraPatched) return false;
     window.__ArChessCameraPatched = true;
-    const proto = window.ThreeDScene.prototype;
-    const original = proto.constructor;
+    const proto = Scene.prototype;
+    const originalRender = proto.render;
 
     proto.installCameraControls = function () {
       if (this.__cameraControlsInstalled) return;
       this.__cameraControlsInstalled = true;
       this.__cameraTarget = { x: 0, y: 0, z: 0 };
-      this.__cameraGoal = { ...presets.broadcast.position };
-      this.__cameraTargetGoal = { ...presets.broadcast.target };
+      this.__cameraGoal = { x: 5.2, y: 7.8, z: 9.6 };
+      this.__cameraTargetGoal = { x: 0, y: 0, z: 0 };
       this.__cameraDragging = false;
       this.__cameraLast = null;
       this.__cameraYaw = Math.atan2(this.camera.position.x, this.camera.position.z);
       this.__cameraPitch = Math.atan2(this.camera.position.y, Math.hypot(this.camera.position.x, this.camera.position.z));
       this.__cameraRadius = Math.hypot(this.camera.position.x, this.camera.position.z);
       const canvas = this.canvas;
-
       canvas.addEventListener("pointerdown", (event) => {
-        if (event.button !== 2 || event.shiftKey) return;
+        if (event.button !== 2) return;
         this.__cameraDragging = true;
         this.__cameraLast = { x: event.clientX, y: event.clientY };
         canvas.setPointerCapture?.(event.pointerId);
@@ -47,7 +45,7 @@
       canvas.addEventListener("pointercancel", release);
       canvas.addEventListener("wheel", (event) => {
         event.preventDefault();
-        this.__cameraRadius = Math.max(7.0, Math.min(14.5, this.__cameraRadius + event.deltaY * 0.008));
+        this.__cameraRadius = Math.max(7, Math.min(14.5, this.__cameraRadius + event.deltaY * 0.008));
         this.__applyOrbitGoal();
       }, { passive: false });
       canvas.addEventListener("contextmenu", (event) => event.preventDefault());
@@ -55,11 +53,7 @@
 
     proto.__applyOrbitGoal = function () {
       const r = this.__cameraRadius;
-      this.__cameraGoal = {
-        x: Math.sin(this.__cameraYaw) * r,
-        y: Math.sin(this.__cameraPitch) * r,
-        z: Math.cos(this.__cameraYaw) * r,
-      };
+      this.__cameraGoal = { x: Math.sin(this.__cameraYaw) * r, y: Math.sin(this.__cameraPitch) * r, z: Math.cos(this.__cameraYaw) * r };
       this.__cameraTargetGoal = { x: 0, y: 0, z: 0 };
     };
 
@@ -78,7 +72,6 @@
     };
 
     proto.updateCamera = function (deltaTime) {
-      if (!this.__cameraControlsInstalled) return;
       const ease = 1 - Math.pow(0.0008, Math.max(0.001, deltaTime));
       this.camera.position.x += (this.__cameraGoal.x - this.camera.position.x) * ease;
       this.camera.position.y += (this.__cameraGoal.y - this.camera.position.y) * ease;
@@ -89,25 +82,20 @@
       this.camera.lookAt(this.__cameraTarget.x, this.__cameraTarget.y, this.__cameraTarget.z);
     };
 
-    // The renderer constructor is wrapped so every new scene receives controls without touching game logic.
-    window.ThreeDScene = class extends original {
-      constructor(...args) {
-        super(...args);
+    proto.render = function (game, deltaTime) {
+      if (!this.__cameraControlsInstalled) {
         this.installCameraControls();
         this.setPreset("broadcast");
       }
-      render(game, deltaTime) {
-        this.updateCamera(deltaTime);
-        return super.render(game, deltaTime);
-      }
+      this.updateCamera(deltaTime);
+      return originalRender.call(this, game, deltaTime);
     };
+    return true;
   }
 
-  const timer = setInterval(() => {
-    if (window.ThreeDScene && !window.__ArChessCameraPatched) {
-      clearInterval(timer);
-      install();
-    }
-  }, 10);
-  install();
+  if (!install()) {
+    const timer = setInterval(() => {
+      if (install()) clearInterval(timer);
+    }, 10);
+  }
 })();
