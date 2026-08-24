@@ -1,0 +1,1 @@
+Compatibility 3D projection verification marker. The executable regression lives in `tests/test_compat_3d_projection.py`.
