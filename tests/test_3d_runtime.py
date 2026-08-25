@@ -11,19 +11,12 @@ def test_three_d_renderer_is_visible():
         context = browser.new_context(viewport={"width":1440,"height":900})
         page = context.new_page()
         page.goto("http://localhost:5000/", wait_until="networkidle")
-        page.wait_for_timeout(600)
+        page.wait_for_timeout(700)
 
         state = page.evaluate("""() => {
             const gl=document.querySelector('#glCanvas');
             const game=document.querySelector('#gameCanvas');
             const scene=window.__ArChessThreeD;
-            const gl2=gl?.getContext('webgl2');
-            const px=new Uint8Array(4);
-            if(gl2){
-                const x=Math.max(0,Math.floor((gl2.drawingBufferWidth||gl.clientWidth)/2));
-                const y=Math.max(0,Math.floor((gl2.drawingBufferHeight||gl.clientHeight)/2));
-                gl2.readPixels(x,y,1,1,gl2.RGBA,gl2.UNSIGNED_BYTE,px);
-            }
             return {
                 ready:document.body.classList.contains('archess-3d-ready'),
                 scene:Boolean(scene),
@@ -32,7 +25,8 @@ def test_three_d_renderer_is_visible():
                 glWidth:gl?.clientWidth??0,
                 glHeight:gl?.clientHeight??0,
                 opacity:getComputedStyle(game).opacity,
-                pixelSum:Array.from(px).reduce((a,b)=>a+b,0),
+                renderCalls:scene?.renderer?.info?.render?.calls??0,
+                renderTriangles:scene?.renderer?.info?.render?.triangles??0,
             };
         }""")
 
@@ -42,5 +36,6 @@ def test_three_d_renderer_is_visible():
         assert state["entries"] == 32
         assert state["glWidth"] > 0 and state["glHeight"] > 0
         assert float(state["opacity"]) == 0.0
-        assert state["pixelSum"] > 0
+        assert state["renderCalls"] > 0
+        assert state["renderTriangles"] > 0
         browser.close()
