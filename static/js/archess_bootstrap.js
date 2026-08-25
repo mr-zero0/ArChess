@@ -88,6 +88,7 @@
       load("./cburnett_piece_assets.js?v=20260825-clean7"),
       load("./oss_piece_assets.js?v=20260825-clean7"),
     ]);
+    await load("./runtime_stabilizer.js?v=20260825-stable1");
     const started = performance.now();
     const poll = () => {
       if (normalizeBoardAndControls() || performance.now() - started > 15000) return;
