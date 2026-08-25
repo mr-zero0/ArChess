@@ -90,6 +90,7 @@
     addControls();
     hideLegacyFloatingPanels();
     loadSceneBridge();
+    setTimeout(() => import("./release_boot.js?v=release1").catch(error => console.error("ArChess release bootstrap failed", error)), 120);
   }
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",boot,{once:true}); else boot();
 })();
