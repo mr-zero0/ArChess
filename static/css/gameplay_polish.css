@@ -1,8 +1,9 @@
-/* Gameplay polish: one visual language across the arena. */
+/* ArChess visual foundation for the physics arena. */
 :root{--arc-bg:#07090d;--arc-panel:rgba(12,15,22,.82);--arc-line:rgba(255,255,255,.09);--arc-text:#f4f7fb;--arc-muted:#8a93a4;--arc-accent:#74e9ff;--arc-violet:#967cff;--arc-success:#65efaa}
 body.archess-final-ui .board-zone{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-height:calc(100vh - 104px);padding-top:8px}
 body.archess-final-ui .board-frame{width:min(78vh,900px);aspect-ratio:1;max-width:min(100%,900px);padding:10px;border-radius:26px;background:linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,255,255,.018));border:1px solid var(--arc-line);box-shadow:0 28px 90px rgba(0,0,0,.42),0 0 70px rgba(116,233,255,.06)}
 body.archess-final-ui .board-wrap{position:relative;width:100%;height:100%;aspect-ratio:1;border-radius:18px;overflow:hidden;background:#07090d}
+body.archess-final-ui .board-wrap canvas{position:absolute;inset:0;width:100%;height:100%}
 body.archess-final-ui .board-footer{width:min(900px,100%);min-height:48px;margin:10px auto 0;padding:0 2px;display:flex;align-items:center;justify-content:space-between;gap:12px}
 body.archess-final-ui .turn-badge{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--arc-line);border-radius:12px;background:var(--arc-panel);color:var(--arc-text);font-size:10px;font-weight:900;letter-spacing:.08em;backdrop-filter:blur(16px)}
 body.archess-final-ui .hint{color:var(--arc-muted);font-size:10px;font-weight:700;letter-spacing:.03em;text-align:right}

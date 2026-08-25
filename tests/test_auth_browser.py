@@ -2,8 +2,7 @@ import os
 import time
 
 import pytest
-from playwright.sync_api import sync_playwright
-
+from playwright.sync_api import expect, sync_playwright
 
 RUN_BROWSER_MATRIX = os.environ.get('RUN_BROWSER_MATRIX') == '1'
 
@@ -30,7 +29,7 @@ def test_browser_signup_login_profile_and_direct_challenge_entrypoints():
         page.click('#signupForm button.primary')
         page.wait_for_url('**/profile')
 
-        assert page.locator('#name').inner_text() == username
+        expect(page.locator('#name')).to_have_text(username, timeout=5000)
         assert page.locator('#mmr').inner_text() == '1200'
         assert page.locator('#matches').inner_text() == '0'
         assert page.locator('#mmrGraph').count() == 1
@@ -38,8 +37,8 @@ def test_browser_signup_login_profile_and_direct_challenge_entrypoints():
         assert page.locator('#challenges').count() == 1
         assert page.locator('#achievements').count() == 1
 
-        page.goto('http://localhost:5000/profile')
-        assert page.locator('#name').inner_text() == username
+        page.goto('http://localhost:5000/profile', wait_until='networkidle')
+        expect(page.locator('#name')).to_have_text(username, timeout=5000)
 
         page.click('#logout')
         page.wait_for_url('**/login')
@@ -50,6 +49,6 @@ def test_browser_signup_login_profile_and_direct_challenge_entrypoints():
         page.locator('#loginForm input[name="password"]').fill('A-strong-password-123')
         page.click('#loginForm button.primary')
         page.wait_for_url('**/profile')
-        assert page.locator('#name').inner_text() == username
+        expect(page.locator('#name')).to_have_text(username, timeout=5000)
 
         browser.close()
