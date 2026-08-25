@@ -26,7 +26,7 @@ def test_local_drag_release_alternates_white_to_black_and_back():
 
         page.goto(f"{BASE}/")
         page.wait_for_timeout(1200)
-        state = page.evaluate("() => ({player:gameState.currentPlayer,phase:gameState.phase,pieces:gameState.pieces.length,input:Boolean(window.__ArChessLocalInputV2),threeD:Boolean(window.__ArChessThreeD)})")
+        state = page.evaluate("() => ({player:gameState.currentPlayer,phase:gameState.phase,pieces:gameState.pieces.length,input:Boolean(window.__ArChessLocalInputController),threeD:Boolean(window.__ArChessThreeD)})")
         assert state == {"player":"white","phase":"aim","pieces":32,"input":True,"threeD":True}
 
         canvas = page.locator("#gameCanvas")
