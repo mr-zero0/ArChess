@@ -10,9 +10,7 @@
     document.documentElement.dataset.renderMode = mode;
     document.body.classList.toggle("archess-mode-2d", mode === "2d");
     document.body.classList.toggle("archess-mode-3d", mode === "3d");
-    if (window.ArChessRenderMode?.set) {
-      try { window.ArChessRenderMode.set(mode); } catch (_) {}
-    }
+    try { window.ArChessRenderMode?.set?.(mode); } catch (_) {}
     window.dispatchEvent(new CustomEvent("archess:modechange", { detail: { mode } }));
   };
 
@@ -20,25 +18,23 @@
     const shell = document.querySelector("#archessProfessionalShell");
     if (!shell) return false;
 
-    shell.style.position = "relative";
-    shell.style.zIndex = "100";
-    shell.style.pointerEvents = "auto";
+    // The shell is a UI overlay. Never re-parent or transform the live game renderer.
+    shell.style.position = "fixed";
+    shell.style.inset = "0";
+    shell.style.zIndex = "60";
+    shell.style.pointerEvents = "none";
 
-    const stage = shell.querySelector(".aps-stage");
-    const zone = document.querySelector(".game-layout > .board-zone") || document.querySelector(".board-zone");
-    const board = zone?.querySelector(".board-wrap") || document.querySelector(".board-wrap");
-
+    const board = document.querySelector(".game-layout > .board-zone .board-wrap") || document.querySelector(".board-wrap");
     if (board) {
       board.id = "boardWrap";
       board.style.position = "relative";
-      board.style.zIndex = "5";
       board.style.pointerEvents = "auto";
       const frame = board.closest(".board-frame");
-      if (frame) { frame.style.position = "relative"; frame.style.zIndex = "4"; }
-      if (stage && zone && zone.parentElement !== stage) {
-        stage.prepend(zone);
-      }
-      zone?.classList.add("archess-board-mounted");
+      if (frame) frame.style.pointerEvents = "auto";
+      const canvas2d = board.querySelector("#gameCanvas");
+      const canvas3d = board.querySelector("#glCanvas");
+      if (canvas2d) { canvas2d.style.display = "block"; canvas2d.style.pointerEvents = "auto"; }
+      if (canvas3d) { canvas3d.style.display = "block"; canvas3d.style.pointerEvents = "none"; }
     }
 
     const group = shell.querySelector(".aps-mode-group");
@@ -69,19 +65,17 @@
       syncModeButtons();
     }
 
-    const plus = shell.querySelector("#archessBoardPlus");
-    const minus = shell.querySelector("#archessBoardMinus");
-    [plus, minus].forEach((button) => {
-      if (!button) return;
+    for (const id of ["archessBoardPlus", "archessBoardMinus", "archessFocusBtn", "archessTheatreBtn", "archessNewGameBtn", "archessThemeButton"]) {
+      const button = shell.querySelector(`#${id}`);
+      if (!button) continue;
       button.removeAttribute("disabled");
       button.style.pointerEvents = "auto";
       button.style.position = "relative";
       button.style.zIndex = "122";
-    });
+    }
 
     const menu = shell.querySelector("#archessThemeMenu");
-    if (menu) { menu.style.zIndex = "130"; menu.style.pointerEvents = menu.classList.contains("open") ? "auto" : "none"; }
-
+    if (menu) menu.style.zIndex = "130";
     return Boolean(board);
   };
 
