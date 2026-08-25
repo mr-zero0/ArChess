@@ -26,13 +26,11 @@
     const alive = (game.pieces || []).filter((piece) => piece.alive);
     const maxSpeed = alive.reduce((max, piece) => Math.max(max, Math.hypot(piece.vx || 0, piece.vy || 0)), 0);
     const kineticThreshold = Math.max(0.22, (window.GAME_CONFIG?.minVelocity || 0.18) * 1.25);
-    const quiet = maxSpeed <= kineticThreshold;
 
-    if (quiet) quietAge += dt;
+    if (maxSpeed <= kineticThreshold) quietAge += dt;
     else quietAge = 0;
 
-    const settled = quietAge >= 0.22 || (physicsAge >= 4.0 && maxSpeed <= 6.0);
-    if (!settled) return;
+    if (quietAge < 0.22 && !(physicsAge >= 4.0 && maxSpeed <= 6.0)) return;
 
     for (const piece of alive) {
       piece.vx = 0;
@@ -41,16 +39,12 @@
     }
     game.activeCollisions?.clear?.();
     game.hitPairs?.clear?.();
-    game.settledFor = 0;
-    game.phase = "aim";
-    game.currentPlayer = game.currentPlayer === "white" ? "black" : "white";
-    game.turnTimeLeft = game.turnTime || 0;
-    game.feedback = { text: `${String(game.currentPlayer).toUpperCase()} TO MOVE`, life: 1.0 };
-    window.UI?.update?.(true);
+    game.settledFor = Math.max(game.settledFor || 0, window.GAME_CONFIG?.settleDelay || 0.18);
+    // Leave phase/currentPlayer untouched. main.js settleTurn() performs the official
+    // transition so replay/history/timers/challenges continue through one code path.
 
     physicsAge = 0;
     quietAge = 0;
-    lastPlayer = game.currentPlayer;
   };
 
   let previous = performance.now();
