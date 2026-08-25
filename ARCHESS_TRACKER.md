@@ -1,9 +1,9 @@
 # ArChess — Product, Engineering & Verification Tracker
 
 **Repository:** `mr-zero0/ArChess`  
-**Branch:** `fix/gameplay-final`  
+**Branch:** `main`  
 **Release candidate:** `v0.5.2`  
-**Current focus:** gameplay stability + professional UI consolidation + final regression
+**Current focus:** post-baseline gameplay verification + UI/renderer hardening
 
 > This tracker distinguishes **implemented**, **verified**, and **pending verification** work. Nothing is marked release-ready until the complete CI gate passes.
 
@@ -11,9 +11,9 @@
 
 | Gate | Status | Evidence / Acceptance |
 |---|---|---|
-| Python unit/API | VERIFIED | 101 passed in latest CI gate before UI/structure changes |
+| Python unit/API | VERIFIED | 101 passed in latest completed CI gate before final renderer-architecture changes |
 | Browser regression | PENDING | Must pass gameplay, auth, 2D/3D, UI and responsive matrix |
-| JavaScript suite | PENDING | Runs only after browser gate succeeds |
+| JavaScript suite | PENDING | Full `tests/*.test.js` run required |
 | Positive gameplay cases | PENDING | Drag, launch, physics settle, White → Black → White |
 | Negative gameplay cases | PENDING | Wrong team, invalid release, blocked unauthenticated play, invalid state |
 | 2D renderer | IMPLEMENTED / PENDING VERIFY | Open-source Cburnett-derived SVG assets, local loading |
@@ -22,7 +22,7 @@
 | Theme system | IMPLEMENTED / PENDING VERIFY | Single token bridge across shell, board and renderer |
 | Board resize | IMPLEMENTED / PENDING VERIFY | Responsive viewport-aware square sizing |
 | Focus/Theatre | IMPLEMENTED / PENDING VERIFY | Board-first presentation modes |
-| Repository structure | IN PROGRESS | Redundant root shims removed; final root audit still required |
+| Repository structure | IN PROGRESS | Root shims removed; final root audit still required |
 | Tracker | UPDATED | This file is the source of release/verification status |
 | README | VERIFIED | Root README added with setup and structure |
 
@@ -198,7 +198,7 @@ Redundant root shims such as `app.py` and `extensions.py` are intentionally remo
 ### A. Single-shell principle
 - ✓ One professional shell is the intended presentation layer
 - ✓ Legacy `final_ui`, `professional_ui`, `presentation_fix`, `render_router`, local input and projectile shims removed from page bootstrap
-- ✓ Actual board hosted inside the professional workspace
+- ✓ Professional shell is an overlay; the canonical game `.board-zone` remains in its native render tree
 - ☐ Browser proof that no legacy presentation script is loaded
 
 ### B. Abstraction principle
@@ -241,7 +241,7 @@ No component may introduce a private competing theme palette.
 
 ### E. Release acceptance
 
-The branch is **NOT release-ready** until:
+The baseline is **NOT release-ready** until:
 
 - Python suite is green.
 - Browser suite is green.
@@ -260,7 +260,7 @@ The branch is **NOT release-ready** until:
 
 ## CI / Branch Policy
 
-- `main` must remain untouched during verification work.
-- `fix/gameplay-final` is the sole verification branch.
-- Do not merge PR #14 until the complete release gate is green.
+- `main` is now the active baseline branch.
+- `fix/gameplay-final` is retained only until the baseline cleanup/verification audit is complete.
 - Do not mark a feature `DONE` solely because code exists; it must have corresponding automated or explicit verification evidence.
+- Keep release readiness separate from branch promotion: this baseline contains the latest implementation, while the release gate remains open until verification passes.
