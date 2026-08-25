@@ -10,7 +10,7 @@
     await load("./professional_shell.js?v=20260825-clean7");
     await load("./mode_controls_fix.js?v=20260825-mode3");
     await load("./board_host.js?v=20260825-clean7");
-    await load("./turn_resolution_guard.js?v=20260825-turn3");
+    await load("./turn_resolution_guard.js?v=20260825-turn4");
     await Promise.all([
       load("./cburnett_piece_assets.js?v=20260825-clean7"),
       load("./oss_piece_assets.js?v=20260825-clean7"),
