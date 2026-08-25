@@ -32,17 +32,8 @@ jobs:
         run: git rev-parse HEAD
 
       - name: Initialize clean development database
-        run: python - <<'PY'
-          import importlib.util
-          spec = importlib.util.spec_from_file_location("archess_app", "game.py")
-          module = importlib.util.module_from_spec(spec)
-          spec.loader.exec_module(module)
-          from config.config import DevelopmentConfig
-          application = module.create_app(DevelopmentConfig)
-          with application.app_context():
-              module.db.drop_all()
-              module.db.create_all()
-          PY
+        run: >-
+          python -c "import importlib.util; s=importlib.util.spec_from_file_location('archess_app','game.py'); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); from config.config import DevelopmentConfig; a=m.create_app(DevelopmentConfig); c=a.app_context(); c.push(); m.db.drop_all(); m.db.create_all(); c.pop()"
 
       - name: Run Python tests
         env:
@@ -53,15 +44,8 @@ jobs:
         run: python -m playwright install --with-deps chromium firefox webkit
 
       - name: Start Flask server
-        run: |
-          nohup python - <<'PY' > flask.log 2>&1 &
-          import importlib.util
-          spec = importlib.util.spec_from_file_location("archess_app", "game.py")
-          module = importlib.util.module_from_spec(spec)
-          spec.loader.exec_module(module)
-          app = module.create_app()
-          app.run(host="127.0.0.1", port=5000)
-          PY
+        run: >-
+          nohup python -c "import importlib.util; s=importlib.util.spec_from_file_location('archess_app','game.py'); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.create_app().run(host='127.0.0.1',port=5000)" > flask.log 2>&1 &
 
       - name: Wait for Flask server
         run: |
@@ -85,7 +69,7 @@ jobs:
           node-version: "24"
           package-manager-cache: false
 
-      - name: Run JavaScript tests
+      - name: Run all JavaScript tests
         env:
           NODE_OPTIONS: "--require ./tests/node-dom-shim.cjs"
-        run: node --test tests/physics.test.js tests/replay.test.js
+        run: node --test tests/*.test.js
