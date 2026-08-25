@@ -1,12 +1,11 @@
 # ArChess third-party assets
 
-## A Beautiful Game — Khronos glTF Sample Assets
+## Staunton-Pieces — clarkerubber
 
-ArChess can lazily load the chess-piece geometry from the KhronosGroup `glTF-Sample-Assets` repository, model `ABeautifulGame`.
+ArChess uses classic Staunton chess-piece meshes from `clarkerubber/Staunton-Pieces`.
 
-Source: https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/ABeautifulGame
-Asset: `ABeautifulGame.glb`
-License: CC BY 4.0 International
-Credits: Academy Software Foundation / MaterialX Project for the original model; Ed Mackey for the glTF conversion.
+Source: https://github.com/clarkerubber/Staunton-Pieces
+License: MIT
+Copyright: 2014 clarkerubber
 
-The asset is loaded lazily from a public CDN so the game can start without waiting for the model download. If the asset cannot be fetched, ArChess retains its procedural 3D pieces instead of falling back to Unicode/fake 3D pieces.
+The six STL meshes are loaded lazily into Three.js and normalized to the ArChess board coordinate system. Lichess documents `clarkerubber/Staunton-Pieces` among the source repositories for its original 3D pieces. If the asset CDN cannot be fetched, ArChess keeps its procedural 3D pieces rather than substituting Unicode glyphs.
