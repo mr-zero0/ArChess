@@ -4,6 +4,12 @@ import * as THREE from "three";
   "use strict";
   if (window.__ArChessOSSAssets) return;
   window.__ArChessOSSAssets = true;
+
+  const css = document.createElement("link");
+  css.rel = "stylesheet";
+  css.href = "/static/css/gameplay_polish.css?v=20260825-polish";
+  document.head.appendChild(css);
+
   const ASSET_URL = "https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Assets@main/Models/ABeautifulGame/glTF-Binary-KTX-ETC1S-Draco/ABeautifulGame.glb";
   const PIECE_NAMES = { king:{white:"King_W",black:"King_B"}, queen:{white:"Queen_W",black:"Queen_B"}, rook:{white:"Castle_W1",black:"Castle_B1"}, knight:{white:"Knight_W1",black:"Knight_B1"}, bishop:{white:"Bishop_W1",black:"Bishop_B1"}, pawn:{white:"Pawn_Body_W1",black:"Pawn_Body_B1"} };
   const TARGET_HEIGHT = {pawn:.62,rook:.78,knight:.86,bishop:.9,queen:1.0,king:1.08};
