@@ -4,18 +4,10 @@
   window.__ArChessProfessionalRuntime = true;
 
   const SKINS = {
-    obsidian: {
-      base: "dark", boardBg: "#05070b", light: "#263747", dark: "#101c29", grid: "rgba(150,210,230,.13)", coord: "rgba(220,240,250,.45)", edgeA: "rgba(112,231,255,.45)", edgeB: "rgba(154,124,255,.32)", white: "#d9e5ec", black: "#242d36", whiteTop: "#f8fbfd", blackTop: "#5b6670", frame: "#0b1118"
-    },
-    emerald: {
-      base: "dark", boardBg: "#06100d", light: "#2c5848", dark: "#17362c", grid: "rgba(110,228,190,.15)", coord: "rgba(215,245,233,.47)", edgeA: "rgba(103,244,179,.46)", edgeB: "rgba(69,213,192,.32)", white: "#e9e1c9", black: "#202a26", whiteTop: "#fff6dc", blackTop: "#55625b", frame: "#0b2119"
-    },
-    walnut: {
-      base: "wood", boardBg: "#0d0805", light: "#d9bd95", dark: "#6e4b32", grid: "rgba(49,26,16,.24)", coord: "rgba(51,29,20,.62)", edgeA: "rgba(241,191,121,.52)", edgeB: "rgba(209,120,86,.34)", white: "#9c553a", black: "#171818", whiteTop: "#e9a178", blackTop: "#666e6e", frame: "#3b2617"
-    },
-    frost: {
-      base: "light", boardBg: "#071018", light: "#dbe8ef", dark: "#91abba", grid: "rgba(48,106,135,.14)", coord: "rgba(33,68,88,.56)", edgeA: "rgba(95,212,255,.52)", edgeB: "rgba(110,141,255,.30)", white: "#eef3f5", black: "#2a3540", whiteTop: "#ffffff", blackTop: "#71808d", frame: "#1b2a35"
-    },
+    obsidian: { base: "dark", boardBg: "#05070b", light: "#263747", dark: "#101c29", grid: "rgba(150,210,230,.13)", coord: "rgba(220,240,250,.45)", edgeA: "rgba(112,231,255,.45)", edgeB: "rgba(154,124,255,.32)", white: "#d9e5ec", black: "#242d36", frame: "#0b1118" },
+    emerald: { base: "dark", boardBg: "#06100d", light: "#2c5848", dark: "#17362c", grid: "rgba(110,228,190,.15)", coord: "rgba(215,245,233,.47)", edgeA: "rgba(103,244,179,.46)", edgeB: "rgba(69,213,192,.32)", white: "#e9e1c9", black: "#202a26", frame: "#0b2119" },
+    walnut: { base: "wood", boardBg: "#0d0805", light: "#d9bd95", dark: "#6e4b32", grid: "rgba(49,26,16,.24)", coord: "rgba(51,29,20,.62)", edgeA: "rgba(241,191,121,.52)", edgeB: "rgba(209,120,86,.34)", white: "#9c553a", black: "#171818", frame: "#3b2617" },
+    frost: { base: "light", boardBg: "#071018", light: "#dbe8ef", dark: "#91abba", grid: "rgba(48,106,135,.14)", coord: "rgba(33,68,88,.56)", edgeA: "rgba(95,212,255,.52)", edgeB: "rgba(110,141,255,.30)", white: "#eef3f5", black: "#2a3540", frame: "#1b2a35" },
   };
 
   let mode = "2d";
@@ -27,7 +19,7 @@
       const link = document.createElement("link");
       link.rel = "stylesheet";
       link.dataset.archessProfessionalShell = "1";
-      link.href = "/static/css/professional_shell.css?v=20260825-ui6";
+      link.href = "/static/css/professional_shell.css?v=20260825-ui7";
       document.head.appendChild(link);
     }
   }
@@ -38,9 +30,7 @@
     const originalTheme = proto.theme;
     const originalPalette = proto.palette;
     const originalDraw = proto.draw;
-    proto.theme = function patchedTheme() {
-      return document.documentElement.dataset.skin || originalTheme.call(this);
-    };
+    proto.theme = function patchedTheme() { return document.documentElement.dataset.skin || originalTheme.call(this); };
     proto.palette = function patchedPalette() {
       const skin = SKINS[document.documentElement.dataset.skin || "obsidian"] || SKINS.obsidian;
       const base = originalPalette.call(this);
@@ -55,14 +45,11 @@
         coord: skin.coord,
         edgeA: skin.edgeA,
         edgeB: skin.edgeB,
-        trailWhite: skin.base === "wood" ? "#e08a61" : skin.accent || "#70e7ff",
+        trailWhite: skin.base === "wood" ? "#e08a61" : "#70e7ff",
         trailBlack: skin.base === "light" ? "#df5265" : skin.base === "wood" ? "#8b9595" : "#ff7585",
       };
     };
-    proto.draw = function patchedDraw(game) {
-      if (mode === "3d") return;
-      return originalDraw.call(this, game);
-    };
+    proto.draw = function patchedDraw(game) { if (mode === "3d") return; return originalDraw.call(this, game); };
     patched2D = true;
     return true;
   }
@@ -72,24 +59,19 @@
     const proto = window.ThreeDScene.prototype;
     const originalRender = proto.render;
     const originalSetTheme = proto.setTheme;
-    proto.render = function patchedRender(game, delta) {
-      if (mode === "2d") return;
-      return originalRender.call(this, game, delta);
-    };
-    proto.setTheme = function patchedSetTheme(theme) {
+    proto.render = function patchedRender(game, delta) { if (mode === "2d") return; return originalRender.call(this, game, delta); };
+    proto.setTheme = function patchedSetTheme() {
       const skinName = document.documentElement.dataset.skin || "obsidian";
       const skin = SKINS[skinName] || SKINS.obsidian;
       originalSetTheme.call(this, skin.base);
       this.theme = skinName;
       try {
-        this.scene.background = new THREE.Color(skin.boardBg);
-        this.frame.material.color.set(skin.frame);
-        this.tileMats.light.color.set(skin.light);
-        this.tileMats.dark.color.set(skin.dark);
-        this.materials = {
-          white: new THREE.MeshStandardMaterial({ color: skin.white, roughness: 0.50, metalness: 0.06 }),
-          black: new THREE.MeshStandardMaterial({ color: skin.black, roughness: 0.42, metalness: 0.20 }),
-        };
+        this.scene.background?.set?.(skin.boardBg);
+        this.frame?.material?.color?.set?.(skin.frame);
+        this.tileMats?.light?.color?.set?.(skin.light);
+        this.tileMats?.dark?.color?.set?.(skin.dark);
+        this.materials?.white?.color?.set?.(skin.white);
+        this.materials?.black?.color?.set?.(skin.black);
         for (const entry of this.entries.values()) {
           entry.group.traverse((node) => {
             if (node.isMesh && node !== entry.shadow && node !== entry.glow) node.material = this.materials[entry.team];
@@ -108,7 +90,6 @@
     document.body.dataset.renderMode = mode;
     document.body.classList.toggle("archess-mode-2d", mode === "2d");
     document.body.classList.toggle("archess-mode-3d", mode === "3d");
-    // When entering 3D, force one immediate sync before the next visible frame.
     if (mode === "3d" && window.__ArChessThreeD && window.gameState) {
       try { window.__ArChessThreeD.syncPieces?.(window.gameState); window.__ArChessThreeD.updatePieces?.(window.gameState, 0); } catch (_) {}
     }
@@ -120,9 +101,8 @@
     const skin = document.documentElement.dataset.skin || "obsidian";
     const data = SKINS[skin] || SKINS.obsidian;
     document.documentElement.dataset.theme = data.base;
-    document.dispatchEvent(new CustomEvent("archess:themechange", { detail: { theme: data.base, skin } }));
     window.dispatchEvent(new CustomEvent("archess:themechange", { detail: { theme: data.base, skin } }));
-    for (const scene of [window.__ArChessThreeD]) scene?.setTheme?.(data.base);
+    window.__ArChessThreeD?.setTheme?.(data.base);
   }
 
   function boot() {
@@ -133,7 +113,7 @@
     applySkin();
     if (window.ArChessProfessionalUI?.state) mode = window.ArChessProfessionalUI.state.mode;
     setMode(mode);
-    if (window.ArChessProfessionalUI?.recalcBoard) window.ArChessProfessionalUI.recalcBoard();
+    window.ArChessProfessionalUI?.recalcBoard?.();
     return patched2D && (patched3D || window.__ArChess3DUnavailable);
   }
 
