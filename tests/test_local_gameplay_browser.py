@@ -14,7 +14,6 @@ def test_local_physics_turn_alternates_after_real_drag():
         context = browser.new_context(viewport={"width": 1440, "height": 900})
         page = context.new_page()
 
-        # Create a real test account so the arena auth gate is passed exactly as a user would.
         page.goto("/login")
         suffix = str(time.time_ns())
         username = f"Play_{suffix[-8:]}"
@@ -27,7 +26,7 @@ def test_local_physics_turn_alternates_after_real_drag():
         page.wait_for_url("**/profile")
 
         page.goto("/")
-        page.wait_for_timeout(1200)
+        page.wait_for_timeout(1500)
 
         state = page.evaluate(
             """() => ({
@@ -53,7 +52,6 @@ def test_local_physics_turn_alternates_after_real_drag():
         assert rect
         sx = rect["x"] + (white["x"] / 8.0) * rect["width"]
         sy = rect["y"] + (white["y"] / 8.0) * rect["height"]
-        # Pull the piece down/left and release: this should launch the white pawn.
         ex = sx - min(120, rect["width"] * 0.18)
         ey = sy - min(35, rect["height"] * 0.06)
 
@@ -62,28 +60,31 @@ def test_local_physics_turn_alternates_after_real_drag():
         page.mouse.move(ex, ey, steps=12)
         page.mouse.up()
 
-        page.wait_for_timeout(1200)
+        # Pawn friction is intentionally high; allow the actual physics to settle instead of asserting on a magic frame count.
+        page.wait_for_function("() => window.gameState?.phase === 'aim' && window.gameState?.currentPlayer === 'black'", timeout=8000)
         after = page.evaluate(
             """() => ({
                 currentPlayer: window.gameState?.currentPlayer,
                 phase: window.gameState?.phase,
                 moving: window.gameState?.pieces?.filter(p => p.moving).length ?? 0,
-                history: window.gameState?.history?.slice(-3) ?? [],
+                history: window.gameState?.history?.slice(-4) ?? [],
             })"""
         )
 
         assert after["phase"] == "aim", after
         assert after["currentPlayer"] == "black", after
+        assert after["moving"] == 0, after
         assert any("Black to move." in entry for entry in after["history"]), after
 
         black = page.evaluate(
             """() => window.gameState.pieces.find(p => p.alive && p.team === 'black' && p.type === 'pawn')"""
         )
         assert black
+        rect = page.locator("#gameCanvas").bounding_box()
+        assert rect
         sx2 = rect["x"] + (black["x"] / 8.0) * rect["width"]
         sy2 = rect["y"] + (black["y"] / 8.0) * rect["height"]
 
-        # The opposite side must now be selectable. A failed selection is the exact regression the user reported.
         page.mouse.click(sx2, sy2)
         selected = page.evaluate("() => window.gameState?.selectedPiece?.team ?? null")
         assert selected == "black"
@@ -91,12 +92,17 @@ def test_local_physics_turn_alternates_after_real_drag():
         page.mouse.down()
         page.mouse.move(sx2 + min(100, rect["width"] * 0.14), sy2 + min(30, rect["height"] * 0.05), steps=10)
         page.mouse.up()
-        page.wait_for_timeout(800)
+        page.wait_for_timeout(150)
 
         second = page.evaluate(
-            """() => ({currentPlayer: window.gameState?.currentPlayer, phase: window.gameState?.phase})"""
+            """() => ({
+                currentPlayer: window.gameState?.currentPlayer,
+                phase: window.gameState?.phase,
+                selected: window.gameState?.selectedPiece?.team ?? null,
+            })"""
         )
-        assert second["phase"] in {"physics", "aim"}
-        assert second["currentPlayer"] in {"white", "black"}
+        assert second["phase"] == "physics", second
+        assert second["currentPlayer"] == "black", second
+        assert second["selected"] is None, second
 
         browser.close()
