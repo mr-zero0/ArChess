@@ -1,22 +1,27 @@
 import json
 import math
 import os
+import sys
+
+# Adjust path to include the root directory so 'game' and 'config' can be found
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from flask import Flask, jsonify, render_template, request
 
-from config import DevelopmentConfig, ProductionConfig
-from extensions import db, migrate, limiter
+# Import from config and game folders now accessible via sys.path
+from config.config import DevelopmentConfig, ProductionConfig
+from core.extensions import db, migrate, limiter
 from game import BOARD_SIZE, GAME_CONFIG, PIECE_STATS
 from game.matchmaking import get_queue_status, join_queue, leave_queue
 from game.physics.authoritative import AuthoritativeSimulation
-from logging_config import configure_logging
-from rooms import create_room
+from core.logging_config import configure_logging
+from core.rooms import create_room
 
 VERSION = "v0.5.2"
 
 
 def create_app(config_object=DevelopmentConfig):
-    application = Flask(__name__)
+    application = Flask(__name__, template_folder='templates', static_folder='static')
     application.config.from_object(config_object)
     if config_object is ProductionConfig and not os.environ.get("SECRET_KEY"):
         raise RuntimeError("SECRET_KEY must be set in production")

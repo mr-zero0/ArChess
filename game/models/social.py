@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from extensions import db
+from core.extensions import db
 
 
 class Friendship(db.Model):

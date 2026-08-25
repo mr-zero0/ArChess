@@ -4,7 +4,7 @@ import string
 
 from flask import Blueprint, jsonify, request
 
-from extensions import db
+from core.extensions import db
 from game.auth_routes import current_user, login_required, require_csrf
 
 SOCIAL_BP = Blueprint('social', __name__)

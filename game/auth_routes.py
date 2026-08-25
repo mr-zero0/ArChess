@@ -7,7 +7,7 @@ from flask import Blueprint, current_app, jsonify, redirect, request, session, u
 from sqlalchemy import func, or_
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from extensions import db
+from core.extensions import db
 
 try:
     from authlib.integrations.flask_client import OAuth

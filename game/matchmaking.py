@@ -3,7 +3,7 @@ from threading import Lock
 import secrets
 import string
 
-from extensions import db
+from core.extensions import db
 from game.models import MatchmakingQueue, Room, User
 from game.matchmaking_next import allowed_mmr_gap, recover_queue_entry
 from game.telemetry import record_event

@@ -2,7 +2,7 @@ import json
 import math
 from datetime import datetime, timezone
 
-from extensions import db
+from core.extensions import db
 from game.models import Room, User
 from game.progression import award_match_xp
 from game.telemetry import record_event

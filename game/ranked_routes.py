@@ -3,7 +3,7 @@ from flask.signals import appcontext_pushed
 
 
 def register_ranked_routes():
-    from extensions import db
+    from core.extensions import db
     from game.leaderboard import get_leaderboard, ranked_profile
     from game.models import User
     from game.progression import equip_cosmetic, progression_profile

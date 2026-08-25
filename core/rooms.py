@@ -1,6 +1,6 @@
 import secrets
 import string
-from extensions import db
+from core.extensions import db
 from game.models import Room, User
 
 def create_room(guest_id):

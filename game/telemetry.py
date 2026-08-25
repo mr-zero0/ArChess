@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from flask import current_app
 from sqlalchemy import func
 
-from extensions import db
+from core.extensions import db
 from game.models.telemetry import TelemetryEvent
 
 EVENT_TYPES = {

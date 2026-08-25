@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from extensions import db
+from core.extensions import db
 
 
 class User(db.Model):
@@ -8,7 +8,7 @@ class User(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     guest_id = db.Column(db.String(100), unique=True, nullable=False, index=True)
-    room_id = db.Column(db.Integer, db.ForeignKey('rooms.id'), nullable=True)
+    match_id = db.Column(db.Integer, db.ForeignKey('matches.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     last_seen = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=True)
 
