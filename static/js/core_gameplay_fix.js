@@ -1,1 +1,0 @@
-This file has been intentionally removed from the gameplay-v2 runtime; see local_input_v2.js and projectile_visuals_v2.js.
