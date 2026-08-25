@@ -5,6 +5,7 @@
   "description": "ArChess - Physics Chess Battle",
   "scripts": {
     "test:physics": "node --test tests/physics.test.js",
-    "test:all": "node --test tests/physics.test.js"
+    "test:replay": "node --test tests/replay.test.js",
+    "test:all": "node --test tests/*.test.js"
   }
 }
