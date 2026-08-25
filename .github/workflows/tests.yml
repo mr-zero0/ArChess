@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - feature/step14-ranked-matchmaking
+      - fix/gameplay-final
   pull_request:
   workflow_dispatch:
 
@@ -31,7 +32,8 @@ jobs:
         run: git rev-parse HEAD
 
       - name: Initialize clean development database
-        run: python -c "from app import app; from extensions import db; ctx = app.app_context(); ctx.push(); db.drop_all(); db.create_all(); ctx.pop()"
+        run: >-
+          python -c "import importlib.util; s=importlib.util.spec_from_file_location('archess_app','game.py'); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); from config.config import DevelopmentConfig; a=m.create_app(DevelopmentConfig); c=a.app_context(); c.push(); m.db.drop_all(); m.db.create_all(); c.pop()"
 
       - name: Run Python tests
         env:
@@ -42,23 +44,22 @@ jobs:
         run: python -m playwright install --with-deps chromium firefox webkit
 
       - name: Start Flask server
-        run: python -m flask --app app run --host 127.0.0.1 --port 5000 > flask.log 2>&1 &
+        run: >-
+          nohup python -c "import importlib.util; s=importlib.util.spec_from_file_location('archess_app','game.py'); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); m.create_app().run(host='127.0.0.1',port=5000)" > flask.log 2>&1 &
 
       - name: Wait for Flask server
         run: |
           for attempt in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:5000/api/version > /dev/null; then
-              exit 0
-            fi
+            if curl --fail --silent http://127.0.0.1:5000/api/version > /dev/null; then exit 0; fi
             sleep 1
           done
           cat flask.log
           exit 1
 
-      - name: Run browser matrix
+      - name: Run browser matrix and gameplay regression
         env:
           RUN_BROWSER_MATRIX: "1"
-        run: python -m pytest tests/test_browser_matrix.py -q
+        run: python -m pytest tests/test_browser_matrix.py tests/test_auth_browser.py tests/test_3d_runtime.py tests/test_local_gameplay_browser.py -q
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -66,7 +67,7 @@ jobs:
           node-version: "24"
           package-manager-cache: false
 
-      - name: Run JavaScript tests
+      - name: Run all JavaScript tests
         env:
           NODE_OPTIONS: "--require ./tests/node-dom-shim.cjs"
-        run: node --test tests/physics.test.js tests/replay.test.js
+        run: node --test tests/*.test.js
