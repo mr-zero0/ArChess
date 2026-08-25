@@ -6,7 +6,7 @@
   const style = document.createElement("style");
   style.id = "archess-presentation-fix-style";
   style.textContent = `
-    #boardWrap { position: relative; isolation: isolate; }
+    #boardWrap { position: relative; isolation: isolate; display: flex; align-items: center; justify-content: center; }
     #boardWrap #glCanvas,
     #boardWrap #gameCanvas {
       position: absolute !important;

@@ -6,7 +6,14 @@ body.archess-final-ui .topbar{display:none!important}body.archess-final-ui .left
 body.archess-final-ui .game-layout{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1fr);min-height:100vh;padding:28px 24px 62px}
 body.archess-final-ui .board-zone{min-width:0;width:min(980px,100%);margin:40px auto 0;position:relative}
 body.archess-final-ui .board-frame{width:min(82vh,900px);max-width:min(100%,900px);margin:0 auto;padding:12px;border-radius:30px;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.01)),rgba(9,11,17,.78);border:1px solid rgba(255,255,255,.1);box-shadow:0 34px 120px rgba(0,0,0,.46),0 0 90px rgba(115,89,255,.1);backdrop-filter:blur(18px)}
-body.archess-final-ui .board-wrap{border-radius:22px;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.05),0 0 0 1px rgba(0,0,0,.32)}
+body.archess-final-ui .board-wrap{
+  border-radius:22px;
+  overflow:hidden;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.05),0 0 0 1px rgba(0,0,0,.32);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 body.archess-final-ui .board-footer{width:min(900px,100%);margin:14px auto 0;display:flex;justify-content:space-between;gap:14px;align-items:center;padding:8px 6px}body.archess-final-ui .board-footer .hint{color:rgba(255,255,255,.45)}
 .archess-ui{position:fixed;inset:0;z-index:50;pointer-events:none}.archess-ui *{box-sizing:border-box}.archess-ui button,.archess-ui a,.archess-ui input{pointer-events:auto}
 .au-topbar{position:fixed;inset:16px 18px auto;height:64px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:18px;padding:0 12px 0 16px;background:rgba(10,11,17,.72);border:1px solid rgba(255,255,255,.09);border-radius:20px;backdrop-filter:blur(22px) saturate(1.15);box-shadow:0 20px 65px rgba(0,0,0,.26)}
