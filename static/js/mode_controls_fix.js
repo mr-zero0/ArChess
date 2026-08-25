@@ -8,29 +8,35 @@
     const oldButtons = group?.querySelectorAll?.("[data-archess-mode]");
     if (!group || !oldButtons?.length || !window.ArChessProfessionalUI) return false;
 
-    const modes = ["2d", "3d"];
-    const current = [...oldButtons];
     const replacement = document.createElement("div");
     replacement.className = "aps-native-mode-group";
     replacement.setAttribute("role", "group");
     replacement.setAttribute("aria-label", "Render mode");
+    replacement.style.cssText = "display:inline-flex;align-items:center;padding:3px;gap:3px;border:1px solid var(--archess-border,rgba(255,255,255,.1));border-radius:11px;background:rgba(255,255,255,.035);";
 
-    for (const mode of modes) {
+    for (const mode of ["2d", "3d"]) {
       const button = document.createElement("button");
       button.type = "button";
       button.dataset.archessMode = mode;
       button.textContent = mode.toUpperCase();
       button.setAttribute("aria-pressed", String(window.ArChessProfessionalUI.state.mode === mode));
+      button.style.cssText = "min-width:48px;height:27px;border:0;border-radius:8px;background:transparent;color:#7f8b9d;font:800 10px/1 Inter,system-ui,sans-serif;letter-spacing:.08em;cursor:pointer;transition:background .12s ease,color .12s ease,box-shadow .12s ease;";
+      button.addEventListener("mouseenter", () => { if (button.getAttribute("aria-pressed") !== "true") button.style.background = "rgba(255,255,255,.07)"; });
+      button.addEventListener("mouseleave", () => { if (button.getAttribute("aria-pressed") !== "true") button.style.background = "transparent"; });
       button.addEventListener("click", () => window.ArChessProfessionalUI.applyMode(mode));
       replacement.appendChild(button);
     }
 
     group.replaceWith(replacement);
     const sync = () => replacement.querySelectorAll("[data-archess-mode]").forEach((button) => {
-      button.setAttribute("aria-pressed", String(button.dataset.archessMode === window.ArChessProfessionalUI.state.mode));
+      const active = button.dataset.archessMode === window.ArChessProfessionalUI.state.mode;
+      button.setAttribute("aria-pressed", String(active));
+      button.style.background = active ? "color-mix(in srgb,var(--archess-accent) 18%,rgba(10,14,20,.92))" : "transparent";
+      button.style.color = active ? "#fff" : "#7f8b9d";
+      button.style.boxShadow = active ? "inset 0 0 0 1px color-mix(in srgb,var(--archess-accent) 35%,transparent),0 6px 18px color-mix(in srgb,var(--archess-accent) 9%,transparent)" : "none";
     });
     const observer = new MutationObserver(sync);
-    observer.observe(document.body, { attributes: true, attributeFilter: ["data-render-mode", "class"], subtree: false });
+    observer.observe(document.body, { attributes: true, attributeFilter: ["data-render-mode", "class"] });
     sync();
     window.__ArChessModeButtons = { sync };
     return true;
