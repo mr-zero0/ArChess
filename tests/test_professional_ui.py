@@ -71,3 +71,27 @@ def test_professional_ui_resize_focus_theatre_and_mobile_layout():
         assert page.evaluate("() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--archess-board-size')) <= 390")
         assert page.locator("#archessProfessionalShell .aps-topbar").is_visible()
         browser.close()
+
+
+@pytest.mark.skipif(not RUN_BROWSER, reason="Browser regression requires Playwright")
+def test_professional_ui_mode_switch_is_instant():
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page(viewport={"width": 1440, "height": 900})
+        page.goto(f"{BASE}/", wait_until="networkidle")
+        page.wait_for_timeout(1400)
+
+        result = page.evaluate("""() => {
+            const button3d = document.querySelector('[data-archess-mode="3d"]');
+            const button2d = document.querySelector('[data-archess-mode="2d"]');
+            const t0 = performance.now();
+            button3d?.click();
+            const switched3d = document.body.dataset.renderMode === '3d';
+            button2d?.click();
+            const switched2d = document.body.dataset.renderMode === '2d';
+            return { switched3d, switched2d, elapsed: performance.now() - t0 };
+        }""")
+        assert result["switched3d"] is True
+        assert result["switched2d"] is True
+        assert result["elapsed"] < 100
+        browser.close()
