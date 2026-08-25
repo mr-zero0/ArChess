@@ -16,11 +16,18 @@ def test_professional_ui_modes_and_theme_controls():
         page.wait_for_timeout(1400)
 
         expect(page.locator("#archessProfessionalShell")).to_have_count(1)
+        expect(page.locator("#archessProToolbar")).to_have_count(0)
         expect(page.locator("[data-archess-mode='2d']")).to_have_count(1)
         expect(page.locator("[data-archess-mode='3d']")).to_have_count(1)
         expect(page.locator("[data-archess-skin]")).to_have_count(4)
         expect(page.locator("#archessProfessionalShell .aps-player")).to_have_count(1)
         expect(page.locator("#archessProfessionalShell .aps-context")).to_have_count(1)
+
+        forbidden = page.evaluate("""() => Array.from(document.scripts).map(s => s.src).filter(Boolean).filter(src => [
+            'final_ui.js','professional_ui.js','presentation_fix.js','presentation_fallback3d.js',
+            'render_router.js','local_input_controller.js','projectile_visuals_v2.js'
+        ].some(name => src.includes(name)))""")
+        assert forbidden == []
 
         page.locator("[data-archess-mode='2d']").click()
         assert page.evaluate("() => document.body.classList.contains('archess-mode-2d')") is True
