@@ -65,7 +65,8 @@ jobs:
           tests/test_auth_browser.py
           tests/test_3d_runtime.py
           tests/test_local_gameplay_browser.py
-          tests/test_release_functional.py -q
+          tests/test_release_functional.py
+          tests/test_professional_ui.py -q
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
