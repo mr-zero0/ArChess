@@ -32,7 +32,17 @@ jobs:
         run: git rev-parse HEAD
 
       - name: Initialize clean development database
-        run: python -c "from game import create_app; from config.config import DevelopmentConfig; from core.extensions import db; app = create_app(DevelopmentConfig); ctx = app.app_context(); ctx.push(); db.drop_all(); db.create_all(); ctx.pop()"
+        run: python - <<'PY'
+          import importlib.util
+          spec = importlib.util.spec_from_file_location("archess_app", "game.py")
+          module = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+          from config.config import DevelopmentConfig
+          application = module.create_app(DevelopmentConfig)
+          with application.app_context():
+              module.db.drop_all()
+              module.db.create_all()
+          PY
 
       - name: Run Python tests
         env:
@@ -43,7 +53,15 @@ jobs:
         run: python -m playwright install --with-deps chromium firefox webkit
 
       - name: Start Flask server
-        run: python -m flask --app 'game:create_app()' run --host 127.0.0.1 --port 5000 > flask.log 2>&1 &
+        run: |
+          nohup python - <<'PY' > flask.log 2>&1 &
+          import importlib.util
+          spec = importlib.util.spec_from_file_location("archess_app", "game.py")
+          module = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+          app = module.create_app()
+          app.run(host="127.0.0.1", port=5000)
+          PY
 
       - name: Wait for Flask server
         run: |
