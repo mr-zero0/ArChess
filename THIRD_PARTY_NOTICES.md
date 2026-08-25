@@ -1,11 +1,35 @@
-# ArChess third-party assets
+# ArChess third-party notices
 
-## Staunton-Pieces — clarkerubber
+## 3D Staunton Pieces — clarkerubber/Staunton-Pieces
 
-ArChess uses classic Staunton chess-piece meshes from `clarkerubber/Staunton-Pieces`.
+ArChess loads the Staunton 3D piece meshes from `clarkerubber/Staunton-Pieces` and normalizes them into the Three.js board coordinate system.
 
 Source: https://github.com/clarkerubber/Staunton-Pieces
 License: MIT
-Copyright: 2014 clarkerubber
+Copyright: clarkerubber
 
-The six STL meshes are loaded lazily into Three.js and normalized to the ArChess board coordinate system. Lichess documents `clarkerubber/Staunton-Pieces` among the source repositories for its original 3D pieces. If the asset CDN cannot be fetched, ArChess keeps its procedural 3D pieces rather than substituting Unicode glyphs.
+The repository provides the six core Staunton pieces as STL source assets. The browser loader fetches those assets lazily and applies ArChess materials, lighting, shadows and transforms.
+
+## 2D Piece Art Reference — mganjoo/gchessboard
+
+The ArChess 2D presentation takes visual/asset reference from `mganjoo/gchessboard` and its Cburnett-derived SVG chess pieces.
+
+Source: https://github.com/mganjoo/gchessboard
+Library license: MIT
+Piece-art license: CC BY-SA 3.0, as documented by the project.
+
+ArChess does not claim those original SVGs as its own artwork.
+
+## Web Awesome
+
+ArChess uses Web Awesome web components for the professional control surface, segmented renderer controls, dialogs and themed UI tokens.
+
+Source: https://github.com/shoelace-style/webawesome
+License: MIT
+
+## Lucide
+
+ArChess may use Lucide icons in UI surfaces where needed.
+
+Source: https://github.com/lucide-icons/lucide
+License: ISC
