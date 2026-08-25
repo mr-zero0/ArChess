@@ -21,10 +21,11 @@ def test_professional_ui_modes_and_theme_controls():
         expect(page.locator(".archess-theme-choice")).to_have_count(4)
 
         page.locator("[data-archess-mode='2d']").click()
-        expect(page.locator("body")).to_have_class(lambda value: "archess-mode-2d" in value)
+        assert page.evaluate("() => document.body.classList.contains('archess-mode-2d')") is True
         assert page.evaluate("() => document.body.dataset.renderMode") == "2d"
 
         page.locator("[data-archess-mode='3d']").click()
+        assert page.evaluate("() => document.body.classList.contains('archess-mode-3d')") is True
         assert page.evaluate("() => document.body.dataset.renderMode") == "3d"
 
         page.locator("#archessThemeButton").click()
@@ -54,6 +55,6 @@ def test_professional_ui_resize_and_invalid_mode_recovery():
         restored = page.evaluate("() => getComputedStyle(document.documentElement).getPropertyValue('--archess-board-size').trim()")
         assert restored == start
 
-        result = page.evaluate("() => { try { window.__ArChessProfessionalUI && document.querySelector('[data-archess-mode=\"2d\"]')?.click(); return document.body.dataset.renderMode; } catch (_) { return 'error'; } }")
+        result = page.evaluate("() => { const button = document.querySelector('[data-archess-mode=\"2d\"]'); button?.click(); return document.body.dataset.renderMode; }")
         assert result == "2d"
         browser.close()
