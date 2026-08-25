@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - feature/step14-ranked-matchmaking
+      - fix/gameplay-v2
   pull_request:
   workflow_dispatch:
 
@@ -31,7 +32,7 @@ jobs:
         run: git rev-parse HEAD
 
       - name: Initialize clean development database
-        run: python -c "from app import app; from extensions import db; ctx = app.app_context(); ctx.push(); db.drop_all(); db.create_all(); ctx.pop()"
+        run: python -c "from game import create_app; from config.config import DevelopmentConfig; from core.extensions import db; app = create_app(DevelopmentConfig); ctx = app.app_context(); ctx.push(); db.drop_all(); db.create_all(); ctx.pop()"
 
       - name: Run Python tests
         env:
@@ -42,7 +43,7 @@ jobs:
         run: python -m playwright install --with-deps chromium firefox webkit
 
       - name: Start Flask server
-        run: python -m flask --app app run --host 127.0.0.1 --port 5000 > flask.log 2>&1 &
+        run: python -m flask --app 'game:create_app()' run --host 127.0.0.1 --port 5000 > flask.log 2>&1 &
 
       - name: Wait for Flask server
         run: |
@@ -58,7 +59,7 @@ jobs:
       - name: Run browser matrix
         env:
           RUN_BROWSER_MATRIX: "1"
-        run: python -m pytest tests/test_browser_matrix.py -q
+        run: python -m pytest tests/test_browser_matrix.py tests/test_auth_browser.py tests/test_3d_runtime.py tests/test_local_gameplay_browser.py -q
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
