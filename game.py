@@ -15,6 +15,7 @@ from game.physics.authoritative import AuthoritativeSimulation
 from core.logging_config import configure_logging
 from core.rooms import create_room
 from game.auth_routes import AUTH_BP, configure_auth
+from game.social_routes import SOCIAL_BP
 
 VERSION = "v0.5.2"
 
@@ -31,6 +32,7 @@ def create_app(config_object=DevelopmentConfig):
     configure_logging(application)
     configure_auth(application)
     application.register_blueprint(AUTH_BP)
+    application.register_blueprint(SOCIAL_BP)
 
     def load_simulation(room):
         if room.canonical_state:
