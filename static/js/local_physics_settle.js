@@ -15,31 +15,29 @@
         return;
       }
 
-      const threshold = GAME_CONFIG.minVelocity || 0.18;
-      const moving = game.pieces.filter((piece) => piece.alive && piece.moving);
-      const maxSpeed = moving.reduce((max, piece) => Math.max(max, Math.hypot(piece.vx, piece.vy)), 0);
+      const kineticThreshold = Math.max(0.34, (GAME_CONFIG.minVelocity || 0.18) * 2.25);
+      const alive = game.pieces.filter((piece) => piece.alive);
+      const maxSpeed = alive.reduce((max, piece) => Math.max(max, Math.hypot(piece.vx || 0, piece.vy || 0)), 0);
 
-      // Contact resolution can leave bodies geometrically touching with zero kinetic
-      // energy. That is a settled board, not an active collision state.
-      if (maxSpeed <= threshold) {
-        quietTime += deltaTime;
-      } else {
-        quietTime = 0;
-      }
+      // Collision contact is not motion. A piece can remain geometrically touching
+      // another piece with negligible velocity; that state must still settle.
+      if (maxSpeed <= kineticThreshold) quietTime += deltaTime;
+      else quietTime = 0;
 
-      const settleWindow = Math.max(0.08, GAME_CONFIG.settleDelay || 0.18);
-      if (quietTime >= settleWindow) {
-        for (const piece of game.pieces) {
-          if (!piece.alive) continue;
-          if (Math.hypot(piece.vx, piece.vy) <= threshold) {
-            piece.vx = 0;
-            piece.vy = 0;
-            piece.moving = false;
-          }
+      const settleWindow = Math.max(0.12, GAME_CONFIG.settleDelay || 0.18);
+      if (quietTime < settleWindow) return;
+
+      for (const piece of alive) {
+        const speed = Math.hypot(piece.vx || 0, piece.vy || 0);
+        if (speed <= kineticThreshold) {
+          piece.vx = 0;
+          piece.vy = 0;
+          piece.moving = false;
         }
-        game.activeCollisions.clear();
-        quietTime = 0;
       }
+
+      game.activeCollisions.clear();
+      quietTime = 0;
     };
     return true;
   };
