@@ -5,21 +5,21 @@
 
   function mount() {
     const host = document.querySelector("#archessProfessionalShell .aps-stage");
-    const board = document.querySelector(".game-layout > .board-zone");
+    const board = document.querySelector(".game-layout > .board-zone") || document.querySelector(".archess-board-host");
     if (!host || !board) return false;
-    board.id = "boardWrap";
+    const boardWrap = board.querySelector(".board-wrap");
+    if (boardWrap) boardWrap.id = "boardWrap";
     board.classList.add("archess-board-host");
     if (board.parentElement !== host) host.appendChild(board);
     document.body.classList.add("archess-board-mounted");
     window.dispatchEvent(new Event("resize"));
-    return true;
+    return Boolean(boardWrap);
   }
 
-  if (!mount()) {
-    const observer = new MutationObserver(() => {
-      if (mount()) observer.disconnect();
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
-    setTimeout(() => observer.disconnect(), 15000);
-  }
+  const started = performance.now();
+  const poll = () => {
+    if (mount()) return;
+    if (performance.now() - started < 15000) setTimeout(poll, 25);
+  };
+  poll();
 })();
