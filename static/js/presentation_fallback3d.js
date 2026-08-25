@@ -16,10 +16,10 @@
   }
 
   function boot() {
-    // Main.js owns game state and physics. This layer owns only presentation helpers and
-    // the replacement pointer controller; no second physics/turn controller is installed.
+    // main.js remains the single owner of game state and physics.
     setTimeout(() => import("/static/js/local_input_v2.js?v=20260825-1").catch((error)=>console.error("ArChess local input controller failed",error)), 250);
-    setTimeout(() => import("/static/js/oss_piece_assets.js?v=20260825-4").catch((error)=>console.error("ArChess OSS piece loader failed",error)), 900);
+    setTimeout(() => import("/static/js/projectile_visuals_v2.js?v=20260825-1").catch((error)=>console.error("ArChess projectile visuals failed",error)), 450);
+    setTimeout(() => import("/static/js/oss_piece_assets.js?v=20260825-5").catch((error)=>console.error("ArChess OSS piece loader failed",error)), 900);
     if (typeof window.WebGL2RenderingContext === "undefined") injectMessage();
   }
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",boot,{once:true}); else boot();
