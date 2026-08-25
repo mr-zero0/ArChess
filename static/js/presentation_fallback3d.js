@@ -16,10 +16,10 @@
   }
 
   function boot() {
-    // This file is loaded before the main module. Delay the core patch until main.js
-    // has created gameState, then patch the actual runtime rather than a duplicate game.
-    setTimeout(() => import("/static/js/core_gameplay_fix.js?v=20260825-1").catch((error)=>console.error("ArChess core gameplay fix failed",error)), 150);
-    setTimeout(() => import("/static/js/gameplay_polish.js?v=20260825-2").catch((error)=>console.error("ArChess gameplay polish failed",error)), 200);
+    // Main.js owns game state and physics. This layer owns only presentation helpers and
+    // the replacement pointer controller; no second physics/turn controller is installed.
+    setTimeout(() => import("/static/js/local_input_v2.js?v=20260825-1").catch((error)=>console.error("ArChess local input controller failed",error)), 250);
+    setTimeout(() => import("/static/js/oss_piece_assets.js?v=20260825-4").catch((error)=>console.error("ArChess OSS piece loader failed",error)), 900);
     if (typeof window.WebGL2RenderingContext === "undefined") injectMessage();
   }
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",boot,{once:true}); else boot();
