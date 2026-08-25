@@ -12,11 +12,8 @@
     const api = window.ArChessProfessionalShell || window.ArChessProfessionalUI;
     if (api && !window.ArChessProfessionalUI) window.ArChessProfessionalUI = api;
 
-    const stage = shell.querySelector(".aps-stage");
-    const boardZone = document.querySelector(".game-layout > .board-zone") || document.querySelector(".archess-board-host");
-    if (stage && boardZone && boardZone.parentElement !== stage) stage.appendChild(boardZone);
-
-    const boardWrap = document.querySelector(".board-wrap");
+    // Never move the renderer's board-zone. The game engine owns its original DOM container.
+    const boardWrap = document.querySelector(".game-layout > .board-zone .board-wrap") || document.querySelector(".board-wrap");
     if (boardWrap) boardWrap.id = "boardWrap";
 
     let modeGroup = shell.querySelector(".aps-native-mode-group");
@@ -36,8 +33,8 @@
         button.addEventListener("click", (event) => {
           event.preventDefault();
           event.stopPropagation();
-          const current = window.ArChessProfessionalShell || window.ArChessProfessionalUI;
-          current?.applyMode?.(mode);
+          api?.applyMode?.(mode);
+          window.ArChessRenderMode?.set?.(mode);
           updateModes(mode);
         });
         modeGroup.appendChild(button);
@@ -46,7 +43,7 @@
       else shell.querySelector(".aps-center-controls")?.prepend(modeGroup);
     }
 
-    function updateModes(mode = (window.ArChessProfessionalShell || window.ArChessProfessionalUI)?.getState?.().mode || document.body.dataset.renderMode || "2d") {
+    function updateModes(mode = api?.getState?.().mode || window.ArChessRenderMode?.mode || document.body.dataset.renderMode || "2d") {
       modeGroup.querySelectorAll("[data-archess-mode]").forEach((button) => {
         const active = button.dataset.archessMode === mode;
         button.setAttribute("aria-pressed", String(active));
@@ -82,13 +79,13 @@
     await load("./professional_shell.js?v=20260825-clean8");
     normalizeBoardAndControls();
     await load("./mode_controls_fix.js?v=20260825-mode4");
-    await load("./board_host.js?v=20260825-host2");
+    await load("./board_host.js?v=20260825-native3");
     await load("./turn_resolution_guard.js?v=20260825-turn4");
     await Promise.all([
       load("./cburnett_piece_assets.js?v=20260825-clean7"),
       load("./oss_piece_assets.js?v=20260825-clean7"),
     ]);
-    await load("./runtime_stabilizer.js?v=20260825-stable1");
+    await load("./runtime_stabilizer.js?v=20260825-stable2");
     const started = performance.now();
     const poll = () => {
       if (normalizeBoardAndControls() || performance.now() - started > 15000) return;
