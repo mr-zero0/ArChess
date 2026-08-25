@@ -35,7 +35,7 @@ jobs:
         run: >-
           python -c "import importlib.util; s=importlib.util.spec_from_file_location('archess_app','game.py'); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); from config.config import DevelopmentConfig; a=m.create_app(DevelopmentConfig); c=a.app_context(); c.push(); m.db.drop_all(); m.db.create_all(); c.pop()"
 
-      - name: Run Python tests
+      - name: Run Python unit and API tests
         env:
           RUN_BROWSER_MATRIX: "0"
         run: python -m pytest -q
@@ -56,10 +56,16 @@ jobs:
           cat flask.log
           exit 1
 
-      - name: Run browser matrix and gameplay regression
+      - name: Run browser and full functional regression
         env:
           RUN_BROWSER_MATRIX: "1"
-        run: python -m pytest tests/test_browser_matrix.py tests/test_auth_browser.py tests/test_3d_runtime.py tests/test_local_gameplay_browser.py -q
+        run: >-
+          python -m pytest
+          tests/test_browser_matrix.py
+          tests/test_auth_browser.py
+          tests/test_3d_runtime.py
+          tests/test_local_gameplay_browser.py
+          tests/test_release_functional.py -q
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
