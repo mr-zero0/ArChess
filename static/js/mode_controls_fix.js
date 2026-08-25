@@ -32,7 +32,7 @@
     const sync = () => replacement.querySelectorAll("[data-archess-mode]").forEach((button) => {
       const active = button.dataset.archessMode === window.ArChessProfessionalUI.state.mode;
       button.setAttribute("aria-pressed", String(active));
-      button.disabled = active;
+      button.disabled = false;
       button.style.background = active ? "color-mix(in srgb,var(--archess-accent) 18%,rgba(10,14,20,.92))" : "transparent";
       button.style.color = active ? "#fff" : "#7f8b9d";
       button.style.boxShadow = active ? "inset 0 0 0 1px color-mix(in srgb,var(--archess-accent) 35%,transparent),0 6px 18px color-mix(in srgb,var(--archess-accent) 9%,transparent)" : "none";
