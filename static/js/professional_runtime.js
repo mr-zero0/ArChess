@@ -94,9 +94,6 @@
     document.body.dataset.renderMode = mode;
     document.body.classList.toggle("archess-mode-2d", mode === "2d");
     document.body.classList.toggle("archess-mode-3d", mode === "3d");
-    if (mode === "3d" && window.__ArChessThreeD && window.gameState) {
-      try { window.__ArChessThreeD.syncPieces?.(window.gameState); window.__ArChessThreeD.updatePieces?.(window.gameState, 0); } catch (_) {}
-    }
   }
 
   window.ArChessRenderMode = { get mode() { return mode; }, set: setMode };
@@ -106,7 +103,6 @@
     const data = SKINS[skin] || SKINS.obsidian;
     document.documentElement.dataset.theme = data.base;
     window.dispatchEvent(new CustomEvent("archess:themechange", { detail: { theme: data.base, skin } }));
-    window.__ArChessThreeD?.setTheme?.(data.base);
   }
 
   function boot() {
