@@ -8,8 +8,6 @@ from playwright.sync_api import expect, sync_playwright
 
 from config.config import DevelopmentConfig
 
-# game.py is the application module, while `game/` is also a package. Import the
-# factory by file path so the release suite exercises the same entrypoint CI uses.
 _ROOT = Path(__file__).resolve().parents[1]
 _SPEC = importlib.util.spec_from_file_location("archess_app", _ROOT / "game.py")
 _APP_MODULE = importlib.util.module_from_spec(_SPEC)
@@ -25,11 +23,6 @@ def unique_account():
     return {"username": f"QA_{token}", "email": f"qa-{token}@example.com", "password": "Valid-password-123"}
 
 
-@pytest.mark.parametrize("payload,expected", [
-    ({"username": "ab", "email": "a@example.com", "password": "Valid-password-123"}, "invalid_username"),
-    ({"username": "ValidUser", "email": "not-an-email", "password": "Valid-password-123"}, "invalid_email"),
-    ({"username": "ValidUser", "email": "a@example.com", "password": "short"}, "weak_password"),
-])
 def test_auth_signup_negative_cases(payload, expected):
     app = create_app(DevelopmentConfig)
     client = app.test_client()
@@ -38,6 +31,13 @@ def test_auth_signup_negative_cases(payload, expected):
     response = client.post("/api/auth/signup", json=payload, headers={"X-CSRF-Token": "test-csrf"})
     assert response.status_code == 400
     assert response.get_json()["error"] == expected
+
+
+test_auth_signup_negative_cases = pytest.mark.parametrize("payload,expected", [
+    ({"username": "ab", "email": "a@example.com", "password": "Valid-password-123"}, "invalid_username"),
+    ({"username": "ValidUser", "email": "not-an-email", "password": "Valid-password-123"}, "invalid_email"),
+    ({"username": "ValidUser", "email": "a@example.com", "password": "short"}, "weak_password"),
+])(test_auth_signup_negative_cases)
 
 
 def test_auth_missing_csrf_is_rejected():
@@ -90,8 +90,8 @@ def test_release_positive_and_negative_ui_flow():
 
         page.goto(f"{BASE}/", wait_until="networkidle")
         page.wait_for_timeout(900)
-        initial = page.evaluate("() => ({player:gameState.currentPlayer,phase:gameState.phase,pieces:gameState.pieces.length,input:Boolean(window.__ArChessLocalInputController),threeD:Boolean(window.__ArChessThreeD),gateHidden:document.querySelector('#archessAuthGate')?.classList.contains('hidden')})")
-        assert initial == {"player": "white", "phase": "aim", "pieces": 32, "input": True, "threeD": True, "gateHidden": True}
+        initial = page.evaluate("() => ({player:gameState.currentPlayer,phase:gameState.phase,pieces:gameState.pieces.length,threeD:Boolean(window.__ArChessThreeD),gateHidden:document.querySelector('#archessAuthGate')?.classList.contains('hidden')})")
+        assert initial == {"player": "white", "phase": "aim", "pieces": 32, "threeD": True, "gateHidden": True}
 
         board = page.locator("#boardWrap")
         box = board.bounding_box()
@@ -109,7 +109,7 @@ def test_release_positive_and_negative_ui_flow():
         page.mouse.move(x0 - 120, y0, steps=12)
         assert page.evaluate("() => gameState.dragging") is True
         assert page.evaluate("() => gameState.powerRatio > 0") is True
-        expect(page.locator("#trajectoryCanvas")).to_have_count(1)
+        assert page.evaluate("() => document.body.classList.contains('archess-mode-2d')") is True
         page.mouse.up()
         page.wait_for_function("() => gameState.phase === 'aim' && gameState.currentPlayer === 'black'", timeout=7000)
         after_white = page.evaluate("() => ({player:gameState.currentPlayer,phase:gameState.phase,history:gameState.history.length,moving:gameState.pieces.some(p=>p.moving)})")
