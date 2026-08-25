@@ -40,8 +40,8 @@ jobs:
           RUN_BROWSER_MATRIX: "0"
         run: python -m pytest -q
 
-      - name: Install Playwright browsers
-        run: python -m playwright install chromium firefox webkit
+      - name: Install Playwright browsers and host dependencies
+        run: python -m playwright install --with-deps chromium firefox webkit
 
       - name: Start Flask server
         run: >-
