@@ -10,15 +10,16 @@ Copyright: clarkerubber
 
 The repository provides the six core Staunton pieces as STL source assets. The browser loader fetches those assets lazily and applies ArChess materials, lighting, shadows and transforms.
 
-## 2D Piece Art Reference — mganjoo/gchessboard
+## 2D Piece Art — mganjoo/gchessboard / Cburnett
 
-The ArChess 2D presentation takes visual/asset reference from `mganjoo/gchessboard` and its Cburnett-derived SVG chess pieces.
+ArChess vendors a small, local copy of the 12 Cburnett-derived SVG chess pieces distributed by `mganjoo/gchessboard`. The assets are embedded locally so the board does not wait on an external asset CDN during play.
 
 Source: https://github.com/mganjoo/gchessboard
 Library license: MIT
-Piece-art license: CC BY-SA 3.0, as documented by the project.
+Piece-art license: CC BY-SA 3.0, as documented by the project README.
+Original artwork attribution: User:Cburnett / Wikimedia Commons
 
-ArChess does not claim those original SVGs as its own artwork.
+The ArChess project does not claim the original artwork as its own. The local integration preserves the upstream attribution and license.
 
 ## Web Awesome
 
