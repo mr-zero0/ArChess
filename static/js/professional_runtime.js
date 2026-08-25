@@ -14,14 +14,18 @@
   let patched2D = false;
   let patched3D = false;
 
+  function addCss(href, marker) {
+    if (document.querySelector(`link[data-${marker}]`)) return;
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.dataset[marker] = "1";
+    link.href = href;
+    document.head.appendChild(link);
+  }
+
   function loadCss() {
-    if (!document.querySelector('link[data-archess-professional-shell]')) {
-      const link = document.createElement("link");
-      link.rel = "stylesheet";
-      link.dataset.archessProfessionalShell = "1";
-      link.href = "/static/css/professional_shell.css?v=20260825-ui7";
-      document.head.appendChild(link);
-    }
+    addCss("/static/css/professional_tokens.css?v=20260825-ui8", "archessProfessionalTokens");
+    addCss("/static/css/professional_shell.css?v=20260825-ui8", "archessProfessionalShell");
   }
 
   function patch2D() {
