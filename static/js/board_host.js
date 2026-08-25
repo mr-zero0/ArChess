@@ -3,22 +3,44 @@
   if (window.__ArChessBoardHost) return;
   window.__ArChessBoardHost = true;
 
-  function mount() {
-    const host = document.querySelector("#archessProfessionalShell .aps-stage");
-    const board = document.querySelector(".game-layout > .board-zone") || document.querySelector(".archess-board-host");
-    if (!host || !board) return false;
-    const boardWrap = board.querySelector(".board-wrap");
-    if (boardWrap) boardWrap.id = "boardWrap";
-    board.classList.add("archess-board-host");
-    if (board.parentElement !== host) host.appendChild(board);
-    document.body.classList.add("archess-board-mounted");
+  function normalize() {
+    const boardWrap = document.querySelector(".game-layout > .board-zone .board-wrap") || document.querySelector(".board-wrap");
+    const boardCanvas = document.querySelector("#gameCanvas");
+    const glCanvas = document.querySelector("#glCanvas");
+    if (!boardWrap) return false;
+
+    boardWrap.id = "boardWrap";
+    boardWrap.classList.add("archess-board-host");
+    boardWrap.style.position = "relative";
+    boardWrap.style.pointerEvents = "auto";
+
+    if (boardCanvas) {
+      boardCanvas.style.position = "absolute";
+      boardCanvas.style.inset = "0";
+      boardCanvas.style.width = "100%";
+      boardCanvas.style.height = "100%";
+      boardCanvas.style.display = "block";
+      boardCanvas.style.pointerEvents = "auto";
+    }
+    if (glCanvas) {
+      glCanvas.style.position = "absolute";
+      glCanvas.style.inset = "0";
+      glCanvas.style.width = "100%";
+      glCanvas.style.height = "100%";
+      glCanvas.style.display = "block";
+      glCanvas.style.pointerEvents = "none";
+    }
+
+    // Keep the real game board in the original game-layout container.
+    // The professional shell is an overlay and must never re-parent the renderer canvas.
+    document.body.classList.add("archess-board-ready");
     window.dispatchEvent(new Event("resize"));
-    return Boolean(boardWrap);
+    return Boolean(boardCanvas || glCanvas);
   }
 
   const started = performance.now();
   const poll = () => {
-    if (mount()) return;
+    if (normalize()) return;
     if (performance.now() - started < 15000) setTimeout(poll, 25);
   };
   poll();
