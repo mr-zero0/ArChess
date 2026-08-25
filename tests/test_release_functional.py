@@ -1,11 +1,20 @@
+import importlib.util
 import os
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
 from playwright.sync_api import expect, sync_playwright
 
 from config.config import DevelopmentConfig
-from game import create_app
+
+# game.py is the application module, while `game/` is also a package. Import the
+# factory by file path so the release suite exercises the same entrypoint CI uses.
+_ROOT = Path(__file__).resolve().parents[1]
+_SPEC = importlib.util.spec_from_file_location("archess_app", _ROOT / "game.py")
+_APP_MODULE = importlib.util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(_APP_MODULE)
+create_app = _APP_MODULE.create_app
 
 RUN_BROWSER = os.environ.get("RUN_BROWSER_MATRIX") == "1"
 BASE = "http://127.0.0.1:5000"
@@ -92,11 +101,9 @@ def test_release_positive_and_negative_ui_flow():
         black_x = box["x"] + box["width"] * (0.5 / 8)
         black_y = box["y"] + box["height"] * (0.5 / 8)
 
-        # Negative: opponent piece cannot be selected on White's turn.
         page.mouse.click(black_x, black_y)
         assert page.evaluate("() => ({dragging:gameState.dragging,selected:gameState.selectedPiece?.team||null,player:gameState.currentPlayer})") == {"dragging": False, "selected": None, "player": "white"}
 
-        # Positive: real pointer drag produces power and a launch trajectory.
         page.mouse.move(x0, y0)
         page.mouse.down()
         page.mouse.move(x0 - 120, y0, steps=12)
@@ -111,11 +118,9 @@ def test_release_positive_and_negative_ui_flow():
         assert after_white["history"] >= 2
         assert after_white["moving"] is False
 
-        # Negative: White cannot launch again during Black's turn.
         page.mouse.click(x0, y0)
         assert page.evaluate("() => gameState.dragging") is False
 
-        # Positive: Black launches and ownership alternates back to White.
         page.mouse.move(black_x, black_y)
         page.mouse.down()
         page.mouse.move(black_x + 120, black_y, steps=12)
@@ -124,7 +129,6 @@ def test_release_positive_and_negative_ui_flow():
         page.wait_for_function("() => gameState.phase === 'aim' && gameState.currentPlayer === 'white'", timeout=7000)
         assert page.evaluate("() => ({player:gameState.currentPlayer,phase:gameState.phase})") == {"player": "white", "phase": "aim"}
 
-        # Negative: empty-board click must not select anything.
         page.mouse.click(box["x"] + box["width"] * 0.5, box["y"] + box["height"] * 0.5)
         assert page.evaluate("() => gameState.selectedPiece === null") is True
 
@@ -133,7 +137,6 @@ def test_release_positive_and_negative_ui_flow():
         page.click("#logout")
         page.wait_for_url("**/login")
 
-        # Negative: unauthenticated users see the arena gate again.
         page.goto(f"{BASE}/", wait_until="networkidle")
         page.wait_for_timeout(700)
         assert page.evaluate("() => document.querySelector('#archessAuthGate')?.classList.contains('hidden')") is False
