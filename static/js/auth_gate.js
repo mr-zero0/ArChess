@@ -4,8 +4,7 @@
   window.__ArChessAuthGate = true;
 
   const install = () => {
-    const wrap = document.getElementById("boardWrap");
-    if (!wrap) return false;
+    const wrap = document.getElementById("boardWrap") || document.querySelector(".aps-stage") || document.body;
     let gate = document.getElementById("archessAuthGate");
     if (!gate) {
       gate = document.createElement("div");
