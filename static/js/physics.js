@@ -402,42 +402,8 @@ window.Physics = LocalPhysics;
   window.Physics = onlinePhysics;
 
   function addMultiplayerControls() {
-    if (!document.body || document.getElementById("archessMultiPanel")) return;
-    const panel = document.createElement("div");
-    panel.id = "archessMultiPanel";
-    panel.style.cssText = "position:fixed;right:16px;bottom:16px;z-index:50;width:280px;padding:12px;border:1px solid rgba(255,255,255,.14);border-radius:14px;background:rgba(10,12,16,.94);backdrop-filter:blur(12px);box-shadow:0 14px 40px rgba(0,0,0,.35);font:12px/1.35 system-ui,sans-serif;color:#fff";
-    panel.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">
-        <strong>ONLINE MATCH</strong><button id="archessMultiHide" type="button" style="border:0;background:none;color:#aaa;font-size:16px;cursor:pointer">×</button>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:7px">
-        <button id="archessMultiCreate" type="button">CREATE ROOM</button>
-        <button id="archessMultiStart" type="button">START</button>
-      </div>
-      <div style="display:flex;gap:6px;margin-bottom:7px">
-        <input id="archessMultiCode" maxlength="6" placeholder="ROOM CODE" style="flex:1;min-width:0;padding:7px;border-radius:8px;border:1px solid #444;background:#181b21;color:#fff;text-transform:uppercase">
-        <button id="archessMultiJoin" type="button">JOIN</button>
-      </div>
-      <div id="archessMultiStatus" style="color:#9aa3b2">Create or join a room.</div>`;
-    document.body.appendChild(panel);
-
-    const styleButton = (button) => {
-      button.style.cssText = "padding:7px 8px;border:1px solid #3a404b;border-radius:8px;background:#1c2129;color:#fff;cursor:pointer;font-weight:700;font-size:10px;letter-spacing:.04em";
-    };
-    ["archessMultiCreate", "archessMultiStart", "archessMultiJoin"].forEach((id) => styleButton(document.getElementById(id)));
-
-    document.getElementById("archessMultiHide").onclick = () => { panel.style.display = "none"; };
-    document.getElementById("archessMultiCreate").onclick = async () => {
-      try { await api.createRoom(); } catch (error) { api.setStatus(error.message); }
-    };
-    document.getElementById("archessMultiJoin").onclick = async () => {
-      try { await api.joinRoom(document.getElementById("archessMultiCode").value); } catch (error) { api.setStatus(error.message); }
-    };
-    document.getElementById("archessMultiStart").onclick = async () => {
-      try { await api.startRoom(); } catch (error) { api.setStatus(error.message); }
-    };
+    // Multiplayer controls removed by user request.
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", addMultiplayerControls, { once: true });
-  else addMultiplayerControls();
+  // Multiplayer controls invocation removed.
 })();
