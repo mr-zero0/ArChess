@@ -368,42 +368,4 @@ window.Physics = LocalPhysics;
     },
   };
 
-  window.ArChessMultiplayer = api;
-
-  const onlinePhysics = Object.freeze({
-    ...LocalPhysics,
-    launch(piece, dx, dy) {
-      if (!active) return LocalPhysics.launch(piece, dx, dy);
-      void api.launch(piece, dx, dy);
-      return true;
-    },
-    step(game, deltaTime) {
-      if (!active) return LocalPhysics.step(game, deltaTime);
-      if (pending) {
-        const hold = game.pieces.find((piece) => piece.alive);
-        if (hold) {
-          hold.moving = true;
-          hold.vx = 0;
-          hold.vy = 0;
-        }
-        return;
-      }
-      for (const piece of game.pieces) {
-        if (piece.alive) {
-          piece.vx = 0;
-          piece.vy = 0;
-          piece.moving = false;
-        }
-        LocalPhysics.recordTrail(piece, deltaTime);
-      }
-    },
-  });
-
-  window.Physics = onlinePhysics;
-
-  function addMultiplayerControls() {
-    // Multiplayer controls removed by user request.
-  }
-
-  // Multiplayer controls invocation removed.
-})();
+window.Physics = LocalPhysics;
