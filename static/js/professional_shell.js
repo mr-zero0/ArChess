@@ -151,7 +151,6 @@
         <div class="aps-center-controls">
           <wa-button-group label="Render mode" class="aps-mode-group">
             <wa-button size="small" data-archess-mode="2d" variant="neutral">2D</wa-button>
-            <wa-button size="small" data-archess-mode="3d" variant="neutral">3D</wa-button>
           </wa-button-group>
           <span class="aps-divider"></span>
           <div class="aps-menu-wrap">

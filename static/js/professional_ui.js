@@ -69,10 +69,9 @@
     toolbar.className = "archess-pro-toolbar";
     toolbar.innerHTML = `
       <wa-button-group label="Renderer">
-        <wa-button appearance="filled" data-archess-mode="2d" aria-pressed="false">2D ARENA</wa-button>
-        <wa-button appearance="filled" data-archess-mode="3d" aria-pressed="false">3D ARENA</wa-button>
+        <wa-button appearance="filled" data-archess-mode="2d" aria-pressed="true">2D ARENA</wa-button>
       </wa-button-group>
-      <span class="archess-mode-badge">ACTIVE <b id="archessModeValue">3D</b></span>
+      <span class="archess-mode-badge">ACTIVE <b id="archessModeValue">2D</b></span>
       <div class="archess-board-meter" aria-label="Board size">
         <button id="archessBoardMinus" type="button" aria-label="Smaller board">−</button>
         <strong id="archessBoardSizeValue">100%</strong>
