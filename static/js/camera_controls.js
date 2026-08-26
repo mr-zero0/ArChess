@@ -62,14 +62,15 @@
       this.__cameraTargetGoal = { x: 0, y: 0, z: 0 };
     };
 
-    proto.setPreset = function (name) {
-      const preset = presets[name] || presets.broadcast;
-      this.__cameraGoal = { x: preset.position[0], y: preset.position[1], z: preset.position[2] };
-      this.__cameraTargetGoal = { x: preset.target[0], y: preset.target[1], z: preset.target[2] };
-      this.__cameraYaw = Math.atan2(this.__cameraGoal.x, this.__cameraGoal.z);
-      this.__cameraPitch = Math.atan2(this.__cameraGoal.y, Math.hypot(this.__cameraGoal.x, this.__cameraGoal.z));
-      this.__cameraRadius = Math.max(0.01, Math.hypot(this.__cameraGoal.x, this.__cameraGoal.z));
-    };
+  proto.setPreset = function setPreset(name) {
+    // Force a stable camera position for a "Broadcast" style view
+    const preset = { position: [0, 8, 8], target: [0, 0, 0] };
+    this.__cameraGoal = { x: preset.position[0], y: preset.position[1], z: preset.position[2] };
+    this.__cameraTargetGoal = { x: preset.target[0], y: preset.target[1], z: preset.target[2] };
+    this.__cameraYaw = Math.atan2(this.__cameraGoal.x, this.__cameraGoal.z);
+    this.__cameraPitch = Math.atan2(this.__cameraGoal.y, Math.hypot(this.__cameraGoal.x, this.__cameraGoal.z));
+    this.__cameraRadius = Math.max(0.01, Math.hypot(this.__cameraGoal.x, this.__cameraGoal.z));
+  };
 
     proto.flip = function () { this.__cameraYaw += Math.PI; this.__applyOrbitGoal(); };
 

@@ -31,6 +31,9 @@ def create_app(config_object=DevelopmentConfig):
     limiter.init_app(application)
     configure_logging(application)
     configure_auth(application)
+    application.logger.info("ArChess platform initializing...")
+    configure_auth(application)
+
     application.register_blueprint(AUTH_BP)
     application.register_blueprint(SOCIAL_BP)
 
@@ -345,6 +348,11 @@ def create_app(config_object=DevelopmentConfig):
     @application.errorhandler(500)
     def internal_error(error):
         return jsonify({"error": "internal_server_error", "message": "Internal server error"}), 500
+
+    @application.errorhandler(Exception)
+    def handle_exception(e):
+        application.logger.error(f"Unhandled exception: {str(e)}", exc_info=True)
+        return jsonify({"error": "internal_server_error", "message": "An unexpected error occurred"}), 500
 
     @application.errorhandler(413)
     def request_too_large(error):

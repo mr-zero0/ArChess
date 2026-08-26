@@ -94,6 +94,12 @@
     document.body.dataset.renderMode = mode;
     document.body.classList.toggle("archess-mode-2d", mode === "2d");
     document.body.classList.toggle("archess-mode-3d", mode === "3d");
+    
+    // Explicitly update visibility classes to ensure canvas swapping
+    const gameCanvas = document.getElementById("gameCanvas");
+    const glCanvas = document.getElementById("glCanvas");
+    if (gameCanvas) gameCanvas.style.display = (mode === "2d") ? "block" : "none";
+    if (glCanvas) glCanvas.style.display = (mode === "3d") ? "block" : "none";
   }
 
   window.ArChessRenderMode = { get mode() { return mode; }, set: setMode };

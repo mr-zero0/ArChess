@@ -28,12 +28,12 @@
       turnAge += deltaTime;
       const alive = game.pieces.filter((piece) => piece.alive);
       const maxSpeed = alive.reduce((max, piece) => Math.max(max, Math.hypot(piece.vx || 0, piece.vy || 0)), 0);
-      const threshold = Math.max(0.20, (GAME_CONFIG.minVelocity || 0.18) * 1.25);
+      const threshold = Math.max(0.20, (typeof GAME_CONFIG !== 'undefined' && GAME_CONFIG.minVelocity ? GAME_CONFIG.minVelocity : 0.18) * 1.25);
       const settled = maxSpeed <= threshold;
       if (settled) quietTime += deltaTime;
       else quietTime = 0;
 
-      const settleWindow = Math.max(0.10, GAME_CONFIG.settleDelay || 0.18);
+      const settleWindow = Math.max(0.10, typeof GAME_CONFIG !== 'undefined' && GAME_CONFIG.settleDelay ? GAME_CONFIG.settleDelay : 0.18);
       const hardStop = turnAge >= 3.2 && maxSpeed <= 6.0;
       if (quietTime < settleWindow && !hardStop) return;
 

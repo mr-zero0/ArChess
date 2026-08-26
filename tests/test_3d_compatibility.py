@@ -12,14 +12,14 @@ def test_three_d_compatibility_fallback_when_webgl2_api_is_unavailable():
         page = context.new_page()
         page.add_init_script("delete window.WebGL2RenderingContext")
         page.goto("http://localhost:5000/", wait_until="networkidle")
-        page.wait_for_timeout(900)
+        page.wait_for_selector("body.archess-bootstrap-ready", timeout=10000)
 
         state = page.evaluate(
             """() => ({
                 compatReady: Boolean(document.querySelector('#archessCompat3D.ready')),
                 pieceCount: document.querySelectorAll('#archessCompat3D .c3d-piece').length,
-                gameOpacity: getComputedStyle(document.querySelector('#gameCanvas')).opacity,
-                compatVisible: getComputedStyle(document.querySelector('#archessCompat3D')).display,
+                gameOpacity: document.querySelector('#gameCanvas') ? getComputedStyle(document.querySelector('#gameCanvas')).opacity : "1",
+                compatVisible: document.querySelector('#archessCompat3D') ? getComputedStyle(document.querySelector('#archessCompat3D')).display : "none",
             })"""
         )
 

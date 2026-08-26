@@ -18,3 +18,42 @@ body.archess-professional-ui .app-shell>.topbar,body.archess-professional-ui .ar
 @media(max-width:1180px){#archessProfessionalShell .aps-topbar{grid-template-columns:190px 1fr auto}.aps-player,.aps-context{display:none}.aps-stage .board-zone .board-frame{width:min(var(--archess-board-size,700px),calc(100vw - 26px))!important;height:min(var(--archess-board-size,700px),calc(100vw - 26px))!important}.aps-status span:last-child{max-width:38vw}}
 @media(max-width:760px){#archessProfessionalShell .aps-topbar{top:7px;left:7px;right:7px;height:52px;grid-template-columns:1fr auto;gap:8px;padding:0 9px}.aps-brand-copy small{display:none}.aps-center-controls{justify-content:flex-end}.aps-center-controls .aps-divider,.aps-center-controls .aps-size,.aps-actions wa-button:first-child,.aps-actions wa-button:nth-child(2){display:none}.aps-actions{gap:4px}.aps-actions #archessNewGameBtn{font-size:8px}.aps-stage{inset:66px 0 54px}.aps-stage .board-zone .board-frame{padding:6px!important;border-radius:17px!important}.aps-bottom-bar{left:7px;right:7px;bottom:7px;height:34px}.aps-status span:last-child{display:none}.aps-bottom-actions{gap:2px}.aps-theme-menu{width:220px;right:-30px}}
 @media(prefers-reduced-motion:reduce){#archessProfessionalShell .aps-menu{transition:none}}
+
+
+/* Emergency Board Visibility Override */
+#boardWrap, #gameCanvas, #glCanvas {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+}
+
+body.archess-mode-2d #glCanvas {
+    display: none !important;
+}
+
+body.archess-mode-2d #gameCanvas {
+    display: block !important;
+    z-index: 10 !important;
+    pointer-events: auto !important;
+}
+
+body.archess-mode-3d #glCanvas {
+    display: block !important;
+    z-index: 10 !important;
+    pointer-events: auto !important;
+}
+
+body.archess-mode-3d #gameCanvas {
+    display: none !important;
+}
+
+#boardWrap {
+    width: 100%;
+    max-width: 600px;
+    aspect-ratio: 1/1;
+    margin: 0 auto;
+    position: relative;
+    background: #111;
+    border: 2px solid #333;
+}

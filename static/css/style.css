@@ -990,3 +990,25 @@ html[data-theme="wood"] .winner-glyph { color: #d88a60; text-shadow: 0 0 26px rg
 .replay-load-area .new-btn { padding: 8px 16px; font-size: 12px; }
 .replay-load-area input[type="file"] { display: none; }
 
+
+/* Ensure active board canvas is always interactive */
+body.archess-mode-2d #gameCanvas {
+    z-index: 10 !important;
+    pointer-events: auto !important;
+}
+
+body.archess-mode-2d #glCanvas {
+    z-index: 1 !important;
+    pointer-events: none !important;
+}
+
+body.archess-mode-3d #glCanvas {
+    z-index: 10 !important;
+    pointer-events: auto !important;
+}
+
+body.archess-mode-3d #gameCanvas {
+    z-index: 1 !important;
+    pointer-events: none !important;
+}
+

@@ -7,7 +7,7 @@
   style.textContent = `
     #boardWrap { position:relative; isolation:isolate; }
     #boardWrap #glCanvas,#boardWrap #gameCanvas { position:absolute!important; inset:0!important; width:100%!important; height:100%!important; display:block!important; }
-    #boardWrap #glCanvas { z-index:2!important; pointer-events:none!important; opacity:1!important; }
+    #boardWrap #glCanvas { z-index: 2 !important; pointer-events: none !important; opacity: 1 !important; }
     #boardWrap #gameCanvas { z-index:3!important; pointer-events:auto!important; opacity:1!important; background:transparent!important; }
     body.archess-3d-ready #boardWrap #gameCanvas { opacity:0!important; }
     .archess-camera-dock { position:absolute; top:12px; right:12px; z-index:20; display:flex; gap:4px; padding:6px; border:1px solid rgba(130,194,221,.22); border-radius:12px; background:rgba(6,12,18,.72); backdrop-filter:blur(16px); pointer-events:auto; user-select:none; }

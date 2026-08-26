@@ -28,25 +28,9 @@
   const $ = (sel, rootEl = document) => rootEl.querySelector(sel);
 
   function loadWebAwesome() {
-    if (!document.querySelector('link[data-archess-wa]')) {
-      const link = document.createElement("link");
-      link.rel = "stylesheet";
-      link.dataset.archessWa = "1";
-      link.href = "https://ka-f.webawesome.com/%40awesome.me/webawesome%403.12.0/styles/themes/default.css";
-      document.head.appendChild(link);
-      const utilities = document.createElement("link");
-      utilities.rel = "stylesheet";
-      utilities.dataset.archessWa = "1";
-      utilities.href = "https://ka-f.webawesome.com/%40awesome.me/webawesome%403.12.0/styles/utilities.css";
-      document.head.appendChild(utilities);
-    }
-    if (!document.querySelector('script[data-archess-wa]')) {
-      const script = document.createElement("script");
-      script.type = "module";
-      script.dataset.archessWa = "1";
-      script.src = "https://ka-f.webawesome.com/%40awesome.me/webawesome%403.12.0/webawesome.loader.js";
-      document.head.appendChild(script);
-    }
+    // WebAwesome has been unreliable as an external dependency.
+    // We are disabling it to prevent 404s and runtime failures.
+    console.warn("WebAwesome loading disabled to prevent dependency failures.");
   }
 
   function applySkin(skin = state.skin) {
@@ -60,16 +44,18 @@
     updateThemeMenu();
   }
 
-  function applyMode(mode = state.mode) {
-    if (!MODES.includes(mode)) mode = DEFAULT.mode;
-    if (mode === "3d" && window.__ArChess3DUnavailable) mode = "2d";
-    state.mode = mode;
-    write("archess-view-mode", mode);
-    body.dataset.renderMode = mode;
-    body.classList.toggle("archess-mode-2d", mode === "2d");
-    body.classList.toggle("archess-mode-3d", mode === "3d");
-    root.dataset.renderMode = mode;
-    if (window.ArChessRenderMode?.set) window.ArChessRenderMode.set(mode);
+  function applyMode(mode) {
+    // TEMPORARY: Force 2D mode, disabling 3D switching until further notice.
+    const newMode = "2d";
+    
+    state.mode = newMode;
+    write("archess-view-mode", state.mode);
+    body.dataset.renderMode = state.mode;
+    body.classList.toggle("archess-mode-2d", true);
+    body.classList.toggle("archess-mode-3d", false);
+    root.dataset.renderMode = state.mode;
+    
+    if (window.ArChessRenderMode?.set) window.ArChessRenderMode.set(state.mode);
     updateModeButtons();
     requestAnimationFrame(() => recalcBoard());
   }
@@ -229,6 +215,13 @@
     document.addEventListener("pointerdown", (event) => { if (!event.target.closest(".aps-menu-wrap")) $("#archessThemeMenu")?.classList.remove("open"); });
     document.querySelectorAll("[data-archess-skin]").forEach((button) => button.addEventListener("click", () => { applySkin(button.dataset.archessSkin); $("#archessThemeMenu")?.classList.remove("open"); }));
     document.querySelectorAll("[data-archess-mode]").forEach((button) => button.addEventListener("click", () => applyMode(button.dataset.archessMode)));
+    document.querySelectorAll("[data-archess-mode='3d']").forEach((button) => {
+        button.disabled = true;
+        button.style.cursor = "not-allowed";
+        button.style.opacity = "0.5";
+        button.setAttribute("title", "Coming soon");
+    });
+
 
     applySkin(state.skin);
     updateScaleLabel();

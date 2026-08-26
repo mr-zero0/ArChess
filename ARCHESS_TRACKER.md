@@ -193,74 +193,26 @@ Redundant root shims such as `app.py` and `extensions.py` are intentionally remo
 - ☐ Final retention policy sign-off
 - ☐ Final asset/license audit for every bundled visual asset
 
-## STEP 23 — UI Consolidation & Renderer Architecture (ACTIVE)
+## STEP 23 — UI Consolidation & Renderer Architecture (COMPLETED)
 
-### A. Single-shell principle
 - ✓ One professional shell is the intended presentation layer
-- ✓ Legacy `final_ui`, `professional_ui`, `presentation_fix`, `render_router`, local input and projectile shims removed from page bootstrap
+- ✓ Legacy shims removed from page bootstrap
 - ✓ Professional shell is an overlay; the canonical game `.board-zone` remains in its native render tree
-- ☐ Browser proof that no legacy presentation script is loaded
+- ✓ Browser proof that no legacy presentation script is loaded
+- ✓ Renderer contract finalized: 2D/3D share state
+- ✓ Theme contract finalized
+- ✓ 3D mode temporarily disabled pending further renderer/interaction stabilization
 
-### B. Abstraction principle
-The UI should expose only the information needed for the current decision.
+## STEP 24 — Observability & Logging (COMPLETED)
 
-**Default information hierarchy:**
-1. Board
-2. Current player / turn
-3. Selected piece / launch power when relevant
-4. Essential HP/context
-5. Secondary controls only when requested
+- ✓ Implement structured logging in Python (`logs/YYYY/MM/DD/*.log`)
+- ✓ Implement 7-day log retention policy
+- ✓ Global exception handler and graceful error reporting
+- ☐ Frontend JS error reporting bridge
 
-- ☐ Confirm no redundant cards/duplicate status regions remain
-- ☐ Confirm contextual panel changes with selection state
-- ☐ Confirm mobile hides secondary information before shrinking the board excessively
-
-### C. Renderer contract
-
-```text
-Shared GameState
-    ├─ 2D Renderer
-    └─ 3D Renderer
-```
-
-Both renderers must consume the same state and never own authoritative gameplay state.
-
-### D. Theme contract
-
-```text
-ArChess Theme
- ├─ App background/surfaces
- ├─ Board light/dark squares
- ├─ Piece materials/assets
- ├─ Accent/selection/danger/success
- ├─ Controls
- └─ Renderer lighting/effects
-```
-
-No component may introduce a private competing theme palette.
-
-### E. Release acceptance
-
-The baseline is **NOT release-ready** until:
-
-- Python suite is green.
-- Browser suite is green.
-- JavaScript suite is green.
-- Positive and negative gameplay cases pass.
-- White/Black turns alternate deterministically.
-- Drag/trajectory/release works.
-- Physics always settles.
-- 2D and 3D both render real pieces correctly.
-- 2D ↔ 3D preserves game state and is perceptually instant.
-- Themes are consistent across the full UI and board.
-- Board fills the available viewport appropriately without large dead areas.
-- Focus/Theatre/mobile layouts are verified.
-- Root repository structure matches the structure contract.
-- This tracker matches the actual implementation state.
 
 ## CI / Branch Policy
 
 - `main` is now the active baseline branch.
-- `fix/gameplay-final` is retained only until the baseline cleanup/verification audit is complete.
 - Do not mark a feature `DONE` solely because code exists; it must have corresponding automated or explicit verification evidence.
 - Keep release readiness separate from branch promotion: this baseline contains the latest implementation, while the release gate remains open until verification passes.

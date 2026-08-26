@@ -75,29 +75,78 @@
   }
 
   function install() {
-    const oldCanvas=document.getElementById("gameCanvas"), wrap=document.getElementById("boardWrap"), game=window.gameState;
-    if(!oldCanvas||!wrap||!game) return;
-    const canvas=oldCanvas.cloneNode(false); canvas.id="gameCanvas"; canvas.dataset.inputV2="1"; canvas.style.pointerEvents="auto"; canvas.style.touchAction="none"; canvas.style.opacity="0"; oldCanvas.replaceWith(canvas);
-    const trajectory=ensureTrajectory(wrap);
-    let pointerId=null, selected=null;
-    const findPiece=point=>{let best=null,bestDistance=Infinity;for(const piece of game.pieces){if(!piece.alive||piece.team!==game.currentPlayer)continue;const d=Math.hypot(piece.x-point.x,piece.y-point.y),hitRadius=Math.max(piece.radius*1.65,.40);if(d<=hitRadius&&d<bestDistance){best=piece;bestDistance=d}}return best};
-    canvas.addEventListener("pointerdown",event=>{
-      if(event.button!==0||game.gameOver||game.phase!=="aim")return; const point=pointFromEvent(canvas,event),piece=findPiece(point); if(!piece)return;
-      event.preventDefault(); pointerId=event.pointerId; selected=piece; game.selectedPiece=piece; game.dragging=true; game.pointer=point; game.powerRatio=0; ensureTrajectory(wrap); canvas.setPointerCapture?.(pointerId); window.AudioManager?.unlock?.(); window.AudioManager?.select?.(); window.UI?.update?.();
+    const wrap = document.getElementById("boardWrap"), game = window.gameState;
+    if(!wrap || !game) return;
+
+    const canvases = [document.getElementById("gameCanvas"), document.getElementById("glCanvas")].filter(Boolean);
+    const trajectory = ensureTrajectory(wrap);
+    
+    let pointerId = null, selected = null;
+    const findPiece = (point) => {
+      let best = null, bestDistance = Infinity;
+      for (const piece of game.pieces) {
+        if (!piece.alive || piece.team !== game.currentPlayer) continue;
+        const d = Math.hypot(piece.x - point.x, piece.y - point.y), hitRadius = Math.max(piece.radius * 1.65, .40);
+        if (d <= hitRadius && d < bestDistance) { best = piece; bestDistance = d; }
+      }
+      return best;
+    };
+
+    canvases.forEach(canvas => {
+      canvas.addEventListener("pointerdown", event => {
+        if(event.button !== 0 || game.gameOver || game.phase !== "aim") return; 
+        const point = pointFromEvent(canvas, event), piece = findPiece(point); 
+        if(!piece) return;
+        event.preventDefault(); pointerId = event.pointerId; selected = piece; 
+        game.selectedPiece = piece; game.dragging = true; game.pointer = point; 
+        game.powerRatio = 0; ensureTrajectory(wrap); canvas.setPointerCapture?.(pointerId); 
+        window.AudioManager?.unlock?.(); window.AudioManager?.select?.(); window.UI?.update?.();
+      });
+
+      canvas.addEventListener("pointermove", event => {
+        if(event.pointerId !== pointerId || !selected) return;
+        event.preventDefault();
+        const point = pointFromEvent(canvas, event);
+        game.pointer = point;
+        game.powerRatio = Math.min(1, Math.hypot(selected.x - point.x, selected.y - point.y) / (GAME_CONFIG.maxDragDistance || 2.6));
+        window.AudioManager?.pull?.(game.powerRatio);
+        window.__ArChessTrajectoryDraw?.();
+        window.UI?.update?.();
+      });
+
+      canvas.addEventListener("pointerup", event => {
+        if(event.pointerId !== pointerId || !selected) return;
+        event.preventDefault();
+        const point = pointFromEvent(canvas, event), piece = selected, dx = piece.x - point.x, dy = piece.y - point.y;
+        const distance = Math.hypot(dx, dy), maxDrag = GAME_CONFIG.maxDragDistance || 2.6;
+        pointerId = null; selected = null; game.dragging = false; game.selectedPiece = null; 
+        game.pointer = null; canvas.releasePointerCapture?.(event.pointerId);
+        window.__ArChessTrajectoryDraw?.();
+        if(distance < (GAME_CONFIG.minDragDistance || .12)){
+          game.powerRatio = 0; game.feedback = {text: "Pull farther to launch.", life: 1}; 
+          window.UI?.update?.(true); return;
+        }
+        const ratio = Math.min(1, distance / maxDrag), eased = ratio * ratio * (3 - 2 * ratio);
+        const scale = eased * maxDrag / Math.max(distance, .0001);
+        if(!window.Physics.launch(piece, dx * scale, dy * scale)){
+          game.feedback = {text: "Launch rejected.", life: 1.2}; game.powerRatio = 0; 
+          window.UI?.update?.(true); return;
+        }
+        game.phase = "physics"; game.settledFor = 0; game.powerRatio = 0; 
+        game.combo = 0; game.comboTimer = 0; game.maxCombo = 0; game.__turnStartedAt = performance.now();
+        if(game.stats?.[piece.team]) game.stats[piece.team].launches += 1;
+        const message = `${piece.team[0].toUpperCase() + piece.team.slice(1)} ${window.PIECES?.[piece.type]?.name || piece.type} launched.`;
+        game.history.push(message); window.UI?.log?.(message); window.AudioManager?.launch?.(ratio); window.UI?.update?.(true);
+      });
+
+      canvas.addEventListener("pointercancel", () => {
+        pointerId = null; selected = null; game.dragging = false; game.selectedPiece = null; 
+        game.pointer = null; game.powerRatio = 0; window.__ArChessTrajectoryDraw?.(); window.UI?.update?.();
+      });
     });
-    canvas.addEventListener("pointermove",event=>{if(event.pointerId!==pointerId||!selected)return;event.preventDefault();const point=pointFromEvent(canvas,event);game.pointer=point;game.powerRatio=Math.min(1,Math.hypot(selected.x-point.x,selected.y-point.y)/(GAME_CONFIG.maxDragDistance||2.6));window.AudioManager?.pull?.(game.powerRatio);window.__ArChessTrajectoryDraw?.();window.UI?.update?.()});
-    canvas.addEventListener("pointerup",event=>{
-      if(event.pointerId!==pointerId||!selected)return;event.preventDefault();const point=pointFromEvent(canvas,event),piece=selected,dx=piece.x-point.x,dy=piece.y-point.y,distance=Math.hypot(dx,dy),maxDrag=GAME_CONFIG.maxDragDistance||2.6;
-      pointerId=null;selected=null;game.dragging=false;game.selectedPiece=null;game.pointer=null;canvas.releasePointerCapture?.(event.pointerId);window.__ArChessTrajectoryDraw?.();
-      if(distance<(GAME_CONFIG.minDragDistance||.12)){game.powerRatio=0;game.feedback={text:"Pull farther to launch.",life:1};window.UI?.update?.(true);return}
-      const ratio=Math.min(1,distance/maxDrag),eased=ratio*ratio*(3-2*ratio),scale=eased*maxDrag/Math.max(distance,.0001);
-      if(!window.Physics.launch(piece,dx*scale,dy*scale)){game.feedback={text:"Launch rejected.",life:1.2};game.powerRatio=0;window.UI?.update?.(true);return}
-      game.phase="physics";game.settledFor=0;game.powerRatio=0;game.combo=0;game.comboTimer=0;game.maxCombo=0;game.__turnStartedAt=performance.now();
-      if(game.stats?.[piece.team])game.stats[piece.team].launches+=1;
-      const message=`${piece.team[0].toUpperCase()+piece.team.slice(1)} ${window.PIECES?.[piece.type]?.name||piece.type} launched.`;game.history.push(message);window.UI?.log?.(message);window.AudioManager?.launch?.(ratio);window.UI?.update?.(true);
-    });
-    canvas.addEventListener("pointercancel",()=>{pointerId=null;selected=null;game.dragging=false;game.selectedPiece=null;game.pointer=null;game.powerRatio=0;window.__ArChessTrajectoryDraw?.();window.UI?.update?.()});
+    
     document.body.classList.add("archess-input-v2");
   }
+
   boot(install);
 })();

@@ -488,10 +488,17 @@ export class ThreeDScene {
   }
 
   render(game, deltaTime) {
+    if (!game) return; // Guard against null game state
     if (!this.entries.size) this.syncPieces(game);
     this.syncPieces(game);
     this.updatePieces(game, deltaTime);
     this.renderer.render(this.scene, this.camera);
+    
+    // Explicitly signal readiness to the professional shell
+    if (this.entries.size > 0 && !document.body.classList.contains("archess-3d-ready")) {
+      document.body.classList.add("archess-3d-ready");
+    }
+    // Removed debug visual as 3D is clearly active
   }
 }
 

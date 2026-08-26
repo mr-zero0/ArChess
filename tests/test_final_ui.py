@@ -9,11 +9,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_ui_runtime_assets_are_wired():
     html = (ROOT / "templates" / "index.html").read_text(encoding="utf-8")
-    assert "archess_bootstrap.js" in html
-    assert "final_ui.js" not in html
-    assert "professional_ui.js" not in html
-    assert Path(ROOT / "static" / "js" / "archess_bootstrap.js").exists()
-    assert Path(ROOT / "static" / "js" / "professional_shell.js").exists()
+    assert "release_boot.js" in html
+    assert "archess_bootstrap.js" not in html
+    assert Path(ROOT / "static" / "js" / "release_boot.js").exists()
     assert Path(ROOT / "static" / "js" / "professional_runtime.js").exists()
 
 

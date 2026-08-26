@@ -34,11 +34,21 @@
   }
 
   function setMode(mode) {
-    const value = mode === "3d" ? "3d" : "2d";
-    document.body.classList.toggle("archess-mode-3d", value === "3d");
-    document.body.classList.toggle("archess-mode-2d", value === "2d");
+    // TEMPORARY: Force 2D mode, disabling 3D switching until further notice.
+    const value = "2d";
+    document.body.classList.toggle("archess-mode-3d", false);
+    document.body.classList.toggle("archess-mode-2d", true);
     document.body.dataset.renderMode = value;
-    document.querySelectorAll("[data-archess-mode]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.archessMode === value)));
+    document.querySelectorAll("[data-archess-mode]").forEach(button => {
+        const is3d = button.dataset.archessMode === "3d";
+        button.setAttribute("aria-pressed", String(button.dataset.archessMode === value));
+        if (is3d) {
+            button.disabled = true;
+            button.style.cursor = "not-allowed";
+            button.style.opacity = "0.5";
+            button.setAttribute("title", "Coming soon");
+        }
+    });
     save("archess-render-mode", value);
     const badge = document.getElementById("archessModeValue");
     if (badge) badge.textContent = value.toUpperCase();
@@ -89,8 +99,7 @@
     setSkin(read("archess-skin", "obsidian"));
     setBoardSize(Number(read("archess-board-size", 76)));
     inject();
-    setMode(read("archess-render-mode", "3d"));
-    window.addEventListener("archess:renderready", () => setMode(read("archess-render-mode", "3d")));
+    setMode("2d");
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init, { once: true });
