@@ -4,6 +4,9 @@
   window.__ArChessProfessionalRuntime = true;
 
   const SKINS = {
+    classic: { base: "light", boardBg: "#e8e8e8", light: "#f0d9b5", dark: "#b58863", grid: "rgba(0,0,0,.05)", coord: "rgba(0,0,0,.3)", edgeA: "#b58863", edgeB: "#f0d9b5", white: "#ffffff", black: "#000000", frame: "#d1c1a1" },
+    tournament: { base: "dark", boardBg: "#1a251a", light: "#779556", dark: "#ebecd0", grid: "rgba(255,255,255,.1)", coord: "rgba(255,255,255,.3)", edgeA: "#779556", edgeB: "#ebecd0", white: "#f0f0f0", black: "#333333", frame: "#0e150e" },
+    club: { base: "light", boardBg: "#dce3ea", light: "#9ba8b8", dark: "#778595", grid: "rgba(0,0,0,.08)", coord: "rgba(0,0,0,.4)", edgeA: "#778595", edgeB: "#9ba8b8", white: "#eef3f5", black: "#2a3540", frame: "#cbd3db" },
     obsidian: { base: "dark", boardBg: "#05070b", light: "#263747", dark: "#101c29", grid: "rgba(150,210,230,.13)", coord: "rgba(220,240,250,.45)", edgeA: "rgba(112,231,255,.45)", edgeB: "rgba(154,124,255,.32)", white: "#d9e5ec", black: "#242d36", frame: "#0b1118" },
     emerald: { base: "dark", boardBg: "#06100d", light: "#2c5848", dark: "#17362c", grid: "rgba(110,228,190,.15)", coord: "rgba(215,245,233,.47)", edgeA: "rgba(103,244,179,.46)", edgeB: "rgba(69,213,192,.32)", white: "#e9e1c9", black: "#202a26", frame: "#0b2119" },
     walnut: { base: "wood", boardBg: "#0d0805", light: "#d9bd95", dark: "#6e4b32", grid: "rgba(49,26,16,.24)", coord: "rgba(51,29,20,.62)", edgeA: "rgba(241,191,121,.52)", edgeB: "rgba(209,120,86,.34)", white: "#9c553a", black: "#171818", frame: "#3b2617" },

@@ -4,6 +4,9 @@
   window.__ArChessProfessionalShell = true;
 
   const SKINS = {
+    classic: { label: "Classic", baseTheme: "light" },
+    tournament: { label: "Tournament", baseTheme: "dark" },
+    club: { label: "Club", baseTheme: "light" },
     obsidian: { label: "Obsidian", baseTheme: "dark" },
     emerald: { label: "Emerald", baseTheme: "dark" },
     walnut: { label: "Walnut", baseTheme: "wood" },
