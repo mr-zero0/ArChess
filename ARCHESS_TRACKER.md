@@ -22,14 +22,15 @@
 | 3D runtime | DEFERRED | Three.js, 3D renderer, camera and 3D assets removed from active 2D runtime |
 | Legacy shell/runtime cleanup | IMPLEMENTED | Professional shell/runtime/router/stabilizer/board-host/release shims removed |
 | Duplicate input/runtime cleanup | IMPLEMENTED | Duplicate local input and turn/presentation shims removed |
+| Function tracing shutdown regression | FIXED | Tracer ignores interpreter finalization, skips non-ArChess modules, avoids closed streams and suppresses secondary logging destination errors |
 | Positive gameplay tests | ADDED / PENDING LOCAL RUN | Select → drag → release → physics settle → turn alternation |
 | Negative gameplay tests | ADDED / PENDING LOCAL RUN | Wrong-team selection, zero-distance release and invalid interaction cases |
 | UI regression tests | ADDED / PENDING LOCAL RUN | 2D-only DOM, board sizing, themes, removed-runtime checks |
 | Multi-browser regression | ADDED / PENDING LOCAL RUN | Chromium / Firefox / WebKit desktop/tablet/mobile matrix |
 | Python/API regression | EXISTING / PENDING LOCAL RUN | Existing backend, security, authoritative simulation suites remain |
 | JavaScript regression | EXISTING / PENDING LOCAL RUN | Existing Node suite remains; obsolete 3D test suites removed |
-| Function-level logging | IMPLEMENTED | Browser observability now instruments global controllers and `GameBoard`, `GameRenderer`, `InputController` prototypes |
-| Server observability | IMPLEMENTED | Structured request logging, request IDs, error handling and optional full Python function tracing |
+| Function-level logging | IMPLEMENTED | Browser observability instruments key controllers; server tracer is shutdown-safe |
+| Server observability | IMPLEMENTED | Structured request logging, request IDs, error handling and safe function tracing |
 | Local automation | IMPLEMENTED | Browser suites gated by `RUN_BROWSER_MATRIX=1`; no GitHub Actions execution |
 | Repository cleanup | IMPLEMENTED | Stale 3D/CI/professional assets and docs removed from the development branch |
 | License inventory | IMPLEMENTED | Bootstrap, Bootstrap Icons, gchessboard and Cburnett attribution documented |
@@ -67,10 +68,24 @@
 4. **2D is the only active renderer.** There is no 3D toggle, WebGL renderer, camera, routing layer or 3D asset loader.
 5. **One boot path.** The template loads the active native modules and then `main.js`; legacy shell/runtime loaders are not part of the page.
 6. **External libraries are pinned.** Bootstrap 5.3.8, Bootstrap Icons 1.13.1 and gchessboard 1.4.0 are explicitly versioned.
+7. **Observability is non-fatal.** Logging/tracing must never be allowed to break application shutdown or request execution.
 
 ## Root Cause Fixed
 
 The blank/black board screenshot was caused by the ArChess physics canvas being created with `getContext("2d", { alpha:false })`. That made the supposed transparent overlay opaque. It is now created with `alpha:true` so the gchessboard surface below remains visible.
+
+## Logging Regression Fixed
+
+The function tracer was tracing standard-library shutdown code such as `tempfile`, then trying to emit log records after Python had already closed its logging stream. That produced repeated `ValueError: I/O operation on closed file` errors and a secondary `NoneType.startswith` failure during handler cleanup.
+
+The tracer now:
+
+- exits immediately during `sys.is_finalizing()`;
+- traces only ArChess application modules;
+- checks for closed logger streams;
+- prevents recursive tracer logging;
+- treats tracing/logging failures as non-fatal; and
+- disables logging exception propagation with `logging.raiseExceptions = False`.
 
 ## Positive Test Matrix
 
@@ -89,7 +104,7 @@ The blank/black board screenshot was caused by the ArChess physics canvas being 
 | Resize | Board remains square and usable after viewport changes |
 | New battle | Full reset returns to 32 pieces and White turn |
 | Replay | Existing replay controls continue to function |
-| Logging | Runtime emits structured browser events |
+| Logging | Runtime emits structured browser/server events without fatal logging errors |
 
 ## Negative Test Matrix
 
@@ -106,6 +121,7 @@ The blank/black board screenshot was caused by the ArChess physics canvas being 
 | Storage | Corrupt/unavailable localStorage does not crash theme/settings |
 | Renderer | Frame exception is logged and the animation loop survives |
 | API | Failed API request is logged and does not create an unhandled rejection |
+| Shutdown | Python interpreter shutdown emits no logging traceback |
 
 ## Function-Level Coverage
 
@@ -124,6 +140,7 @@ Critical functions requiring direct or indirect coverage:
 - replay/challenge entry points
 - browser error/rejection/fetch instrumentation
 - Flask request lifecycle, unexpected exception and thread error handling
+- server function tracer startup/finalization paths
 
 ## Regression Suites
 
@@ -142,6 +159,10 @@ Run the repository's existing backend/API/security/authoritative simulation suit
 ### JavaScript
 
 Run the existing Node test suite. Obsolete 3D and professional-shell suites were removed because they tested deleted architecture.
+
+### Logging
+
+Manual shutdown regression: start `python game.py`, make a normal request, stop with Ctrl+C, and require zero `--- Logging error ---` traces.
 
 ## Cleanup Completed
 
@@ -174,10 +195,11 @@ See `THIRD_PARTY_NOTICES.md` and `docs/ASSET_LICENSES.md`.
 
 ## Verification Record
 
-**Development branch head at last inspection:** `b8d70a8f7a8d237a0addf377dd3ecdfd8c73f1b9`.  
+**Development branch head at last inspection:** `ca7633f15962cb977596940c98b126b93e6c67a8`.  
 **`main` remains unchanged:** `46165ca7f6f88386077aede8583b735597c3bc33`.  
 **Actions state:** `.github/workflows` is absent on the development branch; Actions have not been reintroduced.  
 **Browser verification:** PENDING — this environment can inspect/modify the repository but cannot operate the user's local Flask browser session.  
+**Logging shutdown regression:** FIXED IN CODE; local Ctrl+C regression still requires execution in the user's environment.  
 **Promotion:** BLOCKED until local test matrix passes and tracker is updated with the verified commit.
 
 ## Promotion Rule
