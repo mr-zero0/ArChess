@@ -3,6 +3,8 @@ import os
 import pytest
 from playwright.sync_api import sync_playwright
 
+from tests.browser_helpers import is_headed, open_page
+
 RUN_BROWSER = os.getenv("RUN_BROWSER_MATRIX") == "1"
 BASE = "http://127.0.0.1:5000"
 
@@ -10,10 +12,9 @@ BASE = "http://127.0.0.1:5000"
 @pytest.mark.skipif(not RUN_BROWSER, reason="Browser regression requires Playwright")
 def test_2d_arena_surface_and_no_3d_runtime():
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        browser = p.chromium.launch(headless=not is_headed())
         page = browser.new_page(viewport={"width": 1440, "height": 900})
-        page.goto(BASE, wait_until="networkidle")
-        page.wait_for_timeout(1200)
+        open_page(page)
 
         assert page.locator("#gameCanvas").count() == 1
         assert page.locator("#chessBoard").count() == 1
@@ -35,10 +36,9 @@ def test_2d_arena_surface_and_no_3d_runtime():
 @pytest.mark.skipif(not RUN_BROWSER, reason="Browser regression requires Playwright")
 def test_2d_arena_board_responsive_and_theme():
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        browser = p.chromium.launch(headless=not is_headed())
         page = browser.new_page(viewport={"width": 1440, "height": 900})
-        page.goto(BASE, wait_until="networkidle")
-        page.wait_for_timeout(900)
+        open_page(page)
 
         metrics = page.evaluate("""() => {
             const board = document.getElementById('chessBoard');
@@ -66,10 +66,9 @@ def test_2d_arena_board_responsive_and_theme():
 @pytest.mark.skipif(not RUN_BROWSER, reason="Browser regression requires Playwright")
 def test_negative_wrong_team_selection_and_zero_release():
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        browser = p.chromium.launch(headless=not is_headed())
         page = browser.new_page(viewport={"width": 1280, "height": 800})
-        page.goto(BASE, wait_until="networkidle")
-        page.wait_for_timeout(900)
+        open_page(page)
         canvas = page.locator("#gameCanvas")
         rect = canvas.bounding_box()
         assert rect
@@ -100,10 +99,9 @@ def test_negative_wrong_team_selection_and_zero_release():
 @pytest.mark.skipif(not RUN_BROWSER, reason="Browser regression requires Playwright")
 def test_positive_drag_release_and_turn_resolution():
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        browser = p.chromium.launch(headless=not is_headed())
         page = browser.new_page(viewport={"width": 1440, "height": 900})
-        page.goto(BASE, wait_until="networkidle")
-        page.wait_for_timeout(900)
+        open_page(page)
         canvas = page.locator("#gameCanvas")
         rect = canvas.bounding_box()
         assert rect
