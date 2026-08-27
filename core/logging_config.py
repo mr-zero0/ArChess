@@ -46,13 +46,14 @@ def setup_logging_retention():
                     if datetime.fromtimestamp(os.path.getmtime(day_path)) < cutoff:
                         shutil.rmtree(day_path, ignore_errors=True)
                 except OSError:
+                    # Retention cleanup must never affect application startup.
                     logging.getLogger(__name__).warning(
                         "Unable to inspect log directory: %s", day_path, exc_info=True
                     )
 
 
 def _install_function_tracer(logger):
-    """Trace ArChess application calls without tracing the logging system itself."""
+    """Trace ArChess application calls without tracing the logging machinery itself."""
     enabled = os.environ.get(
         "ARCHESS_TRACE_FUNCTIONS",
         "1" if logger.isEnabledFor(logging.DEBUG) else "0",
@@ -60,27 +61,34 @@ def _install_function_tracer(logger):
     if enabled != "1" or getattr(sys, "_archess_function_tracer", False):
         return
 
-    # Flask's debug reloader imports/initializes the application in a parent
-    # process and then again in its serving child. Install the tracer only in
-    # the serving child so every function is logged once.
-    if os.environ.get("WERKZEUG_RUN_MAIN") not in (None, "true"):
-        return
-    if os.environ.get("FLASK_DEBUG") == "1" and os.environ.get("WERKZEUG_RUN_MAIN") != "true":
+    # Flask debug reloader starts a parent process plus a serving child.
+    # Trace only the serving process to avoid duplicate traces and duplicate setup.
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "false":
         return
 
     application_roots = ("game", "core", "config", "match_sessions")
     local = threading.local()
     local.suspended = False
+    ignored_modules = (
+        "core.logging_config",
+        "logging",
+        "werkzeug",
+        "urllib3",
+        "sqlalchemy",
+        "flask",
+        "click",
+        "threading",
+    )
 
     def trace_log(level, message, *args, **kwargs):
         if sys.is_finalizing() or getattr(local, "suspended", False):
             return
         try:
+            local.suspended = True
             for handler in logger.handlers:
                 stream = getattr(handler, "stream", None)
                 if stream is not None and getattr(stream, "closed", False):
                     return
-            local.suspended = True
             getattr(logger, level)(message, *args, **kwargs)
         except (ValueError, OSError, RuntimeError):
             return
@@ -92,9 +100,7 @@ def _install_function_tracer(logger):
             return None
 
         module = frame.f_globals.get("__name__", "") or ""
-        # Never trace the formatter/tracer itself. Doing so creates a noisy
-        # feedback loop where logging produces function-trace logs.
-        if module == __name__ or module.startswith(f"{__name__}."):
+        if module in ignored_modules or module.startswith(tuple(f"{x}." for x in ignored_modules)):
             return trace
         if not module.startswith(application_roots):
             return trace
@@ -141,18 +147,17 @@ def _install_function_tracer(logger):
     threading.setprofile(trace)
     sys._archess_function_tracer = True
     sys._archess_tracer_shutting_down = False
-    trace_log("info", "Full Python function tracing enabled (shutdown-safe)")
+    logger.info("Full Python function tracing enabled (shutdown-safe)")
     return disable_on_shutdown
 
 
 def configure_logging(application):
-    # A logging backend must never turn a harmless shutdown/stream problem into
-    # a visible traceback or terminate application cleanup.
     logging.raiseExceptions = False
 
     log_dir = os.path.join(os.getcwd(), "logs", datetime.now().strftime("%Y/%m/%d"))
     os.makedirs(log_dir, exist_ok=True)
     setup_logging_retention()
+
     file_handler = TimedRotatingFileHandler(
         os.path.join(log_dir, "run.log"),
         when="midnight",
@@ -163,6 +168,7 @@ def configure_logging(application):
     file_handler.setFormatter(JsonFormatter())
     stream_handler = logging.StreamHandler()
     stream_handler.setFormatter(JsonFormatter())
+
     application.logger.handlers.clear()
     application.logger.addHandler(file_handler)
     application.logger.addHandler(stream_handler)
