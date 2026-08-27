@@ -1,892 +1,181 @@
 "use strict";
 
-import { ThreeDScene } from "./render3d.js";
-
 (() => {
-  const canvas = document.getElementById("gameCanvas");
-  const board = new GameBoard(canvas);
-  const renderer = new GameRenderer(board);
-
-  const glCanvas = document.getElementById("glCanvas");
-  let threeDScene = null;
-  if (glCanvas && typeof window.WebGL2RenderingContext !== "undefined") {
-    try {
-      threeDScene = new ThreeDScene(glCanvas);
-    } catch (error) {
-      console.warn("WebGL unavailable — falling back to 2D rendering.", error);
-      glCanvas.style.display = "none";
-      threeDScene = null;
-    }
-  } else if (glCanvas) {
-    glCanvas.style.display = "none";
-  }
-
-  const gameState = {
-    currentPlayer: "white",
-    selectedPiece: null,
-    dragging: false,
-    gameOver: false,
-    winner: null,
-    mode: "match",
-    turnTime: 0,
-    turnTimeLeft: 0,
-    pieces: [],
-    effects: [],
-    pointer: null,
-    powerRatio: 0,
-    phase: "aim",
-    activeCollisions: new Set(),
-    hitPairs: new Map(),
-    history: [],
-    simTime: 0,
-    settledFor: 0,
-    collisionCount: 0,
-    debugOverlay: false,
-    debugMetrics: null,
-    feedback: null,
-    screenShake: { time: 0, magnitude: 0 },
-    combo: 0,
-    comboTimer: 0,
-    maxCombo: 0,
-    stats: null,
-    guestId: window.GuestIdentity ? GuestIdentity.getId() : null,
-    challenge: null,
-    onImpact: null,
-    onWallImpact: null,
+  const log = window.ArChessObservability || { info: () => {}, debug: () => {}, warn: () => {}, error: () => {} };
+  const safe = (name, fn, fallback) => {
+    try { return fn(); } catch (error) { log.error(`FUNCTION_ERROR:${name}`, error); if (typeof fallback === "function") return fallback(error); return fallback; }
   };
 
-  window.gameState = gameState;
-  if (window.MatchHistory) MatchHistory.init();
-  UI.init(gameState);
-  if (window.TuningPanel) TuningPanel.init();
-  if (window.TutorialManager) TutorialManager.init(gameState);
-  if (window.GameModeManager) {
-    GameModeManager.init();
-    gameState.mode = GameModeManager.get().mode;
-    gameState.turnTime = GameModeManager.get().turnTime;
-    gameState.turnTimeLeft = gameState.turnTime;
-    GameModeManager.setChangeHandler((prefs) => {
-      gameState.mode = prefs.mode;
-      gameState.turnTime = prefs.turnTime;
-      gameState.turnTimeLeft = prefs.turnTime;
-      if (prefs.turnTime > 0 && gameState.phase !== "aim") gameState.turnTimeLeft = prefs.turnTime;
-      UI.update(true);
-    });
+  const canvas = document.getElementById("gameCanvas");
+  if (!canvas || !window.GameBoard || !window.GameRenderer || !window.Physics) {
+    log.error("BOOT_FAILURE", new Error("Required game engine modules are missing"));
+    return;
   }
 
-  function newStats() {
-    const make = () => ({ launches: 0, damage: 0, friendlyDamage: 0, kingDamage: 0, destroyed: 0, maxCombo: 0 });
-    return { white: make(), black: make() };
+  const board = new GameBoard(canvas);
+  const renderer = new GameRenderer(board);
+  const game = {
+    currentPlayer: "white", selectedPiece: null, dragging: false, gameOver: false, winner: null,
+    mode: "match", turnTime: 0, turnTimeLeft: 0, pieces: [], effects: [], pointer: null, powerRatio: 0,
+    phase: "aim", activeCollisions: new Set(), hitPairs: new Map(), history: [], simTime: 0, settledFor: 0,
+    collisionCount: 0, debugOverlay: false, debugMetrics: null, feedback: null,
+    screenShake: { time: 0, magnitude: 0 }, combo: 0, comboTimer: 0, maxCombo: 0,
+    stats: { white: null, black: null }, challenge: null,
+    onImpact: null, onWallImpact: null,
+  };
+  window.gameState = game;
+
+  const makeStats = () => ({ launches: 0, damage: 0, friendlyDamage: 0, kingDamage: 0, destroyed: 0, maxCombo: 0 });
+  const newStats = () => ({ white: makeStats(), black: makeStats() });
+  const capitalize = (v) => String(v || "").charAt(0).toUpperCase() + String(v || "").slice(1);
+
+  function history(message) {
+    game.history.push(message);
+    safe("UI.log", () => UI.log(message));
+    log.debug("HISTORY", { message });
   }
+
+  function feedback(text, life = 1.4) { game.feedback = { text, life }; }
 
   function resetGame() {
-    input?.cancel();
-    gameState.currentPlayer = "white";
-    gameState.selectedPiece = null;
-    gameState.dragging = false;
-    gameState.gameOver = false;
-    gameState.winner = null;
-    if (window.GameModeManager) {
-      const prefs = GameModeManager.get();
-      gameState.mode = prefs.mode;
-      gameState.turnTime = prefs.turnTime;
-    }
-    // Challenge mode: use challenge pieces instead of standard setup
-    const challenge = window.ChallengeManager?.getActive();
-    gameState.challenge = challenge || null;
-    if (challenge) {
-      gameState.mode = "challenge";
-      gameState.pieces = ChallengeManager.buildPieces(challenge);
-      ChallengeManager.storeInitialFriendlyHp(gameState.pieces);
-    } else {
-      gameState.pieces = PieceFactory.setup();
-    }
-    gameState.turnTimeLeft = gameState.turnTime;
-    threeDScene?.reset(gameState);
-    gameState.effects = [];
-    gameState.pointer = null;
-    gameState.powerRatio = 0;
-    gameState.phase = "aim";
-    gameState.activeCollisions.clear();
-    gameState.hitPairs.clear();
-    gameState.history = [];
-    gameState.simTime = 0;
-    gameState.settledFor = 0;
-    gameState.collisionCount = 0;
-    gameState.feedback = null;
-    gameState.screenShake.time = 0;
-    gameState.screenShake.magnitude = 0;
-    gameState.combo = 0;
-    gameState.comboTimer = 0;
-    gameState.maxCombo = 0;
-    gameState.stats = newStats();
-    canvas.classList.remove("is-dragging");
-    UI.modal("gameOverModal", false);
-    UI.modal("challengeResultModal", false);
-    UI.clearLog();
-    if (challenge) {
-      addHistory(`Challenge: ${challenge.name}. White to move.`);
-    } else {
-      addHistory("Battle initialized. White to move.");
-    }
-    // Start replay recording
-    if (window.ReplayRecorder) ReplayRecorder.startRecording(gameState.pieces, gameState.mode);
-    UI.update(true);
+    return safe("resetGame", () => {
+      window.__ArChessLocalInputController?.cancel?.();
+      game.currentPlayer = "white"; game.selectedPiece = null; game.dragging = false;
+      game.gameOver = false; game.winner = null; game.phase = "aim"; game.effects = [];
+      game.pointer = null; game.powerRatio = 0; game.activeCollisions.clear(); game.hitPairs.clear();
+      game.history = []; game.simTime = 0; game.settledFor = 0; game.collisionCount = 0;
+      game.feedback = null; game.screenShake.time = 0; game.screenShake.magnitude = 0;
+      game.combo = 0; game.comboTimer = 0; game.maxCombo = 0; game.stats = newStats();
+      game.challenge = window.ChallengeManager?.getActive?.() || null;
+      if (window.GameModeManager) {
+        const prefs = GameModeManager.get(); game.mode = game.challenge ? "challenge" : prefs.mode;
+        game.turnTime = prefs.turnTime; game.turnTimeLeft = prefs.turnTime;
+      }
+      game.pieces = game.challenge ? ChallengeManager.buildPieces(game.challenge) : PieceFactory.setup();
+      if (game.challenge) ChallengeManager.storeInitialFriendlyHp(game.pieces);
+      canvas.classList.remove("is-dragging");
+      UI.modal("gameOverModal", false); UI.modal("challengeResultModal", false); UI.clearLog();
+      history(game.challenge ? `Challenge: ${game.challenge.name}. White to move.` : "Battle initialized. White to move.");
+      window.ReplayRecorder?.startRecording?.(game.pieces, game.mode);
+      UI.update(true);
+      log.info("GAME_RESET", { mode: game.mode, pieces: game.pieces.length });
+    }, null);
   }
 
   function findPiece(point) {
-    let best = null;
-    let bestDistance = Infinity;
-    for (const piece of gameState.pieces) {
+    let best = null, bestDistance = Infinity;
+    for (const piece of game.pieces) {
       if (!piece.alive) continue;
       const distance = Math.hypot(piece.x - point.x, piece.y - point.y);
-      if (distance <= piece.radius * 1.35 && distance < bestDistance) {
-        best = piece;
-        bestDistance = distance;
-      }
+      if (distance <= piece.radius * 1.45 && distance < bestDistance) { best = piece; bestDistance = distance; }
     }
     return best;
   }
 
-  function setFeedback(text, life = 1.4) {
-    gameState.feedback = { text, life };
-  }
-
   function selectAt(point) {
-    if (gameState.gameOver || gameState.phase !== "aim") return false;
-    const piece = findPiece(point);
-    if (!piece) {
-      gameState.selectedPiece = null;
-      gameState.dragging = false;
-      setFeedback("No living piece selected.", 0.9);
-      UI.update();
-      return false;
-    }
-    if (piece.team !== gameState.currentPlayer) {
-      setFeedback(`Only ${gameState.currentPlayer.toUpperCase()} pieces can launch this turn.`);
-      gameState.selectedPiece = null;
-      UI.update();
-      return false;
-    }
-
-    gameState.selectedPiece = piece;
-    gameState.dragging = true;
-    gameState.pointer = point;
-    gameState.powerRatio = 0;
-    gameState.feedback = null;
-    canvas.classList.add("is-dragging");
-    AudioManager?.unlock();
-    AudioManager?.select();
-    UI.update();
-    return true;
+    return safe("selectAt", () => {
+      if (game.gameOver || game.phase !== "aim") return false;
+      const piece = findPiece(point);
+      if (!piece) { game.selectedPiece = null; game.dragging = false; feedback("No living piece selected.", .9); UI.update(); return false; }
+      if (piece.team !== game.currentPlayer) { feedback(`Only ${game.currentPlayer.toUpperCase()} pieces can launch.`); game.selectedPiece = null; UI.update(); return false; }
+      game.selectedPiece = piece; game.dragging = true; game.pointer = point; game.powerRatio = 0;
+      canvas.classList.add("is-dragging"); window.AudioManager?.unlock?.(); window.AudioManager?.select?.(); UI.update();
+      log.info("PIECE_SELECTED", { id: piece.id, type: piece.type, team: piece.team });
+      return true;
+    }, false);
   }
 
   function updateDrag(point) {
-    if (!gameState.dragging || !gameState.selectedPiece) return;
-    gameState.pointer = point;
-    const distance = Math.hypot(gameState.selectedPiece.x - point.x, gameState.selectedPiece.y - point.y);
-    gameState.powerRatio = Math.min(1, distance / GAME_CONFIG.maxDragDistance);
-    AudioManager?.pull(gameState.powerRatio);
-    UI.update();
+    safe("updateDrag", () => {
+      if (!game.dragging || !game.selectedPiece) return;
+      game.pointer = point;
+      const distance = Math.hypot(game.selectedPiece.x - point.x, game.selectedPiece.y - point.y);
+      game.powerRatio = Math.min(1, distance / GAME_CONFIG.maxDragDistance);
+      window.AudioManager?.pull?.(game.powerRatio); UI.update();
+    });
   }
 
   function releaseDrag(point) {
-    if (!gameState.dragging || !gameState.selectedPiece) return;
-    gameState.pointer = point;
-    const piece = gameState.selectedPiece;
-    const dx = piece.x - point.x;
-    const dy = piece.y - point.y;
-    const distance = Math.hypot(dx, dy);
-
-    gameState.dragging = false;
-    canvas.classList.remove("is-dragging");
-
-    if (distance < GAME_CONFIG.minDragDistance || !Physics.launch(piece, dx, dy)) {
-      gameState.selectedPiece = null;
-      gameState.pointer = null;
-      gameState.powerRatio = 0;
-      setFeedback("Drag farther before releasing.", 1.0);
-      UI.update();
-      return;
-    }
-
-    spawnLaunchEffects(piece);
-    addHistory(`${capitalize(piece.team)} ${PIECES[piece.type].name} launched.`);
-    AudioManager?.launch(gameState.powerRatio);
-    gameState.phase = "physics";
-    gameState.settledFor = 0;
-    gameState.selectedPiece = null;
-    gameState.pointer = null;
-    gameState.powerRatio = 0;
-    gameState.feedback = null;
-    gameState.combo = 0;
-    gameState.comboTimer = 0;
-    gameState.maxCombo = 0;
-    if (gameState.stats && gameState.stats[piece.team]) {
-      gameState.stats[piece.team].launches += 1;
-    }
-    // Record launch for replay
-    if (window.ReplayRecorder) ReplayRecorder.recordLaunch({ pieceId: piece.id, team: piece.team, dx, dy, power: gameState.powerRatio });
-    UI.update();
+    safe("releaseDrag", () => {
+      if (!game.dragging || !game.selectedPiece) return;
+      game.pointer = point;
+      const piece = game.selectedPiece;
+      const dx = piece.x - point.x, dy = piece.y - point.y;
+      const distance = Math.hypot(dx, dy);
+      const powerAtRelease = game.powerRatio;
+      game.dragging = false; canvas.classList.remove("is-dragging");
+      if (distance < GAME_CONFIG.minDragDistance || !Physics.launch(piece, dx, dy)) {
+        game.selectedPiece = null; game.pointer = null; game.powerRatio = 0;
+        feedback("Pull farther back before releasing.", 1.0); UI.update(); return;
+      }
+      spawnLaunchEffects(piece); history(`${capitalize(piece.team)} ${PIECES[piece.type].name} launched.`);
+      window.AudioManager?.launch?.(powerAtRelease);
+      game.phase = "physics"; game.settledFor = 0; game.selectedPiece = null; game.pointer = null; game.powerRatio = 0;
+      game.combo = 0; game.comboTimer = 0; game.maxCombo = 0;
+      game.stats[piece.team].launches += 1;
+      window.ReplayRecorder?.recordLaunch?.({ pieceId: piece.id, team: piece.team, dx, dy, power: powerAtRelease });
+      UI.update(); log.info("SHOT_LAUNCHED", { id: piece.id, team: piece.team, dx, dy, power: powerAtRelease });
+    });
   }
 
-  function cancelDrag() {
-    gameState.dragging = false;
-    gameState.selectedPiece = null;
-    gameState.pointer = null;
-    gameState.powerRatio = 0;
-    canvas.classList.remove("is-dragging");
-    UI.update();
-  }
+  function cancelDrag() { safe("cancelDrag", () => { game.dragging = false; game.selectedPiece = null; game.pointer = null; game.powerRatio = 0; canvas.classList.remove("is-dragging"); UI.update(); }); }
 
-  const input = new InputController(canvas, board, {
-    pointerDown: (point) => selectAt(point),
-    pointerMove: (point) => updateDrag(point),
-    pointerUp: (point) => releaseDrag(point),
-    pointerCancel: () => cancelDrag(),
-  });
+  const input = new InputController(canvas, board, { pointerDown: selectAt, pointerMove: updateDrag, pointerUp: releaseDrag, pointerCancel: cancelDrag });
+  window.__ArChessLocalInputController = input;
 
   function recordStat(team, target, damage) {
-    const stats = gameState.stats && gameState.stats[team];
-    if (!stats || damage <= 0) return;
-    stats.damage += damage;
-    if (target.team === team) stats.friendlyDamage += damage;
-    if (target.type === "king") stats.kingDamage += damage;
+    if (!game.stats[team] || damage <= 0) return;
+    game.stats[team].damage += damage;
+    if (target.team === team) game.stats[team].friendlyDamage += damage;
+    if (target.type === "king") game.stats[team].kingDamage += damage;
   }
 
-  gameState.onImpact = ({ a, b, impactSpeed, damageToA, damageToB, x, y }) => {
-    if (!a.alive || !b.alive) return;
-    gameState.collisionCount += 1;
-
-    a.hp = Math.max(0, a.hp - damageToA);
-    b.hp = Math.max(0, b.hp - damageToB);
-
-    spawnImpactEffects(x, y, impactSpeed, Math.max(damageToA, damageToB));
-    addHistory(`${PIECES[a.type].name} -${damageToA} HP · ${PIECES[b.type].name} -${damageToB} HP.`);
-
-    if (a.type === "king" || b.type === "king") {
-      AudioManager?.kingHit();
-    } else {
-      AudioManager?.impact(impactSpeed);
-    }
-
-    // Chain-combo: every damaging impact inside the window raises the counter.
-    const damageDealt = Math.max(damageToA, damageToB);
-    if (damageDealt > 0) {
-      gameState.combo += 1;
-      gameState.comboTimer = GAME_CONFIG.comboWindow;
-      if (gameState.combo > gameState.maxCombo) {
-        gameState.maxCombo = gameState.combo;
-        if (gameState.combo >= 2) setFeedback(`COMBO ×${gameState.combo}!`, 1.0);
-      }
-    }
-
-    // Balance stats: damageToA was caused by b, damageToB by a.
-    recordStat(b.team, a, damageToA);
-    recordStat(a.team, b, damageToB);
-
-    if (a.hp <= 0) destroyPiece(a, b.team);
-    if (b.hp <= 0) destroyPiece(b, a.team);
-  };
-
-  gameState.onWallImpact = (piece, impact) => {
-    gameState.collisionCount += 1;
-    spawnWallEffects(piece.x, piece.y, piece.team, impact);
-    AudioManager?.wall(impact);
-  };
-
-  function destroyPiece(piece, killerTeam) {
-    if (!piece.alive) return;
-    piece.alive = false;
-    piece.moving = false;
-    piece.vx = 0;
-    piece.vy = 0;
-    spawnDestructionEffects(piece);
-    addHistory(`${capitalize(piece.team)} ${PIECES[piece.type].name} destroyed.`);
-    AudioManager?.destroy(piece.type);
-    if (gameState.stats && killerTeam && gameState.stats[killerTeam]) {
-      gameState.stats[killerTeam].destroyed += 1;
-    }
-  }
-
-  function addHistory(message) {
-    gameState.history.push(message);
-    UI.log(message);
-  }
-
-  function capitalize(value) {
-    return value.charAt(0).toUpperCase() + value.slice(1);
-  }
-
-  function spawnLaunchEffects(piece) {
-    const speed = Math.hypot(piece.vx, piece.vy) || 1;
-    const backX = -piece.vx / speed;
-    const backY = -piece.vy / speed;
-    const color = piece.team === "white" ? "#78efff" : "#ff7d8d";
-    for (let i = 0; i < 8; i += 1) {
-      const spread = (Math.random() - 0.5) * 1.6;
-      pushParticle(piece.x, piece.y, backX * (1.4 + Math.random() * 2.2) + backY * spread, backY * (1.4 + Math.random() * 2.2) - backX * spread, 0.05 + Math.random() * 0.035, 0.25 + Math.random() * 0.22, color);
-    }
-    pushRing(piece.x, piece.y, piece.radius * 0.9, piece.radius * 1.4, 0.22, color);
-  }
-
-  function spawnImpactEffects(x, y, impact, amount) {
-    const strong = impact > 6.2;
-    const count = Math.min(22, 8 + Math.round(impact * 1.2));
-    const colors = ["#76efff", "#ffd37b", "#ff7888"];
-    for (let i = 0; i < count; i += 1) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 1.6 + Math.random() * Math.min(6.5, 1.2 + impact * 0.45);
-      pushParticle(x, y, Math.cos(angle) * speed, Math.sin(angle) * speed, 0.035 + Math.random() * 0.045, 0.28 + Math.random() * 0.30, colors[i % colors.length]);
-    }
-    pushRing(x, y, 0.10, 0.55 + impact * 0.025, 0.28, "#fff0bd");
-    pushFlash(x, y, 0.08, 0.18 + impact * 0.018, 0.12, "rgba(255, 238, 186, .78)");
-    gameState.effects.push({ kind: "damage", x, y: y - 0.18, vx: 0, vy: -0.55, amount, color: "#ffb28f", life: 0.72, maxLife: 0.72 });
-    if (strong) {
-      gameState.screenShake.time = Math.max(gameState.screenShake.time, 0.16);
-      gameState.screenShake.magnitude = Math.max(gameState.screenShake.magnitude, impact);
-    }
-  }
-
-  function spawnWallEffects(x, y, team, impact) {
-    const color = team === "white" ? "#70ebff" : "#ff7c8a";
-    pushRing(x, y, 0.04, 0.26 + impact * 0.012, 0.18, color);
-    for (let i = 0; i < 4; i += 1) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 0.8 + Math.random() * 1.8;
-      pushParticle(x, y, Math.cos(angle) * speed, Math.sin(angle) * speed, 0.025 + Math.random() * 0.02, 0.18 + Math.random() * 0.12, color);
-    }
-  }
-
-  function spawnDestructionEffects(piece) {
-    const color = piece.team === "white" ? "#9bf5ff" : "#ff7183";
-    for (let i = 0; i < 24; i += 1) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 2.0 + Math.random() * 5.0;
-      pushParticle(piece.x, piece.y, Math.cos(angle) * speed, Math.sin(angle) * speed, 0.04 + Math.random() * 0.06, 0.42 + Math.random() * 0.38, color);
-    }
-    pushRing(piece.x, piece.y, piece.radius * 0.8, 0.95, 0.42, color);
-    pushFlash(piece.x, piece.y, piece.radius * 0.55, 0.48, 0.20, color);
-    gameState.effects.push({
-      kind: "death",
-      x: piece.x,
-      y: piece.y,
-      vx: 0,
-      vy: -0.22,
-      glyph: PIECES[piece.type].glyph[piece.team],
-      radius: piece.radius,
-      color,
-      life: 0.56,
-      maxLife: 0.56,
-    });
-    gameState.screenShake.time = Math.max(gameState.screenShake.time, 0.22);
-    gameState.screenShake.magnitude = Math.max(gameState.screenShake.magnitude, piece.type === "king" ? 12 : 8);
-  }
-
-  function pushParticle(x, y, vx, vy, size, life, color) {
-    gameState.effects.push({ kind: "particle", x, y, vx, vy, size, color, rotation: Math.random() * Math.PI, spin: (Math.random() - 0.5) * 9, life, maxLife: life });
-  }
-
-  function pushRing(x, y, radius, growth, life, color) {
-    gameState.effects.push({ kind: "ring", x, y, vx: 0, vy: 0, radius, growth, color, life, maxLife: life });
-  }
-
-  function pushFlash(x, y, radius, growth, life, color) {
-    gameState.effects.push({ kind: "flash", x, y, vx: 0, vy: 0, radius, growth, color, life, maxLife: life });
-  }
-
-  function updateEffects(deltaTime) {
-    for (const effect of gameState.effects) {
-      effect.life -= deltaTime;
-      effect.x += (effect.vx || 0) * deltaTime;
-      effect.y += (effect.vy || 0) * deltaTime;
-      if (effect.kind === "particle") {
-        effect.vx *= Math.pow(0.92, deltaTime * 60);
-        effect.vy *= Math.pow(0.92, deltaTime * 60);
-        effect.rotation += (effect.spin || 0) * deltaTime;
-      }
-    }
-    gameState.effects = gameState.effects.filter((effect) => effect.life > 0);
-
-    if (gameState.feedback) {
-      gameState.feedback.life -= deltaTime;
-      if (gameState.feedback.life <= 0) gameState.feedback = null;
-    }
-
-    if (gameState.screenShake.time > 0) {
-      gameState.screenShake.time = Math.max(0, gameState.screenShake.time - deltaTime);
-      gameState.screenShake.magnitude *= Math.pow(0.78, deltaTime * 60);
-      if (gameState.screenShake.time === 0) gameState.screenShake.magnitude = 0;
-    }
-  }
-
-  function checkWinCondition() {
-    if (gameState.gameOver) return;
-    if (gameState.mode === "practice") return;
-    const whiteKing = gameState.pieces.find((piece) => piece.type === "king" && piece.team === "white");
-    const blackKing = gameState.pieces.find((piece) => piece.type === "king" && piece.team === "black");
-    const whiteDead = !whiteKing || whiteKing.hp <= 0 || !whiteKing.alive;
-    const blackDead = !blackKing || blackKing.hp <= 0 || !blackKing.alive;
-    if (!whiteDead && !blackDead) return;
-
-    const doubleKO = whiteDead && blackDead;
-    const winner = doubleKO ? gameState.currentPlayer : whiteDead ? "black" : "white";
-    endGame(winner, doubleKO);
-  }
-
-  function endGame(winner, doubleKO) {
-    gameState.gameOver = true;
-    gameState.winner = winner;
-    gameState.phase = "gameover";
-    gameState.dragging = false;
-    gameState.selectedPiece = null;
-    gameState.pointer = null;
-    gameState.powerRatio = 0;
-    canvas.classList.remove("is-dragging");
-
-    const playedTeam = gameState.stats ? gameState.stats[gameState.currentPlayer] : null;
-    if (playedTeam) playedTeam.maxCombo = Math.max(playedTeam.maxCombo, gameState.maxCombo);
-
-    document.getElementById("winnerGlyph").textContent = winner === "white" ? "♔" : "♚";
-    document.getElementById("winnerTitle").textContent = `${winner.toUpperCase()} WINS`;
-    document.getElementById("winnerSub").textContent = doubleKO
-      ? "Both Kings were destroyed in the same resolution. The active player wins the double knockout."
-      : "The opposing King has been destroyed.";
-    addHistory(`${winner.toUpperCase()} WINS.`);
-
-    // Record game over for replay
-    if (window.ReplayRecorder) ReplayRecorder.recordGameOver(winner, gameState.stats, doubleKO);
-    if (window.MatchHistory) {
-      const turns = Object.values(gameState.stats || {}).reduce((total, stats) => total + stats.launches, 0);
-      MatchHistory.record({ winner, doubleKO, mode: gameState.mode, turns });
-    }
-
-    // Show challenge result in game-over modal area
-    const challengeArea = document.getElementById("challengeResultArea");
-    if (challengeArea) challengeArea.innerHTML = "";
-
-    if (winner === "white") {
-      AudioManager?.victory();
-    } else {
-      AudioManager?.defeat();
-    }
-    UI.update(true);
-    UI.modal("gameOverModal", true);
-  }
-
-  function switchTurn() {
-    gameState.currentPlayer = gameState.currentPlayer === "white" ? "black" : "white";
-    gameState.phase = "aim";
-    gameState.settledFor = 0;
-    gameState.turnTimeLeft = gameState.turnTime;
-    addHistory(`${capitalize(gameState.currentPlayer)} to move.`);
-    UI.update(true);
-  }
-
-  function expireTurnTimer() {
-    if (gameState.gameOver || gameState.phase !== "aim") return;
-    setFeedback(`Time up — ${gameState.currentPlayer.toUpperCase()}'s turn ended.`, 1.4);
-    addHistory(`Turn timer expired for ${capitalize(gameState.currentPlayer)}.`);
-    switchTurn();
-  }
-
-  function tickTurnTimer(deltaTime) {
-    if (gameState.turnTime <= 0 || gameState.gameOver) return;
-    if (gameState.phase !== "aim") {
-      if (gameState.turnTimeLeft !== gameState.turnTime) {
-        gameState.turnTimeLeft = gameState.turnTime;
-      }
-      return;
-    }
-    if (gameState.phase === "aim") {
-      gameState.turnTimeLeft = Math.max(0, gameState.turnTimeLeft - deltaTime);
-      if (gameState.turnTimeLeft <= 0) expireTurnTimer();
-    }
-  }
-
-  function settleTurn(deltaTime) {
-    if (gameState.gameOver || gameState.phase !== "physics") return;
-    const allStopped = gameState.activeCollisions.size === 0 && gameState.pieces.every((piece) => !piece.alive || !piece.moving);
-    if (!allStopped) {
-      gameState.settledFor = 0;
-      return;
-    }
-
-    gameState.settledFor += deltaTime;
-    if (gameState.settledFor < GAME_CONFIG.settleDelay) return;
-
-    const playedTeam = gameState.currentPlayer;
-    if (gameState.stats && gameState.stats[playedTeam]) {
-      gameState.stats[playedTeam].maxCombo = Math.max(gameState.stats[playedTeam].maxCombo, gameState.maxCombo);
-    }
-
-    // Record turn end for replay
-    if (window.ReplayRecorder) ReplayRecorder.recordTurnEnd(gameState.pieces);
-
-    // Challenge check after each turn settles
-    if (window.ChallengeManager && gameState.challenge) {
-      ChallengeManager.recordTurn();
-      const result = ChallengeManager.check(gameState);
-      if (result) {
-        showChallengeResult(result);
-        return; // Don't switch turn — challenge ended
-      }
-    }
-
-    gameState.combo = 0;
-    gameState.comboTimer = 0;
-    gameState.maxCombo = 0;
-
-    switchTurn();
-  }
-
-  let previousTime = performance.now();
-  function gameLoop(now) {
-    const deltaTime = Math.min(0.033, Math.max(0, (now - previousTime) / 1000));
-    previousTime = now;
-    gameState.simTime += deltaTime;
-
-    if (gameState.phase === "physics" && !gameState.gameOver) {
-      Physics.step(gameState, deltaTime);
-    } else {
-      for (const piece of gameState.pieces) Physics.recordTrail(piece, deltaTime);
-    }
-
-    updateEffects(deltaTime);
-    if (gameState.comboTimer > 0) {
-      gameState.comboTimer -= deltaTime;
-      if (gameState.comboTimer <= 0) gameState.combo = 0;
-    }
-    checkWinCondition();
-    settleTurn(deltaTime);
-    tickTurnTimer(deltaTime);
-    if (window.TutorialManager) TutorialManager.tick(gameState);
-    updateDebugMetrics(deltaTime);
-    threeDScene?.render(gameState, deltaTime);
-    renderer.draw(gameState);
-    UI.update();
-    requestAnimationFrame(gameLoop);
-  }
-
-  let frameCount = 0;
-  let fpsTimer = 0;
-  let currentFps = 60.0;
-
-  function updateDebugMetrics(deltaTime) {
-    frameCount += 1;
-    fpsTimer += deltaTime;
-    if (fpsTimer >= 0.2) {
-      currentFps = frameCount / fpsTimer;
-      frameCount = 0;
-      fpsTimer = 0;
-    }
-
-    const activeBodies = gameState.pieces.filter((p) => p.alive && p.moving).length;
-    let selectedText = "None";
-    let pieceVel = "0.00";
-
-    if (gameState.selectedPiece && gameState.selectedPiece.alive) {
-      const p = gameState.selectedPiece;
-      selectedText = `${capitalize(p.team)} ${PIECES[p.type].name} (${p.id.slice(0, 4)})`;
-      pieceVel = Math.hypot(p.vx, p.vy).toFixed(2);
-    } else {
-      let maxVel = 0;
-      for (const p of gameState.pieces) {
-        if (p.alive && p.moving) {
-          const v = Math.hypot(p.vx, p.vy);
-          if (v > maxVel) maxVel = v;
-        }
-      }
-      pieceVel = maxVel.toFixed(2);
-    }
-
-    gameState.debugMetrics = {
-      fps: currentFps,
-      deltaTime: deltaTime * 1000,
-      substeps: GAME_CONFIG.physicsSubsteps || 3,
-      activeBodies,
-      selectedPiece: selectedText,
-      pieceVelocity: pieceVel,
-      collisionCount: gameState.collisionCount || 0,
-      contactPairs: gameState.hitPairs ? gameState.hitPairs.size : 0,
-      settleTimer: `${gameState.settledFor.toFixed(2)}s`,
-      combo: gameState.combo,
-      stats: gameState.stats,
-    };
-  }
-
-  function toggleDebugOverlay() {
-    gameState.debugOverlay = !gameState.debugOverlay;
-    const btn = document.getElementById("debugBtn");
-    if (btn) btn.classList.toggle("active", gameState.debugOverlay);
-    setFeedback(gameState.debugOverlay ? "Physics debug HUD enabled (D)" : "Physics debug HUD disabled (D)", 1.2);
-  }
-
-  let lowQuality = false;
-  try {
-    lowQuality = window.localStorage.getItem("archess-quality") === "low";
-  } catch (_) {
-    // Quality still defaults to high without storage.
-  }
-
-  function applyQuality() {
-    threeDScene?.setQuality(lowQuality);
-    const btn = document.getElementById("qualityBtn");
-    if (btn) {
-      btn.classList.toggle("active", lowQuality);
-      btn.title = lowQuality ? "Graphics quality: LOW (toggle Q)" : "Graphics quality: HIGH (toggle Q)";
-    }
-  }
-
-  function toggleQuality() {
-    lowQuality = !lowQuality;
-    try {
-      window.localStorage.setItem("archess-quality", lowQuality ? "low" : "high");
-    } catch (_) {
-      // Quality still works for this session without storage.
-    }
-    applyQuality();
-    setFeedback(lowQuality ? "Graphics quality: LOW (Q)" : "Graphics quality: HIGH (Q)", 1.2);
-  }
-
-  document.getElementById("debugBtn")?.addEventListener("click", toggleDebugOverlay);
-  document.getElementById("qualityBtn")?.addEventListener("click", toggleQuality);
-  applyQuality();
-
-  const boardFrame = document.querySelector(".board-frame");
-
-  function toggleFullscreen() {
-    if (!document.fullscreenEnabled) {
-      setFeedback("Fullscreen is not supported in this browser.", 1.2);
-      return;
-    }
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-    } else {
-      boardFrame?.requestFullscreen();
-    }
-  }
-
-  function updateFullscreenControl() {
-    const btn = document.getElementById("fullscreenBtn");
-    if (btn) {
-      btn.classList.toggle("active", Boolean(document.fullscreenElement));
-      btn.title = document.fullscreenElement
-        ? "Exit fullscreen (F)"
-        : "Toggle Fullscreen (F)";
-    }
-  }
-
-  document.getElementById("fullscreenBtn")?.addEventListener("click", toggleFullscreen);
-  document.addEventListener("fullscreenchange", updateFullscreenControl);
-
-  // ── Challenge integration ──
-  function showChallengeResult(result) {
-    gameState.gameOver = true;
-    gameState.phase = "gameover";
-    const card = document.getElementById("challengeResultCard");
-    const title = document.getElementById("challengeResultTitle");
-    const stars = document.getElementById("challengeResultStars");
-    const msg = document.getElementById("challengeResultMsg");
-    card.className = `challenge-result ${result.passed ? "passed" : "failed"}`;
-    title.textContent = result.passed ? "CHALLENGE COMPLETE" : "CHALLENGE FAILED";
-    let starHtml = "";
-    for (let i = 0; i < 3; i++) starHtml += `<span class="${i < result.stars ? '' : 'empty'}">★</span>`;
-    stars.innerHTML = starHtml;
-    msg.textContent = result.message;
-    UI.modal("challengeResultModal", true);
-  }
-
-  function buildChallengeList() {
-    const list = document.getElementById("challengeList");
-    if (!list || !window.ChallengeManager) return;
-    list.replaceChildren();
-    const icons = ["⚔", "⚡", "🔗", "🎳", "🎯"];
-    ChallengeManager.list().forEach((ch, i) => {
-      const item = document.createElement("button");
-      item.className = "challenge-item";
-      item.type = "button";
-      let starsHtml = "";
-      for (let s = 0; s < 3; s++) starsHtml += `<span class="${s < ch.difficulty ? '' : 'empty'}">★</span>`;
-      item.innerHTML = `
-        <div class="challenge-icon">${icons[i] || "⚔"}</div>
-        <div class="challenge-info"><b>${ch.name}</b><small>${ch.description}</small></div>
-        <div class="challenge-stars">${starsHtml}</div>`;
-      item.addEventListener("click", () => {
-        ChallengeManager.start(ch.id);
-        UI.modal("challengeModal", false);
-        resetGame();
-      });
-      list.appendChild(item);
-    });
-  }
-
-  document.getElementById("challengeBtn")?.addEventListener("click", () => {
-    buildChallengeList();
-    UI.modal("challengeModal", true);
-  });
-  document.getElementById("closeChallenge")?.addEventListener("click", () => UI.modal("challengeModal", false));
-  document.getElementById("challengeModal")?.addEventListener("click", (e) => {
-    if (e.target.id === "challengeModal") UI.modal("challengeModal", false);
-  });
-  document.getElementById("challengeRetryBtn")?.addEventListener("click", () => {
-    UI.modal("challengeResultModal", false);
-    resetGame();
-  });
-  document.getElementById("challengeExitBtn")?.addEventListener("click", () => {
-    UI.modal("challengeResultModal", false);
-    if (window.ChallengeManager) ChallengeManager.reset();
-    gameState.challenge = null;
-    resetGame();
-  });
-
-  // ── Replay integration ──
-  document.getElementById("saveReplayBtn")?.addEventListener("click", () => {
-    if (window.ReplayRecorder) ReplayRecorder.exportReplay();
-  });
-  document.getElementById("replayBtn")?.addEventListener("click", () => {
-    UI.modal("replayModal", true);
-    if (window.ReplayViewer) ReplayViewer.updateUI();
-  });
-  document.getElementById("closeReplay")?.addEventListener("click", () => {
-    UI.modal("replayModal", false);
-    if (window.ReplayViewer) ReplayViewer.stop();
-  });
-  document.getElementById("replayModal")?.addEventListener("click", (e) => {
-    if (e.target.id === "replayModal") {
-      UI.modal("replayModal", false);
-      if (window.ReplayViewer) ReplayViewer.stop();
-    }
-  });
-  document.getElementById("replayLoadBtn")?.addEventListener("click", () => {
-    document.getElementById("replayFileInput")?.click();
-  });
-  document.getElementById("replayFileInput")?.addEventListener("change", (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const data = JSON.parse(reader.result);
-        if (window.ReplayViewer) {
-          ReplayViewer.load(data, gameState, resetGame);
-          ReplayViewer.updateUI();
-        }
-      } catch (err) {
-        console.error("Invalid replay file:", err);
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = "";
-  });
-
-  // Replay transport controls
-  document.getElementById("replayPlay")?.addEventListener("click", () => {
-    if (window.ReplayViewer) ReplayViewer.togglePlay();
-  });
-  document.getElementById("replayPrev")?.addEventListener("click", () => {
-    if (window.ReplayViewer) ReplayViewer.prev();
-  });
-  document.getElementById("replayNext")?.addEventListener("click", () => {
-    if (window.ReplayViewer) ReplayViewer.next();
-  });
-  document.getElementById("replayScrubber")?.addEventListener("input", (e) => {
-    if (window.ReplayViewer) ReplayViewer.seek(Number(e.target.value));
-  });
-  document.getElementById("replaySpeed")?.addEventListener("click", () => {
-    if (window.ReplayViewer) ReplayViewer.cycleSpeed();
-  });
-
-  document.getElementById("newGameBtn").addEventListener("click", () => {
-    if (window.ChallengeManager) ChallengeManager.reset();
-    gameState.challenge = null;
-    resetGame();
-  });
-  document.getElementById("playAgainBtn").addEventListener("click", () => {
-    if (window.ChallengeManager) ChallengeManager.reset();
-    gameState.challenge = null;
-    resetGame();
-  });
-  document.getElementById("helpBtn").addEventListener("click", () => {
-    if (window.MatchHistory) MatchHistory.render(document.getElementById("matchHistoryList"));
-    UI.modal("helpModal", true);
-  });
-  document.getElementById("closeHelp").addEventListener("click", () => UI.modal("helpModal", false));
-  document.getElementById("helpTutorialBtn").addEventListener("click", () => {
-    UI.modal("helpModal", false);
-    if (window.TutorialManager) TutorialManager.start();
-  });
-  document.getElementById("clearHistoryBtn").addEventListener("click", () => {
-    if (window.MatchHistory) MatchHistory.clear();
-    window.MatchHistory?.render(document.getElementById("matchHistoryList"));
-  });
-  document.getElementById("exportHistoryBtn").addEventListener("click", () => {
-    window.MatchHistory?.exportData();
-  });
-  document.getElementById("helpModal").addEventListener("click", (event) => {
-    if (event.target.id === "helpModal") UI.modal("helpModal", false);
-  });
-
-  document.getElementById("settingsBtn").addEventListener("click", () => {
-    PrefsManager?.applyControls();
-    AudioManager?.unlock();
-    UI.modal("settingsModal", true);
-  });
-  document.getElementById("closeSettings").addEventListener("click", () => UI.modal("settingsModal", false));
-  document.getElementById("settingsModal").addEventListener("click", (event) => {
-    if (event.target.id === "settingsModal") UI.modal("settingsModal", false);
-  });
-
-  // Subtle click feedback for UI chrome (buttons only, not the board canvas).
-  document.addEventListener("click", (event) => {
-    if (event.target.closest("button")) AudioManager?.click();
-  });
-
-  window.addEventListener("keydown", (event) => {
-    const isInput = ["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName);
-    if (event.key.toLowerCase() === "r" && !isInput) resetGame();
-    if (event.key.toLowerCase() === "d" && !isInput) toggleDebugOverlay();
-    if (event.key.toLowerCase() === "q" && !isInput) toggleQuality();
-    if (event.key.toLowerCase() === "f" && !isInput) toggleFullscreen();
-    if (event.key.toLowerCase() === "s" && !isInput) {
-      AudioManager?.unlock();
-      UI.modal("settingsModal", document.getElementById("settingsModal").classList.contains("hidden"));
-    }
-    if (event.key === "Escape") {
-      UI.modal("helpModal", false);
-      UI.modal("settingsModal", false);
-      UI.modal("tuningModal", false);
-      UI.modal("challengeModal", false);
-      UI.modal("challengeResultModal", false);
-      UI.modal("replayModal", false);
-      if (window.ReplayViewer) ReplayViewer.stop();
-      if (gameState.dragging) input.cancel();
-    }
-  });
-
-  function handleResize() {
-    board.resize();
-    threeDScene?.resize();
-  }
-
-  async function loadVersion() {
-    try {
-      const response = await fetch("/api/version");
-      if (!response.ok) return;
-      const data = await response.json();
-      UI.setVersion(data.version || "");
-    } catch (_) {
-      // The game remains playable when the version endpoint is unavailable.
-    }
-  }
-
-  if ("ResizeObserver" in window) {
-    const resizeObserver = new ResizeObserver(handleResize);
-    resizeObserver.observe(canvas);
-  }
-  window.addEventListener("resize", handleResize);
-
-  loadVersion();
-  resetGame();
-  requestAnimationFrame(gameLoop);
+  function pushParticle(x,y,vx,vy,size,life,color){game.effects.push({kind:"particle",x,y,vx,vy,size,color,rotation:Math.random()*Math.PI,spin:(Math.random()-.5)*9,life,maxLife:life});}
+  function pushRing(x,y,radius,growth,life,color){game.effects.push({kind:"ring",x,y,vx:0,vy:0,radius,growth,color,life,maxLife:life});}
+  function pushFlash(x,y,radius,growth,life,color){game.effects.push({kind:"flash",x,y,vx:0,vy:0,radius,growth,color,life,maxLife:life});}
+  function spawnLaunchEffects(piece){const speed=Math.hypot(piece.vx,piece.vy)||1;const bx=-piece.vx/speed,by=-piece.vy/speed;const color=piece.team==="white"?"#78efff":"#ff7d8d";for(let i=0;i<8;i++){const s=(Math.random()-.5)*1.6;pushParticle(piece.x,piece.y,bx*(1.4+Math.random()*2.2)+by*s,by*(1.4+Math.random()*2.2)-bx*s,.05+Math.random()*.035,.25+Math.random()*.22,color)}pushRing(piece.x,piece.y,piece.radius*.9,piece.radius*1.4,.22,color)}
+  function spawnImpactEffects(x,y,impact,amount){const colors=["#76efff","#ffd37b","#ff7888"];for(let i=0;i<Math.min(22,8+Math.round(impact*1.2));i++){const a=Math.random()*Math.PI*2,s=1.6+Math.random()*Math.min(6.5,1.2+impact*.45);pushParticle(x,y,Math.cos(a)*s,Math.sin(a)*s,.035+Math.random()*.045,.28+Math.random()*.3,colors[i%3])}pushRing(x,y,.1,.55+impact*.025,.28,"#fff0bd");pushFlash(x,y,.08,.18+impact*.018,.12,"rgba(255,238,186,.78)");game.effects.push({kind:"damage",x,y:y-.18,vx:0,vy:-.55,amount,color:"#ffb28f",life:.72,maxLife:.72});if(impact>6.2){game.screenShake.time=Math.max(game.screenShake.time,.16);game.screenShake.magnitude=Math.max(game.screenShake.magnitude,impact)}}
+  function spawnWallEffects(x,y,team,impact){const color=team==="white"?"#70ebff":"#ff7c8a";pushRing(x,y,.04,.26+impact*.012,.18,color);for(let i=0;i<4;i++){const a=Math.random()*Math.PI*2,s=.8+Math.random()*1.8;pushParticle(x,y,Math.cos(a)*s,Math.sin(a)*s,.025+Math.random()*.02,.18+Math.random()*.12,color)}}
+  function spawnDestructionEffects(piece){const color=piece.team==="white"?"#9bf5ff":"#ff7183";for(let i=0;i<24;i++){const a=Math.random()*Math.PI*2,s=2+Math.random()*5;pushParticle(piece.x,piece.y,Math.cos(a)*s,Math.sin(a)*s,.04+Math.random()*.06,.42+Math.random()*.38,color)}pushRing(piece.x,piece.y,piece.radius*.8,.95,.42,color);pushFlash(piece.x,piece.y,piece.radius*.55,.48,.2,color);game.effects.push({kind:"death",x:piece.x,y:piece.y,vx:0,vy:-.22,glyph:PIECES[piece.type].glyph[piece.team],radius:piece.radius,color,life:.56,maxLife:.56});game.screenShake.time=Math.max(game.screenShake.time,.22);game.screenShake.magnitude=Math.max(game.screenShake.magnitude,piece.type==="king"?12:8)}
+
+  game.onImpact = ({a,b,impactSpeed,damageToA,damageToB,x,y}) => safe("onImpact",()=>{if(!a.alive||!b.alive)return;game.collisionCount++;a.hp=Math.max(0,a.hp-damageToA);b.hp=Math.max(0,b.hp-damageToB);spawnImpactEffects(x,y,impactSpeed,Math.max(damageToA,damageToB));history(`${PIECES[a.type].name} -${damageToA} HP · ${PIECES[b.type].name} -${damageToB} HP.`);window.AudioManager?.[a.type==="king"||b.type==="king"?"kingHit":"impact"]?.(impactSpeed);if(Math.max(damageToA,damageToB)>0){game.combo++;game.comboTimer=GAME_CONFIG.comboWindow;game.maxCombo=Math.max(game.maxCombo,game.combo)}recordStat(b.team,a,damageToA);recordStat(a.team,b,damageToB);if(a.hp<=0)destroyPiece(a,b.team);if(b.hp<=0)destroyPiece(b,a.team)},null);
+  game.onWallImpact = (piece,impact) => safe("onWallImpact",()=>{game.collisionCount++;spawnWallEffects(piece.x,piece.y,piece.team,impact);window.AudioManager?.wall?.(impact)},null);
+  function destroyPiece(piece,killerTeam){if(!piece.alive)return;piece.alive=false;piece.moving=false;piece.vx=0;piece.vy=0;spawnDestructionEffects(piece);history(`${capitalize(piece.team)} ${PIECES[piece.type].name} destroyed.`);window.AudioManager?.destroy?.(piece.type);if(killerTeam&&game.stats[killerTeam])game.stats[killerTeam].destroyed++}
+
+  function updateEffects(dt){for(const e of game.effects){e.life-=dt;e.x+=(e.vx||0)*dt;e.y+=(e.vy||0)*dt;if(e.kind==="particle"){e.vx*=Math.pow(.92,dt*60);e.vy*=Math.pow(.92,dt*60);e.rotation+=(e.spin||0)*dt}}game.effects=game.effects.filter(e=>e.life>0);if(game.feedback){game.feedback.life-=dt;if(game.feedback.life<=0)game.feedback=null}if(game.screenShake.time>0){game.screenShake.time=Math.max(0,game.screenShake.time-dt);game.screenShake.magnitude*=Math.pow(.78,dt*60)}}
+  function checkWin(){if(game.gameOver||game.mode==="practice")return;const wk=game.pieces.find(p=>p.type==="king"&&p.team==="white"),bk=game.pieces.find(p=>p.type==="king"&&p.team==="black");const wd=!wk||wk.hp<=0||!wk.alive,bd=!bk||bk.hp<=0||!bk.alive;if(wd||bd)endGame(wd&&bd?game.currentPlayer:wd?"black":"white",wd&&bd)}
+  function endGame(winner,doubleKO){if(game.gameOver)return;game.gameOver=true;game.winner=winner;game.phase="gameover";game.dragging=false;game.selectedPiece=null;game.pointer=null;game.powerRatio=0;canvas.classList.remove("is-dragging");document.getElementById("winnerGlyph").textContent=winner==="white"?"♔":"♚";document.getElementById("winnerTitle").textContent=`${winner.toUpperCase()} WINS`;document.getElementById("winnerSub").textContent=doubleKO?"Both Kings were destroyed in the same resolution.":"The opposing King has been destroyed.";history(`${winner.toUpperCase()} WINS.`);window.ReplayRecorder?.recordGameOver?.(winner,game.stats,doubleKO);window.MatchHistory?.record?.({winner,doubleKO,mode:game.mode,turns:game.stats.white.launches+game.stats.black.launches});window.AudioManager?.[winner==="white"?"victory":"defeat"]?.();UI.update(true);UI.modal("gameOverModal",true);log.info("GAME_OVER",{winner,doubleKO})}
+  function switchTurn(){game.currentPlayer=game.currentPlayer==="white"?"black":"white";game.phase="aim";game.settledFor=0;game.turnTimeLeft=game.turnTime;history(`${capitalize(game.currentPlayer)} to move.`);UI.update(true)}
+  function settle(dt){if(game.gameOver||game.phase!=="physics")return;const stopped=game.activeCollisions.size===0&&game.pieces.every(p=>!p.alive||!p.moving);if(!stopped){game.settledFor=0;return}game.settledFor+=dt;if(game.settledFor<GAME_CONFIG.settleDelay)return;if(window.ReplayRecorder)ReplayRecorder.recordTurnEnd(game.pieces);if(game.challenge&&window.ChallengeManager){ChallengeManager.recordTurn();const result=ChallengeManager.check(game);if(result){game.gameOver=true;game.phase="gameover";const card=document.getElementById("challengeResultCard");if(card)card.className=`challenge-result ${result.passed?"passed":"failed"}`;document.getElementById("challengeResultTitle").textContent=result.passed?"CHALLENGE COMPLETE":"CHALLENGE FAILED";document.getElementById("challengeResultStars").innerHTML=[0,1,2].map(i=>`<span class="${i<result.stars?"":"empty"}">★</span>`).join("");document.getElementById("challengeResultMsg").textContent=result.message;UI.modal("challengeResultModal",true);return}}game.combo=0;game.maxCombo=0;switchTurn()}
+
+  function updateDebug(dt){game.debugMetrics={fps:dt?Math.round(1/dt):60,activeBodies:game.pieces.filter(p=>p.alive&&p.moving).length,collisionCount:game.collisionCount,selectedPiece:game.selectedPiece?.id||"None",settleTimer:`${game.settledFor.toFixed(2)}s`}}
+  function loop(now){const dt=Math.min(.033,Math.max(0,(now-(loop.last||now))/1000));loop.last=now;game.simTime+=dt;if(game.phase==="physics"&&!game.gameOver)Physics.step(game,dt);else for(const p of game.pieces)Physics.recordTrail(p,dt);updateEffects(dt);if(game.comboTimer>0){game.comboTimer-=dt;if(game.comboTimer<=0)game.combo=0}checkWin();settle(dt);updateDebug(dt);renderer.draw(game);UI.update();requestAnimationFrame(loop)}
+
+  function bind(id,event,fn){const el=document.getElementById(id);if(!el)return;el.addEventListener(event,(e)=>safe(`${id}:${event}`,()=>fn(e)));}
+  bind("newGameBtn","click",()=>{window.ChallengeManager?.reset?.();game.challenge=null;resetGame()});
+  bind("playAgainBtn","click",()=>{window.ChallengeManager?.reset?.();game.challenge=null;resetGame()});
+  bind("helpBtn","click",()=>{window.MatchHistory?.render?.(document.getElementById("matchHistoryList"));UI.modal("helpModal",true)});
+  bind("closeHelp","click",()=>UI.modal("helpModal",false));
+  bind("helpTutorialBtn","click",()=>{UI.modal("helpModal",false);window.TutorialManager?.start?.()});
+  bind("settingsBtn","click",()=>{window.PrefsManager?.applyControls?.();window.AudioManager?.unlock?.();UI.modal("settingsModal",true)});
+  bind("closeSettings","click",()=>UI.modal("settingsModal",false));
+  bind("challengeBtn","click",()=>{const list=document.getElementById("challengeList");if(list&&window.ChallengeManager){list.replaceChildren();ChallengeManager.list().forEach(ch=>{const b=document.createElement("button");b.type="button";b.className="challenge-item";b.innerHTML=`<div class="challenge-icon">✦</div><div class="challenge-info"><b>${ch.name}</b><small>${ch.description}</small></div><div class="challenge-stars">${"★".repeat(ch.difficulty)}${"★".repeat(3-ch.difficulty).replace(/★/g,"☆")}</div>`;b.addEventListener("click",()=>{ChallengeManager.start(ch.id);UI.modal("challengeModal",false);resetGame()});list.appendChild(b)})}UI.modal("challengeModal",true)});
+  bind("closeChallenge","click",()=>UI.modal("challengeModal",false));
+  bind("challengeRetryBtn","click",()=>{UI.modal("challengeResultModal",false);resetGame()});
+  bind("challengeExitBtn","click",()=>{UI.modal("challengeResultModal",false);window.ChallengeManager?.reset?.();game.challenge=null;resetGame()});
+  bind("replayBtn","click",()=>{UI.modal("replayModal",true);window.ReplayViewer?.updateUI?.()});
+  bind("closeReplay","click",()=>{UI.modal("replayModal",false);window.ReplayViewer?.stop?.()});
+  bind("replayLoadBtn","click",()=>document.getElementById("replayFileInput")?.click());
+  bind("saveReplayBtn","click",()=>window.ReplayRecorder?.exportReplay?.());
+  bind("exportHistoryBtn","click",()=>window.MatchHistory?.exportData?.());
+  bind("clearHistoryBtn","click",()=>{window.MatchHistory?.clear?.();window.MatchHistory?.render?.(document.getElementById("matchHistoryList"))});
+  bind("closeTuning","click",()=>UI.modal("tuningModal",false));bind("closeTuning2","click",()=>UI.modal("tuningModal",false));bind("tuneBtn","click",()=>UI.modal("tuningModal",true));
+  bind("debugBtn","click",()=>{game.debugOverlay=!game.debugOverlay;document.getElementById("debugBtn")?.classList.toggle("active",game.debugOverlay);feedback(game.debugOverlay?"Diagnostics enabled":"Diagnostics disabled",1.2)});
+  bind("qualityBtn","click",()=>{document.getElementById("qualityBtn")?.classList.toggle("active");feedback("Graphics quality toggled",1.0)});
+  bind("fullscreenBtn","click",()=>{if(document.fullscreenElement)document.exitFullscreen();else document.querySelector(".board-frame")?.requestFullscreen?.()});
+  bind("replayPlay","click",()=>window.ReplayViewer?.togglePlay?.());bind("replayPrev","click",()=>window.ReplayViewer?.prev?.());bind("replayNext","click",()=>window.ReplayViewer?.next?.());bind("replaySpeed","click",()=>window.ReplayViewer?.cycleSpeed?.());bind("replayScrubber","input",e=>window.ReplayViewer?.seek?.(Number(e.target.value)));
+  document.getElementById("replayFileInput")?.addEventListener("change",e=>{const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>safe("replayLoad",()=>{const data=JSON.parse(reader.result);window.ReplayViewer?.load?.(data,game,resetGame);window.ReplayViewer?.updateUI?.()});reader.onerror=()=>log.error("REPLAY_READ_ERROR",reader.error);reader.readAsText(file);e.target.value=""});
+  window.addEventListener("keydown",e=>safe("keyboard",()=>{if(["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName))return;const k=e.key.toLowerCase();if(k==="r")resetGame();if(k==="d")document.getElementById("debugBtn")?.click();if(k==="f")document.getElementById("fullscreenBtn")?.click();if(k==="escape"){["helpModal","settingsModal","challengeModal","challengeResultModal","replayModal","tuningModal","gameOverModal"].forEach(id=>UI.modal(id,false));if(game.dragging)input.cancel()}}));
+  const resize=()=>safe("resize",()=>board.resize());window.addEventListener("resize",resize);if(window.ResizeObserver)new ResizeObserver(resize).observe(canvas);
+  safe("moduleInit",()=>{UI.init(game);window.MatchHistory?.init?.();window.TuningPanel?.init?.();window.TutorialManager?.init?.(game);window.GameModeManager?.init?.();resetGame();fetch("/api/version",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(d=>d&&UI.setVersion(d.version||"")).catch(e=>log.error("VERSION_LOAD_ERROR",e));requestAnimationFrame(loop)});
 })();
