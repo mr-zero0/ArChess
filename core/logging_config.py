@@ -52,7 +52,7 @@ def setup_logging_retention():
 
 
 def _install_function_tracer(logger):
-    """Trace ArChess application calls without interfering with interpreter shutdown."""
+    """Trace ArChess application calls without tracing the logging system itself."""
     enabled = os.environ.get(
         "ARCHESS_TRACE_FUNCTIONS",
         "1" if logger.isEnabledFor(logging.DEBUG) else "0",
@@ -60,7 +60,15 @@ def _install_function_tracer(logger):
     if enabled != "1" or getattr(sys, "_archess_function_tracer", False):
         return
 
-    application_roots = ("game", "core", "config", "match_sessions", "game")
+    # Flask's debug reloader imports/initializes the application in a parent
+    # process and then again in its serving child. Install the tracer only in
+    # the serving child so every function is logged once.
+    if os.environ.get("WERKZEUG_RUN_MAIN") not in (None, "true"):
+        return
+    if os.environ.get("FLASK_DEBUG") == "1" and os.environ.get("WERKZEUG_RUN_MAIN") != "true":
+        return
+
+    application_roots = ("game", "core", "config", "match_sessions")
     local = threading.local()
     local.suspended = False
 
@@ -75,7 +83,6 @@ def _install_function_tracer(logger):
             local.suspended = True
             getattr(logger, level)(message, *args, **kwargs)
         except (ValueError, OSError, RuntimeError):
-            # Observability must never become an application failure.
             return
         finally:
             local.suspended = False
@@ -85,6 +92,10 @@ def _install_function_tracer(logger):
             return None
 
         module = frame.f_globals.get("__name__", "") or ""
+        # Never trace the formatter/tracer itself. Doing so creates a noisy
+        # feedback loop where logging produces function-trace logs.
+        if module == __name__ or module.startswith(f"{__name__}."):
+            return trace
         if not module.startswith(application_roots):
             return trace
 
@@ -130,7 +141,7 @@ def _install_function_tracer(logger):
     threading.setprofile(trace)
     sys._archess_function_tracer = True
     sys._archess_tracer_shutting_down = False
-    logger.info("Full Python function tracing enabled (shutdown-safe)")
+    trace_log("info", "Full Python function tracing enabled (shutdown-safe)")
     return disable_on_shutdown
 
 
