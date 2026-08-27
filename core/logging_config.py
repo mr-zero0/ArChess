@@ -46,13 +46,12 @@ def setup_logging_retention():
                     if datetime.fromtimestamp(os.path.getmtime(day_path)) < cutoff:
                         shutil.rmtree(day_path, ignore_errors=True)
                 except OSError:
-                    # Retention cleanup must never affect application startup.
                     logging.getLogger(__name__).warning(
                         "Unable to inspect log directory: %s", day_path, exc_info=True
                     )
 
 
-def _install_function_tracer(logger):
+def _install_function_tracer(logger, allow_reloader_parent=False):
     """Trace ArChess application calls without tracing the logging machinery itself."""
     enabled = os.environ.get(
         "ARCHESS_TRACE_FUNCTIONS",
@@ -61,9 +60,9 @@ def _install_function_tracer(logger):
     if enabled != "1" or getattr(sys, "_archess_function_tracer", False):
         return
 
-    # Flask debug reloader starts a parent process plus a serving child.
-    # Trace only the serving process to avoid duplicate traces and duplicate setup.
-    if os.environ.get("WERKZEUG_RUN_MAIN") == "false":
+    # Flask's debug reloader uses a parent supervisor and a serving child.
+    # Trace only the serving child; the supervisor must stay completely quiet.
+    if not allow_reloader_parent and os.environ.get("WERKZEUG_RUN_MAIN") != "true":
         return
 
     application_roots = ("game", "core", "config", "match_sessions")
@@ -258,5 +257,12 @@ def configure_logging(application):
             return
 
     threading.excepthook = _uncaught_thread_exception
-    _install_function_tracer(application.logger)
+
+    # When Flask debug reloader is active, only its serving child gets the
+    # function profiler. Outside the reloader, tracing remains enabled normally.
+    reloader_active = application.debug and "WERKZEUG_RUN_MAIN" in os.environ
+    _install_function_tracer(
+        application.logger,
+        allow_reloader_parent=not reloader_active,
+    )
     application.logger.info("Structured observability initialized")
