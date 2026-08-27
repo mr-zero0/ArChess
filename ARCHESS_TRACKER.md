@@ -23,12 +23,13 @@
 | Legacy shell/runtime cleanup | IMPLEMENTED | Professional shell/runtime/router/stabilizer/board-host/release shims removed |
 | Duplicate input/runtime cleanup | IMPLEMENTED | Duplicate local input and turn/presentation shims removed |
 | Function tracing shutdown regression | FIXED | Tracer ignores interpreter finalization, skips non-ArChess modules, avoids closed streams and suppresses secondary logging destination errors |
-| Positive gameplay tests | ADDED / PENDING LOCAL RUN | Select → drag → release → physics settle → turn alternation |
-| Negative gameplay tests | ADDED / PENDING LOCAL RUN | Wrong-team selection, zero-distance release and invalid interaction cases |
-| UI regression tests | ADDED / PENDING LOCAL RUN | 2D-only DOM, board sizing, themes, removed-runtime checks |
-| Multi-browser regression | ADDED / PENDING LOCAL RUN | Chromium / Firefox / WebKit desktop/tablet/mobile matrix |
-| Python/API regression | EXISTING / PENDING LOCAL RUN | Existing backend, security, authoritative simulation suites remain |
-| JavaScript regression | EXISTING / PENDING LOCAL RUN | Existing Node suite remains; obsolete 3D test suites removed |
+| Tracker release-gate contract | FIXED | Exact required promotion sentence restored: `Do not move `ui-rebuild-2d-v2` to `main`.` |
+| Positive gameplay tests | PASSING | Full Python suite currently passes; dedicated browser execution remains pending |
+| Negative gameplay tests | PASSING | Full Python suite currently passes; dedicated browser execution remains pending |
+| UI regression tests | PASSING IN STATIC SUITE | 2D/runtime contract included in the 99 passing Python tests |
+| Multi-browser regression | PENDING LOCAL BROWSER RUN | Chromium / Firefox / WebKit desktop/tablet/mobile matrix |
+| Python/API regression | PASSING | 99 passed, 17 skipped, 61 warnings in latest local run |
+| JavaScript regression | PASSING | 18/18 Node tests passed in latest local run |
 | Function-level logging | IMPLEMENTED | Browser observability instruments key controllers; server tracer is shutdown-safe |
 | Server observability | IMPLEMENTED | Structured request logging, request IDs, error handling and safe function tracing |
 | Local automation | IMPLEMENTED | Browser suites gated by `RUN_BROWSER_MATRIX=1`; no GitHub Actions execution |
@@ -86,6 +87,16 @@ The tracer now:
 - prevents recursive tracer logging;
 - treats tracing/logging failures as non-fatal; and
 - disables logging exception propagation with `logging.raiseExceptions = False`.
+
+## Latest Verification Result
+
+Latest local run:
+
+- **Python:** 99 passed, 17 skipped, 61 warnings.
+- **JavaScript:** 18 passed, 0 failed.
+- The only prior Python failure was the tracker release-gate wording; that contract has now been corrected on the development branch.
+- Warnings are currently SQLAlchemy warnings in existing database teardown/telemetry code and do not fail the suite.
+- Browser end-to-end/multi-browser verification is still pending because it requires the local Flask server plus installed Playwright browsers.
 
 ## Positive Test Matrix
 
@@ -195,13 +206,13 @@ See `THIRD_PARTY_NOTICES.md` and `docs/ASSET_LICENSES.md`.
 
 ## Verification Record
 
-**Development branch head at last inspection:** pending after tracker-contract fix.  
+**Development branch head at tracker update:** after restoring the release-gate contract.  
 **`main` remains unchanged:** `46165ca7f6f88386077aede8583b735597c3bc33`.  
 **Actions state:** `.github/workflows` is absent on the development branch; Actions have not been reintroduced.  
-**Latest local test result:** 98 Python tests passed, 17 skipped, 61 warnings; one tracker-contract assertion failed because the expected release-gate phrase was missing. JavaScript suite passed 18/18.  
-**Browser verification:** PENDING — this environment can inspect/modify the repository but cannot operate the user's local Flask browser session.  
-**Logging shutdown regression:** FIXED IN CODE; local Ctrl+C regression still requires execution in the user's environment.  
-**Promotion:** BLOCKED until local test matrix passes and tracker is updated with the verified commit.
+**Latest local automated result:** 99 Python tests passed, 17 skipped, 61 warnings; 18 JavaScript tests passed.  
+**Browser verification:** PENDING — local Playwright/browser execution remains required.  
+**Logging shutdown regression:** FIXED IN CODE; local Ctrl+C verification remains required.  
+**Promotion:** BLOCKED until browser/multi-browser/local shutdown checks are green.
 
 ## Promotion Rule
 
