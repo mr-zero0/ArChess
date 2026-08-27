@@ -4,29 +4,36 @@
 **Development branch:** `ui-rebuild-2d-v2`  
 **Target branch:** `main`  
 **Current product mode:** 2D only  
-**3D:** deferred; no 3D runtime is loaded  
-**GitHub Actions:** disabled; workflow file removed  
+**3D:** DEFERRED — no 3D runtime is loaded by the active page  
+**GitHub Actions:** DISABLED — no workflow is present under `.github/workflows`  
 
-> This tracker is the source of truth for implementation and verification. A change is not considered release-ready until its required positive, negative, regression and function-level checks are verified. No merge/push to `main` is allowed while required checks remain pending.
+> This tracker is the source of truth for implementation and verification. Nothing is promoted to `main` until the required positive, negative, function-level, regression and responsive checks are verified.
 
 ## Current Gate
 
 | Gate | Status | Evidence / acceptance |
 |---|---|---|
-| Core physics preservation | IMPLEMENTED / VERIFY | Existing physics engine retained; renderer/UI changes are adapters/presentation only |
-| 2D board | IMPLEMENTED / VERIFY | `gchessboard` 1.4.0 board surface + ArChess 2D physics overlay |
-| 2D piece presentation | IMPLEMENTED / VERIFY | Local Cburnett-derived SVG art exposed through existing asset module |
-| Professional UI | IMPLEMENTED / VERIFY | Bootstrap 5.3.8 + Bootstrap Icons + focused ArChess arena presentation CSS |
-| 3D runtime | DEFERRED | Three.js renderer/camera/presentation layers removed from active 2D branch |
-| Gameplay positive tests | ADDED / PENDING RUN | Select → drag → release → physics settle → alternate turn |
-| Gameplay negative tests | ADDED / PENDING RUN | Wrong-team selection, zero-distance release, invalid interaction paths |
-| UI regression tests | ADDED / PENDING RUN | 2D-only DOM, responsive sizing, theme and runtime-layer checks |
-| Python/API regression | EXISTING / PENDING RUN | Existing suite retained; no CI execution requested |
-| JavaScript regression | PENDING RUN | Existing Node suite must be reviewed for removed 3D/legacy assumptions |
-| Function/error logging | IMPLEMENTED | Browser observability + server structured logging retained |
-| Automation tests | IMPLEMENTED / PENDING RUN | Test harness remains available; GitHub Actions intentionally disabled |
-| Repository cleanup | IN PROGRESS | Legacy shell/3D/runtime shims being removed from the execution tree |
-| Tracker | UPDATED | This file is updated during each implementation milestone |
+| Core physics preservation | READY FOR VERIFICATION | Existing `main.js`, `physics.js`, `pieces.js` and backend simulation remain authoritative |
+| Root cause of black board | FIXED | `GameBoard` physics canvas now uses `alpha:true`; it is explicitly a transparent overlay |
+| 2D board presentation | IMPLEMENTED | `gchessboard` 1.4.0 provides the board surface; ArChess canvas provides continuous physics motion |
+| 2D piece presentation | IMPLEMENTED | Local Cburnett-derived SVG data is rendered by the physics layer |
+| Professional application chrome | IMPLEMENTED | Bootstrap 5.3.8 + Bootstrap Icons 1.13.1 |
+| Themes | IMPLEMENTED | Wood / Dark / Light shared across Bootstrap, board surface and renderer |
+| 3D runtime | DEFERRED | Three.js, 3D renderer, camera and 3D assets removed from active 2D runtime |
+| Legacy shell/runtime cleanup | IMPLEMENTED | Professional shell/runtime/router/stabilizer/board-host/release shims removed |
+| Duplicate input/runtime cleanup | IMPLEMENTED | Duplicate local input and turn/presentation shims removed |
+| Positive gameplay tests | ADDED / PENDING LOCAL RUN | Select → drag → release → physics settle → turn alternation |
+| Negative gameplay tests | ADDED / PENDING LOCAL RUN | Wrong-team selection, zero-distance release and invalid interaction cases |
+| UI regression tests | ADDED / PENDING LOCAL RUN | 2D-only DOM, board sizing, themes, removed-runtime checks |
+| Multi-browser regression | ADDED / PENDING LOCAL RUN | Chromium / Firefox / WebKit desktop/tablet/mobile matrix |
+| Python/API regression | EXISTING / PENDING LOCAL RUN | Existing backend, security, authoritative simulation suites remain |
+| JavaScript regression | EXISTING / PENDING LOCAL RUN | Existing Node suite remains; obsolete 3D test suites removed |
+| Function-level logging | IMPLEMENTED | Browser observability now instruments global controllers and `GameBoard`, `GameRenderer`, `InputController` prototypes |
+| Server observability | IMPLEMENTED | Structured request logging, request IDs, error handling and optional full Python function tracing |
+| Local automation | IMPLEMENTED | Browser suites gated by `RUN_BROWSER_MATRIX=1`; no GitHub Actions execution |
+| Repository cleanup | IMPLEMENTED | Stale 3D/CI/professional assets and docs removed from the development branch |
+| License inventory | IMPLEMENTED | Bootstrap, Bootstrap Icons, gchessboard and Cburnett attribution documented |
+| Tracker | ACTIVE | Updated at each implementation milestone |
 
 ## Product Roadmap
 
@@ -35,8 +42,8 @@
 | 0 | Product rules & identity | PARTIAL |
 | 1 | Engineering baseline | DONE |
 | 2 | Core physics & damage | PRESERVE / VERIFY |
-| 3 | 2D presentation | IN PROGRESS |
-| 4 | Board, resize & themes | IN PROGRESS |
+| 3 | 2D presentation | IMPLEMENTED / VERIFY |
+| 4 | Board, resize & themes | IMPLEMENTED / VERIFY |
 | 5 | Audio/effects/haptics | PRESERVE |
 | 6 | Combat roles/balance/combos | PRESERVE |
 | 7 | UX/tutorial/accessibility | IN PROGRESS |
@@ -54,116 +61,137 @@
 
 ## UI / Architecture Decisions
 
-1. **Game state and physics remain authoritative.** The UI never decides collision, damage, turn resolution or win conditions.
-2. **`gchessboard` is a presentation board only.** ArChess uses its responsive SVG board surface and keeps physics motion in the transparent ArChess canvas overlay.
-3. **Bootstrap is the application chrome foundation.** Custom CSS is limited to ArChess composition, theme tokens, board framing and physics-specific presentation.
-4. **2D is the only active render mode.** There is no 3D toggle, renderer, camera, router or 3D asset loader in the 2D branch.
-5. **One boot path.** The page loads the explicit native module list and then `main.js`; legacy boot shims are not used.
+1. **Game state and physics are authoritative.** UI code does not determine collision, damage, turn resolution or win conditions.
+2. **`gchessboard` is presentation-only.** Its board stays visually underneath the transparent physics layer because ArChess pieces move continuously rather than square-to-square.
+3. **Bootstrap is the application chrome foundation.** Custom CSS is restricted to ArChess-specific theme/composition requirements.
+4. **2D is the only active renderer.** There is no 3D toggle, WebGL renderer, camera, routing layer or 3D asset loader.
+5. **One boot path.** The template loads the active native modules and then `main.js`; legacy shell/runtime loaders are not part of the page.
+6. **External libraries are pinned.** Bootstrap 5.3.8, Bootstrap Icons 1.13.1 and gchessboard 1.4.0 are explicitly versioned.
+
+## Root Cause Fixed
+
+The blank/black board screenshot was caused by the ArChess physics canvas being created with `getContext("2d", { alpha:false })`. That made the supposed transparent overlay opaque. It is now created with `alpha:true` so the gchessboard surface below remains visible.
 
 ## Positive Test Matrix
 
 | Area | Required cases |
 |---|---|
-| Boot | Page loads, game state exists, 32 pieces initialized, phase=`aim`, player=`white` |
-| Board | Chess board element appears, board is square, size fits viewport |
-| Selection | White piece can be selected on White turn |
-| Drag | Pointer drag sets `dragging=true` and increases `powerRatio` |
-| Launch | Release with meaningful drag clears drag state and launches |
-| Physics | Physics settles and returns phase to `aim` |
+| Boot | HTTP 200, one game state, 32 pieces, `phase=aim`, White starts |
+| Board | gchessboard component present, board is square, fits viewport |
+| Pieces | All 32 live physics pieces render in initial arrangement |
+| Selection | White living piece selects on White turn |
+| Drag | Dragging state becomes active and power increases |
+| Launch | Meaningful release clears dragging and enters physics |
+| Physics | Simulation settles and returns to aim phase |
 | Turns | White → Black → White works |
-| Theme | Theme button cycles valid ArChess themes and Bootstrap mode follows |
-| Responsive | Desktop and mobile board remain inside viewport |
-| Logging | Observability object exists and records runtime events |
-| New battle | New battle resets state without duplicate runtime instances |
+| Effects | launch / impact / damage / destruction effects render without exceptions |
+| Theme | Theme changes work without resetting game state |
+| Resize | Board remains square and usable after viewport changes |
+| New battle | Full reset returns to 32 pieces and White turn |
+| Replay | Existing replay controls continue to function |
+| Logging | Runtime emits structured browser events |
 
 ## Negative Test Matrix
 
 | Area | Required cases |
 |---|---|
-| Wrong team | Black piece selection during White turn is rejected |
-| Empty release | Pointer down/up with no meaningful drag does not launch |
-| Outside board | Pointer interactions outside board do not select a piece |
-| Double release | Second release while not dragging is harmless |
-| Physics lock | Input during physics does not create another launch |
-| Invalid state | Missing/invalid piece state is logged and handled safely |
-| Broken library | gchessboard load/init failure falls back to ArChess canvas board |
-| Theme storage | Unavailable/corrupt localStorage does not break theme changes |
-| Renderer | Frame rendering errors are logged without killing the app loop |
-| API failure | Failed API/fetch calls surface structured browser logs |
+| Wrong team | Black selection during White turn is rejected |
+| Empty click | No piece selected when clicking an empty square |
+| Empty release | Pointer down/up without meaningful pull does not launch |
+| Outside board | Input outside bounds does not create a launch |
+| Double release | Release while not dragging is harmless |
+| Physics lock | Input during physics cannot start a second shot |
+| Dead piece | Dead piece cannot be selected/launched |
+| Broken library | gchessboard failure falls back to canvas board without breaking game logic |
+| Storage | Corrupt/unavailable localStorage does not crash theme/settings |
+| Renderer | Frame exception is logged and the animation loop survives |
+| API | Failed API request is logged and does not create an unhandled rejection |
 
 ## Function-Level Coverage
 
-Critical functions that must be covered by unit, integration or browser checks:
+Critical functions requiring direct or indirect coverage:
 
-- `GameBoard.resize`, coordinate conversion and bounds checks
-- piece creation / cloning / placement
-- pointer start / move / release
-- game selection and turn validation
-- physics launch / step / collision / damage / settle
+- `GameBoard.resize`, `toWorld`, `isInside`
+- piece factory/setup/clone/placement
+- input pointer down/move/up/cancel
+- selection and turn validation
+- launch vector/power validation
+- physics stepping, collision, wall collision, damage and settle
 - turn transition and game-over resolution
-- renderer initialization / draw / effect rendering
-- UI state update / battle log / armory
-- settings persistence / theme changes / board sizing
-- replay and challenge entry points
-- browser error / rejection / fetch logging
-- Flask request lifecycle / unexpected error handling
+- `GameRenderer` initialization, draw, aim, piece/effect rendering
+- UI update, log, armory and modal controls
+- theme/settings persistence and resize controls
+- replay/challenge entry points
+- browser error/rejection/fetch instrumentation
+- Flask request lifecycle, unexpected exception and thread error handling
 
 ## Regression Suites
 
 ### Browser
 
-- `tests/test_2d_arena_ui.py` — new 2D positive/negative/UI regression coverage
-- `tests/test_local_gameplay_browser.py` — existing end-to-end two-turn gameplay regression, updated for 2D-only
-- auth/browser suites — preserve existing authentication behaviour
+- `tests/test_2d_runtime_contract.py` — static 2D/runtime/library/transparency contract
+- `tests/test_2d_arena_ui.py` — positive/negative 2D UI and gameplay checks
+- `tests/test_local_gameplay_browser.py` — authenticated two-turn local gameplay
+- `tests/test_browser_matrix.py` — responsive multi-browser regression
+- existing auth browser suites — preserve account/auth behaviour
 
 ### Python
 
-Existing API, authoritative simulation, security and backend test suites remain part of the release gate.
+Run the repository's existing backend/API/security/authoritative simulation suites locally. No CI workflow runs are used.
 
 ### JavaScript
 
-Existing Node tests remain part of the gate. Any test that asserts 3D or legacy shell behaviour must be removed or rewritten before release.
+Run the existing Node test suite. Obsolete 3D and professional-shell suites were removed because they tested deleted architecture.
 
-## Cleanup Targets
+## Cleanup Completed
 
-Removed from the active 2D architecture on this branch:
+Removed from the active branch/runtime:
 
-- legacy professional shell/runtime
-- legacy release/bootstrap shims
-- legacy render router
-- legacy runtime stabilizer
-- legacy board host
+- professional shell/runtime
+- release boot chain
+- render router
+- runtime stabilizer
+- board host shim
 - duplicate local input controllers
-- obsolete presentation fixes
-- deferred 3D renderer/camera/presentation code
-- obsolete professional/final UI browser tests
-- superseded large `renderer.js`
-- old WebAwesome-oriented styling replaced by Bootstrap/gchessboard presentation
+- mode/presentation/turn guard shims
+- 3D renderer and camera controls
+- 3D presentation fallback
+- Three.js vendor bundles
+- superseded 930-line renderer
+- obsolete professional/final UI stylesheets and UI suites
+- obsolete WebGL verification docs/markers
+- unused projectile visuals shim
 
 ## Dependencies / Licensing
 
 - Bootstrap 5.3.8 — MIT
 - Bootstrap Icons 1.13.1 — MIT
 - gchessboard 1.4.0 — MIT
-- gchessboard bundled Cburnett-derived chess art — CC BY-SA 3.0
-- ArChess-specific code remains under its existing project terms
+- gchessboard Cburnett-derived SVG artwork — CC BY-SA 3.0
+- Python-Easy-Chess-GUI — UX reference only; its desktop application code is not bundled
+
+See `THIRD_PARTY_NOTICES.md` and `docs/ASSET_LICENSES.md`.
 
 ## Verification Record
 
-**Current branch head:** latest commit on `ui-rebuild-2d-v2` after 2D UI reconstruction.  
-**Last verified:** not yet fully verified in a real Flask browser session.  
-**Why:** GitHub connector can inspect/modify repository contents but cannot drive the user's local Flask browser. Static/repository checks can be performed here; final browser regression must be executed locally before promoting to `main`.
+**Development branch head at last inspection:** `b8d70a8f7a8d237a0addf377dd3ecdfd8c73f1b9`.  
+**`main` remains unchanged:** `46165ca7f6f88386077aede8583b735597c3bc33`.  
+**Actions state:** `.github/workflows` is absent on the development branch; Actions have not been reintroduced.  
+**Browser verification:** PENDING — this environment can inspect/modify the repository but cannot operate the user's local Flask browser session.  
+**Promotion:** BLOCKED until local test matrix passes and tracker is updated with the verified commit.
 
-### Promotion Rule
+## Promotion Rule
 
-Do not move `ui-rebuild-2d-v2` to `main` until:
+Do not move the development branch to `main` until:
 
 1. Python tests pass.
-2. New 2D browser tests pass.
-3. Existing gameplay regression passes.
-4. JavaScript tests pass after legacy-test cleanup.
-5. Positive and negative gameplay cases pass.
-6. No forbidden 3D/legacy runtime is referenced by the template.
-7. UI is verified at desktop and mobile sizes.
-8. The tracker is updated with the exact verified commit.
-9. No GitHub Actions workflow has been reintroduced.
+2. `tests/test_2d_runtime_contract.py` passes.
+3. `tests/test_2d_arena_ui.py` passes with `RUN_BROWSER_MATRIX=1`.
+4. `tests/test_local_gameplay_browser.py` passes with browser dependencies installed.
+5. `tests/test_browser_matrix.py` passes for the installed browsers.
+6. Existing JavaScript tests pass.
+7. Positive and negative gameplay cases pass.
+8. Desktop, tablet and mobile layouts are verified.
+9. No forbidden 3D/legacy runtime is referenced by the active template.
+10. The exact verified commit is recorded here.
+11. `.github/workflows` remains absent unless intentionally reintroduced later.
