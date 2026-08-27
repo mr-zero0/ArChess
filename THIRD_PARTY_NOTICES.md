@@ -1,36 +1,48 @@
 # ArChess third-party notices
 
-## 3D Staunton Pieces — clarkerubber/Staunton-Pieces
+ArChess uses a small set of open-source libraries and artwork for its 2D web UI. No 3D library or 3D asset is loaded by the current 2D runtime.
 
-ArChess loads the Staunton 3D piece meshes from `clarkerubber/Staunton-Pieces` and normalizes them into the Three.js board coordinate system.
+## Bootstrap 5.3.8
 
-Source: https://github.com/clarkerubber/Staunton-Pieces
+Source: https://github.com/twbs/bootstrap
 License: MIT
-Copyright: clarkerubber
 
-The repository provides the six core Staunton pieces as STL source assets. The browser loader fetches those assets lazily and applies ArChess materials, lighting, shadows and transforms.
+Bootstrap supplies the application layout primitives, responsive grid, buttons, cards, forms and modal presentation used by the ArChess arena.
 
-## 2D Piece Art — mganjoo/gchessboard / Cburnett
+## Bootstrap Icons 1.13.1
 
-ArChess vendors a small, local copy of the 12 Cburnett-derived SVG chess pieces distributed by `mganjoo/gchessboard`. The assets are embedded locally so the board does not wait on an external asset CDN during play.
+Source: https://github.com/twbs/icons
+License: MIT
+
+Bootstrap Icons supply the compact navigation and action icons used throughout the ArChess UI.
+
+## gchessboard 1.4.0
 
 Source: https://github.com/mganjoo/gchessboard
-Library license: MIT
-Piece-art license: CC BY-SA 3.0, as documented by the project README.
-Original artwork attribution: User:Cburnett / Wikimedia Commons
-
-The ArChess project does not claim the original artwork as its own. The local integration preserves the upstream attribution and license.
-
-## Web Awesome
-
-ArChess uses Web Awesome web components for the professional control surface, segmented renderer controls, dialogs and themed UI tokens.
-
-Source: https://github.com/shoelace-style/webawesome
 License: MIT
 
-## Lucide
+ArChess uses gchessboard as the 2D chessboard presentation layer. The board is intentionally kept presentation-only: ArChess physics remains authoritative and its continuous piece motion is rendered through the transparent game canvas overlay.
 
-ArChess may use Lucide icons in UI surfaces where needed.
+The library is accessible and supports click, drag and keyboard interaction. Its visual configuration uses CSS custom properties for board squares, markers and other board details.
 
-Source: https://github.com/lucide-icons/lucide
-License: ISC
+## Cburnett chess artwork
+
+gchessboard bundles chess piece SVG artwork adapted from the Wikimedia Cburnett set.
+
+Original artwork: User:Cburnett / Wikimedia Commons
+License: CC BY-SA 3.0
+
+ArChess also retains a local Cburnett-derived SVG integration for its physics piece presentation. The project does not claim the original artwork as its own.
+
+## Deferred 3D dependencies
+
+Three.js and the previous Staunton 3D assets were used by an earlier ArChess prototype. They are intentionally **not loaded or bundled by the current 2D runtime**. 3D presentation is deferred to a later product phase.
+
+## Reference project
+
+Python-Easy-Chess-GUI by fsmosca was used as a product/UX reference for board-first information architecture, real chess-piece presentation, board sizing and player/engine information.
+
+Source: https://github.com/fsmosca/Python-Easy-Chess-GUI
+License: LGPL-3.0
+
+ArChess does not copy its desktop application code or bundle it.
