@@ -8,19 +8,36 @@ window.ThemeManager = (() => {
   let icon = null;
   let label = null;
   let themeMeta = null;
+  let arenaCssLoaded = false;
 
   function isValid(theme) {
     return THEMES.includes(theme);
+  }
+
+  function loadArenaCss() {
+    if (arenaCssLoaded || document.querySelector('link[data-archess-arena-css="1"]')) return;
+    try {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = "/static/css/arena_overhaul.css?v=20260827-1";
+      link.dataset.archessArenaCss = "1";
+      link.addEventListener("error", (error) => {
+        window.ArChessObservability?.error?.("ARENA_CSS_LOAD_FAILED", error);
+      }, { once: true });
+      document.head.appendChild(link);
+      arenaCssLoaded = true;
+    } catch (error) {
+      window.ArChessObservability?.error?.("ARENA_CSS_INJECTION_FAILED", error);
+    }
   }
 
   function preferredTheme() {
     try {
       const stored = window.localStorage.getItem(STORAGE_KEY);
       if (isValid(stored)) return stored;
-    } catch (_) {
-      // Storage can be unavailable in locked-down browser contexts.
+    } catch (error) {
+      window.ArChessObservability?.debug?.("THEME_STORAGE_UNAVAILABLE", error);
     }
-    // Wood is intentionally the ArChess default visual identity.
     return "wood";
   }
 
@@ -59,8 +76,8 @@ window.ThemeManager = (() => {
     if (persist) {
       try {
         window.localStorage.setItem(STORAGE_KEY, normalized);
-      } catch (_) {
-        // Theme still works for this session without storage.
+      } catch (error) {
+        window.ArChessObservability?.debug?.("THEME_PERSIST_FAILED", error);
       }
     }
 
@@ -74,6 +91,7 @@ window.ThemeManager = (() => {
   }
 
   function init() {
+    loadArenaCss();
     button = document.getElementById("themeBtn");
     icon = document.getElementById("themeIcon");
     label = document.getElementById("themeLabel");
@@ -82,7 +100,13 @@ window.ThemeManager = (() => {
     const initial = isValid(root.dataset.theme) ? root.dataset.theme : preferredTheme();
     apply(initial, false);
 
-    if (button) button.addEventListener("click", toggle);
+    if (button) button.addEventListener("click", () => {
+      try {
+        toggle();
+      } catch (error) {
+        window.ArChessObservability?.error?.("THEME_TOGGLE_FAILED", error);
+      }
+    });
   }
 
   return Object.freeze({ init, apply, toggle, current, preferredTheme, themes: THEMES });
