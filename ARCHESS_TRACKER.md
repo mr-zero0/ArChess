@@ -195,16 +195,17 @@ See `THIRD_PARTY_NOTICES.md` and `docs/ASSET_LICENSES.md`.
 
 ## Verification Record
 
-**Development branch head at last inspection:** `ca7633f15962cb977596940c98b126b93e6c67a8`.  
+**Development branch head at last inspection:** pending after tracker-contract fix.  
 **`main` remains unchanged:** `46165ca7f6f88386077aede8583b735597c3bc33`.  
 **Actions state:** `.github/workflows` is absent on the development branch; Actions have not been reintroduced.  
+**Latest local test result:** 98 Python tests passed, 17 skipped, 61 warnings; one tracker-contract assertion failed because the expected release-gate phrase was missing. JavaScript suite passed 18/18.  
 **Browser verification:** PENDING — this environment can inspect/modify the repository but cannot operate the user's local Flask browser session.  
 **Logging shutdown regression:** FIXED IN CODE; local Ctrl+C regression still requires execution in the user's environment.  
 **Promotion:** BLOCKED until local test matrix passes and tracker is updated with the verified commit.
 
 ## Promotion Rule
 
-Do not move the development branch to `main` until:
+**Do not move `ui-rebuild-2d-v2` to `main`.** Promotion is allowed only after all required checks are green.
 
 1. Python tests pass.
 2. `tests/test_2d_runtime_contract.py` passes.
