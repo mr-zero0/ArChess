@@ -13,6 +13,7 @@ VIEWPORTS = [
 ]
 
 RUN_BROWSER_MATRIX = os.environ.get("RUN_BROWSER_MATRIX") == "1"
+BASE = "http://localhost:5000"
 
 
 @pytest.mark.parametrize("browser_name", BROWSERS)
@@ -25,20 +26,21 @@ def test_browser_matrix_viewports(browser_name, viewport):
         context_args = {"viewport": {"width": viewport["width"], "height": viewport["height"]}}
         if viewport["name"] in ["mobile", "tablet"]:
             context_args["has_touch"] = True
-
         context = browser.new_context(**context_args)
         page = context.new_page()
-        response = page.goto("http://localhost:5000/")
-        assert response.status == 200
-        assert page.viewport_size["width"] == viewport["width"]
-        assert page.viewport_size["height"] == viewport["height"]
+        response = page.goto(f"{BASE}/")
+        assert response and response.status == 200
         assert page.locator("#gameCanvas").count() == 1
-        assert page.locator("#glCanvas").count() == 1
+        assert page.locator("#chessBoard").count() == 1
         assert page.locator("#newGameBtn").count() == 1
-
-        if viewport["name"] in ["mobile", "tablet"]:
-            assert page.evaluate("() => 'ontouchstart' in window") is True
-
+        assert page.evaluate("() => document.body.dataset.renderMode") == "2d"
+        assert page.evaluate("() => window.gameState?.pieces?.length") == 32
+        assert page.evaluate("() => Boolean(window.ThreeDScene)") is False
+        assert page.evaluate("() => Boolean(document.querySelector('#archessProfessionalShell'))") is False
+        assert page.evaluate("() => Boolean(document.querySelector('#glCanvas'))") is False
+        box = page.locator("#boardWrap").bounding_box()
+        assert box and box["width"] > 250 and box["height"] > 250
+        assert abs(box["width"] - box["height"]) < 4
         browser.close()
 
 
@@ -50,55 +52,32 @@ def test_browser_authoritative_multiplayer_flow():
         context_two = browser.new_context(viewport={"width": 1280, "height": 800})
         page_one = context_one.new_page()
         page_two = context_two.new_page()
-
-        assert page_one.goto("http://localhost:5000/").status == 200
-        assert page_two.goto("http://localhost:5000/").status == 200
-
+        assert page_one.goto(f"{BASE}/").status == 200
+        assert page_two.goto(f"{BASE}/").status == 200
         suffix = str(time.time_ns())
         white_guest = f"browser-white-{suffix}"
         black_guest = f"browser-black-{suffix}"
-
-        created = page_one.evaluate(
-            "async guestId => await (await fetch('/api/rooms', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({guestId})})).json()",
-            white_guest,
-        )
+        created = page_one.evaluate("async guestId => await (await fetch('/api/rooms', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({guestId})})).json()", white_guest)
         room_code = created["roomId"]
         assert created["players"][0]["team"] == "white"
-
-        joined = page_two.evaluate(
-            "async ({room, guestId}) => await (await fetch(`/api/rooms/${room}/join`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({guestId})})).json()",
-            {"room": room_code, "guestId": black_guest},
-        )
+        joined = page_two.evaluate("async ({room, guestId}) => await (await fetch(`/api/rooms/${room}/join`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({guestId})})).json()", {"room": room_code, "guestId": black_guest})
         assert len(joined["players"]) == 2
         assert any(player["team"] == "black" for player in joined["players"])
-
-        started = page_one.evaluate(
-            "async room => await (await fetch(`/api/rooms/${room}/start`, {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'})).json()",
-            room_code,
-        )
+        started = page_one.evaluate("async room => await (await fetch(`/api/rooms/${room}/start`, {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'})).json()", room_code)
         assert started["state"]["currentTeam"] == "white"
         assert len(started["state"]["pieces"]) == 32
         assert started["room"]["canonicalHash"]
-
         white_piece = next(piece for piece in started["state"]["pieces"] if piece["team"] == "white" and piece["alive"])
-        launched = page_one.evaluate(
-            "async ({room, guestId, pieceId}) => await (await fetch(`/api/rooms/${room}/launch`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({guestId, launchData:{pieceId, drag:{x:0.9,y:0}}})})).json()",
-            {"room": room_code, "guestId": white_guest, "pieceId": white_piece["id"]},
-        )
+        launched = page_one.evaluate("async ({room, guestId, pieceId}) => await (await fetch(`/api/rooms/${room}/launch`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({guestId, launchData:{pieceId, drag:{x:0.9,y:0}}})})).json()", {"room": room_code, "guestId": white_guest, "pieceId": white_piece["id"]})
         assert launched["status"] == "success"
         assert launched["nextTurn"] == "black"
         assert launched["state"]["currentTeam"] == "black"
         post_hash = launched["state"]["integrity"]["postHash"]
         assert isinstance(post_hash, str) and len(post_hash) == 64
-
-        reconnect = page_two.evaluate(
-            "async ({room, guestId}) => await (await fetch(`/api/rooms/${room}/reconnect`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({guestId})})).json()",
-            {"room": room_code, "guestId": black_guest},
-        )
+        reconnect = page_two.evaluate("async ({room, guestId}) => await (await fetch(`/api/rooms/${room}/reconnect`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({guestId})})).json()", {"room": room_code, "guestId": black_guest})
         assert reconnect["currentTurn"] == "black"
         assert reconnect["room"]["canonicalHash"] == post_hash
         assert json.loads(reconnect["state"]) == launched["state"]
-
         context_one.close()
         context_two.close()
         browser.close()
