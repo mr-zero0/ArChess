@@ -24,16 +24,13 @@ def setup_logging_retention():
     cutoff = datetime.now() - timedelta(days=7)
     for year in os.listdir(base_logs):
         year_path = os.path.join(base_logs, year)
-        if not os.path.isdir(year_path):
-            continue
+        if not os.path.isdir(year_path): continue
         for month in os.listdir(year_path):
             month_path = os.path.join(year_path, month)
-            if not os.path.isdir(month_path):
-                continue
+            if not os.path.isdir(month_path): continue
             for day in os.listdir(month_path):
                 day_path = os.path.join(month_path, day)
-                if not os.path.isdir(day_path):
-                    continue
+                if not os.path.isdir(day_path): continue
                 try:
                     if datetime.fromtimestamp(os.path.getmtime(day_path)) < cutoff:
                         shutil.rmtree(day_path, ignore_errors=True)
@@ -50,8 +47,7 @@ def _install_function_tracer(logger):
 
     def trace(frame, event, arg):
         module = frame.f_globals.get("__name__", "")
-        if module.startswith(ignored):
-            return trace
+        if module.startswith(ignored): return trace
         depth = getattr(local, "depth", 0)
         if event == "call":
             logger.debug("FUNCTION_ENTER name=%s.%s depth=%d", module, frame.f_code.co_name, depth)
@@ -79,7 +75,6 @@ def configure_logging(application):
     file_handler.setFormatter(JsonFormatter())
     stream_handler = logging.StreamHandler()
     stream_handler.setFormatter(JsonFormatter())
-
     application.logger.handlers.clear()
     application.logger.addHandler(file_handler)
     application.logger.addHandler(stream_handler)
@@ -111,9 +106,13 @@ def configure_logging(application):
     @application.errorhandler(Exception)
     def _handle_unexpected_error(error):
         from flask import g, jsonify, request
+        from werkzeug.exceptions import HTTPException
+        if isinstance(error, HTTPException):
+            application.logger.warning("HTTP_ERROR id=%s status=%s path=%s", getattr(g, "archess_request_id", "unknown"), error.code, request.path)
+            return error
         request_id = getattr(g, "archess_request_id", "unknown")
         application.logger.error("UNHANDLED_REQUEST_ERROR id=%s method=%s path=%s", request_id, request.method, request.path, exc_info=(type(error), error, error.__traceback__))
-        return jsonify({"error": "internal_server_error", "message": "ArChess encountered an unexpected server error.", "requestId": request_id}), 500
+        return jsonify({"error":"internal_server_error","message":"ArChess encountered an unexpected server error.","requestId":request_id}), 500
 
     def _uncaught_thread_exception(args):
         application.logger.critical("UNCAUGHT_THREAD_EXCEPTION thread=%s", getattr(args.thread, "name", "unknown"), exc_info=(args.exc_type, args.exc_value, args.exc_traceback))
