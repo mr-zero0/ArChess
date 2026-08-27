@@ -12,12 +12,15 @@ def is_headed() -> bool:
 
 
 def attach_browser_diagnostics(page: Page) -> None:
-    errors = page.context._options.get("_archess_page_errors", []) if hasattr(page.context, "_options") else []
-    if not isinstance(errors, list):
-        errors = []
-    page.context._options["_archess_page_errors"] = errors
-    page.on("pageerror", lambda error: errors.append(f"pageerror: {error}"))
-    page.on("console", lambda message: errors.append(f"console:{message.type}: {message.text}") if message.type == "error" else None)
+    page_errors: list[str] = []
+    setattr(page, "_archess_page_errors", page_errors)
+    page.on("pageerror", lambda error: page_errors.append(f"pageerror: {error}"))
+    page.on(
+        "console",
+        lambda message: page_errors.append(f"console:{message.type}: {message.text}")
+        if message.type == "error"
+        else None,
+    )
 
 
 def open_page(page: Page, path: str = "/", require_game: bool = True) -> None:
@@ -37,5 +40,5 @@ def open_page(page: Page, path: str = "/", require_game: bool = True) -> None:
 
 
 def diagnostics(page: Page) -> list[str]:
-    values = page.context._options.get("_archess_page_errors", []) if hasattr(page.context, "_options") else []
+    values = getattr(page, "_archess_page_errors", [])
     return list(values) if isinstance(values, list) else []
