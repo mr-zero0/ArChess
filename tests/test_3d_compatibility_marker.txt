@@ -1,1 +1,0 @@
-CI marker: the native Three.js renderer is preferred; compatibility 3D is the presentation-only fallback when WebGL2 is unavailable.
