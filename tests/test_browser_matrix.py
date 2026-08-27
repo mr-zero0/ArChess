@@ -5,6 +5,8 @@ import time
 import pytest
 from playwright.sync_api import sync_playwright
 
+from tests.browser_helpers import is_headed, open_page
+
 BROWSERS = ["chromium", "firefox", "webkit"]
 VIEWPORTS = [
     {"name": "desktop", "width": 1920, "height": 1080},
@@ -13,7 +15,7 @@ VIEWPORTS = [
 ]
 
 RUN_BROWSER_MATRIX = os.environ.get("RUN_BROWSER_MATRIX") == "1"
-BASE = "http://localhost:5000"
+BASE = "http://127.0.0.1:5000"
 
 
 @pytest.mark.parametrize("browser_name", BROWSERS)
@@ -22,14 +24,13 @@ BASE = "http://localhost:5000"
 def test_browser_matrix_viewports(browser_name, viewport):
     with sync_playwright() as p:
         browser_type = getattr(p, browser_name)
-        browser = browser_type.launch()
+        browser = browser_type.launch(headless=not is_headed())
         context_args = {"viewport": {"width": viewport["width"], "height": viewport["height"]}}
         if viewport["name"] in ["mobile", "tablet"]:
             context_args["has_touch"] = True
         context = browser.new_context(**context_args)
         page = context.new_page()
-        response = page.goto(f"{BASE}/")
-        assert response and response.status == 200
+        open_page(page)
         assert page.locator("#gameCanvas").count() == 1
         assert page.locator("#chessBoard").count() == 1
         assert page.locator("#newGameBtn").count() == 1
@@ -41,19 +42,20 @@ def test_browser_matrix_viewports(browser_name, viewport):
         box = page.locator("#boardWrap").bounding_box()
         assert box and box["width"] > 250 and box["height"] > 250
         assert abs(box["width"] - box["height"]) < 4
+        context.close()
         browser.close()
 
 
 @pytest.mark.skipif(not RUN_BROWSER_MATRIX, reason="Browser matrix requires installed Playwright browsers")
 def test_browser_authoritative_multiplayer_flow():
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        browser = p.chromium.launch(headless=not is_headed())
         context_one = browser.new_context(viewport={"width": 1280, "height": 800})
         context_two = browser.new_context(viewport={"width": 1280, "height": 800})
         page_one = context_one.new_page()
         page_two = context_two.new_page()
-        assert page_one.goto(f"{BASE}/").status == 200
-        assert page_two.goto(f"{BASE}/").status == 200
+        open_page(page_one)
+        open_page(page_two)
         suffix = str(time.time_ns())
         white_guest = f"browser-white-{suffix}"
         black_guest = f"browser-black-{suffix}"
