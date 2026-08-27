@@ -4,17 +4,19 @@ import time
 import pytest
 from playwright.sync_api import sync_playwright
 
+from tests.browser_helpers import is_headed, open_page
+
 RUN_BROWSER_MATRIX = os.environ.get("RUN_BROWSER_MATRIX") == "1"
-BASE = "http://localhost:5000"
+BASE = "http://127.0.0.1:5000"
 
 
 @pytest.mark.skipif(not RUN_BROWSER_MATRIX, reason="Browser matrix requires installed Playwright browsers")
 def test_local_drag_release_alternates_white_to_black_and_back():
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        browser = p.chromium.launch(headless=not is_headed())
         context = browser.new_context(viewport={"width": 1440, "height": 900})
         page = context.new_page()
-        page.goto(f"{BASE}/login")
+        open_page(page, "/login", require_game=False)
 
         suffix = str(time.time_ns())
         page.click("#signupTab")
@@ -22,10 +24,9 @@ def test_local_drag_release_alternates_white_to_black_and_back():
         page.locator('#signupForm input[name="email"]').fill(f"play{suffix}@example.com")
         page.locator('#signupForm input[name="password"]').fill("A-strong-password-123")
         page.click('#signupForm button.primary')
-        page.wait_for_url("**/profile")
+        page.wait_for_url("**/profile", timeout=10000)
 
-        page.goto(f"{BASE}/")
-        page.wait_for_timeout(1200)
+        open_page(page)
         state = page.evaluate("() => ({player:gameState.currentPlayer,phase:gameState.phase,pieces:gameState.pieces.length,input:!!document.querySelector('#gameCanvas'),threeD:Boolean(window.ThreeDScene)})")
         assert state == {"player": "white", "phase": "aim", "pieces": 32, "input": True, "threeD": False}
 
