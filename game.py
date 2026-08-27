@@ -323,40 +323,7 @@ def create_app(config_object=DevelopmentConfig):
         room.match_log = None
         room.invalid_action_log = None
         db.session.commit()
-        return jsonify({"status": "rematch_started", "room": room.to_dict(), "state": snapshot}), 200
-
-    @application.post("/api/rooms/<room_code>/disconnect")
-    def disconnect_room(room_code):
-        from game.models import Room, User
-        payload = request.get_json(silent=True) or {}
-        guest_id = payload.get("guestId")
-        room = Room.query.filter_by(room_code=room_code).first()
-        if not room:
-            return jsonify({"error": "room_not_found"}), 404
-        user = User.query.filter_by(guest_id=guest_id).first()
-        if user and user.room_id == room.id:
-            user.room_id = None
-            room.status = "finished"
-            db.session.commit()
-            return jsonify({"status": "disconnected"}), 200
-        return jsonify({"error": "unauthorized"}), 403
-
-    @application.errorhandler(404)
-    def not_found(error):
-        return jsonify({"error": "not_found", "message": "Resource not found"}), 404
-
-    @application.errorhandler(500)
-    def internal_error(error):
-        return jsonify({"error": "internal_server_error", "message": "Internal server error"}), 500
-
-    @application.errorhandler(Exception)
-    def handle_exception(e):
-        application.logger.error(f"Unhandled exception: {str(e)}", exc_info=True)
-        return jsonify({"error": "internal_server_error", "message": "An unexpected error occurred"}), 500
-
-    @application.errorhandler(413)
-    def request_too_large(error):
-        return jsonify({"error": "request_too_large", "message": "Request payload too large"}), 413
+        return jsonify({"status": "rematched", "room": room.to_dict(), "state": snapshot}), 200
 
     @application.after_request
     def add_security_headers(response):
@@ -385,4 +352,4 @@ app = create_app()
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    app.run(host="127.0.0.1", port=5000, debug=True, use_reloader=False)
