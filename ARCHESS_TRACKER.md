@@ -23,11 +23,13 @@
 | Legacy shell/runtime cleanup | IMPLEMENTED | Professional shell/runtime/router/stabilizer/board-host/release shims removed |
 | Duplicate input/runtime cleanup | IMPLEMENTED | Duplicate local input and turn/presentation shims removed |
 | Function tracing shutdown regression | FIXED | Tracer ignores interpreter finalization, skips non-ArChess modules, avoids closed streams and suppresses secondary logging destination errors |
-| Tracker release-gate contract | FIXED | Exact required promotion sentence restored: `Do not move `ui-rebuild-2d-v2` to `main`.` |
-| Positive gameplay tests | PASSING | Full Python suite currently passes; dedicated browser execution remains pending |
-| Negative gameplay tests | PASSING | Full Python suite currently passes; dedicated browser execution remains pending |
-| UI regression tests | PASSING IN STATIC SUITE | 2D/runtime contract included in the 99 passing Python tests |
-| Multi-browser regression | PENDING LOCAL BROWSER RUN | Chromium / Firefox / WebKit desktop/tablet/mobile matrix |
+| Tracker release-gate contract | FIXED | Exact required promotion sentence restored |
+| Browser test navigation | FIXED IN HARNESS | Browser tests now use `domcontentloaded` + explicit ArChess readiness rather than long full-load/network waits |
+| Headed browser visibility | FIXED IN HARNESS | `PLAYWRIGHT_HEADLESS=0` now opens a visible browser for local diagnosis |
+| Positive gameplay tests | PENDING REAL BROWSER RUN | Static/Python coverage exists; live drag/launch/turn flow still requires successful browser execution |
+| Negative gameplay tests | PENDING REAL BROWSER RUN | Static/Python coverage exists; live interaction rejection cases still require browser execution |
+| UI regression tests | PENDING REAL BROWSER RUN | Static contract passes; live visual/responsive checks require browser execution |
+| Multi-browser regression | PENDING REAL BROWSER RUN | Chromium / Firefox / WebKit desktop/tablet/mobile matrix |
 | Python/API regression | PASSING | 99 passed, 17 skipped, 61 warnings in latest local run |
 | JavaScript regression | PASSING | 18/18 Node tests passed in latest local run |
 | Function-level logging | IMPLEMENTED | Browser observability instruments key controllers; server tracer is shutdown-safe |
@@ -70,6 +72,8 @@
 5. **One boot path.** The template loads the active native modules and then `main.js`; legacy shell/runtime loaders are not part of the page.
 6. **External libraries are pinned.** Bootstrap 5.3.8, Bootstrap Icons 1.13.1 and gchessboard 1.4.0 are explicitly versioned.
 7. **Observability is non-fatal.** Logging/tracing must never be allowed to break application shutdown or request execution.
+8. **Browser tests use deterministic readiness.** Tests wait for DOM readiness and `window.gameState.pieces.length === 32`, not an external-resource/network-idle condition.
+9. **Headed mode is opt-in.** `PLAYWRIGHT_HEADLESS=0` is supported for visual debugging; automated default remains headless.
 
 ## Root Cause Fixed
 
@@ -79,24 +83,28 @@ The blank/black board screenshot was caused by the ArChess physics canvas being 
 
 The function tracer was tracing standard-library shutdown code such as `tempfile`, then trying to emit log records after Python had already closed its logging stream. That produced repeated `ValueError: I/O operation on closed file` errors and a secondary `NoneType.startswith` failure during handler cleanup.
 
-The tracer now:
+The tracer now exits during finalization, traces only ArChess application modules, avoids self-tracing, handles closed streams, prevents recursive tracing, and treats logging failures as non-fatal.
 
-- exits immediately during `sys.is_finalizing()`;
-- traces only ArChess application modules;
-- checks for closed logger streams;
-- prevents recursive tracer logging;
-- treats tracing/logging failures as non-fatal; and
-- disables logging exception propagation with `logging.raiseExceptions = False`.
+## Browser Harness Regression Fixed
+
+The first live browser suite run failed because the Flask server was not running, producing connection-refused errors. After starting Flask, every browser test reached a 30-second navigation timeout. The browser tests were using full navigation/resource waits and had no deterministic application-ready condition.
+
+The browser harness now:
+
+- uses `wait_until="domcontentloaded"`;
+- uses explicit 10-second navigation and 8-second application-readiness limits;
+- waits for the actual ArChess state (`window.gameState` with 32 pieces);
+- supports visible diagnostics with `PLAYWRIGHT_HEADLESS=0`; and
+- captures page errors and console errors for future failures.
 
 ## Latest Verification Result
 
-Latest local run:
+Latest confirmed local automated result before the browser-harness change:
 
 - **Python:** 99 passed, 17 skipped, 61 warnings.
 - **JavaScript:** 18 passed, 0 failed.
-- The only prior Python failure was the tracker release-gate wording; that contract has now been corrected on the development branch.
-- Warnings are currently SQLAlchemy warnings in existing database teardown/telemetry code and do not fail the suite.
-- Browser end-to-end/multi-browser verification is still pending because it requires the local Flask server plus installed Playwright browsers.
+- **Browser:** previous run reached live Flask but timed out on navigation; this is superseded by the deterministic browser-harness fix and must be rerun.
+- **Warnings:** existing SQLAlchemy teardown/telemetry warnings do not fail the suite.
 
 ## Positive Test Matrix
 
@@ -161,7 +169,7 @@ Critical functions requiring direct or indirect coverage:
 - `tests/test_2d_arena_ui.py` — positive/negative 2D UI and gameplay checks
 - `tests/test_local_gameplay_browser.py` — authenticated two-turn local gameplay
 - `tests/test_browser_matrix.py` — responsive multi-browser regression
-- existing auth browser suites — preserve account/auth behaviour
+- `tests/browser_helpers.py` — deterministic navigation/readiness/headed-mode helper
 
 ### Python
 
@@ -206,11 +214,11 @@ See `THIRD_PARTY_NOTICES.md` and `docs/ASSET_LICENSES.md`.
 
 ## Verification Record
 
-**Development branch head at tracker update:** after restoring the release-gate contract.  
+**Development branch head at tracker update:** pending browser-harness rerun.  
 **`main` remains unchanged:** `46165ca7f6f88386077aede8583b735597c3bc33`.  
 **Actions state:** `.github/workflows` is absent on the development branch; Actions have not been reintroduced.  
-**Latest local automated result:** 99 Python tests passed, 17 skipped, 61 warnings; 18 JavaScript tests passed.  
-**Browser verification:** PENDING — local Playwright/browser execution remains required.  
+**Latest local automated baseline:** 99 Python tests passed, 17 skipped, 61 warnings; 18 JavaScript tests passed.  
+**Browser verification:** PENDING — prior execution timed out during navigation; deterministic harness is now in place.  
 **Logging shutdown regression:** FIXED IN CODE; local Ctrl+C verification remains required.  
 **Promotion:** BLOCKED until browser/multi-browser/local shutdown checks are green.
 
