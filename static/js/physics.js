@@ -369,3 +369,5 @@ window.Physics = LocalPhysics;
   };
 
 window.Physics = LocalPhysics;
+})();
+

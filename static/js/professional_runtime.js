@@ -88,8 +88,8 @@
   }
 
   function setMode(nextMode) {
-    if (nextMode !== "2d" && nextMode !== "3d") return;
-    if (nextMode === "3d" && window.__ArChess3DUnavailable) nextMode = "2d";
+    if (nextMode === "3d") return;
+    if (nextMode !== "2d") return;
     mode = nextMode;
     document.body.dataset.renderMode = mode;
     document.body.classList.toggle("archess-mode-2d", mode === "2d");

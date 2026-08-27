@@ -213,13 +213,9 @@
     $("#archessThemeButton").addEventListener("click", () => $("#archessThemeMenu")?.classList.toggle("open"));
     document.addEventListener("pointerdown", (event) => { if (!event.target.closest(".aps-menu-wrap")) $("#archessThemeMenu")?.classList.remove("open"); });
     document.querySelectorAll("[data-archess-skin]").forEach((button) => button.addEventListener("click", () => { applySkin(button.dataset.archessSkin); $("#archessThemeMenu")?.classList.remove("open"); }));
+    // Ensure 3D buttons are removed before adding listeners
+    document.querySelectorAll("[data-archess-mode='3d']").forEach((button) => button.remove());
     document.querySelectorAll("[data-archess-mode]").forEach((button) => button.addEventListener("click", () => applyMode(button.dataset.archessMode)));
-    document.querySelectorAll("[data-archess-mode='3d']").forEach((button) => {
-        button.disabled = true;
-        button.style.cursor = "not-allowed";
-        button.style.opacity = "0.5";
-        button.setAttribute("title", "Coming soon");
-    });
 
 
     applySkin(state.skin);

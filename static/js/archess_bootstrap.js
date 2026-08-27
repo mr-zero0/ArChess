@@ -25,6 +25,7 @@
       modeGroup.setAttribute("aria-label", "Render mode");
       modeGroup.style.cssText = "display:inline-flex;align-items:center;padding:3px;gap:3px;border:1px solid var(--archess-border,rgba(255,255,255,.1));border-radius:11px;background:rgba(255,255,255,.035);position:relative;z-index:300;pointer-events:auto;";
       for (const mode of ["2d", "3d"]) {
+        if (mode === "3d") continue;
         const button = document.createElement("button");
         button.type = "button";
         button.dataset.archessMode = mode;

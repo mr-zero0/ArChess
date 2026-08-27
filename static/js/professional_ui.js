@@ -41,13 +41,11 @@
     document.body.dataset.renderMode = value;
     document.querySelectorAll("[data-archess-mode]").forEach(button => {
         const is3d = button.dataset.archessMode === "3d";
-        button.setAttribute("aria-pressed", String(button.dataset.archessMode === value));
         if (is3d) {
-            button.disabled = true;
-            button.style.cursor = "not-allowed";
-            button.style.opacity = "0.5";
-            button.setAttribute("title", "Coming soon");
+            button.remove();
+            return;
         }
+        button.setAttribute("aria-pressed", String(button.dataset.archessMode === value));
     });
     save("archess-render-mode", value);
     const badge = document.getElementById("archessModeValue");
