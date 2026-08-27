@@ -1,1 +1,0 @@
-Verification-only marker for the presentation-layer WebGL compatibility release.
