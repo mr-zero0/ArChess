@@ -34,6 +34,8 @@
 - [x] FastAPI service package with health, version, room, launch and WebSocket foundation.
 - [x] Frontend architecture contract tests.
 - [x] FastAPI service contract tests.
+- [x] Executable TypeScript physics runtime tests.
+- [x] Removed redundant source-regex collision/activation tests after equivalent behavioral coverage was established.
 
 ### Gameplay parity — remaining
 
