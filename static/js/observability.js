@@ -3,49 +3,132 @@
   if (window.ArChessObservability) return;
 
   const started = performance.now();
+  const correlationId = (() => {
+    try {
+      const key = "archess.correlationId";
+      const existing = sessionStorage.getItem(key);
+      if (existing) return existing;
+      const value = crypto?.randomUUID?.() || `corr-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      sessionStorage.setItem(key, value);
+      return value;
+    } catch (_) {
+      return `corr-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+  })();
+
+  const queue = [];
+  let flushTimer = null;
+  const originalFetch = window.fetch.bind(window);
+
   const safe = (value) => {
     try {
       if (value instanceof Error) return { name: value.name, message: value.message, stack: value.stack };
       return JSON.parse(JSON.stringify(value));
     } catch (_) { return String(value); }
   };
-  const write = (level, event, data = {}) => {
-    const payload = { t: Math.round(performance.now() - started), event, ...data };
+
+  const compact = (value, limit = 4000) => {
+    const text = typeof value === "string" ? value : JSON.stringify(safe(value));
+    return text.length > limit ? `${text.slice(0, limit)}…` : text;
+  };
+
+  const enrich = (level, event, data = {}) => ({
+    t: Math.round(performance.now() - started),
+    timestamp: new Date().toISOString(),
+    level,
+    event,
+    source: "browser",
+    path: location.pathname,
+    correlationId,
+    requestId: data.requestId,
+    gameId: window.gameState?.gameId || null,
+    roomId: window.ArChessMultiplayer?.roomCode || null,
+    ...data,
+  });
+
+  const scheduleFlush = () => {
+    if (flushTimer !== null) return;
+    flushTimer = window.setTimeout(() => {
+      flushTimer = null;
+      flush(false);
+    }, 250);
+  };
+
+  async function flush(immediate = false) {
+    if (!queue.length) return;
+    const events = queue.splice(0, 50);
+    const body = JSON.stringify({ events });
+    try {
+      await originalFetch("/api/observability/browser", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-ArChess-Correlation-ID": correlationId },
+        body,
+        keepalive: true,
+      });
+    } catch (_) {
+      if (!immediate && queue.length < 100) queue.unshift(...events.slice(-10));
+    }
+  }
+
+  function write(level, event, data = {}) {
+    const payload = enrich(level, event, data);
+    const output = compact(payload);
     (console[level] || console.log).call(console, `[ArChess] ${event}`, payload);
     window.dispatchEvent(new CustomEvent("archess:log", { detail: payload }));
-  };
+    queue.push(payload);
+    if (level === "error" || level === "warn") flush(true);
+    else scheduleFlush();
+  }
+
   const api = {
     debug: (event, data) => write("debug", event, data),
     info: (event, data) => write("info", event, data),
     warn: (event, data) => write("warn", event, data),
     error: (event, error, data = {}) => write("error", event, { ...data, error: safe(error) }),
     async guard(name, fn, fallback) {
-      const begin = performance.now(); write("debug", "FUNCTION_START", { name });
+      const begin = performance.now();
+      write("debug", "FUNCTION_START", { function: name });
       try {
         const result = await fn();
-        write("debug", "FUNCTION_END", { name, durationMs: Math.round(performance.now() - begin) });
+        write("debug", "FUNCTION_END", { function: name, durationMs: Math.round(performance.now() - begin) });
         return result;
       } catch (error) {
-        write("error", "FUNCTION_ERROR", { name, durationMs: Math.round(performance.now() - begin), error: safe(error) });
+        write("error", "FUNCTION_ERROR", { function: name, durationMs: Math.round(performance.now() - begin), error: safe(error) });
         if (typeof fallback === "function") return fallback(error);
         return fallback;
       }
     },
+    flush: () => flush(true),
+    correlationId,
   };
+
   window.ArChessObservability = Object.freeze(api);
   window.ArChessLog = (event, data) => api.info(event, data);
 
-  window.addEventListener("error", (e) => api.error("UNCAUGHT_ERROR", e.error || new Error(e.message), { source: e.filename, line: e.lineno, column: e.colno }));
-  window.addEventListener("unhandledrejection", (e) => api.error("UNHANDLED_REJECTION", e.reason));
+  window.addEventListener("error", (e) => api.error("UNCAUGHT_ERROR", e.error || new Error(e.message), {
+    source: e.filename,
+    function: "window.onerror",
+    line: e.lineno,
+    column: e.colno,
+  }));
+  window.addEventListener("unhandledrejection", (e) => api.error("UNHANDLED_REJECTION", e.reason, { function: "window.onunhandledrejection" }));
 
-  const originalFetch = window.fetch.bind(window);
+  window.addEventListener("securitypolicyviolation", (e) => api.error("CSP_VIOLATION", new Error(e.violatedDirective), {
+    blockedUri: e.blockedURI,
+    documentUri: e.documentURI,
+    sourceFile: e.sourceFile,
+    line: e.lineNumber,
+  }));
+
   window.fetch = async (input, init = {}) => {
     const url = typeof input === "string" ? input : input?.url || "unknown";
     const method = (init.method || (typeof input !== "string" && input?.method) || "GET").toUpperCase();
-    const begin = performance.now(); write("debug", "FETCH_START", { method, url });
+    const begin = performance.now();
+    write("debug", "FETCH_START", { method, url });
     try {
       const response = await originalFetch(input, init);
       write("debug", "FETCH_END", { method, url, status: response.status, durationMs: Math.round(performance.now() - begin) });
+      if (!response.ok) write("warn", "FETCH_HTTP_ERROR", { method, url, status: response.status });
       return response;
     } catch (error) {
       api.error("FETCH_ERROR", error, { method, url, durationMs: Math.round(performance.now() - begin) });
@@ -62,6 +145,32 @@
   const wrappedObjects = new WeakSet();
   const wrappedMethods = new WeakSet();
 
+  function wrapFunction(name, original) {
+    const wrappedFn = function (...args) {
+      const begin = performance.now();
+      write("debug", "FUNCTION_START", { function: name });
+      try {
+        const result = original.apply(this, args);
+        if (result?.then) {
+          return result.then((value) => {
+            write("debug", "FUNCTION_END", { function: name, durationMs: Math.round(performance.now() - begin) });
+            return value;
+          }).catch((error) => {
+            api.error("FUNCTION_ERROR", error, { function: name, durationMs: Math.round(performance.now() - begin) });
+            throw error;
+          });
+        }
+        write("debug", "FUNCTION_END", { function: name, durationMs: Math.round(performance.now() - begin) });
+        return result;
+      } catch (error) {
+        api.error("FUNCTION_ERROR", error, { function: name, durationMs: Math.round(performance.now() - begin) });
+        throw error;
+      }
+    };
+    Object.defineProperty(wrappedFn, "name", { value: original.name || name, configurable: true });
+    return wrappedFn;
+  }
+
   const instrumentObject = (name, value) => {
     if (!value || wrappedObjects.has(value) || Object.isFrozen(value)) return;
     if (typeof value !== "object" && typeof value !== "function") return;
@@ -70,8 +179,7 @@
       let original;
       try { original = value[key]; } catch (_) { continue; }
       if (typeof original !== "function") continue;
-      const wrappedFn = wrapFunction(`${name}.${key}`, original);
-      try { value[key] = wrappedFn; } catch (_) {}
+      try { value[key] = wrapFunction(`${name}.${key}`, original); } catch (_) {}
     }
   };
 
@@ -83,46 +191,27 @@
       let original;
       try { original = proto[key]; } catch (_) { continue; }
       if (typeof original !== "function" || wrappedMethods.has(original)) continue;
-      const wrappedFn = wrapFunction(`${name}.${key}`, original);
-      try { proto[key] = wrappedFn; wrappedMethods.add(wrappedFn); } catch (_) {}
+      try {
+        const wrapped = wrapFunction(`${name}.${key}`, original);
+        proto[key] = wrapped;
+        wrappedMethods.add(wrapped);
+      } catch (_) {}
     }
   };
-
-  function wrapFunction(name, original) {
-    const wrappedFn = function (...args) {
-      const begin = performance.now();
-      write("debug", "FUNCTION_START", { name });
-      try {
-        const result = original.apply(this, args);
-        if (result?.then) {
-          return result.then((value) => {
-            write("debug", "FUNCTION_END", { name, durationMs: Math.round(performance.now() - begin) });
-            return value;
-          }).catch((error) => {
-            api.error("FUNCTION_ERROR", error, { name, durationMs: Math.round(performance.now() - begin) });
-            throw error;
-          });
-        }
-        write("debug", "FUNCTION_END", { name, durationMs: Math.round(performance.now() - begin) });
-        return result;
-      } catch (error) {
-        api.error("FUNCTION_ERROR", error, { name, durationMs: Math.round(performance.now() - begin) });
-        throw error;
-      }
-    };
-    Object.defineProperty(wrappedFn, "name", { value: original.name || name, configurable: true });
-    return wrappedFn;
-  }
 
   const scan = () => {
     targets.forEach((name) => instrumentObject(name, window[name]));
     prototypes.forEach((name) => instrumentPrototype(name, window[name]));
   };
 
-  window.addEventListener("DOMContentLoaded", scan, { once: true });
+  window.addEventListener("DOMContentLoaded", () => {
+    scan();
+    api.info("DOM_READY", { path: location.pathname });
+    [...document.scripts].forEach((script) => api.debug("SCRIPT_LOADED", { sourceFile: script.src || "inline" }));
+  }, { once: true });
+  window.addEventListener("load", () => api.info("WINDOW_READY", { durationMs: Math.round(performance.now() - started) }));
+  window.addEventListener("beforeunload", () => { void flush(true); });
+  window.addEventListener("pagehide", () => { void flush(true); });
   setTimeout(scan, 1000);
   setTimeout(scan, 2500);
-
-  window.addEventListener("DOMContentLoaded", () => api.info("DOM_READY", { path: location.pathname }));
-  window.addEventListener("load", () => api.info("WINDOW_READY", { durationMs: Math.round(performance.now() - started) }));
 })();
