@@ -215,7 +215,7 @@ Open-source attributions remain documented in `THIRD_PARTY_NOTICES.md` and `docs
 
 **Latest local automated baseline before this collision fix:** 99 Python tests passed, 17 skipped, 61 warnings; 18 JavaScript tests passed.
 
-**Collision fix commit:** `c90cbb3caf1d87263e45c9d29df02c9c734cc715` updates `static/js/physics.js`, centralizes collision separation tolerance in `game/constants.py`, adds `tests/collision_settlement.test.js`, and aligns the runtime contract with the one-branch repository.
+**Current collision fix baseline:** `d53acfaac8fa0b3a889b714314c7100d63b7537a` contains the epsilon-separated collision recovery, central collision separation tolerance, focused collision regression and updated runtime regression contract.
 
 **Live browser result before this fix:** page renders and local drag/launch works; the first collision could still stall the physics/turn transition. Fresh local browser verification is required after this fix.
 
