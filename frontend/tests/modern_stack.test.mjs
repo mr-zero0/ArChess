@@ -6,6 +6,7 @@ const packageJson = JSON.parse(await readFile(new URL("../package.json", import.
 const arena = await readFile(new URL("../src/game/ArenaScene.ts", import.meta.url), "utf8");
 const physics = await readFile(new URL("../src/game/physics.ts", import.meta.url), "utf8");
 const app = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
+const api = await readFile(new URL("../../backend/main.py", import.meta.url), "utf8");
 
 test("modern client pins the verified current stack", () => {
   assert.equal(packageJson.dependencies.react, "19.2.8");
@@ -35,4 +36,11 @@ test("React owns the application shell while Phaser owns the arena", () => {
   assert.match(app, /from "motion\/react"/);
   assert.match(app, /new Phaser\.Game/);
   assert.match(app, /phaser-host/);
+});
+
+test("FastAPI exposes the modern transport boundary", () => {
+  assert.match(api, /FastAPI\(/);
+  assert.match(api, /\/api\/health/);
+  assert.match(api, /\/api\/rooms/);
+  assert.match(api, /\/ws\/rooms\/\{room_id\}/);
 });
