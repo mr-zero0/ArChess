@@ -36,8 +36,8 @@ test("Phaser normalizes responsive pointer input for drag and release", () => {
 });
 
 test("collision settlement is velocity-authoritative", () => {
-  assert.match(physics, /minVelocity:\s*0\.18/);
-  assert.match(physics, /const stillFast = pieces\.some/);
+  assert.match(physics, /minVelocity:\s*PHYSICS\.minVelocity/);
+  assert.match(physics, /const stillMoving = pieces\.some/);
   assert.match(physics, /settleTimer/);
   assert.doesNotMatch(physics, /activeCollisions/);
 });
