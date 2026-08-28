@@ -1,20 +1,21 @@
 # ArChess — Product, Engineering & Verification Tracker
 
 **Repository:** `mr-zero0/ArChess`  
-**Development branch:** `ui-rebuild-2d-v2`  
+**Active branch:** `main`  
 **Target branch:** `main`  
+**Branch policy:** single-branch repository; development branches are not retained  
 **Current product mode:** 2D only  
 **3D:** DEFERRED — no 3D renderer, camera, WebGL runtime or 2D/3D switch is active  
 **GitHub Actions:** DISABLED — no workflow is present under `.github/workflows`  
-**Promotion posture:** Working baseline may be promoted to `main`; this snapshot is **not release-ready** until the open browser/gameplay gates below are green.
+**Promotion posture:** `main` is the current working baseline; this snapshot is **not release-ready** until the open browser/gameplay gates below are green.
 
-> This tracker is the source of truth. It merges the original `main` tracker requirements with the current 2D migration work so useful product, engineering, QA, security, accessibility and licensing requirements are not lost during cleanup.
+> This tracker is the source of truth. It merges the original product tracker requirements with the current 2D migration so useful product, engineering, QA, security, accessibility and licensing requirements are not lost during cleanup.
 
 ## Current Gate
 
 | Gate | Status | Evidence / acceptance |
 |---|---|---|
-| Core physics preservation | PARTIALLY VERIFIED | Existing physics/combat model remains authoritative; live collision → next-turn browser behavior is still open |
+| Core physics preservation | PARTIALLY VERIFIED | Existing physics/combat model remains authoritative; live browser verification of collision → next-turn behavior remains required |
 | Root cause of black board | FIXED | Physics canvas is transparent and no longer hides the board surface |
 | 2D board presentation | IMPLEMENTED | `gchessboard` 1.4.0 board surface with ArChess physics layer |
 | 2D piece presentation | IMPLEMENTED | Cburnett-derived SVG piece assets rendered by the active 2D renderer |
@@ -30,19 +31,21 @@
 | Function tracing shutdown regression | FIXED | Tracer is finalization-safe, application-scoped and non-fatal |
 | Browser navigation harness | IMPLEMENTED / VERIFY | Deterministic browser readiness and diagnostics added |
 | Local account gate | CHANGED BY DESIGN | Local 2D gameplay is playable without sign-in; account-dependent/competitive features remain preserved separately |
-| Collision → settle → next turn | **OPEN** | User can launch and collide, but live browser play can still stall at collision; this is the next gameplay fix |
-| Python/API regression | PASSING | 99 passed, 17 skipped, 61 warnings in latest local baseline |
-| JavaScript regression | PASSING | 18/18 Node tests passed in latest local baseline |
-| Browser arena suite | PENDING | Previous attempts exposed harness/auth issues; live gameplay verification is still required |
+| First-collision settlement | FIXED IN PHYSICS / VERIFY | Collision recovery now separates bodies with an epsilon and does not keep stationary cleanup in the active-collision settle gate |
+| Collision → settle → next turn | **FIXED IN PHYSICS / VERIFY** | Physics no longer retains a sticky collision state; live browser test must confirm White → collision → settle → Black |
+| Python/API regression | PASSING BASELINE | 99 passed, 17 skipped, 61 warnings in latest confirmed local baseline |
+| JavaScript regression | PASSING BASELINE | 18/18 Node tests passed in latest confirmed local baseline |
+| Collision settlement regression | ADDED | Focused Node regression covers first collision settlement and stationary overlap recovery |
+| Browser arena suite | PENDING | Live browser gameplay verification remains required |
 | Multi-browser responsive matrix | PENDING | Chromium / Firefox / WebKit across desktop/tablet/mobile remains open |
-| Positive gameplay tests | PENDING | Drag → launch → collision → settle → Black → White remains open |
-| Negative gameplay tests | PENDING | Wrong-team, zero-release, invalid-state and physics-lock checks remain open in live browser |
+| Positive gameplay tests | PENDING LIVE VERIFICATION | Drag → launch → collision → settle → Black → White remains open for browser execution |
+| Negative gameplay tests | PENDING LIVE VERIFICATION | Wrong-team, zero-release, invalid-state and physics-lock checks remain open in live browser |
 | Function-level test coverage | IMPLEMENTED / VERIFY | Critical controllers, tracer and browser diagnostics instrumented; complete execution still required |
 | Server observability | IMPLEMENTED | Structured logs, request/error handling and safe tracer behavior |
 | Security/privacy | PRESERVED / VERIFY | Existing rate limits, security headers, authoritative state, client-write rejection and session review remain in scope |
 | Licensing / attribution | IMPLEMENTED / VERIFY | Bootstrap, Bootstrap Icons, gchessboard and Cburnett notices documented |
-| Repository cleanup | IMPLEMENTED | Superseded 3D/professional/runtime/test assets removed from active branch |
-| Tracker | ACTIVE | Updated at every implementation milestone and before promotion |
+| Repository cleanup | IMPLEMENTED | Superseded 3D/professional/runtime/test assets removed from active branch; repository now uses one branch |
+| Tracker | ACTIVE | Updated at every implementation milestone and before subsequent gameplay changes |
 
 ## Product Roadmap
 
@@ -78,8 +81,10 @@
 6. **Pinned open-source libraries.** Bootstrap 5.3.8, Bootstrap Icons 1.13.1 and gchessboard 1.4.0 are version-pinned in the active page.
 7. **Observability is non-fatal.** Logging failures must never break requests, gameplay or shutdown.
 8. **Local 2D matches are directly playable.** Authentication remains available for account/competitive flows but does not block the basic local arena.
-9. **The original UX requirements are retained.** Resize, high-DPI behavior, Focus/Theatre, accessibility, themes, replay, challenges, security and licensing remain tracked even when verification is pending.
-10. **Promotion is separate from release readiness.** This snapshot may be moved to `main` as the working baseline, but unresolved gates must remain visible in this tracker.
+9. **Collision settlement has one owner.** `main.js -> settle()` owns turn settlement; the local compatibility physics file must not wrap `Physics.step()`.
+10. **Collision recovery separates bodies beyond the contact threshold.** Positional correction includes a small configured/fallback epsilon so floating-point contact does not keep the settle gate active.
+11. **The original UX requirements are retained.** Resize, high-DPI behavior, Focus/Theatre, accessibility, themes, replay, challenges, security and licensing remain tracked even when verification is pending.
+12. **Single-branch repository.** `main` is the active working branch; stale development branches are removed rather than carried forward.
 
 ## Logging Regression
 
@@ -92,6 +97,19 @@ The tracer now avoids interpreter-finalization paths, scopes tracing to ArChess 
 The browser suite first failed because Flask was not running, then because navigation waited too long on page lifecycle/resource completion. The harness was changed to deterministic application readiness with bounded timeouts, diagnostics and optional headed execution.
 
 The harness is infrastructure only; it does not substitute for live gameplay verification.
+
+## Collision Settlement Regression
+
+The first live collision could leave the game in the physics phase indefinitely. The root cause was the interaction between exact positional separation and the `activeCollisions`-based settle gate: tiny floating-point overlap could make the same pair remain an active collision even after useful motion had stopped.
+
+The physics layer now:
+
+- records whether either body was actively moving before collision recovery;
+- separates overlapping bodies slightly beyond the physical contact distance;
+- treats stationary positional recovery as passive rather than as an active collision; and
+- preserves the existing restitution, impact, damage and destruction calculations.
+
+A focused Node regression was added for first-collision settlement and stationary-overlap recovery.
 
 ## Positive Test Matrix
 
@@ -183,33 +201,38 @@ Removed from the active 2D runtime:
 - obsolete professional/final UI stylesheets and test suites
 - obsolete WebGL verification docs/markers
 - unused projectile visual shim
+- stale development branches from the remote repository
 
 ## Documentation / Licensing
 
-Active documentation must describe **2D-only current state**. Historical 3D documents removed from the active branch are not considered current product requirements.
+Active documentation describes the **2D-only current state**. Historical 3D documents removed from the active branch are not considered current product requirements.
 
 Open-source attributions remain documented in `THIRD_PARTY_NOTICES.md` and `docs/ASSET_LICENSES.md`.
 
 ## Verification Record
 
-**Baseline comparison:** `ui-rebuild-2d-v2` was compared with original `main` commit `46165ca7f6f88386077aede8583b735597c3bc33`; the development branch is 82 commits ahead and includes the consolidated 2D migration, observability, testing and cleanup changes.
+**Repository baseline:** original `main` commit `46165ca7f6f88386077aede8583b735597c3bc33` was reconciled into the current single-branch working baseline.
 
-**Latest local automated baseline:** 99 Python tests passed, 17 skipped, 61 warnings; 18 JavaScript tests passed.
+**Latest local automated baseline before the collision fix:** 99 Python tests passed, 17 skipped, 61 warnings; 18 JavaScript tests passed.
 
-**Live browser result:** page renders and local drag/launch works; the current user-reported defect is that a White piece can still stall when it collides with Black. This remains OPEN and is deliberately not marked fixed.
+**Collision fix:** physics settlement correction committed to `main`, with a focused regression added for first collision settlement and stationary-overlap recovery.
 
-**GitHub Actions:** `.github/workflows` remains absent; no Actions workflow is being introduced by this promotion.
+**Live browser result:** page renders and local drag/launch works. The earlier user-reported freeze occurred at the first collision; the physics-layer fix now requires fresh local browser verification of White → collision → settle → Black.
 
-**Promotion decision:** promote the current working baseline to `main` now at the user's request. Release readiness remains blocked on the open browser/gameplay and responsive/accessibility verification gates.
+**GitHub Actions:** `.github/workflows` remains absent; no Actions workflow is being introduced.
 
-## Promotion Rule
+**Repository branch state:** `main` is the only branch. 
 
-**The current snapshot may be promoted to `main` as a working baseline, but it is not a release candidate.**
+**Promotion posture:** this is a working baseline, not a release candidate. The next verification step is targeted live browser gameplay, followed by the full responsive and regression matrices.
 
-After promotion:
+## Promotion / Working-Baseline Rule
 
-1. Preserve this tracker on `main` and keep the unresolved collision/turn bug visible.
-2. Do not claim the full browser/multi-browser release gate is green.
-3. Keep 3D deferred until the 2D product is stable.
-4. Do not reintroduce GitHub Actions unless explicitly requested.
-5. Next gameplay work should start from the collision → settle → next-turn defect.
+`main` is the only retained branch. Changes may be committed directly to `main` for this project, but unresolved verification gates must remain visible in this tracker.
+
+After each gameplay change:
+
+1. Update this tracker with the exact defect, fix and verification state.
+2. Preserve positive, negative, function, responsive and regression coverage.
+3. Do not reintroduce GitHub Actions unless explicitly requested.
+4. Keep 3D deferred until the 2D product is stable.
+5. Do not mark live browser gameplay green until it has actually been exercised.
