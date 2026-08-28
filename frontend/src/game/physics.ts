@@ -10,6 +10,7 @@ export const PHYSICS = {
   damageMultiplier: 1.45,
   settleDelay: 0.12,
   maxSpeed: 12,
+  impulseEpsilon: 0.001,
 };
 
 export type PhysicsEvent =
@@ -83,8 +84,11 @@ export class PhysicsWorld {
           const impulse = (-(1 + restitution) * relative) / total;
           const ix = impulse * nx; const iy = impulse * ny;
           a.vx -= ix * invA; a.vy -= iy * invA; b.vx += ix * invB; b.vy += iy * invB;
-          if (speed(a) >= PHYSICS.minVelocity) a.moving = true;
-          if (speed(b) >= PHYSICS.minVelocity) b.moving = true;
+          // A real collision impulse must enter the simulation even when it is
+          // below the eventual settle threshold. Otherwise a struck piece can
+          // have non-zero velocity while moving=false and appear frozen.
+          if (speed(a) > PHYSICS.impulseEpsilon) a.moving = true;
+          if (speed(b) > PHYSICS.impulseEpsilon) b.moving = true;
         }
         if (impact >= PHYSICS.impactThreshold) {
           const damageA = damage(b, impact); const damageB = damage(a, impact);
