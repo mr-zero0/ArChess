@@ -14,6 +14,11 @@ export type ArenaPiece = {
   hp: number;
   maxHp: number;
   power: number;
+  launchMul: number;
+  friction: number;
+  restitution: number;
+  damageMul: number;
+  collisionMul: number;
   alive: boolean;
   moving: boolean;
 };
@@ -27,11 +32,4 @@ export type ArenaSnapshot = {
   winner: Team | null;
 };
 
-export const PIECE_STATS: Record<PieceType, Pick<ArenaPiece, "radius" | "mass" | "maxHp" | "power">> = {
-  king: { radius: 0.34, mass: 6, maxHp: 120, power: 10 },
-  queen: { radius: 0.30, mass: 5, maxHp: 75, power: 9 },
-  rook: { radius: 0.30, mass: 5, maxHp: 80, power: 8 },
-  bishop: { radius: 0.28, mass: 4, maxHp: 65, power: 8 },
-  knight: { radius: 0.28, mass: 4, maxHp: 70, power: 8 },
-  pawn: { radius: 0.25, mass: 2, maxHp: 45, power: 5 },
-};
+export type SelectedPiece = Pick<ArenaPiece, "id" | "type" | "team" | "hp" | "maxHp">;
