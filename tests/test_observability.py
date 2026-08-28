@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE = ROOT / "templates" / "index.html"
 BOARD_JS = ROOT / "static/js/board.js"
 OBSERVABILITY_JS = ROOT / "static/js/observability.js"
+OBSERVABILITY_TARGETS_JS = ROOT / "static/js/observability_targets.js"
 
 
 @pytest.fixture
@@ -153,6 +154,17 @@ def test_browser_observability_is_syntax_valid():
     assert result.returncode == 0, result.stderr
 
 
+def test_browser_observability_targets_are_syntax_valid():
+    result = subprocess.run(
+        ["node", "--check", str(OBSERVABILITY_TARGETS_JS)],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+
+
 def test_browser_observability_bootstraps_before_main_runtime():
     template = TEMPLATE.read_text(encoding="utf-8")
     board = BOARD_JS.read_text(encoding="utf-8")
@@ -161,12 +173,24 @@ def test_browser_observability_bootstraps_before_main_runtime():
     assert board_index >= 0
     assert main_index >= 0
     assert board_index < main_index
-    assert 'document.write(\'<script src="/static/js/observability.js"></script>\')' in board
+    assert 'document.write(\'<script src="/static/js/observability.js"></script><script src="/static/js/observability_targets.js"></script>\')' in board
     assert "window.ArChessObservability" in board
     observer = OBSERVABILITY_JS.read_text(encoding="utf-8")
     assert "/api/observability/browser" in observer
     assert "GAME_STATE_TRANSITION" in observer
     assert "CONSOLE_EVENT" in observer
+
+
+def test_browser_runtime_module_inventory_is_mapped():
+    target_source = OBSERVABILITY_TARGETS_JS.read_text(encoding="utf-8")
+    expected_modules = {
+        "ui.js", "physics.js", "pieces.js", "theme.js", "prefs.js", "audio.js",
+        "mode.js", "match_history.js", "challenges.js", "replay.js", "tutorial.js",
+        "identity.js", "auth_gate.js", "progression_ui.js", "ranked_ui.js",
+        "chessboard_ui.js", "tuning.js", "board.js", "renderer_2d.js", "input.js",
+    }
+    for filename in expected_modules:
+        assert filename in target_source
 
 
 def test_application_python_roots_are_in_tracing_surface():
