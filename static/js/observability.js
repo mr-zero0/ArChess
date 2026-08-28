@@ -3,6 +3,14 @@
   if (window.ArChessObservability) return;
 
   const started = performance.now();
+  const originalConsole = {
+    debug: console.debug?.bind(console) || console.log.bind(console),
+    info: console.info?.bind(console) || console.log.bind(console),
+    warn: console.warn?.bind(console) || console.log.bind(console),
+    error: console.error?.bind(console) || console.log.bind(console),
+    log: console.log.bind(console),
+  };
+  let capturingConsole = false;
   const correlationId = (() => {
     try {
       const key = "archess.correlationId";
@@ -57,12 +65,11 @@
   async function flush(immediate = false) {
     if (!queue.length) return;
     const events = queue.splice(0, 50);
-    const body = JSON.stringify({ events });
     try {
       await originalFetch("/api/observability/browser", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-ArChess-Correlation-ID": correlationId },
-        body,
+        body: JSON.stringify({ events }),
         keepalive: true,
       });
     } catch (_) {
@@ -72,11 +79,10 @@
 
   function write(level, event, data = {}) {
     const payload = enrich(level, event, data);
-    const output = compact(payload);
-    (console[level] || console.log).call(console, `[ArChess] ${event}`, payload);
+    originalConsole[level === "log" ? "log" : level]("[ArChess]", event, payload);
     window.dispatchEvent(new CustomEvent("archess:log", { detail: payload }));
     queue.push(payload);
-    if (level === "error" || level === "warn") flush(true);
+    if (level === "error" || level === "warn") void flush(true);
     else scheduleFlush();
   }
 
@@ -105,8 +111,22 @@
   window.ArChessObservability = Object.freeze(api);
   window.ArChessLog = (event, data) => api.info(event, data);
 
+  ["debug", "info", "warn", "error"].forEach((level) => {
+    console[level] = (...args) => {
+      originalConsole[level](...args);
+      if (capturingConsole) return;
+      capturingConsole = true;
+      try {
+        const error = level === "error" ? args.find((value) => value instanceof Error) : null;
+        write(level, "CONSOLE_EVENT", { consoleArgs: args.map(safe), error: safe(error) });
+      } finally {
+        capturingConsole = false;
+      }
+    };
+  });
+
   window.addEventListener("error", (e) => api.error("UNCAUGHT_ERROR", e.error || new Error(e.message), {
-    source: e.filename,
+    sourceFile: e.filename,
     function: "window.onerror",
     line: e.lineno,
     column: e.colno,
@@ -172,9 +192,20 @@
   }
 
   const instrumentObject = (name, value) => {
-    if (!value || wrappedObjects.has(value) || Object.isFrozen(value)) return;
+    if (!value || wrappedObjects.has(value)) return;
     if (typeof value !== "object" && typeof value !== "function") return;
     wrappedObjects.add(value);
+
+    if (Object.isFrozen(value)) {
+      const facade = {};
+      Object.keys(value).forEach((key) => {
+        const original = value[key];
+        facade[key] = typeof original === "function" ? wrapFunction(`${name}.${key}`, original) : original;
+      });
+      try { window[name] = facade; } catch (_) {}
+      return;
+    }
+
     for (const key of Object.keys(value)) {
       let original;
       try { original = value[key]; } catch (_) { continue; }
