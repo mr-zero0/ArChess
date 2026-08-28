@@ -18,13 +18,15 @@
 | 2D pieces / open-source assets | IMPLEMENTED / VERIFY |
 | Themes / resize / high-DPI | IMPLEMENTED / VERIFY |
 | Logging / observability foundation | VERIFIED ON BRANCH — 11 observability tests passed |
+| RunXX collision-safe allocation | VERIFIED — targeted observability/regression suite passed |
 | Complete executable-codebase observability coverage | IN PROGRESS |
 | Local no-login gameplay | IMPLEMENTED |
 | First-collision settlement | FIXED IN CODE / VERIFY |
 | Collision → settle → next turn | FIXED IN CODE / VERIFY |
-| Python/API regression | 107 passed, 4 failed, 17 skipped, 55 warnings (latest full-suite run) |
+| Python/API regression | 107 passed, 4 failed, 17 skipped, 55 warnings (latest full-suite run before tracker-contract restoration) |
 | JavaScript regression | 18 passed (last recorded baseline) |
 | Settlement regression contract | ADDED |
+| Ranked disconnect outcome contract | VERIFIED — targeted ranked hook suite passed |
 | Live browser gameplay | PENDING |
 | Responsive multi-browser matrix | PENDING |
 | Accessibility / security / performance final audits | PENDING |
@@ -51,6 +53,11 @@ Verified behaviors include:
 - Browser runtime module inventory coverage contract.
 - Python application tracing surface coverage with logging internals excluded from recursive tracing.
 - ContextVar teardown and thread tracing are stable under the targeted regression suite.
+- Run directory allocation is collision-safe when an expected `RunXX` directory already exists.
+
+The latest focused verification was:
+
+`python -m pytest -q tests/test_observability.py tests/test_ranked_hooks.py tests/test_2d_runtime_contract.py` → **20 passed, 8 warnings**.
 
 ### Remaining coverage pass
 
@@ -75,7 +82,7 @@ The contract regression in `tests/test_2d_runtime_contract.py` locks this owners
 
 ## Ranked Contract Restoration
 
-The current application registers ranked/progression routes from `game/ranked_routes.py`. The ranked disconnect outcome endpoint was restored on `fix/observability-complete` so surrender, timeout, and abandonment requests can reach the existing ranked-room settlement hook instead of returning 404.
+The current application registers ranked/progression routes from `game/ranked_routes.py`. The ranked disconnect outcome endpoint was restored on `fix/observability-complete` so surrender, timeout, and abandonment requests can reach the existing ranked-room settlement hook instead of returning 404. The targeted ranked hook tests now pass.
 
 ## Preserved Requirements
 
