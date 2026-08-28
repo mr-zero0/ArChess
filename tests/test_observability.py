@@ -57,6 +57,16 @@ def test_second_run_gets_incremented_id(isolated_observability):
     assert run_dir.name == "Run10"
 
 
+def test_run_directory_skips_existing_next_directory(isolated_observability):
+    now = datetime.now().astimezone()
+    base = isolated_observability / "Logs" / now.strftime("%Y") / now.strftime("%b") / now.strftime("%d_Logs")
+    (base / "Run01").mkdir(parents=True)
+    (base / "Run02").mkdir()
+    run_id, run_dir = lc._next_run_directory(isolated_observability / "Logs")
+    assert run_id == "Run03"
+    assert run_dir.name == "Run03"
+
+
 def test_formatter_preserves_exact_source_location_and_redacts_secrets():
     logger = logging.getLogger("observability.test")
     record = logger.makeRecord(
