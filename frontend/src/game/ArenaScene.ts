@@ -104,17 +104,11 @@ export class ArenaScene extends Phaser.Scene {
     const hp = this.hpLabels.get(piece.id);
     const x = piece.x * CELL;
     const y = piece.y * CELL;
-    if (sprite) {
-      sprite.setVisible(piece.alive).setPosition(x, y).setAlpha(piece.alive ? 1 : 0.2);
-    }
-    if (hp) {
-      hp.setVisible(piece.alive && this.selected?.id === piece.id).setPosition(x, y - CELL * 0.42).setText(`${piece.hp}/${piece.maxHp}`);
-    }
+    if (sprite) sprite.setVisible(piece.alive).setPosition(x, y).setAlpha(piece.alive ? 1 : 0.2);
+    if (hp) hp.setVisible(piece.alive && this.selected?.id === piece.id).setPosition(x, y - CELL * 0.42).setText(`${piece.hp}/${piece.maxHp}`);
   }
 
-  private pointerWorld(pointer: Phaser.Input.Pointer) {
-    return new Phaser.Math.Vector2(pointer.worldX, pointer.worldY);
-  }
+  private pointerWorld(pointer: Phaser.Input.Pointer) { return new Phaser.Math.Vector2(pointer.worldX, pointer.worldY); }
 
   private pieceAt(x: number, y: number) {
     let found: ArenaPiece | null = null;
@@ -196,11 +190,9 @@ export class ArenaScene extends Phaser.Scene {
     if (event.type === "collision") {
       this.collisions += 1;
       this.flashCollision(event.a, event.b, event.impact);
-      const target = event.a.team === this.turn ? event.b : event.a;
-      const source = target.id === event.a.id ? event.b : event.a;
-      this.showDamage(target, event.targetDamage ?? (source.team === event.a.team ? event.damageA : event.damageB));
-      if (this.selected?.id === target.id) this.hpLabels.get(target.id)?.setVisible(target.alive);
-      this.publish(`${target.type} took ${target.id === event.a.id ? event.damageA : event.damageB} damage.`, true);
+      this.showDamage(event.a, event.damageA);
+      this.showDamage(event.b, event.damageB);
+      this.publish(`${event.a.type} -${event.damageA} HP · ${event.b.type} -${event.damageB} HP`, true);
     }
     if (event.type === "destroyed") this.publish(`${event.piece.type.toUpperCase()} destroyed.`, true);
   }
