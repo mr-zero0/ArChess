@@ -123,8 +123,6 @@ const LocalPhysics = Object.freeze({
         const minDistance = a.radius + b.radius;
         if (distance >= minDistance) continue;
 
-        // Capture motion before positional recovery so stationary overlaps can be
-        // repaired without poisoning the active-collision settle gate.
         const wasMovingA = a.moving;
         const wasMovingB = b.moving;
 
@@ -154,8 +152,6 @@ const LocalPhysics = Object.freeze({
         b.x = Math.min(GAME_CONFIG.boardSize - b.radius, Math.max(b.radius, b.x));
         b.y = Math.min(GAME_CONFIG.boardSize - b.radius, Math.max(b.radius, b.y));
 
-        // Only a collision involving an actively moving body participates in the
-        // current-frame settle gate. Pure positional cleanup must remain passive.
         if (wasMovingA || wasMovingB) {
           game.activeCollisions.add(a.id);
           game.activeCollisions.add(b.id);
@@ -298,7 +294,6 @@ window.Physics = LocalPhysics;
       game.settledFor = 0;
       game.feedback = null;
       if (snapshot.gameOver) {
-        // Let the existing local win-condition code open its normal game-over UI.
         game.gameOver = false;
         game.phase = "physics";
       } else {
@@ -321,7 +316,7 @@ window.Physics = LocalPhysics;
       const guestId = window.GuestIdentity?.getId?.();
       if (!guestId) throw new Error("Guest identity is unavailable");
       roomCode = String(code || "").trim().toUpperCase();
-      const data = await api.request(`/api/rooms/${roomCode}/join`, { method: "POST", body: JSON.stringify({ guestId } });
+      const data = await api.request(`/api/rooms/${roomCode}/join`, { method: "POST", body: JSON.stringify({ guestId }) });
       const player = data.players?.find((entry) => entry.guestId === guestId);
       localTeam = player?.team ?? null;
       api.setStatus(`ROOM ${roomCode} · ${localTeam?.toUpperCase() ?? "CONNECTED"} · ${data.status.toUpperCase()}`);
