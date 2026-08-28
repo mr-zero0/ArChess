@@ -3,7 +3,16 @@ import { createInitialPieces } from "./setup";
 import { PhysicsWorld, PhysicsEvent } from "./physics";
 import { ArenaPiece, Team } from "./types";
 
-export type ArenaState = { turn: Team; phase: string; whiteHp: number; blackHp: number; collisions: number; winner: Team | null; message: string };
+export type ArenaState = {
+  turn: Team;
+  phase: string;
+  whiteHp: number;
+  blackHp: number;
+  collisions: number;
+  winner: Team | null;
+  message: string;
+  selectedPiece: { id: string; type: ArenaPiece["type"]; team: Team; hp: number; maxHp: number } | null;
+};
 export type ArenaCallbacks = (state: ArenaState) => void;
 
 const GLYPH: Record<ArenaPiece["type"], string> = { king: "♚", queen: "♛", rook: "♜", bishop: "♝", knight: "♞", pawn: "♟" };
@@ -13,6 +22,7 @@ const CELL = SIZE / 8;
 export class ArenaScene extends Phaser.Scene {
   private pieces: ArenaPiece[] = createInitialPieces();
   private sprites = new Map<string, Phaser.GameObjects.Text>();
+  private hpLabels = new Map<string, Phaser.GameObjects.Text>();
   private world = new PhysicsWorld();
   private turn: Team = "white";
   private phase = "aim";
@@ -73,16 +83,33 @@ export class ArenaScene extends Phaser.Scene {
       color: piece.team === "white" ? "#f7fbff" : "#05080c",
       stroke: piece.team === "white" ? "#172131" : "#dde6ef",
       strokeThickness: 5,
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    }).setOrigin(0.5).setDepth(10).setInteractive({ useHandCursor: true });
     sprite.setData("pieceId", piece.id);
     this.sprites.set(piece.id, sprite);
+
+    const hp = this.add.text(piece.x * CELL, piece.y * CELL - CELL * 0.42, `${piece.hp}/${piece.maxHp}`, {
+      fontFamily: "Arial, sans-serif",
+      fontSize: "13px",
+      color: "#ffffff",
+      stroke: "#000000",
+      strokeThickness: 4,
+      fontStyle: "bold",
+    }).setOrigin(0.5).setDepth(20).setVisible(false);
+    hp.setData("pieceId", piece.id);
+    this.hpLabels.set(piece.id, hp);
   }
 
   private syncPiece(piece: ArenaPiece) {
     const sprite = this.sprites.get(piece.id);
-    if (!sprite) return;
-    sprite.setVisible(piece.alive).setPosition(piece.x * CELL, piece.y * CELL);
-    sprite.setAlpha(piece.alive ? 1 : 0.2);
+    const hp = this.hpLabels.get(piece.id);
+    const x = piece.x * CELL;
+    const y = piece.y * CELL;
+    if (sprite) {
+      sprite.setVisible(piece.alive).setPosition(x, y).setAlpha(piece.alive ? 1 : 0.2);
+    }
+    if (hp) {
+      hp.setVisible(piece.alive && this.selected?.id === piece.id).setPosition(x, y - CELL * 0.42).setText(`${piece.hp}/${piece.maxHp}`);
+    }
   }
 
   private pointerWorld(pointer: Phaser.Input.Pointer) {
@@ -104,16 +131,23 @@ export class ArenaScene extends Phaser.Scene {
     if (this.phase !== "aim") return;
     const point = this.pointerWorld(pointer);
     const piece = this.pieceAt(point.x, point.y);
+    this.selectPiece(piece);
     if (!piece || piece.team !== this.turn) return;
-    this.selected = piece;
     this.dragStart = point.clone();
     this.sprites.get(piece.id)?.setScale(1.12);
     this.drawAim(point);
     this.publish(`Aiming ${piece.type}.`, true);
   }
 
+  private selectPiece(piece: ArenaPiece | null) {
+    if (this.selected && this.selected.id !== piece?.id) this.sprites.get(this.selected.id)?.setScale(1);
+    this.selected = piece;
+    for (const current of this.pieces) this.hpLabels.get(current.id)?.setVisible(Boolean(piece && current.id === piece.id && current.alive));
+    this.publish(piece ? `${piece.type} selected.` : "", true);
+  }
+
   private handleMove(pointer: Phaser.Input.Pointer) {
-    if (!this.selected || !this.dragStart) return;
+    if (!this.selected || !this.dragStart || this.phase !== "aim" || this.selected.team !== this.turn) return;
     const point = this.pointerWorld(pointer);
     const d = this.dragStart.distance(point);
     this.sprites.get(this.selected.id)?.setScale(1 + Math.min(0.15, d / 500));
@@ -142,15 +176,16 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   private handleUp(pointer: Phaser.Input.Pointer) {
-    if (!this.selected || !this.dragStart) return;
+    if (!this.selected || !this.dragStart || this.phase !== "aim" || this.selected.team !== this.turn) return;
     const piece = this.selected;
     const start = this.dragStart;
     const point = this.pointerWorld(pointer);
     this.selected = null;
     this.dragStart = null;
     this.clearAim();
+    this.hpLabels.forEach((label) => label.setVisible(false));
     const drag = new Phaser.Math.Vector2(start.x - point.x, start.y - point.y);
-    if (drag.length() < 16) { this.publish(); return; }
+    if (drag.length() < 16) { this.selectPiece(piece); return; }
     const power = Math.min(1, drag.length() / 220);
     if (!this.world.launch(piece, drag.x, drag.y, power)) return;
     this.phase = "physics";
@@ -158,9 +193,23 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   private processPhysicsEvent(event: PhysicsEvent) {
-    if (event.type !== "collision") return;
-    this.collisions += 1;
-    this.flashCollision(event.a, event.b, event.impact);
+    if (event.type === "collision") {
+      this.collisions += 1;
+      this.flashCollision(event.a, event.b, event.impact);
+      const target = event.a.team === this.turn ? event.b : event.a;
+      const source = target.id === event.a.id ? event.b : event.a;
+      this.showDamage(target, event.targetDamage ?? (source.team === event.a.team ? event.damageA : event.damageB));
+      if (this.selected?.id === target.id) this.hpLabels.get(target.id)?.setVisible(target.alive);
+      this.publish(`${target.type} took ${target.id === event.a.id ? event.damageA : event.damageB} damage.`, true);
+    }
+    if (event.type === "destroyed") this.publish(`${event.piece.type.toUpperCase()} destroyed.`, true);
+  }
+
+  private showDamage(piece: ArenaPiece, amount: number) {
+    const text = this.add.text(piece.x * CELL, piece.y * CELL, `-${Math.max(0, Math.round(amount))}`, {
+      fontFamily: "Arial, sans-serif", fontSize: "22px", color: "#ff6875", stroke: "#18080b", strokeThickness: 5, fontStyle: "bold",
+    }).setOrigin(0.5).setDepth(50);
+    this.tweens.add({ targets: text, y: text.y - 26, alpha: 0, duration: 500, ease: "Cubic.easeOut", onComplete: () => text.destroy() });
   }
 
   private flashCollision(a: ArenaPiece, b: ArenaPiece, impact: number) {
@@ -180,7 +229,8 @@ export class ArenaScene extends Phaser.Scene {
   private publish(message = "", force = false) {
     const whiteHp = this.pieces.filter((p) => p.team === "white" && p.alive).reduce((sum, p) => sum + p.hp, 0);
     const blackHp = this.pieces.filter((p) => p.team === "black" && p.alive).reduce((sum, p) => sum + p.hp, 0);
-    const state: ArenaState = { turn: this.turn, phase: this.phase, whiteHp, blackHp, collisions: this.collisions, winner: this.winner(), message };
+    const selectedPiece = this.selected && this.selected.alive ? { id: this.selected.id, type: this.selected.type, team: this.selected.team, hp: this.selected.hp, maxHp: this.selected.maxHp } : null;
+    const state: ArenaState = { turn: this.turn, phase: this.phase, whiteHp, blackHp, collisions: this.collisions, winner: this.winner(), message, selectedPiece };
     const key = JSON.stringify(state);
     if (!force && key === this.lastPublished) return;
     this.lastPublished = key;
