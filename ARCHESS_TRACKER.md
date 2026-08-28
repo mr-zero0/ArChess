@@ -213,9 +213,9 @@ Open-source attributions remain documented in `THIRD_PARTY_NOTICES.md` and `docs
 
 **Repository baseline:** original `main` commit `46165ca7f6f88386077aede8583b735597c3bc33` was reconciled into the current single-branch working baseline.
 
-**Latest local automated baseline before this collision fix:** 99 Python tests passed, 17 skipped, 61 warnings; 18 JavaScript tests passed.
+**Latest confirmed automated baseline before this gameplay fix:** 99 Python tests passed, 17 skipped, 61 warnings; 18 JavaScript tests passed.
 
-**Current collision fix baseline:** `d53acfaac8fa0b3a889b714314c7100d63b7537a` contains the epsilon-separated collision recovery, central collision separation tolerance, focused collision regression and updated runtime regression contract.
+**Current collision fix baseline:** `5e6193a9c185f315b66978e14890610df111fb4f` contains the epsilon-separated collision recovery, centralized collision separation tolerance, focused collision regression and updated runtime contract.
 
 **Live browser result before this fix:** page renders and local drag/launch works; the first collision could still stall the physics/turn transition. Fresh local browser verification is required after this fix.
 
