@@ -41,7 +41,3 @@ The tracker retains the original product requirements for physics, damage, turn-
 ## Repository State
 
 `main` is the only retained branch. GitHub Actions remain intentionally absent. The current repository is a working 2D baseline, not a release candidate.
-
-## Working-Baseline Rule
-
-`main` is the only retained branch. Changes may be committed directly to `main` for this project, but unresolved verification gates must remain visible in this tracker.
