@@ -7,7 +7,7 @@
     debug: console.debug?.bind(console) || console.log.bind(console),
     info: console.info?.bind(console) || console.log.bind(console),
     warn: console.warn?.bind(console) || console.log.bind(console),
-    error: console.error?.bind(console) || console.log.bind(console),
+    error: console.error?.bind(console) || console.log.bind(console,
     log: console.log.bind(console),
   };
   let capturingConsole = false;
@@ -35,11 +35,6 @@
     } catch (_) { return String(value); }
   };
 
-  const compact = (value, limit = 4000) => {
-    const text = typeof value === "string" ? value : JSON.stringify(safe(value));
-    return text.length > limit ? `${text.slice(0, limit)}…` : text;
-  };
-
   const enrich = (level, event, data = {}) => ({
     t: Math.round(performance.now() - started),
     timestamp: new Date().toISOString(),
@@ -58,7 +53,7 @@
     if (flushTimer !== null) return;
     flushTimer = window.setTimeout(() => {
       flushTimer = null;
-      flush(false);
+      void flush(false);
     }, 250);
   };
 
@@ -132,7 +127,6 @@
     column: e.colno,
   }));
   window.addEventListener("unhandledrejection", (e) => api.error("UNHANDLED_REJECTION", e.reason, { function: "window.onunhandledrejection" }));
-
   window.addEventListener("securitypolicyviolation", (e) => api.error("CSP_VIOLATION", new Error(e.violatedDirective), {
     blockedUri: e.blockedURI,
     documentUri: e.documentURI,
@@ -235,6 +229,28 @@
     prototypes.forEach((name) => instrumentPrototype(name, window[name]));
   };
 
+  let lastState = "";
+  const observeGameState = () => {
+    const game = window.gameState;
+    if (!game) return;
+    const moving = Array.isArray(game.pieces) ? game.pieces.filter((piece) => piece.alive && piece.moving).length : 0;
+    const activeCollisions = game.activeCollisions?.size || 0;
+    const state = JSON.stringify({
+      phase: game.phase,
+      currentPlayer: game.currentPlayer,
+      moving,
+      activeCollisions,
+      selectedPiece: game.selectedPiece?.id || null,
+      collisionCount: game.collisionCount || 0,
+      settledFor: Number(game.settledFor || 0).toFixed(3),
+      gameOver: !!game.gameOver,
+    });
+    if (state !== lastState) {
+      lastState = state;
+      write("debug", "GAME_STATE_TRANSITION", { state: JSON.parse(state) });
+    }
+  };
+
   window.addEventListener("DOMContentLoaded", () => {
     scan();
     api.info("DOM_READY", { path: location.pathname });
@@ -243,6 +259,7 @@
   window.addEventListener("load", () => api.info("WINDOW_READY", { durationMs: Math.round(performance.now() - started) }));
   window.addEventListener("beforeunload", () => { void flush(true); });
   window.addEventListener("pagehide", () => { void flush(true); });
-  setTimeout(scan, 1000);
-  setTimeout(scan, 2500);
+  window.setInterval(observeGameState, 100);
+  window.setTimeout(scan, 1000);
+  window.setTimeout(scan, 2500);
 })();
