@@ -13,13 +13,14 @@ const CELL = SIZE / 8;
 export class ArenaScene extends Phaser.Scene {
   private pieces: ArenaPiece[] = createInitialPieces();
   private sprites = new Map<string, Phaser.GameObjects.Text>();
-  private physics = new PhysicsWorld();
+  private world = new PhysicsWorld();
   private turn: Team = "white";
   private phase = "aim";
   private selected: ArenaPiece | null = null;
   private dragStart: Phaser.Math.Vector2 | null = null;
   private collisions = 0;
   private callbacks?: ArenaCallbacks;
+  private lastPublished = "";
 
   constructor() { super("ArenaScene"); }
   init(data: { onState?: ArenaCallbacks }) { this.callbacks = data.onState; }
@@ -30,23 +31,24 @@ export class ArenaScene extends Phaser.Scene {
     this.input.on("pointerdown", this.handleDown, this);
     this.input.on("pointermove", this.handleMove, this);
     this.input.on("pointerup", this.handleUp, this);
-    this.publish("White to move.");
+    this.publish("White to move.", true);
   }
 
   update(_time: number, deltaMs: number) {
     if (this.phase !== "physics") return;
-    const settled = this.physics.step(this.pieces, Math.min(0.033, Math.max(0, deltaMs / 1000)));
+    const settled = this.world.step(this.pieces, Math.min(0.033, Math.max(0, deltaMs / 1000)));
     for (const piece of this.pieces) this.syncPiece(piece);
-    for (const event of this.physics.events) this.processPhysicsEvent(event);
-    if (this.winner()) {
+    for (const event of this.world.events) this.processPhysicsEvent(event);
+    const winner = this.winner();
+    if (winner) {
       this.phase = "gameover";
-      this.publish(`${this.winner()?.toUpperCase()} wins.`);
+      this.publish(`${winner.toUpperCase()} wins.`, true);
       return;
     }
     if (settled) {
       this.phase = "aim";
       this.turn = this.turn === "white" ? "black" : "white";
-      this.publish(`${this.turn === "white" ? "White" : "Black"} to move.`);
+      this.publish(`${this.turn === "white" ? "White" : "Black"} to move.`, true);
       return;
     }
     this.publish();
@@ -94,7 +96,7 @@ export class ArenaScene extends Phaser.Scene {
     this.selected = piece;
     this.dragStart = new Phaser.Math.Vector2(pointer.x, pointer.y);
     this.sprites.get(piece.id)?.setScale(1.12);
-    this.publish(`Aiming ${piece.type}.`);
+    this.publish(`Aiming ${piece.type}.`, true);
   }
 
   private handleMove(pointer: Phaser.Input.Pointer) {
@@ -115,22 +117,21 @@ export class ArenaScene extends Phaser.Scene {
     const drag = new Phaser.Math.Vector2(start.x - pointer.x, start.y - pointer.y);
     if (drag.length() < 16) { this.publish(); return; }
     const power = Math.min(1, drag.length() / 220);
-    this.physics.reset();
-    if (!this.physics.launch(piece, drag.x, drag.y, power)) return;
+    if (!this.world.launch(piece, drag.x, drag.y, power)) return;
     this.phase = "physics";
-    this.publish("Physics resolving…");
+    this.publish("Physics resolving…", true);
   }
 
   private processPhysicsEvent(event: PhysicsEvent) {
-    if (event.type === "collision") {
-      this.collisions += 1;
-      this.flashCollision(event.a, event.b, event.impact);
-    }
+    if (event.type !== "collision") return;
+    this.collisions += 1;
+    this.flashCollision(event.a, event.b, event.impact);
   }
 
   private flashCollision(a: ArenaPiece, b: ArenaPiece, impact: number) {
     const x = ((a.x + b.x) * CELL) / 2, y = ((a.y + b.y) * CELL) / 2;
-    const ring = this.add.circle(x, y, 8, { stroke: 0xffd37d, strokeThickness: 4, fill: 0xffffff, fillAlpha: 0 });
+    const ring = this.add.circle(x, y, 8, 0xffffff, 0);
+    ring.setStrokeStyle(4, 0xffd37d, 1);
     this.tweens.add({ targets: ring, radius: Math.min(70, 16 + impact * 8), alpha: 0, duration: 220, onComplete: () => ring.destroy() });
   }
 
@@ -140,9 +141,13 @@ export class ArenaScene extends Phaser.Scene {
     return !whiteKing?.alive ? "black" : !blackKing?.alive ? "white" : null;
   }
 
-  private publish(message = "") {
+  private publish(message = "", force = false) {
     const whiteHp = this.pieces.filter((p) => p.team === "white" && p.alive).reduce((sum, p) => sum + p.hp, 0);
     const blackHp = this.pieces.filter((p) => p.team === "black" && p.alive).reduce((sum, p) => sum + p.hp, 0);
-    this.callbacks?.({ turn: this.turn, phase: this.phase, whiteHp, blackHp, collisions: this.collisions, winner: this.winner(), message });
+    const state: ArenaState = { turn: this.turn, phase: this.phase, whiteHp, blackHp, collisions: this.collisions, winner: this.winner(), message };
+    const key = JSON.stringify(state);
+    if (!force && key === this.lastPublished) return;
+    this.lastPublished = key;
+    this.callbacks?.(state);
   }
 }
