@@ -3,7 +3,7 @@
 **Repository:** `mr-zero0/ArChess`  
 **Active branch:** `fix/observability-complete`  
 **Branch policy:** fixes are developed and verified on dedicated branches; only verified work is merged to `main`  
-**Current product mode:** 2D only  
+**Current product mode: 2D only**  
 **3D:** DEFERRED — no 3D renderer, camera, WebGL runtime or 2D/3D switch is active  
 **GitHub Actions:** DISABLED — no workflow is present under `.github/workflows`
 
@@ -19,7 +19,7 @@
 | Local no-login gameplay | IMPLEMENTED |
 | First-collision settlement | FIXED IN CODE / VERIFY |
 | Collision → settle → next turn | FIXED IN CODE / VERIFY |
-| Python/API regression | 99 passed, 17 skipped, 61 warnings (last recorded baseline) |
+| Python/API regression | 107 passed, 4 failed, 17 skipped, 55 warnings (latest branch run) |
 | JavaScript regression | 18 passed (last recorded baseline) |
 | Settlement regression contract | ADDED |
 | Live browser gameplay | PENDING |
@@ -47,8 +47,9 @@ Verified behaviors include:
 - Browser observer syntax and boot-order contract.
 - Browser runtime module inventory coverage contract.
 - Python application tracing surface coverage with logging internals excluded from recursive tracing.
+- ContextVar teardown and thread tracing are stable under the targeted regression suite.
 
-### Required next coverage pass
+### Remaining coverage pass
 
 The foundation is not yet considered complete. The remaining observability workstream must continue across the full executable surface, with domain-specific events added where generic function tracing is insufficient. Priority areas are:
 
@@ -68,6 +69,10 @@ The first live collision could leave the game in the physics phase indefinitely.
 The contract regression in `tests/test_2d_runtime_contract.py` locks this ownership rule so a future change cannot reintroduce `activeCollisions` as a persistent settlement gate.
 
 **Important:** the code fix is on `main`, but live browser verification is still required. The browser gate remains pending until the user's local game demonstrates first collision → full resolution → next player can launch.
+
+## Ranked Contract Restoration
+
+The current application registers ranked/progression routes from `game/ranked_routes.py`. The ranked disconnect outcome endpoint was restored on `fix/observability-complete` so surrender, timeout, and abandonment requests can reach the existing ranked-room settlement hook instead of returning 404.
 
 ## Preserved Requirements
 
