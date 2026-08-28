@@ -7,7 +7,8 @@
 **Branch policy:** fixes are developed and verified on dedicated branches; only verified work is merged to `main`  
 **Current product mode: 2D only**  
 **3D:** DEFERRED — no 3D renderer, camera, WebGL runtime or 2D/3D switch is active  
-**GitHub Actions:** DISABLED — no workflow is present under `.github/workflows`
+**GitHub Actions:** DISABLED — no workflow is present under `.github/workflows`  
+**Repository state:** single-branch repository (`main`)
 
 ## Current Gate
 
@@ -90,4 +91,4 @@ The tracker must describe verified reality, not merely intended code. `main` is 
 
 ## Repository State
 
-`main` remains the stable baseline and must not be modified during this workstream. `fix/observability-complete` is the active observability branch. GitHub Actions remain intentionally absent. Generated `Logs/` runtime output is ignored by Git and is never committed as application data.
+`main` is the stable baseline and the repository is intentionally a single-branch repository. `fix/observability-complete` is the active development branch. GitHub Actions remain intentionally absent. Generated `Logs/` runtime output is ignored by Git and is never committed as application data.
