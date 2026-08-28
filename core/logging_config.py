@@ -14,6 +14,8 @@ from datetime import datetime, timedelta, timezone
 from logging import Handler, LogRecord
 from pathlib import Path
 
+from flask import jsonify, request
+
 
 _RUN_ID = contextvars.ContextVar("archess_run_id", default="uninitialized")
 _REQUEST_ID = contextvars.ContextVar("archess_request_id", default="unknown")
@@ -21,7 +23,15 @@ _CORRELATION_ID = contextvars.ContextVar("archess_correlation_id", default="unkn
 _GAME_ID = contextvars.ContextVar("archess_game_id", default=None)
 _ROOM_ID = contextvars.ContextVar("archess_room_id", default=None)
 
-_REDACT_KEYS = re.compile(r"password|passwd|secret|token|authorization|cookie|session", re.IGNORECASE)
+_ACTIVE_RUN_ID = "uninitialized"
+_ACTIVE_RUN_DIR: Path | None = None
+_BROWSER_LOG_PATH: Path | None = None
+_BROWSER_LOG_LOCK = threading.RLock()
+
+_REDACT_KEYS = re.compile(
+    r"password|passwd|secret|token|authorization|cookie|session|credential|private.?key",
+    re.IGNORECASE,
+)
 _APPLICATION_ROOTS = ("game", "core", "config", "match_sessions")
 _IGNORED_MODULES = (
     "core.logging_config",
@@ -35,21 +45,33 @@ _IGNORED_MODULES = (
 )
 
 
+def _sanitize(value):
+    if isinstance(value, dict):
+        return {
+            str(key): "[REDACTED]" if _REDACT_KEYS.search(str(key)) else _sanitize(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, (list, tuple)):
+        return [_sanitize(item) for item in value]
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    return str(value)
+
+
 class JsonFormatter(logging.Formatter):
-    """Emit deterministic structured JSON with source and correlation context."""
+    """Emit structured records with exact source and execution context."""
 
     def format(self, record: LogRecord) -> str:
-        timestamp = datetime.now(timezone.utc).isoformat()
         payload = {
-            "timestamp": timestamp,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": record.levelname,
             "logger": record.name,
-            "run_id": _RUN_ID.get(),
+            "run_id": _RUN_ID.get() if _RUN_ID.get() != "uninitialized" else _ACTIVE_RUN_ID,
             "request_id": _REQUEST_ID.get(),
             "correlation_id": _CORRELATION_ID.get(),
             "game_id": _GAME_ID.get(),
             "room_id": _ROOM_ID.get(),
-            "event": getattr(record, "event_name", record.msg if isinstance(record.msg, str) else record.getMessage()),
+            "event": getattr(record, "event_name", record.getMessage()),
             "message": record.getMessage(),
             "module": record.module,
             "file": record.pathname,
@@ -59,9 +81,8 @@ class JsonFormatter(logging.Formatter):
             "thread": threading.current_thread().name,
         }
 
-        duration_ms = getattr(record, "duration_ms", None)
-        if duration_ms is not None:
-            payload["duration_ms"] = duration_ms
+        if getattr(record, "duration_ms", None) is not None:
+            payload["duration_ms"] = round(float(record.duration_ms), 3)
 
         fields = getattr(record, "fields", None)
         if isinstance(fields, dict) and fields:
@@ -78,7 +99,7 @@ class JsonFormatter(logging.Formatter):
 
 
 class RunFileHandler(Handler):
-    """File handler isolated to one immutable RunXX directory."""
+    """Write one JSONL stream into the immutable RunXX directory."""
 
     def __init__(self, path: Path) -> None:
         super().__init__()
@@ -91,9 +112,8 @@ class RunFileHandler(Handler):
         try:
             rendered = self.format(record)
             with self._lock:
-                if self._stream.closed:
-                    return
-                self._stream.write(rendered + "\n")
+                if not self._stream.closed:
+                    self._stream.write(rendered + "\n")
         except (OSError, ValueError, RuntimeError):
             self.handleError(record)
 
@@ -108,38 +128,18 @@ class RunFileHandler(Handler):
         super().close()
 
 
-class BrowserLogHandler(RunFileHandler):
-    pass
-
-
-def _sanitize(value):
-    if isinstance(value, dict):
-        return {
-            str(key): "[REDACTED]" if _REDACT_KEYS.search(str(key)) else _sanitize(item)
-            for key, item in value.items()
-        }
-    if isinstance(value, (list, tuple)):
-        return [_sanitize(item) for item in value]
-    if isinstance(value, (str, int, float, bool)) or value is None:
-        return value
-    return str(value)
-
-
 def _next_run_directory(base_logs: Path) -> tuple[str, Path]:
     now = datetime.now().astimezone()
-    year = now.strftime("%Y")
-    month = now.strftime("%b")
-    day = now.strftime("%d_Logs")
-    day_dir = base_logs / year / month / day
+    day_dir = base_logs / now.strftime("%Y") / now.strftime("%b") / now.strftime("%d_Logs")
     day_dir.mkdir(parents=True, exist_ok=True)
-    existing = []
+    numbers = []
     for child in day_dir.iterdir():
         if child.is_dir() and re.fullmatch(r"Run\d{2}", child.name):
             try:
-                existing.append(int(child.name[3:]))
+                numbers.append(int(child.name[3:]))
             except ValueError:
                 continue
-    number = (max(existing) + 1) if existing else 1
+    number = max(numbers, default=0) + 1
     run_id = f"Run{number:02d}"
     run_dir = day_dir / run_id
     run_dir.mkdir(parents=True, exist_ok=False)
@@ -160,15 +160,10 @@ def setup_logging_retention(base_logs: Path, days: int = 7) -> None:
                 if not day_dir.is_dir() or not day_dir.name.endswith("_Logs"):
                     continue
                 try:
-                    modified = datetime.fromtimestamp(day_dir.stat().st_mtime).astimezone()
-                    if modified < cutoff:
+                    if datetime.fromtimestamp(day_dir.stat().st_mtime).astimezone() < cutoff:
                         shutil.rmtree(day_dir, ignore_errors=True)
                 except OSError:
-                    logging.getLogger(__name__).warning(
-                        "Unable to inspect log directory",
-                        extra={"event_name": "LOG_RETENTION_INSPECT_ERROR", "fields": {"path": str(day_dir)}},
-                        exc_info=True,
-                    )
+                    continue
 
 
 def set_context(*, request_id=None, correlation_id=None, game_id=None, room_id=None):
@@ -178,26 +173,27 @@ def set_context(*, request_id=None, correlation_id=None, game_id=None, room_id=N
     if correlation_id is not None:
         tokens["correlation_id"] = _CORRELATION_ID.set(str(correlation_id))
     if game_id is not None:
-        tokens["game_id"] = _GAME_ID.set(str(game_id))
+        tokens["game_id"] = str(game_id)
     if room_id is not None:
-        tokens["room_id"] = _ROOM_ID.set(str(room_id))
+        tokens["room_id"] = str(room_id)
     return tokens
 
 
 def reset_context(tokens):
+    if not tokens:
+        return
     mapping = {
         "request_id": _REQUEST_ID,
         "correlation_id": _CORRELATION_ID,
-        "game_id": _GAME_ID,
-        "room_id": _ROOM_ID,
     }
     for key, token in reversed(list(tokens.items())):
-        mapping[key].reset(token)
+        if key in mapping:
+            mapping[key].reset(token)
 
 
 def get_observability_context() -> dict:
     return {
-        "run_id": _RUN_ID.get(),
+        "run_id": _RUN_ID.get() if _RUN_ID.get() != "uninitialized" else _ACTIVE_RUN_ID,
         "request_id": _REQUEST_ID.get(),
         "correlation_id": _CORRELATION_ID.get(),
         "game_id": _GAME_ID.get(),
@@ -205,11 +201,17 @@ def get_observability_context() -> dict:
     }
 
 
-def log_event(logger: logging.Logger, level: int, event: str, message: str | None = None, *, fields=None, duration_ms=None, exc_info=None) -> None:
-    extra = {
-        "event_name": event,
-        "fields": _sanitize(fields or {}),
-    }
+def log_event(
+    logger: logging.Logger,
+    level: int,
+    event: str,
+    message: str | None = None,
+    *,
+    fields=None,
+    duration_ms=None,
+    exc_info=None,
+) -> None:
+    extra = {"event_name": event, "fields": _sanitize(fields or {})}
     if duration_ms is not None:
         extra["duration_ms"] = round(float(duration_ms), 3)
     try:
@@ -219,39 +221,35 @@ def log_event(logger: logging.Logger, level: int, event: str, message: str | Non
 
 
 def audit_event(logger: logging.Logger, event: str, message: str | None = None, *, fields=None) -> None:
-    log_event(logger, logging.INFO, event, message, fields=fields)
+    log_event(logger, logging.INFO, f"AUDIT_{event}", message, fields=fields)
 
 
-def browser_event(logger: logging.Logger, payload: dict) -> None:
-    log_event(logger, logging.INFO, payload.get("event", "BROWSER_EVENT"), payload.get("message"), fields=payload)
-
-
-def _install_function_tracer(logger: logging.Logger, allow_reloader_parent: bool = False):
-    """Trace every ArChess application function without tracing logging/framework internals."""
-    enabled = os.environ.get("ARCHESS_TRACE_FUNCTIONS", "1")
-    if enabled != "1" or getattr(sys, "_archess_function_tracer", False):
-        return None
-
-    if not allow_reloader_parent and os.environ.get("WERKZEUG_RUN_MAIN") != "true":
+def _install_function_tracer(logger: logging.Logger, enabled: bool = True):
+    """Trace all application functions while excluding logging/framework internals."""
+    global _ACTIVE_RUN_ID
+    if not enabled or getattr(sys, "_archess_function_tracer", False):
         return None
 
     local = threading.local()
     local.disabled = False
-    local.stack = {}
+    local.started = {}
 
-    def safe_log(level: int, event: str, frame, **fields):
+    def safe_trace(level: int, event: str, frame, fields=None, duration_ms=None, exc_info=None):
         if sys.is_finalizing() or local.disabled or getattr(sys, "_archess_tracer_shutting_down", False):
             return
-        module = frame.f_globals.get("__name__", "")
-        function = frame.f_code.co_name
         try:
             local.disabled = True
             log_event(
                 logger,
                 level,
                 event,
-                fields={"module": module, "function": function, **fields},
+                fields=fields,
+                duration_ms=duration_ms,
+                exc_info=exc_info,
             )
+        except Exception:
+            # Observability must never become an application failure path.
+            pass
         finally:
             local.disabled = False
 
@@ -260,31 +258,37 @@ def _install_function_tracer(logger: logging.Logger, allow_reloader_parent: bool
             return None
 
         module = frame.f_globals.get("__name__", "") or ""
-        if module in _IGNORED_MODULES or module.startswith(tuple(f"{name}." for name in _IGNORED_MODULES)):
+        if module in _IGNORED_MODULES or module.startswith(tuple(f"{x}." for x in _IGNORED_MODULES)):
             return trace
         if not module.startswith(_APPLICATION_ROOTS):
             return trace
 
-        key = id(frame)
+        frame_key = id(frame)
+        function_name = f"{module}.{frame.f_code.co_name}"
         if event == "call":
-            local.stack[key] = time.perf_counter()
-            safe_log(logging.DEBUG, "FUNCTION_ENTER", frame)
+            local.started[frame_key] = time.perf_counter()
+            safe_trace(logging.DEBUG, "FUNCTION_ENTER", frame, fields={"function_name": function_name})
         elif event == "return":
-            started = local.stack.pop(key, None)
-            safe_log(
+            started = local.started.pop(frame_key, None)
+            safe_trace(
                 logging.DEBUG,
                 "FUNCTION_EXIT",
                 frame,
+                fields={"function_name": function_name},
                 duration_ms=(time.perf_counter() - started) * 1000 if started else None,
             )
         elif event == "exception" and arg:
-            exc_type, exc_value, _ = arg
-            safe_log(
+            exc_type, exc_value, exc_tb = arg
+            safe_trace(
                 logging.ERROR,
                 "FUNCTION_EXCEPTION",
                 frame,
-                exception_type=getattr(exc_type, "__name__", str(exc_type)),
-                exception_message=str(exc_value),
+                fields={
+                    "function_name": function_name,
+                    "exception_type": getattr(exc_type, "__name__", str(exc_type)),
+                    "exception_message": str(exc_value),
+                },
+                exc_info=(exc_type, exc_value, exc_tb),
             )
         return trace
 
@@ -293,8 +297,6 @@ def _install_function_tracer(logger: logging.Logger, allow_reloader_parent: bool
         try:
             sys.settrace(None)
             threading.settrace(None)
-            sys.setprofile(None)
-            threading.setprofile(None)
         except (RuntimeError, AttributeError):
             pass
 
@@ -302,58 +304,145 @@ def _install_function_tracer(logger: logging.Logger, allow_reloader_parent: bool
     threading.settrace(trace)
     sys._archess_function_tracer = True
     sys._archess_tracer_shutting_down = False
-    log_event(logger, logging.INFO, "FUNCTION_TRACING_ENABLED", "Application-wide Python function tracing enabled")
+    log_event(logger, logging.INFO, "FUNCTION_TRACING_ENABLED", "Application-wide function tracing enabled")
     return disable_on_shutdown
 
 
-def configure_logging(application):
-    """Install run-scoped structured logging and correlation-aware request instrumentation."""
-    logging.raiseExceptions = False
+def _install_browser_log_endpoint(application: object) -> None:
+    """Persist bounded browser diagnostics into the active run's browser.log."""
+    browser_logger = logging.getLogger("game.browser")
+    browser_logger.setLevel(logging.INFO)
+    browser_logger.propagate = False
 
+    @application.post("/api/observability/browser")
+    def _browser_logs():
+        started = time.perf_counter()
+        try:
+            payload = request.get_json(silent=True)
+            if not isinstance(payload, dict):
+                return jsonify({"error": "invalid_log_payload"}), 400
+            events = payload.get("events", [])
+            if not isinstance(events, list):
+                return jsonify({"error": "events_must_be_list"}), 400
+            events = events[:50]
+            for event in events:
+                if not isinstance(event, dict):
+                    continue
+                safe_payload = _sanitize(event)
+                tokens = set_context(
+                    correlation_id=safe_payload.get("correlationId"),
+                    game_id=safe_payload.get("gameId"),
+                    room_id=safe_payload.get("roomId"),
+                )
+                try:
+                    _write_browser_record(safe_payload)
+                finally:
+                    reset_context(tokens)
+            log_event(
+                application.logger,
+                logging.DEBUG,
+                "BROWSER_LOG_BATCH",
+                fields={"count": len(events)},
+                duration_ms=(time.perf_counter() - started) * 1000,
+            )
+            return jsonify({"accepted": len(events), "runId": _ACTIVE_RUN_ID}), 202
+        except Exception as error:
+            log_event(
+                application.logger,
+                logging.ERROR,
+                "BROWSER_LOG_ENDPOINT_ERROR",
+                exc_info=(type(error), error, error.__traceback__),
+            )
+            return jsonify({"error": "browser_log_failed", "runId": _ACTIVE_RUN_ID}), 500
+
+
+def _write_browser_record(payload: dict) -> None:
+    if _BROWSER_LOG_PATH is None:
+        return
+    record = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "level": str(payload.get("level", "INFO")).upper(),
+        "logger": "game.browser",
+        "run_id": _ACTIVE_RUN_ID,
+        "request_id": payload.get("requestId", "unknown"),
+        "correlation_id": payload.get("correlationId", _CORRELATION_ID.get()),
+        "game_id": payload.get("gameId", _GAME_ID.get()),
+        "room_id": payload.get("roomId", _ROOM_ID.get()),
+        "event": payload.get("event", "BROWSER_EVENT"),
+        "message": payload.get("message", ""),
+        "module": payload.get("source", "browser"),
+        "function": payload.get("function"),
+        "line": payload.get("line"),
+        "fields": _sanitize(payload),
+    }
+    with _BROWSER_LOG_LOCK:
+        try:
+            with _BROWSER_LOG_PATH.open("a", encoding="utf-8") as stream:
+                stream.write(json.dumps(record, default=str, ensure_ascii=False) + "\n")
+        except (OSError, ValueError, RuntimeError):
+            return
+
+
+def append_browser_log(application, payload: dict) -> None:
+    del application
+    _write_browser_record(_sanitize(payload))
+
+
+def configure_logging(application):
+    """Configure one process run with structured, correlated, shutdown-safe logs."""
+    global _ACTIVE_RUN_ID, _ACTIVE_RUN_DIR, _BROWSER_LOG_PATH
+
+    logging.raiseExceptions = False
     base_logs = Path(os.getcwd()) / "Logs"
-    run_id, run_dir = _next_run_directory(base_logs)
-    _RUN_ID.set(run_id)
     setup_logging_retention(base_logs)
 
-    application_handler = RunFileHandler(run_dir / "application.log")
-    error_handler = RunFileHandler(run_dir / "error.log")
-    audit_handler = RunFileHandler(run_dir / "audit.log")
-    browser_handler = BrowserLogHandler(run_dir / "browser.log")
-    for handler in (application_handler, error_handler, audit_handler, browser_handler):
-        handler.setFormatter(JsonFormatter())
+    if _ACTIVE_RUN_DIR is None or not _ACTIVE_RUN_DIR.exists():
+        _ACTIVE_RUN_ID, _ACTIVE_RUN_DIR = _next_run_directory(base_logs)
+    _RUN_ID.set(_ACTIVE_RUN_ID)
+    _BROWSER_LOG_PATH = _ACTIVE_RUN_DIR / "browser.log"
+    _BROWSER_LOG_PATH.touch(exist_ok=True)
 
-    class _StreamFilter(logging.Filter):
+    handlers = [
+        RunFileHandler(_ACTIVE_RUN_DIR / "application.log"),
+        RunFileHandler(_ACTIVE_RUN_DIR / "error.log"),
+        RunFileHandler(_ACTIVE_RUN_DIR / "audit.log"),
+    ]
+
+    class LevelRange(logging.Filter):
         def __init__(self, minimum: int, maximum: int | None = None):
             self.minimum = minimum
             self.maximum = maximum
 
         def filter(self, record: LogRecord) -> bool:
-            if record.levelno < self.minimum:
-                return False
-            if self.maximum is not None and record.levelno >= self.maximum:
-                return False
-            return True
+            return record.levelno >= self.minimum and (self.maximum is None or record.levelno < self.maximum)
 
-    class _NamedStreamFilter(logging.Filter):
+    class AuditFilter(logging.Filter):
         def filter(self, record: LogRecord) -> bool:
-            return record.name.startswith(("game.browser", "archess.browser"))
+            return str(getattr(record, "event_name", "")).startswith("AUDIT_")
 
-    application_handler.addFilter(_StreamFilter(logging.DEBUG, logging.ERROR))
-    error_handler.addFilter(_StreamFilter(logging.ERROR))
-    audit_handler.addFilter(lambda_record_filter("AUDIT"))
-    browser_handler.addFilter(_NamedStreamFilter())
+    handlers[0].addFilter(LevelRange(logging.DEBUG, logging.ERROR))
+    handlers[1].addFilter(LevelRange(logging.ERROR))
+    handlers[2].addFilter(AuditFilter())
+    for handler in handlers:
+        handler.setFormatter(JsonFormatter())
 
-    application.logger.handlers.clear()
-    application.logger.addHandler(application_handler)
-    application.logger.addHandler(error_handler)
-    application.logger.addHandler(audit_handler)
+    for old_handler in list(application.logger.handlers):
+        application.logger.removeHandler(old_handler)
+        try:
+            old_handler.close()
+        except Exception:
+            pass
+
+    for handler in handlers:
+        application.logger.addHandler(handler)
+
     application.logger.setLevel(logging.DEBUG if application.debug else logging.INFO)
     application.logger.propagate = False
-    application.logger.info("Structured observability initialized", extra={"event_name": "OBSERVABILITY_READY"})
+    _install_browser_log_endpoint(application)
 
     @application.before_request
     def _request_started():
-        from flask import g, request
+        from flask import g
 
         request_id = os.urandom(8).hex()
         correlation_id = request.headers.get("X-ArChess-Correlation-ID") or os.urandom(8).hex()
@@ -386,16 +475,20 @@ def configure_logging(application):
 
     @application.teardown_request
     def _request_teardown(error=None):
-        if error and not sys.is_finalizing():
-            log_event(application.logger, logging.ERROR, "REQUEST_TEARDOWN_ERROR", exc_info=(type(error), error, error.__traceback__))
         from flask import g
-        tokens = getattr(g, "archess_context_tokens", None)
-        if tokens:
-            reset_context(tokens)
+
+        if error and not sys.is_finalizing():
+            log_event(
+                application.logger,
+                logging.ERROR,
+                "REQUEST_TEARDOWN_ERROR",
+                exc_info=(type(error), error, error.__traceback__),
+            )
+        reset_context(getattr(g, "archess_context_tokens", None))
 
     @application.errorhandler(Exception)
     def _handle_unexpected_error(error):
-        from flask import g, jsonify, request
+        from flask import g
         from werkzeug.exceptions import HTTPException
 
         if isinstance(error, HTTPException):
@@ -407,6 +500,7 @@ def configure_logging(application):
             )
             return error
 
+        request_id = getattr(g, "archess_request_id", "unknown")
         log_event(
             application.logger,
             logging.ERROR,
@@ -418,7 +512,7 @@ def configure_logging(application):
             {
                 "error": "internal_server_error",
                 "message": "ArChess encountered an unexpected server error.",
-                "requestId": getattr(g, "archess_request_id", "unknown"),
+                "requestId": request_id,
             }
         ), 500
 
@@ -434,50 +528,17 @@ def configure_logging(application):
         )
 
     threading.excepthook = _uncaught_thread_exception
+    trace_enabled = os.environ.get("ARCHESS_TRACE_FUNCTIONS", "1") == "1"
+    _install_function_tracer(application.logger, enabled=trace_enabled)
 
-    reloader_active = application.debug and "WERKZEUG_RUN_MAIN" in os.environ
-    _install_function_tracer(application.logger, allow_reloader_parent=not reloader_active)
-    application.config["ARCHESS_LOG_RUN_ID"] = run_id
-    application.config["ARCHESS_LOG_RUN_DIR"] = str(run_dir)
+    application.config["ARCHESS_LOG_RUN_ID"] = _ACTIVE_RUN_ID
+    application.config["ARCHESS_LOG_RUN_DIR"] = str(_ACTIVE_RUN_DIR)
     application.config["ARCHESS_BROWSER_LOGGER"] = "game.browser"
-
-    application.logger.info(
-        "ArChess observability initialized",
-        extra={
-            "event_name": "OBSERVABILITY_READY",
-            "fields": {"run_id": run_id, "log_dir": str(run_dir)},
-        },
+    log_event(
+        application.logger,
+        logging.INFO,
+        "OBSERVABILITY_READY",
+        "Structured observability initialized",
+        fields={"run_id": _ACTIVE_RUN_ID, "log_dir": str(_ACTIVE_RUN_DIR)},
     )
-    return run_dir
-
-
-def lambda_record_filter(event_name: str):
-    class _Filter(logging.Filter):
-        def filter(self, record: LogRecord) -> bool:
-            return getattr(record, "event_name", None) == event_name
-    return _Filter()
-
-
-def get_run_directory(application) -> Path | None:
-    configured = application.config.get("ARCHESS_LOG_RUN_DIR")
-    return Path(configured) if configured else None
-
-
-def append_browser_log(application, payload: dict) -> None:
-    """Persist browser diagnostics into the current run without logging recursive request noise."""
-    run_dir = get_run_directory(application)
-    if run_dir is None:
-        return
-    browser_path = run_dir / "browser.log"
-    handler = RunFileHandler(browser_path)
-    handler.setFormatter(JsonFormatter())
-    logger = logging.getLogger("game.browser")
-    logger.setLevel(logging.INFO)
-    if not logger.handlers:
-        logger.addHandler(handler)
-        logger.propagate = False
-    tokens = set_context(correlation_id=payload.get("correlationId"), game_id=payload.get("gameId"), room_id=payload.get("roomId"))
-    try:
-        browser_event(logger, payload)
-    finally:
-        reset_context(tokens)
+    return _ACTIVE_RUN_DIR
