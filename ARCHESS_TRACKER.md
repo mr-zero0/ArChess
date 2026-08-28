@@ -215,9 +215,9 @@ Open-source attributions remain documented in `THIRD_PARTY_NOTICES.md` and `docs
 
 **Latest local automated baseline before this collision fix:** 99 Python tests passed, 17 skipped, 61 warnings; 18 JavaScript tests passed.
 
-**Collision fix:** `static/js/physics.js` now performs epsilon-separated positional recovery and keeps stationary overlap cleanup out of the active-collision settle gate. A focused regression was added at `tests/collision_settlement.test.js`.
+**Collision fix commit:** `d6e585f9dcc77e8f17bfbf8adb883949889d5e5c` updates `static/js/physics.js`, centralizes the collision separation tolerance in `game/constants.py`, adds `tests/collision_settlement.test.js`, and aligns the runtime contract test with the single-branch repository.
 
-**Live browser result:** page renders and local drag/launch works. The first-collision freeze remains pending fresh local browser verification after this physics fix.
+**Live browser result before this fix:** page renders and local drag/launch works; the first collision could still stall the physics/turn transition. Fresh local browser verification is required after this fix.
 
 **GitHub Actions:** `.github/workflows` remains absent; no Actions workflow is being introduced.
 
