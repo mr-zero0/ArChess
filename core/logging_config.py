@@ -59,47 +59,44 @@ def _sanitize(value):
 
 
 class JsonFormatter(logging.Formatter):
-    """Emit structured records with exact source and execution context."""
+    """Emit structured records with precise source and correlation metadata."""
 
     def format(self, record: LogRecord) -> str:
+        context_run = _RUN_ID.get()
         payload = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": record.levelname,
             "logger": record.name,
-            "run_id": _RUN_ID.get() if _RUN_ID.get() != "uninitialized" else _ACTIVE_RUN_ID,
+            "run_id": context_run if context_run != "uninitialized" else _ACTIVE_RUN_ID,
             "request_id": _REQUEST_ID.get(),
             "correlation_id": _CORRELATION_ID.get(),
             "game_id": _GAME_ID.get(),
             "room_id": _ROOM_ID.get(),
             "event": getattr(record, "event_name", record.getMessage()),
             "message": record.getMessage(),
-            "module": record.module,
-            "file": record.pathname,
-            "function": record.funcName,
-            "line": record.lineno,
+            "module": getattr(record, "source_module", record.module),
+            "file": getattr(record, "source_file", record.pathname),
+            "function": getattr(record, "source_function", record.funcName),
+            "line": getattr(record, "source_line", record.lineno),
             "process_id": os.getpid(),
             "thread": threading.current_thread().name,
         }
-
         if getattr(record, "duration_ms", None) is not None:
             payload["duration_ms"] = round(float(record.duration_ms), 3)
-
         fields = getattr(record, "fields", None)
         if isinstance(fields, dict) and fields:
             payload["fields"] = _sanitize(fields)
-
         if record.exc_info:
             payload["exception"] = {
                 "type": record.exc_info[0].__name__ if record.exc_info[0] else "Exception",
                 "message": str(record.exc_info[1]) if record.exc_info[1] else "",
                 "stacktrace": "".join(traceback.format_exception(*record.exc_info)),
             }
-
         return json.dumps(payload, default=str, ensure_ascii=False)
 
 
 class RunFileHandler(Handler):
-    """Write one JSONL stream into the immutable RunXX directory."""
+    """Write one JSONL stream into a single run directory."""
 
     def __init__(self, path: Path) -> None:
         super().__init__()
@@ -173,9 +170,9 @@ def set_context(*, request_id=None, correlation_id=None, game_id=None, room_id=N
     if correlation_id is not None:
         tokens["correlation_id"] = _CORRELATION_ID.set(str(correlation_id))
     if game_id is not None:
-        tokens["game_id"] = str(game_id)
+        tokens["game_id"] = _GAME_ID.set(str(game_id))
     if room_id is not None:
-        tokens["room_id"] = str(room_id)
+        tokens["room_id"] = _ROOM_ID.set(str(room_id))
     return tokens
 
 
@@ -185,15 +182,17 @@ def reset_context(tokens):
     mapping = {
         "request_id": _REQUEST_ID,
         "correlation_id": _CORRELATION_ID,
+        "game_id": _GAME_ID,
+        "room_id": _ROOM_ID,
     }
     for key, token in reversed(list(tokens.items())):
-        if key in mapping:
-            mapping[key].reset(token)
+        mapping[key].reset(token)
 
 
 def get_observability_context() -> dict:
+    run_id = _RUN_ID.get()
     return {
-        "run_id": _RUN_ID.get() if _RUN_ID.get() != "uninitialized" else _ACTIVE_RUN_ID,
+        "run_id": run_id if run_id != "uninitialized" else _ACTIVE_RUN_ID,
         "request_id": _REQUEST_ID.get(),
         "correlation_id": _CORRELATION_ID.get(),
         "game_id": _GAME_ID.get(),
@@ -210,10 +209,21 @@ def log_event(
     fields=None,
     duration_ms=None,
     exc_info=None,
+    source=None,
 ) -> None:
-    extra = {"event_name": event, "fields": _sanitize(fields or {})}
+    clean_fields = _sanitize(fields or {})
+    extra = {"event_name": event, "fields": clean_fields}
     if duration_ms is not None:
         extra["duration_ms"] = round(float(duration_ms), 3)
+    if isinstance(source, dict):
+        if source.get("module"):
+            extra["source_module"] = source["module"]
+        if source.get("file"):
+            extra["source_file"] = source["file"]
+        if source.get("function"):
+            extra["source_function"] = source["function"]
+        if source.get("line"):
+            extra["source_line"] = source["line"]
     try:
         logger.log(level, message or event, extra=extra, exc_info=exc_info)
     except (OSError, ValueError, RuntimeError):
@@ -225,8 +235,7 @@ def audit_event(logger: logging.Logger, event: str, message: str | None = None, 
 
 
 def _install_function_tracer(logger: logging.Logger, enabled: bool = True):
-    """Trace all application functions while excluding logging/framework internals."""
-    global _ACTIVE_RUN_ID
+    """Trace all ArChess application functions without tracing the logging machinery."""
     if not enabled or getattr(sys, "_archess_function_tracer", False):
         return None
 
@@ -234,7 +243,7 @@ def _install_function_tracer(logger: logging.Logger, enabled: bool = True):
     local.disabled = False
     local.started = {}
 
-    def safe_trace(level: int, event: str, frame, fields=None, duration_ms=None, exc_info=None):
+    def safe_trace(level: int, event: str, frame, *, fields=None, duration_ms=None, exc_info=None):
         if sys.is_finalizing() or local.disabled or getattr(sys, "_archess_tracer_shutting_down", False):
             return
         try:
@@ -246,9 +255,14 @@ def _install_function_tracer(logger: logging.Logger, enabled: bool = True):
                 fields=fields,
                 duration_ms=duration_ms,
                 exc_info=exc_info,
+                source={
+                    "module": frame.f_globals.get("__name__", "unknown"),
+                    "file": frame.f_code.co_filename,
+                    "function": frame.f_code.co_name,
+                    "line": frame.f_lineno,
+                },
             )
         except Exception:
-            # Observability must never become an application failure path.
             pass
         finally:
             local.disabled = False
@@ -256,20 +270,19 @@ def _install_function_tracer(logger: logging.Logger, enabled: bool = True):
     def trace(frame, event, arg):
         if sys.is_finalizing() or local.disabled or getattr(sys, "_archess_tracer_shutting_down", False):
             return None
-
         module = frame.f_globals.get("__name__", "") or ""
-        if module in _IGNORED_MODULES or module.startswith(tuple(f"{x}." for x in _IGNORED_MODULES)):
+        if module in _IGNORED_MODULES or module.startswith(tuple(f"{name}." for name in _IGNORED_MODULES)):
             return trace
         if not module.startswith(_APPLICATION_ROOTS):
             return trace
 
-        frame_key = id(frame)
+        key = id(frame)
         function_name = f"{module}.{frame.f_code.co_name}"
         if event == "call":
-            local.started[frame_key] = time.perf_counter()
+            local.started[key] = time.perf_counter()
             safe_trace(logging.DEBUG, "FUNCTION_ENTER", frame, fields={"function_name": function_name})
         elif event == "return":
-            started = local.started.pop(frame_key, None)
+            started = local.started.pop(key, None)
             safe_trace(
                 logging.DEBUG,
                 "FUNCTION_EXIT",
@@ -308,54 +321,6 @@ def _install_function_tracer(logger: logging.Logger, enabled: bool = True):
     return disable_on_shutdown
 
 
-def _install_browser_log_endpoint(application: object) -> None:
-    """Persist bounded browser diagnostics into the active run's browser.log."""
-    browser_logger = logging.getLogger("game.browser")
-    browser_logger.setLevel(logging.INFO)
-    browser_logger.propagate = False
-
-    @application.post("/api/observability/browser")
-    def _browser_logs():
-        started = time.perf_counter()
-        try:
-            payload = request.get_json(silent=True)
-            if not isinstance(payload, dict):
-                return jsonify({"error": "invalid_log_payload"}), 400
-            events = payload.get("events", [])
-            if not isinstance(events, list):
-                return jsonify({"error": "events_must_be_list"}), 400
-            events = events[:50]
-            for event in events:
-                if not isinstance(event, dict):
-                    continue
-                safe_payload = _sanitize(event)
-                tokens = set_context(
-                    correlation_id=safe_payload.get("correlationId"),
-                    game_id=safe_payload.get("gameId"),
-                    room_id=safe_payload.get("roomId"),
-                )
-                try:
-                    _write_browser_record(safe_payload)
-                finally:
-                    reset_context(tokens)
-            log_event(
-                application.logger,
-                logging.DEBUG,
-                "BROWSER_LOG_BATCH",
-                fields={"count": len(events)},
-                duration_ms=(time.perf_counter() - started) * 1000,
-            )
-            return jsonify({"accepted": len(events), "runId": _ACTIVE_RUN_ID}), 202
-        except Exception as error:
-            log_event(
-                application.logger,
-                logging.ERROR,
-                "BROWSER_LOG_ENDPOINT_ERROR",
-                exc_info=(type(error), error, error.__traceback__),
-            )
-            return jsonify({"error": "browser_log_failed", "runId": _ACTIVE_RUN_ID}), 500
-
-
 def _write_browser_record(payload: dict) -> None:
     if _BROWSER_LOG_PATH is None:
         return
@@ -365,9 +330,9 @@ def _write_browser_record(payload: dict) -> None:
         "logger": "game.browser",
         "run_id": _ACTIVE_RUN_ID,
         "request_id": payload.get("requestId", "unknown"),
-        "correlation_id": payload.get("correlationId", _CORRELATION_ID.get()),
-        "game_id": payload.get("gameId", _GAME_ID.get()),
-        "room_id": payload.get("roomId", _ROOM_ID.get()),
+        "correlation_id": payload.get("correlationId", "unknown"),
+        "game_id": payload.get("gameId"),
+        "room_id": payload.get("roomId"),
         "event": payload.get("event", "BROWSER_EVENT"),
         "message": payload.get("message", ""),
         "module": payload.get("source", "browser"),
@@ -388,8 +353,42 @@ def append_browser_log(application, payload: dict) -> None:
     _write_browser_record(_sanitize(payload))
 
 
+def _install_browser_log_endpoint(application: object) -> None:
+    @application.post("/api/observability/browser")
+    def _browser_logs():
+        started = time.perf_counter()
+        try:
+            payload = request.get_json(silent=True)
+            if not isinstance(payload, dict):
+                return jsonify({"error": "invalid_log_payload"}), 400
+            events = payload.get("events", [])
+            if not isinstance(events, list):
+                return jsonify({"error": "events_must_be_list"}), 400
+            events = events[:50]
+            for event in events:
+                if isinstance(event, dict):
+                    _write_browser_record(_sanitize(event))
+            log_event(
+                application.logger,
+                logging.DEBUG,
+                "BROWSER_LOG_BATCH",
+                fields={"count": len(events)},
+                duration_ms=(time.perf_counter() - started) * 1000,
+            )
+            return jsonify({"accepted": len(events), "runId": _ACTIVE_RUN_ID}), 202
+        except Exception as error:
+            log_event(
+                application.logger,
+                logging.ERROR,
+                "BROWSER_LOG_ENDPOINT_ERROR",
+                fields={"path": request.path},
+                exc_info=(type(error), error, error.__traceback__),
+            )
+            return jsonify({"error": "browser_log_failed", "runId": _ACTIVE_RUN_ID}), 500
+
+
 def configure_logging(application):
-    """Configure one process run with structured, correlated, shutdown-safe logs."""
+    """Configure one process run with correlated, structured, shutdown-safe logs."""
     global _ACTIVE_RUN_ID, _ACTIVE_RUN_DIR, _BROWSER_LOG_PATH
 
     logging.raiseExceptions = False
@@ -432,12 +431,16 @@ def configure_logging(application):
             old_handler.close()
         except Exception:
             pass
-
     for handler in handlers:
         application.logger.addHandler(handler)
 
+    console = logging.StreamHandler()
+    console.setLevel(logging.INFO)
+    console.setFormatter(JsonFormatter())
+    application.logger.addHandler(console)
     application.logger.setLevel(logging.DEBUG if application.debug else logging.INFO)
     application.logger.propagate = False
+
     _install_browser_log_endpoint(application)
 
     @application.before_request
