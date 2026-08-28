@@ -20,7 +20,7 @@
 | Collision → settle → next turn | FIXED IN CODE / VERIFY |
 | Python/API regression | 99 passed, 17 skipped, 61 warnings |
 | JavaScript regression | 18 passed |
-| Focused collision regression | ADDED |
+| Settlement regression contract | ADDED |
 | Live browser gameplay | PENDING |
 | Responsive multi-browser matrix | PENDING |
 | Accessibility / security / performance final audits | PENDING |
@@ -28,11 +28,11 @@
 
 ## Collision Settlement Regression
 
-The first live collision could leave the game in the physics phase indefinitely. The correction in `static/js/physics.js` separates overlapping bodies slightly beyond contact and excludes stationary positional cleanup from the active-collision settle gate. The tolerance is centralized as `collisionSeparationEpsilon` in `game/constants.py`.
+The first live collision could leave the game in the physics phase indefinitely. The collision solver now separates overlapping bodies slightly beyond contact, while transient `activeCollisions` state is no longer allowed to block turn settlement. Settlement is based on the authoritative `moving` state of surviving pieces; once every surviving piece has stopped for the configured settle delay, the normal next-turn transition runs.
 
-A focused regression was added at `tests/collision_settlement.test.js` covering first-collision settlement and stationary-overlap recovery.
+The contract regression in `tests/test_2d_runtime_contract.py` locks this ownership rule so a future change cannot reintroduce `activeCollisions` as a persistent settlement gate.
 
-**Important:** live browser verification is still required after this build. The code fix is not being represented as a fully verified browser fix until the user's local game is exercised.
+**Important:** the code fix is now on `main`, but live browser verification is still required. The browser gate remains pending until the user's local game demonstrates first collision → full resolution → next player can launch.
 
 ## Preserved Requirements
 
