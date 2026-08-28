@@ -11,5 +11,6 @@ for (const id of ["arena", "matchmaking", "ranked", "challenges", "history", "pr
 }
 
 test("feature registry keeps arena as the live primary surface", () => {
-  assert.match(source, /id: [\"']arena[\"'][\\s\\S]*status: [\"']live[\"']/);
+  const arena = source.match(/\{ id: [\"']arena[\"'][^\n]*\}/)?.[0] ?? "";
+  assert.match(arena, /status: [\"']live[\"']/);
 });
