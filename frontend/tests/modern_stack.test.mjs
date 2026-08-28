@@ -35,9 +35,9 @@ test("Phaser normalizes responsive pointer input for drag and release", () => {
   assert.match(arena, /drawAim/);
 });
 
-test("collision settlement uses velocity rather than a persistent collision gate", () => {
-  assert.match(physics, /piece\.moving = false/);
-  assert.match(physics, /speed\(piece\) < PHYSICS\.minVelocity/);
+test("collision settlement is velocity-authoritative", () => {
+  assert.match(physics, /minVelocity:\s*0\.18/);
+  assert.match(physics, /const stillFast = pieces\.some/);
   assert.match(physics, /settleTimer/);
   assert.doesNotMatch(physics, /activeCollisions/);
 });
