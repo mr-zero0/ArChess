@@ -118,10 +118,14 @@ def _next_run_directory(base_logs: Path) -> tuple[str, Path]:
             except ValueError:
                 continue
     number = max(numbers, default=0) + 1
-    run_id = f"Run{number:02d}"
-    run_dir = day_dir / run_id
-    run_dir.mkdir(parents=True, exist_ok=False)
-    return run_id, run_dir
+    while True:
+        run_id = f"Run{number:02d}"
+        run_dir = day_dir / run_id
+        try:
+            run_dir.mkdir(parents=False, exist_ok=False)
+            return run_id, run_dir
+        except FileExistsError:
+            number += 1
 
 
 def setup_logging_retention(base_logs: Path, days: int = 7) -> None:
