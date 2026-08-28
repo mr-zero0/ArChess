@@ -7,7 +7,7 @@
     debug: console.debug?.bind(console) || console.log.bind(console),
     info: console.info?.bind(console) || console.log.bind(console),
     warn: console.warn?.bind(console) || console.log.bind(console),
-    error: console.error?.bind(console) || console.log.bind(console,
+    error: console.error?.bind(console) || console.log.bind(console),
     log: console.log.bind(console),
   };
   let capturingConsole = false;
@@ -16,7 +16,7 @@
       const key = "archess.correlationId";
       const existing = sessionStorage.getItem(key);
       if (existing) return existing;
-      const value = crypto?.randomUUID?.() || `corr-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const value = globalThis.crypto?.randomUUID?.() || `corr-${Date.now()}-${Math.random().toString(16).slice(2)}`;
       sessionStorage.setItem(key, value);
       return value;
     } catch (_) {
@@ -234,20 +234,20 @@
     const game = window.gameState;
     if (!game) return;
     const moving = Array.isArray(game.pieces) ? game.pieces.filter((piece) => piece.alive && piece.moving).length : 0;
-    const activeCollisions = game.activeCollisions?.size || 0;
-    const state = JSON.stringify({
+    const stateObject = {
       phase: game.phase,
       currentPlayer: game.currentPlayer,
       moving,
-      activeCollisions,
+      activeCollisions: game.activeCollisions?.size || 0,
       selectedPiece: game.selectedPiece?.id || null,
       collisionCount: game.collisionCount || 0,
-      settledFor: Number(game.settledFor || 0).toFixed(3),
+      settleBucket: Math.floor(Number(game.settledFor || 0) * 10) / 10,
       gameOver: !!game.gameOver,
-    });
+    };
+    const state = JSON.stringify(stateObject);
     if (state !== lastState) {
       lastState = state;
-      write("debug", "GAME_STATE_TRANSITION", { state: JSON.parse(state) });
+      write("debug", "GAME_STATE_TRANSITION", { state: stateObject });
     }
   };
 
