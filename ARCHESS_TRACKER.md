@@ -31,7 +31,7 @@
 | Function tracing shutdown regression | FIXED | Tracer is finalization-safe, application-scoped and non-fatal |
 | Browser navigation harness | IMPLEMENTED / VERIFY | Deterministic browser readiness and diagnostics added |
 | Local account gate | CHANGED BY DESIGN | Local 2D gameplay is playable without sign-in; account-dependent/competitive features remain preserved separately |
-| First-collision settlement | FIXED IN PHYSICS / VERIFY | Collision recovery now separates bodies with an epsilon and does not keep stationary cleanup in the active-collision settle gate |
+| First-collision settlement | FIXED IN PHYSICS / VERIFY | Collision recovery separates bodies with an epsilon and does not keep stationary cleanup in the active-collision settle gate |
 | Collision → settle → next turn | **FIXED IN PHYSICS / VERIFY** | Sticky collision state is removed; live browser test must confirm White → collision → settle → Black |
 | Python/API regression | PASSING BASELINE | 99 passed, 17 skipped, 61 warnings in latest confirmed local baseline |
 | JavaScript regression | PASSING BASELINE | 18/18 Node tests passed in latest confirmed local baseline |
@@ -215,13 +215,15 @@ Open-source attributions remain documented in `THIRD_PARTY_NOTICES.md` and `docs
 
 **Latest confirmed automated baseline before this gameplay fix:** 99 Python tests passed, 17 skipped, 61 warnings; 18 JavaScript tests passed.
 
-**Current collision fix baseline:** `5e6193a9c185f315b66978e14890610df111fb4f` contains the epsilon-separated collision recovery, centralized collision separation tolerance, focused collision regression and updated runtime contract.
+**Current collision fix:** `static/js/physics.js` now uses epsilon-separated recovery and excludes stationary overlap cleanup from the active-collision settle gate. `game/constants.py` centralizes the separation tolerance. `tests/collision_settlement.test.js` adds direct regression coverage.
 
 **Live browser result before this fix:** page renders and local drag/launch works; the first collision could still stall the physics/turn transition. Fresh local browser verification is required after this fix.
 
 **GitHub Actions:** `.github/workflows` remains absent; no Actions workflow is being introduced.
 
 **Repository branch state:** `main` is the only branch.
+
+**Current working baseline commit:** pending final ref update for this tracker revision.
 
 **Promotion posture:** this is a working baseline, not a release candidate. The next verification step is targeted live browser gameplay, followed by the full responsive and regression matrices.
 
