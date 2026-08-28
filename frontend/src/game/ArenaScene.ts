@@ -65,22 +65,26 @@ export class ArenaScene extends Phaser.Scene {
 
   private addPiece(piece: ArenaPiece) {
     const sprite = this.add.text(piece.x * CELL, piece.y * CELL, GLYPH[piece.type], {
-      fontFamily: "Georgia, serif", fontSize: `${Math.round(CELL * 0.7)}px`,
+      fontFamily: "Georgia, serif",
+      fontSize: `${Math.round(CELL * 0.7)}px`,
       color: piece.team === "white" ? "#f7fbff" : "#05080c",
-      stroke: piece.team === "white" ? "#172131" : "#dde6ef", strokeThickness: 5,
+      stroke: piece.team === "white" ? "#172131" : "#dde6ef",
+      strokeThickness: 5,
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     sprite.setData("pieceId", piece.id);
     this.sprites.set(piece.id, sprite);
   }
 
   private syncPiece(piece: ArenaPiece) {
-    const sprite = this.sprites.get(piece.id); if (!sprite) return;
+    const sprite = this.sprites.get(piece.id);
+    if (!sprite) return;
     sprite.setVisible(piece.alive).setPosition(piece.x * CELL, piece.y * CELL);
     sprite.setAlpha(piece.alive ? 1 : 0.2);
   }
 
   private pieceAt(x: number, y: number) {
-    let found: ArenaPiece | null = null; let best = CELL * 0.42;
+    let found: ArenaPiece | null = null;
+    let best = CELL * 0.42;
     for (const piece of this.pieces) {
       if (!piece.alive) continue;
       const d = Math.hypot(piece.x * CELL - x, piece.y * CELL - y);
@@ -101,7 +105,8 @@ export class ArenaScene extends Phaser.Scene {
 
   private handleMove(pointer: Phaser.Input.Pointer) {
     if (!this.selected || !this.dragStart) return;
-    const sprite = this.sprites.get(this.selected.id); if (!sprite) return;
+    const sprite = this.sprites.get(this.selected.id);
+    if (!sprite) return;
     const d = this.dragStart.distance(new Phaser.Math.Vector2(pointer.x, pointer.y));
     sprite.setScale(1 + Math.min(0.15, d / 500));
   }
@@ -129,7 +134,8 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   private flashCollision(a: ArenaPiece, b: ArenaPiece, impact: number) {
-    const x = ((a.x + b.x) * CELL) / 2, y = ((a.y + b.y) * CELL) / 2;
+    const x = ((a.x + b.x) * CELL) / 2;
+    const y = ((a.y + b.y) * CELL) / 2;
     const ring = this.add.circle(x, y, 8, 0xffffff, 0);
     ring.setStrokeStyle(4, 0xffd37d, 1);
     this.tweens.add({ targets: ring, radius: Math.min(70, 16 + impact * 8), alpha: 0, duration: 220, onComplete: () => ring.destroy() });
