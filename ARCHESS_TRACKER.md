@@ -16,7 +16,7 @@
 | Themes / resize / high-DPI | IMPLEMENTED / VERIFY |
 | Logging / observability | IMPLEMENTED |
 | Local no-login gameplay | IMPLEMENTED |
-| First-collision physics correction | FIXED IN CODE / VERIFY |
+| First-collision settlement | FIXED IN CODE / VERIFY |
 | Collision → settle → next turn | FIXED IN CODE / VERIFY |
 | Python/API regression | 99 passed, 17 skipped, 61 warnings |
 | JavaScript regression | 18 passed |
