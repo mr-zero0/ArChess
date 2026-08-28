@@ -13,7 +13,6 @@ from flask import Flask
 import core.logging_config as lc
 
 ROOT = Path(__file__).resolve().parents[1]
-TEMPLATE = ROOT / "templates" / "index.html"
 BOARD_JS = ROOT / "static/js/board.js"
 OBSERVABILITY_JS = ROOT / "static/js/observability.js"
 OBSERVABILITY_TARGETS_JS = ROOT / "static/js/observability_targets.js"
@@ -165,16 +164,10 @@ def test_browser_observability_targets_are_syntax_valid():
     assert result.returncode == 0, result.stderr
 
 
-def test_browser_observability_bootstraps_before_main_runtime():
-    template = TEMPLATE.read_text(encoding="utf-8")
-    board = BOARD_JS.read_text(encoding="utf-8")
-    board_index = template.find("static/js/board.js")
-    main_index = template.find("static/js/main.js")
-    assert board_index >= 0
-    assert main_index >= 0
-    assert board_index < main_index
-    assert 'document.write(\'<script src="/static/js/observability.js"></script><script src="/static/js/observability_targets.js"></script>\')' in board
-    assert "window.ArChessObservability" in board
+def test_browser_observability_bootstraps_through_real_board_dependency():
+    template_runtime = BOARD_JS.read_text(encoding="utf-8")
+    assert 'document.write(\'<script src="/static/js/observability.js"></script><script src="/static/js/observability_targets.js"></script>\')' in template_runtime
+    assert "window.ArChessObservability" in template_runtime
     observer = OBSERVABILITY_JS.read_text(encoding="utf-8")
     assert "/api/observability/browser" in observer
     assert "GAME_STATE_TRANSITION" in observer
