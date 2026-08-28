@@ -223,7 +223,7 @@ Open-source attributions remain documented in `THIRD_PARTY_NOTICES.md` and `docs
 
 **Repository branch state:** `main` is the only branch.
 
-**Current working baseline:** the current `main` HEAD contains the collision-settlement fix, focused regression coverage, and the reconciled tracker.
+**Current working baseline:** `main` contains the collision-settlement fix, focused regression coverage, and the reconciled tracker.
 
 **Promotion posture:** this is a working baseline, not a release candidate. The next verification step is targeted live browser gameplay, followed by the full responsive and regression matrices.
 
