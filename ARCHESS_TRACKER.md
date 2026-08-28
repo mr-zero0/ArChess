@@ -1,101 +1,87 @@
 # ArChess — Product, Engineering & Verification Tracker
 
 **Repository:** `mr-zero0/ArChess`  
-**Active branch:** `main`  
 **Stable branch:** `main`  
-**Development work:** `fix/observability-complete`  
-**Branch policy:** fixes are developed and verified on dedicated branches; only verified work is merged to `main`  
-**Current product mode: 2D only**  
-**3D:** DEFERRED — no 3D renderer, camera, WebGL runtime or 2D/3D switch is active  
-**GitHub Actions:** DISABLED — no workflow is present under `.github/workflows`  
-**Repository state:** single-branch repository (`main`)
+**Current development branch:** `feat/react-phaser-fastapi-migration`  
+**Legacy verification branch:** `fix/observability-complete`  
+**Branch policy:** development work stays on dedicated branches; only verified work is merged to `main`  
+**Current product mode:** 2D only  
+**3D:** DEFERRED — no 3D renderer or 2D/3D switch is part of the current product  
+**Repository policy:** `main` remains the stable baseline
 
-## Current Gate
+## Latest verified legacy baseline
 
-| Gate | Status |
-|---|---|
-| 2D board / professional UI | IMPLEMENTED / VERIFY |
-| 2D pieces / open-source assets | IMPLEMENTED / VERIFY |
-| Themes / resize / high-DPI | IMPLEMENTED / VERIFY |
-| Logging / observability foundation | VERIFIED ON BRANCH — 11 observability tests passed |
-| RunXX collision-safe allocation | VERIFIED — targeted observability/regression suite passed |
-| Complete executable-codebase observability coverage | IN PROGRESS |
-| Local no-login gameplay | IMPLEMENTED |
-| First-collision settlement | FIXED IN CODE / VERIFY |
-| Collision → settle → next turn | FIXED IN CODE / VERIFY |
-| Python/API regression | 107 passed, 4 failed, 17 skipped, 55 warnings (latest full-suite run before tracker-contract restoration) |
-| JavaScript regression | 18 passed (last recorded baseline) |
-| Settlement regression contract | ADDED |
-| Ranked disconnect outcome contract | VERIFIED — targeted ranked hook suite passed |
-| Live browser gameplay | PENDING |
-| Responsive multi-browser matrix | PENDING |
-| Accessibility / security / performance final audits | PENDING |
-| 3D | DEFERRED |
+- Full Python regression: **125 passed, 17 skipped, 61 warnings** before the modernization branch was created.
+- Logging/retention targeted suite: **17 passed**.
+- Targeted observability/authoritative suite: **24 passed**.
+- Collision/runtime JavaScript regression: **7 passed**.
+- Live legacy browser gameplay: **BLOCKED** by the known first-collision freeze; this is the primary reason for modernizing the browser game runtime instead of continuing to patch the legacy loop.
 
-## Observability Workstream
+## Modernization workstream
 
-### Verified foundation
+### Foundation — implemented, pending local verification
 
-The observability foundation on `fix/observability-complete` has been verified locally with:
+- [x] React application shell.
+- [x] TypeScript configuration.
+- [x] Vite development/build configuration.
+- [x] Tailwind CSS 4 Vite integration.
+- [x] Motion for React integration.
+- [x] Phaser 4 arena runtime.
+- [x] Deterministic 32-piece setup.
+- [x] Phaser-owned game update loop.
+- [x] Local collision/impact/damage/settlement model.
+- [x] React HUD receives game-domain snapshots without driving physics frames.
+- [x] FastAPI service package with health, version, room, launch and WebSocket foundation.
+- [x] Frontend architecture contract tests.
+- [x] FastAPI service contract tests.
 
-`python -m pytest -q tests/test_observability.py` → **11 passed**.
+### Gameplay parity — remaining
 
-Verified behaviors include:
+- [ ] Match the legacy board's exact piece stats and initial presentation.
+- [ ] Verify real White → collision → settlement → Black flow in Chromium.
+- [ ] Verify Black → collision → settlement → White.
+- [ ] Verify repeated collisions do not freeze the scene.
+- [ ] Add full VFX/audio/replay/history/challenges parity.
+- [ ] Add accessibility and keyboard/touch parity.
+- [ ] Add browser matrix for the modern client.
 
-- Run-scoped log directory contract: `Logs/YYYY/MMM/DD_Logs/RunXX/`.
-- Separate `application.log`, `error.log`, `audit.log`, and `browser.log` files.
-- Structured JSON records with run/request/correlation context.
-- Exact source metadata for logged events: module, file, function, and line.
-- Exception type and stacktrace capture.
-- Sensitive-key redaction.
-- Browser/server correlation through request and correlation identifiers.
-- Browser observer syntax and boot-order contract.
-- Browser runtime module inventory coverage contract.
-- Python application tracing surface coverage with logging internals excluded from recursive tracing.
-- ContextVar teardown and thread tracing are stable under the targeted regression suite.
-- Run directory allocation is collision-safe when an expected `RunXX` directory already exists.
+### Backend parity — remaining
 
-The latest focused verification was:
+- [ ] Port authoritative room lifecycle from the existing Python service.
+- [ ] Port authoritative launch validation and canonical state persistence.
+- [ ] Port ranked settlement/outcome hooks.
+- [ ] Port authentication/social contracts.
+- [ ] Replace the FastAPI placeholder room state with the real game service.
+- [ ] Verify WebSocket reconnect/resync behavior.
 
-`python -m pytest -q tests/test_observability.py tests/test_ranked_hooks.py tests/test_2d_runtime_contract.py` → **20 passed, 8 warnings**.
+### Cutover — blocked until parity
 
-### Remaining coverage pass
+- [ ] Dual-run modern client against verified backend.
+- [ ] Full application regression after integration.
+- [ ] Modern browser matrix green.
+- [ ] Manual gameplay green for multiple consecutive collisions.
+- [ ] Performance/bundle audit.
+- [ ] Documentation/tracker reconciliation.
+- [ ] Remove the legacy client only after parity is demonstrated.
+- [ ] Merge modernized branch to `main`.
 
-The foundation is not yet considered complete. The remaining observability workstream must continue across the full executable surface, with domain-specific events added where generic function tracing is insufficient. Priority areas are:
+## Observability
 
-1. Python application/domain modules: startup, auth, routes, database operations, rooms, matchmaking, ranked flows, telemetry, replay, progression, and any remaining executable package modules.
-2. Browser modules: input, board, physics, pieces, renderer, UI, theme, preferences, audio, mode, history, challenges, replay, tutorial, identity/auth, progression/ranked UI, tuning, and any runtime module discovered during inventory.
-3. Root-cause event chains for gameplay state transitions, especially `select → drag → launch → physics → collision → damage → settle → next turn`.
-4. Negative/error paths for invalid input, rejected actions, missing state, API failures, storage failures, and unexpected exceptions.
-5. Log-volume and performance review so observability is detailed but not noisy enough to impair gameplay.
-6. Retention/cleanup validation for the `Logs/` hierarchy and generated runtime artifacts.
+The established policy remains:
 
-No item in this section is considered **DONE** until the corresponding tests pass and the generated run logs have been inspected.
+```text
+Logs/YYYY/MMM/DD_Logs/RunXX/
+1 application process = 1 RunXX
+retain all runs for 10 days
+verbose function enter/exit tracing is opt-in
+```
 
-## Collision Settlement Regression
+The modern client must continue emitting meaningful domain events and must preserve correlation context when communicating with the backend.
 
-The first live collision could leave the game in the physics phase indefinitely. The collision solver now separates overlapping bodies slightly beyond contact, while transient `activeCollisions` state is no longer allowed to block turn settlement. Settlement is based on the authoritative `moving` state of surviving pieces; once every surviving piece has stopped for the configured settle delay, the normal next-turn transition runs.
+## Verification policy
 
-The contract regression in `tests/test_2d_runtime_contract.py` locks this ownership rule so a future change cannot reintroduce `activeCollisions` as a persistent settlement gate.
+For every meaningful change:
 
-**Important:** the code fix is on `main`, but live browser verification is still required. The browser gate remains pending until the user's local game demonstrates first collision → full resolution → next player can launch.
+`change → add/update tests → targeted verification → inspect failures/logs → relevant regression → tracker update → commit`.
 
-## Ranked Contract Restoration
-
-The current application registers ranked/progression routes from `game/ranked_routes.py`. The ranked disconnect outcome endpoint was restored on `fix/observability-complete` so surrender, timeout, and abandonment requests can reach the existing ranked-room settlement hook instead of returning 404. The targeted ranked hook tests now pass.
-
-## Preserved Requirements
-
-The tracker retains the original product requirements for physics, damage, turn-based local play, responsive layout, themes, high-DPI rendering, Focus/Theatre, accessibility, security/privacy, licensing, replay, challenges, positive/negative tests, performance, and future 3D deferral.
-
-## Verification Policy
-
-For every meaningful implementation change on a development branch:
-
-`change → update/add tests → run targeted verification → inspect failures/logs → run relevant regression → update tracker → commit`.
-
-The tracker must describe verified reality, not merely intended code. `main` is only updated after the branch work is verified.
-
-## Repository State
-
-`main` is the stable baseline and the repository is intentionally a single-branch repository. `fix/observability-complete` is the active development branch. GitHub Actions remain intentionally absent. Generated `Logs/` runtime output is ignored by Git and is never committed as application data.
+Generated logs are never committed as application data. `main` is not modified by modernization work until the complete applicable gate set is green.
