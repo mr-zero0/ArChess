@@ -32,7 +32,7 @@
 | Browser navigation harness | IMPLEMENTED / VERIFY | Deterministic browser readiness and diagnostics added |
 | Local account gate | CHANGED BY DESIGN | Local 2D gameplay is playable without sign-in; account-dependent/competitive features remain preserved separately |
 | First-collision settlement | FIXED IN PHYSICS / VERIFY | Collision recovery now separates bodies with an epsilon and does not keep stationary cleanup in the active-collision settle gate |
-| Collision → settle → next turn | **FIXED IN PHYSICS / VERIFY** | Physics no longer retains a sticky collision state; live browser test must confirm White → collision → settle → Black |
+| Collision → settle → next turn | **FIXED IN PHYSICS / VERIFY** | Sticky collision state is removed; live browser test must confirm White → collision → settle → Black |
 | Python/API regression | PASSING BASELINE | 99 passed, 17 skipped, 61 warnings in latest confirmed local baseline |
 | JavaScript regression | PASSING BASELINE | 18/18 Node tests passed in latest confirmed local baseline |
 | Collision settlement regression | ADDED | Focused Node regression covers first collision settlement and stationary overlap recovery |
@@ -109,7 +109,7 @@ The physics layer now:
 - treats stationary positional recovery as passive rather than as an active collision; and
 - preserves the existing restitution, impact, damage and destruction calculations.
 
-A focused Node regression was added for first-collision settlement and stationary-overlap recovery.
+A focused Node regression covers first-collision settlement and stationary-overlap recovery.
 
 ## Positive Test Matrix
 
@@ -213,19 +213,19 @@ Open-source attributions remain documented in `THIRD_PARTY_NOTICES.md` and `docs
 
 **Repository baseline:** original `main` commit `46165ca7f6f88386077aede8583b735597c3bc33` was reconciled into the current single-branch working baseline.
 
-**Latest local automated baseline before the collision fix:** 99 Python tests passed, 17 skipped, 61 warnings; 18 JavaScript tests passed.
+**Latest local automated baseline before this collision fix:** 99 Python tests passed, 17 skipped, 61 warnings; 18 JavaScript tests passed.
 
-**Collision fix:** physics settlement correction committed to `main`, with a focused regression added for first collision settlement and stationary-overlap recovery.
+**Collision fix:** `static/js/physics.js` now performs epsilon-separated positional recovery and keeps stationary overlap cleanup out of the active-collision settle gate. A focused regression was added at `tests/collision_settlement.test.js`.
 
-**Live browser result:** page renders and local drag/launch works. The earlier user-reported freeze occurred at the first collision; the physics-layer fix now requires fresh local browser verification of White → collision → settle → Black.
+**Live browser result:** page renders and local drag/launch works. The first-collision freeze remains pending fresh local browser verification after this physics fix.
 
 **GitHub Actions:** `.github/workflows` remains absent; no Actions workflow is being introduced.
 
-**Repository branch state:** `main` is the only branch. 
+**Repository branch state:** `main` is the only branch.
 
 **Promotion posture:** this is a working baseline, not a release candidate. The next verification step is targeted live browser gameplay, followed by the full responsive and regression matrices.
 
-## Promotion / Working-Baseline Rule
+## Working-Baseline Rule
 
 `main` is the only retained branch. Changes may be committed directly to `main` for this project, but unresolved verification gates must remain visible in this tracker.
 
