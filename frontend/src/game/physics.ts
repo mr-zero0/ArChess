@@ -52,18 +52,23 @@ export class PhysicsWorld {
 
   step(pieces: ArenaPiece[], dt: number): boolean {
     this.events = [];
-    let movingCount = 0;
-    const collisionActivated = new Set<string>();
+    const wasActive = pieces.some((piece) => piece.alive && (piece.moving || speed(piece) > PHYSICS.impulseEpsilon));
 
+    // Velocity is authoritative. The `moving` flag is only compatibility state.
+    // Any real velocity is integrated, including collision impulses below the
+    // normal settle threshold, so a struck piece can visibly recoil.
     for (const piece of pieces) {
-      if (!piece.alive || !piece.moving) continue;
-      movingCount += 1;
+      if (!piece.alive || (speed(piece) <= PHYSICS.impulseEpsilon && !piece.moving)) continue;
+      piece.moving = true;
       piece.x += piece.vx * dt;
       piece.y += piece.vy * dt;
       piece.vx *= Math.pow(PHYSICS.friction, dt * 60);
       piece.vy *= Math.pow(PHYSICS.friction, dt * 60);
       const currentSpeed = speed(piece);
-      if (currentSpeed > PHYSICS.maxSpeed) { piece.vx *= PHYSICS.maxSpeed / currentSpeed; piece.vy *= PHYSICS.maxSpeed / currentSpeed; }
+      if (currentSpeed > PHYSICS.maxSpeed) {
+        piece.vx *= PHYSICS.maxSpeed / currentSpeed;
+        piece.vy *= PHYSICS.maxSpeed / currentSpeed;
+      }
       clampPiece(piece);
     }
 
@@ -85,9 +90,10 @@ export class PhysicsWorld {
           const restitution = PHYSICS.bounce;
           const impulse = (-(1 + restitution) * relative) / total;
           const ix = impulse * nx; const iy = impulse * ny;
-          a.vx -= ix * invA; a.vy -= iy * invA; b.vx += ix * invB; b.vy += iy * invB;
-          if (speed(a) > PHYSICS.impulseEpsilon) { a.moving = true; collisionActivated.add(a.id); }
-          if (speed(b) > PHYSICS.impulseEpsilon) { b.moving = true; collisionActivated.add(b.id); }
+          a.vx -= ix * invA; a.vy -= iy * invA;
+          b.vx += ix * invB; b.vy += iy * invB;
+          if (speed(a) > PHYSICS.impulseEpsilon) a.moving = true;
+          if (speed(b) > PHYSICS.impulseEpsilon) b.moving = true;
         }
         if (impact >= PHYSICS.impactThreshold) {
           const damageA = damage(b, impact); const damageB = damage(a, impact);
@@ -100,17 +106,33 @@ export class PhysicsWorld {
     }
 
     for (const piece of pieces) {
-      if (!piece.alive || !piece.moving) continue;
-      // A piece newly activated by a collision must survive this frame so the
-      // collision impulse becomes visible in the next integration step.
-      if (!collisionActivated.has(piece.id) && speed(piece) < PHYSICS.minVelocity) {
-        piece.vx = 0; piece.vy = 0; piece.moving = false;
+      if (!piece.alive) continue;
+      if (speed(piece) <= PHYSICS.impulseEpsilon) {
+        piece.vx = 0;
+        piece.vy = 0;
+        piece.moving = false;
+      } else {
+        piece.moving = true;
       }
     }
 
-    const active = pieces.some((piece) => piece.alive && piece.moving);
-    if (!active && movingCount > 0) this.settleTimer += dt; else this.settleTimer = 0;
-    if (!active && movingCount > 0 && this.settleTimer >= PHYSICS.settleDelay) { this.events.push({ type: "settled" }); this.settleTimer = 0; return true; }
+    // Small residual motion is still simulated, but the turn can settle once
+    // every piece is below the visible-motion threshold for settleDelay.
+    const stillFast = pieces.some((piece) => piece.alive && speed(piece) >= PHYSICS.minVelocity);
+    if (!stillFast && wasActive) this.settleTimer += dt;
+    else if (stillFast) this.settleTimer = 0;
+
+    if (!stillFast && wasActive && this.settleTimer >= PHYSICS.settleDelay) {
+      for (const piece of pieces) {
+        if (!piece.alive || speed(piece) >= PHYSICS.minVelocity) continue;
+        piece.vx = 0;
+        piece.vy = 0;
+        piece.moving = false;
+      }
+      this.events.push({ type: "settled" });
+      this.settleTimer = 0;
+      return true;
+    }
     return false;
   }
 }
