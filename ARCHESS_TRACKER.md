@@ -1,7 +1,8 @@
 # ArChess — Product, Engineering & Verification Tracker
 
 **Repository:** `mr-zero0/ArChess`  
-**Active branch:** `fix/observability-complete`  
+**Stable branch:** `main`  
+**Active development branch:** `fix/observability-complete`  
 **Branch policy:** fixes are developed and verified on dedicated branches; only verified work is merged to `main`  
 **Current product mode: 2D only**  
 **3D:** DEFERRED — no 3D renderer, camera, WebGL runtime or 2D/3D switch is active  
@@ -19,7 +20,7 @@
 | Local no-login gameplay | IMPLEMENTED |
 | First-collision settlement | FIXED IN CODE / VERIFY |
 | Collision → settle → next turn | FIXED IN CODE / VERIFY |
-| Python/API regression | 107 passed, 4 failed, 17 skipped, 55 warnings (latest branch run) |
+| Python/API regression | 107 passed, 4 failed, 17 skipped, 55 warnings (latest full-suite run) |
 | JavaScript regression | 18 passed (last recorded baseline) |
 | Settlement regression contract | ADDED |
 | Live browser gameplay | PENDING |
