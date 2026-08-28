@@ -2,12 +2,20 @@ from __future__ import annotations
 
 import json
 import logging
+import re
+import subprocess
+import sys
+from datetime import datetime
 from pathlib import Path
 
 import pytest
 from flask import Flask
 
 import core.logging_config as lc
+
+ROOT = Path(__file__).resolve().parents[1]
+TEMPLATE = ROOT / "templates" / "index.html"
+OBSERVABILITY_JS = ROOT / "static" / "js" / "observability.js"
 
 
 @pytest.fixture
@@ -25,24 +33,24 @@ def isolated_observability(tmp_path, monkeypatch):
     finally:
         lc._ACTIVE_RUN_ID = original_run_id
         lc._ACTIVE_RUN_DIR = original_run_dir
+        lc._ACTIVE_RUN_DIR = original_run_dir
         lc._BROWSER_LOG_PATH = original_browser_path
 
 
 def test_run_directory_contract(isolated_observability):
     app = Flask("observability-test")
     run_dir = lc.configure_logging(app)
+    now = datetime.now().astimezone()
     assert run_dir.name == "Run01"
-    assert run_dir.parent.name.endswith("_Logs")
-    assert run_dir.parent.parent.name.isalpha()
-    assert run_dir.parent.parent.parent.name.isdigit()
-    assert (run_dir / "application.log").exists()
-    assert (run_dir / "error.log").exists()
-    assert (run_dir / "audit.log").exists()
-    assert (run_dir / "browser.log").exists()
+    assert run_dir.parent.name == now.strftime("%d_Logs")
+    assert run_dir.parent.parent.name == now.strftime("%b")
+    assert run_dir.parent.parent.parent.name == now.strftime("%Y")
+    assert sorted(path.name for path in run_dir.iterdir()) == ["application.log", "audit.log", "browser.log", "error.log"]
 
 
 def test_second_run_gets_incremented_id(isolated_observability):
-    base = isolated_observability / "Logs" / "2026" / "Aug" / "28_Logs"
+    now = datetime.now().astimezone()
+    base = isolated_observability / "Logs" / now.strftime("%Y") / now.strftime("%b") / now.strftime("%d_Logs")
     (base / "Run01").mkdir(parents=True)
     (base / "Run09").mkdir()
     run_id, run_dir = lc._next_run_directory(isolated_observability / "Logs")
@@ -50,7 +58,7 @@ def test_second_run_gets_incremented_id(isolated_observability):
     assert run_dir.name == "Run10"
 
 
-def test_formatter_preserves_exact_source_location_and_context():
+def test_formatter_preserves_exact_source_location_and_redacts_secrets():
     logger = logging.getLogger("observability.test")
     record = logger.makeRecord(
         logger.name,
@@ -63,7 +71,7 @@ def test_formatter_preserves_exact_source_location_and_context():
         "resolve_piece_collision",
     )
     record.event_name = "FUNCTION_EXCEPTION"
-    record.fields = {"secret": "do-not-write"}
+    record.fields = {"secret": "do-not-write", "piece_id": "p1"}
     record.source_module = "game.physics.engine"
     record.source_file = "/actual/game/physics.py"
     record.source_function = "resolve_piece_collision"
@@ -74,6 +82,7 @@ def test_formatter_preserves_exact_source_location_and_context():
     assert rendered["function"] == "resolve_piece_collision"
     assert rendered["line"] == 42
     assert rendered["fields"]["secret"] == "[REDACTED]"
+    assert rendered["fields"]["piece_id"] == "p1"
 
 
 def test_request_and_browser_correlation(isolated_observability):
@@ -90,13 +99,16 @@ def test_request_and_browser_correlation(isolated_observability):
     assert payload["accepted"] == 1
     assert payload["runId"] == "Run01"
     assert response.headers["X-ArChess-Correlation-ID"] == "corr-test"
+    assert response.headers["X-ArChess-Request-ID"]
 
     browser_log = Path(lc._ACTIVE_RUN_DIR) / "browser.log"
     lines = [json.loads(line) for line in browser_log.read_text(encoding="utf-8").splitlines() if line.strip()]
-    assert any(item["event"] == "BROWSER_ERROR" and item["correlation_id"] == "corr-test" for item in lines)
+    event = next(item for item in lines if item["event"] == "BROWSER_ERROR")
+    assert event["correlation_id"] == "corr-test"
+    assert event["run_id"] == "Run01"
 
 
-def test_unhandled_exception_contains_request_id(isolated_observability):
+def test_unhandled_exception_contains_request_and_correlation(isolated_observability):
     app = Flask("observability-test")
     lc.configure_logging(app)
 
@@ -120,12 +132,42 @@ def test_unhandled_exception_contains_request_id(isolated_observability):
     assert event["request_id"] == payload["requestId"]
 
 
-def test_tracing_surface_covers_application_roots():
-    assert "game" in lc._APPLICATION_ROOTS
-    assert "core" in lc._APPLICATION_ROOTS
-    assert "config" in lc._APPLICATION_ROOTS
-    assert "match_sessions" in lc._APPLICATION_ROOTS
-    assert "scripts" in lc._APPLICATION_ROOTS
-    assert "migrations" in lc._APPLICATION_ROOTS
-    for ignored in lc._IGNORED_MODULES:
-        assert ignored == "core.logging_config" or not ignored.startswith("game")
+def test_python_logging_config_is_syntax_valid():
+    result = subprocess.run(
+        [sys.executable, "-m", "py_compile", "core/logging_config.py"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_browser_observability_is_syntax_valid():
+    result = subprocess.run(
+        ["node", "--check", str(OBSERVABILITY_JS)],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_browser_observability_contract_is_present_before_main_runtime():
+    template = TEMPLATE.read_text(encoding="utf-8")
+    observation_index = template.find("static/js/observability.js")
+    main_index = template.find("static/js/main.js")
+    assert observation_index >= 0
+    assert main_index >= 0
+    assert observation_index < main_index
+    assert "/api/observability/browser" in OBSERVABILITY_JS.read_text(encoding="utf-8")
+    assert "GAME_STATE_TRANSITION" in OBSERVABILITY_JS.read_text(encoding="utf-8")
+    assert "CONSOLE_EVENT" in OBSERVABILITY_JS.read_text(encoding="utf-8")
+
+
+def test_application_python_roots_are_in_tracing_surface():
+    for root in ("game", "core", "config", "match_sessions"):
+        assert root in lc._APPLICATION_ROOTS
+    assert "core.logging_config" in lc._IGNORED_MODULES
+    assert not any(name.startswith("logging") for name in lc._APPLICATION_ROOTS)
