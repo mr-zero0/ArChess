@@ -15,9 +15,8 @@ test("struck stationary pawn receives and integrates collision recoil", () => {
   white.moving = true;
 
   world.step([white, black], 0.016);
-  const blackAfterCollision = { x: black.x, vx: black.vx, moving: black.moving };
-  assert.ok(blackAfterCollision.vx !== 0, "collision must impart velocity to the struck pawn");
-  assert.equal(blackAfterCollision.moving, true);
+  assert.notEqual(black.vx, 0, "collision must impart velocity to the struck pawn");
+  assert.equal(black.moving, true);
 
   const beforeNextFrame = black.x;
   world.step([white, black], 0.016);
@@ -34,4 +33,22 @@ test("settlement does not occur while a struck pawn still has visible residual s
   let settled = false;
   for (let i = 0; i < 3; i += 1) settled = world.step([white, black], 0.016) || settled;
   assert.equal(settled, false);
+});
+
+test("collision damage reduces both pieces and reports the applied damage", () => {
+  const world = new PhysicsWorld();
+  const white = piece("white-pawn", "white", 3.0, 3.0);
+  const black = piece("black-pawn", "black", 3.48, 3.0);
+  white.vx = 12;
+  white.moving = true;
+
+  world.step([white, black], 0.016);
+  const collision = world.events.find((event) => event.type === "collision");
+  assert.ok(collision, "a high-speed overlap must emit a collision event");
+  assert.ok(collision.damageA > 0);
+  assert.ok(collision.damageB > 0);
+  assert.equal(white.hp, white.maxHp - collision.damageA);
+  assert.equal(black.hp, black.maxHp - collision.damageB);
+  assert.ok(white.hp < white.maxHp);
+  assert.ok(black.hp < black.maxHp);
 });
