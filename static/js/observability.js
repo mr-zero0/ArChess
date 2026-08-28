@@ -11,6 +11,7 @@
     log: console.log.bind(console),
   };
   let capturingConsole = false;
+  let lastRequestId = null;
   const correlationId = (() => {
     try {
       const key = "archess.correlationId";
@@ -43,7 +44,7 @@
     source: "browser",
     path: location.pathname,
     correlationId,
-    requestId: data.requestId,
+    requestId: data.requestId || lastRequestId || null,
     gameId: window.gameState?.gameId || null,
     roomId: window.ArChessMultiplayer?.roomCode || null,
     ...data,
@@ -141,7 +142,14 @@
     write("debug", "FETCH_START", { method, url });
     try {
       const response = await originalFetch(input, init);
-      write("debug", "FETCH_END", { method, url, status: response.status, durationMs: Math.round(performance.now() - begin) });
+      lastRequestId = response.headers.get("X-ArChess-Request-ID") || lastRequestId;
+      write("debug", "FETCH_END", {
+        method,
+        url,
+        status: response.status,
+        requestId: response.headers.get("X-ArChess-Request-ID") || null,
+        durationMs: Math.round(performance.now() - begin),
+      });
       if (!response.ok) write("warn", "FETCH_HTTP_ERROR", { method, url, status: response.status });
       return response;
     } catch (error) {
