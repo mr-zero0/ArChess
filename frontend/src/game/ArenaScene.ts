@@ -18,6 +18,7 @@ export class ArenaScene extends Phaser.Scene {
   private phase = "aim";
   private selected: ArenaPiece | null = null;
   private dragStart: Phaser.Math.Vector2 | null = null;
+  private aimGuide?: Phaser.GameObjects.Graphics;
   private collisions = 0;
   private callbacks?: ArenaCallbacks;
   private lastPublished = "";
@@ -28,9 +29,11 @@ export class ArenaScene extends Phaser.Scene {
   create() {
     this.drawBoard();
     for (const piece of this.pieces) this.addPiece(piece);
+    this.aimGuide = this.add.graphics().setDepth(1000);
     this.input.on("pointerdown", this.handleDown, this);
     this.input.on("pointermove", this.handleMove, this);
     this.input.on("pointerup", this.handleUp, this);
+    this.input.on("pointerupoutside", this.handleUp, this);
     this.publish("White to move.", true);
   }
 
@@ -82,6 +85,10 @@ export class ArenaScene extends Phaser.Scene {
     sprite.setAlpha(piece.alive ? 1 : 0.2);
   }
 
+  private pointerWorld(pointer: Phaser.Input.Pointer) {
+    return new Phaser.Math.Vector2(pointer.worldX, pointer.worldY);
+  }
+
   private pieceAt(x: number, y: number) {
     let found: ArenaPiece | null = null;
     let best = CELL * 0.42;
@@ -95,31 +102,54 @@ export class ArenaScene extends Phaser.Scene {
 
   private handleDown(pointer: Phaser.Input.Pointer) {
     if (this.phase !== "aim") return;
-    const piece = this.pieceAt(pointer.x, pointer.y);
+    const point = this.pointerWorld(pointer);
+    const piece = this.pieceAt(point.x, point.y);
     if (!piece || piece.team !== this.turn) return;
     this.selected = piece;
-    this.dragStart = new Phaser.Math.Vector2(pointer.x, pointer.y);
+    this.dragStart = point.clone();
     this.sprites.get(piece.id)?.setScale(1.12);
+    this.drawAim(point);
     this.publish(`Aiming ${piece.type}.`, true);
   }
 
   private handleMove(pointer: Phaser.Input.Pointer) {
     if (!this.selected || !this.dragStart) return;
-    const sprite = this.sprites.get(this.selected.id);
-    if (!sprite) return;
-    const d = this.dragStart.distance(new Phaser.Math.Vector2(pointer.x, pointer.y));
-    sprite.setScale(1 + Math.min(0.15, d / 500));
+    const point = this.pointerWorld(pointer);
+    const d = this.dragStart.distance(point);
+    this.sprites.get(this.selected.id)?.setScale(1 + Math.min(0.15, d / 500));
+    this.drawAim(point);
+  }
+
+  private drawAim(pointerPoint: Phaser.Math.Vector2) {
+    if (!this.aimGuide || !this.selected || !this.dragStart) return;
+    this.aimGuide.clear();
+    const piecePoint = new Phaser.Math.Vector2(this.selected.x * CELL, this.selected.y * CELL);
+    const dx = this.dragStart.x - pointerPoint.x;
+    const dy = this.dragStart.y - pointerPoint.y;
+    const length = Math.hypot(dx, dy);
+    if (length < 4) return;
+    const scale = Math.min(0.75, 220 / length);
+    this.aimGuide.lineStyle(5, 0x7ee7ff, 0.9);
+    this.aimGuide.beginPath();
+    this.aimGuide.moveTo(piecePoint.x, piecePoint.y);
+    this.aimGuide.lineTo(piecePoint.x + dx * scale, piecePoint.y + dy * scale);
+    this.aimGuide.strokePath();
+  }
+
+  private clearAim() {
+    this.aimGuide?.clear();
+    if (this.selected) this.sprites.get(this.selected.id)?.setScale(1);
   }
 
   private handleUp(pointer: Phaser.Input.Pointer) {
     if (!this.selected || !this.dragStart) return;
     const piece = this.selected;
     const start = this.dragStart;
-    const sprite = this.sprites.get(piece.id);
+    const point = this.pointerWorld(pointer);
     this.selected = null;
     this.dragStart = null;
-    sprite?.setScale(1);
-    const drag = new Phaser.Math.Vector2(start.x - pointer.x, start.y - pointer.y);
+    this.clearAim();
+    const drag = new Phaser.Math.Vector2(start.x - point.x, start.y - point.y);
     if (drag.length() < 16) { this.publish(); return; }
     const power = Math.min(1, drag.length() / 220);
     if (!this.world.launch(piece, drag.x, drag.y, power)) return;
