@@ -14,6 +14,7 @@ import core.logging_config as lc
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE = ROOT / "templates" / "index.html"
+BOARD_JS = ROOT / "static/js/board.js"
 OBSERVABILITY_JS = ROOT / "static/js/observability.js"
 
 
@@ -31,6 +32,7 @@ def isolated_observability(tmp_path, monkeypatch):
         yield tmp_path
     finally:
         lc._ACTIVE_RUN_ID = original_run_id
+        lc._ACTIVE_RUN_DIR = original_run_dir
         lc._ACTIVE_RUN_DIR = original_run_dir
         lc._BROWSER_LOG_PATH = original_browser_path
 
@@ -152,13 +154,13 @@ def test_browser_observability_is_syntax_valid():
     assert result.returncode == 0, result.stderr
 
 
-def test_browser_observability_contract_is_present_before_main_runtime():
+def test_browser_observability_bootstraps_before_main_runtime():
     template = TEMPLATE.read_text(encoding="utf-8")
-    observation_index = template.find("static/js/observability.js")
+    board = BOARD_JS.read_text(encoding="utf-8")
     main_index = template.find("static/js/main.js")
-    assert observation_index >= 0
     assert main_index >= 0
-    assert observation_index < main_index
+    assert 'document.write(\'<script src="/static/js/observability.js"></script>\')' in board
+    assert "window.ArChessObservability" in board
     observer = OBSERVABILITY_JS.read_text(encoding="utf-8")
     assert "/api/observability/browser" in observer
     assert "GAME_STATE_TRANSITION" in observer
