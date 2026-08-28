@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+:root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #05080d; color: #edf4ff; }
+html, body, #root { min-height: 100%; margin: 0; }
+body { min-width: 320px; background: radial-gradient(circle at 50% 0%, #182438 0%, #080d15 44%, #03050a 100%); }
+* { box-sizing: border-box; }
+button { font: inherit; }
+
+.phaser-host canvas { display: block; width: 100% !important; height: 100% !important; image-rendering: auto; }
