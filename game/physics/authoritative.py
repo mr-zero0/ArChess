@@ -2,10 +2,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 import math
 
+from core.logging_config import log_event
 from game.constants import BOARD_SIZE, GAME_CONFIG, PIECE_STATS
 from game.physics.state_hash import shot_hash, state_hash
+
+
+_OBSERVABILITY_LOGGER = logging.getLogger("archess_app")
 
 
 @dataclass
@@ -62,6 +67,24 @@ class AuthoritativeSimulation:
         self.last_integrity: dict | None = None
         self.game_over = any(p.type == "king" and not p.alive for p in pieces)
 
+    def _domain_event(self, level: int, event: str, *, message: str | None = None, fields: dict | None = None) -> None:
+        """Emit a compact causal event without making observability part of simulation state."""
+        try:
+            log_event(
+                _OBSERVABILITY_LOGGER,
+                level,
+                event,
+                message,
+                fields={
+                    "simulation_time": round(self.sim_time, 6),
+                    "current_team": self.current_team,
+                    "game_over": self.game_over,
+                    **(fields or {}),
+                },
+            )
+        except Exception:
+            return
+
     @classmethod
     def new_match(cls) -> "AuthoritativeSimulation":
         pieces: list[ServerPiece] = []
@@ -72,7 +95,9 @@ class AuthoritativeSimulation:
             pieces.append(ServerPiece(str(uuid4()), "pawn", "black", col + 0.5, 1.5))
             pieces.append(ServerPiece(str(uuid4()), "pawn", "white", col + 0.5, 6.5))
             pieces.append(ServerPiece(str(uuid4()), piece_type, "white", col + 0.5, 7.5))
-        return cls(pieces)
+        simulation = cls(pieces)
+        simulation._domain_event(logging.INFO, "MATCH_CREATED", fields={"piece_count": len(pieces)})
+        return simulation
 
     @classmethod
     def from_snapshot(cls, snapshot: dict) -> "AuthoritativeSimulation":
@@ -95,6 +120,7 @@ class AuthoritativeSimulation:
         simulation = cls(pieces, str(snapshot.get("currentTeam", "white")))
         simulation.game_over = bool(snapshot.get("gameOver", simulation.game_over))
         simulation.last_integrity = snapshot.get("integrity")
+        simulation._domain_event(logging.DEBUG, "MATCH_REHYDRATED", fields={"piece_count": len(pieces)})
         return simulation
 
     def _prepare_integrity(self, intent: dict) -> None:
@@ -118,39 +144,49 @@ class AuthoritativeSimulation:
         }
         self.last_integrity = integrity
         self._pending_integrity = None
+        self._domain_event(logging.DEBUG, "SHOT_INTEGRITY_FINALIZED", fields={"shot_hash": integrity["shotHash"]})
         return integrity
 
     def validate_launch(self, team: str, piece_id: str, vx: float, vy: float) -> tuple[bool, str | None]:
+        reason = None
         if self.game_over:
-            return False, "match_over"
-        if team not in {"white", "black"}:
-            return False, "invalid_team"
-        if team != self.current_team:
-            return False, "not_your_turn"
-        piece = next((p for p in self.pieces if p.id == piece_id), None)
-        if piece is None:
-            return False, "piece_not_found"
-        if not piece.alive:
-            return False, "piece_dead"
-        if piece.team != team:
-            return False, "piece_not_owned"
-        if not math.isfinite(vx) or not math.isfinite(vy):
-            return False, "invalid_vector"
-        speed = math.hypot(vx, vy)
-        if speed <= 0:
-            return False, "zero_velocity"
-        if speed > GAME_CONFIG["maxLaunchSpeed"] + 1e-9:
-            return False, "speed_exceeded"
+            reason = "match_over"
+        elif team not in {"white", "black"}:
+            reason = "invalid_team"
+        elif team != self.current_team:
+            reason = "not_your_turn"
+        else:
+            piece = next((p for p in self.pieces if p.id == piece_id), None)
+            if piece is None:
+                reason = "piece_not_found"
+            elif not piece.alive:
+                reason = "piece_dead"
+            elif piece.team != team:
+                reason = "piece_not_owned"
+            elif not math.isfinite(vx) or not math.isfinite(vy):
+                reason = "invalid_vector"
+            else:
+                speed = math.hypot(vx, vy)
+                if speed <= 0:
+                    reason = "zero_velocity"
+                elif speed > GAME_CONFIG["maxLaunchSpeed"] + 1e-9:
+                    reason = "speed_exceeded"
+        if reason:
+            self._domain_event(logging.WARNING, "LAUNCH_REJECTED", fields={"team": team, "piece_id": piece_id, "vx": vx, "vy": vy, "reason": reason})
+            return False, reason
         return True, None
 
     def resolve_drag(self, team: str, piece_id: str, dx: float, dy: float) -> tuple[tuple[float, float] | None, str | None]:
         if not math.isfinite(dx) or not math.isfinite(dy):
+            self._domain_event(logging.WARNING, "DRAG_REJECTED", fields={"team": team, "piece_id": piece_id, "dx": dx, "dy": dy, "reason": "invalid_drag"})
             return None, "invalid_drag"
         distance = math.hypot(dx, dy)
         if distance < GAME_CONFIG.get("minDragDistance", 0.10):
+            self._domain_event(logging.DEBUG, "DRAG_REJECTED", fields={"team": team, "piece_id": piece_id, "dx": dx, "dy": dy, "reason": "zero_drag"})
             return None, "zero_drag"
         piece = next((p for p in self.pieces if p.id == piece_id), None)
         if piece is None:
+            self._domain_event(logging.WARNING, "DRAG_REJECTED", fields={"team": team, "piece_id": piece_id, "reason": "piece_not_found"})
             return None, "piece_not_found"
         clamped = min(distance, GAME_CONFIG["maxDragDistance"])
         scale = clamped / distance
@@ -162,6 +198,7 @@ class AuthoritativeSimulation:
             speed_scale = GAME_CONFIG["maxLaunchSpeed"] / speed
             vx *= speed_scale
             vy *= speed_scale
+        self._domain_event(logging.DEBUG, "DRAG_RESOLVED", fields={"team": team, "piece_id": piece_id, "piece_type": piece.type, "dx": dx, "dy": dy, "vx": vx, "vy": vy, "speed": math.hypot(vx, vy)})
         return (vx, vy), None
 
     def launch_intent(self, team: str, piece_id: str, dx: float, dy: float) -> tuple[bool, str | None]:
@@ -181,16 +218,21 @@ class AuthoritativeSimulation:
         piece = next(p for p in self.pieces if p.id == piece_id)
         piece.vx = vx
         piece.vy = vy
+        previous_team = self.current_team
         self.current_team = "black" if team == "white" else "white"
+        self._domain_event(logging.INFO, "LAUNCH_ACCEPTED", fields={"team": team, "piece_id": piece_id, "piece_type": piece.type, "vx": vx, "vy": vy, "speed": math.hypot(vx, vy), "previous_team": previous_team, "next_team": self.current_team})
         return True, None
 
     def advance_until_settled(self, dt: float = 1.0 / 120.0, max_steps: int = 720) -> list[dict]:
         events: list[dict] = []
-        for _ in range(max_steps):
+        for step_number in range(max_steps):
             events.extend(self.step(dt))
             active = any(p.alive and math.hypot(p.vx, p.vy) >= GAME_CONFIG["minVelocity"] for p in self.pieces)
             if not active or self.game_over:
+                self._domain_event(logging.INFO, "PHYSICS_SETTLED", fields={"step_count": step_number + 1, "event_count": len(events), "game_over": self.game_over, "moving_piece_count": sum(1 for p in self.pieces if p.alive and math.hypot(p.vx, p.vy) >= GAME_CONFIG["minVelocity"])})
                 break
+        else:
+            self._domain_event(logging.WARNING, "PHYSICS_SETTLE_TIMEOUT", fields={"max_steps": max_steps, "event_count": len(events)})
         integrity = self._finalize_integrity()
         if integrity:
             events.append({"type": "integrity", **integrity})
@@ -198,6 +240,7 @@ class AuthoritativeSimulation:
 
     def step(self, dt: float) -> list[dict]:
         if dt <= 0 or not math.isfinite(dt):
+            self._domain_event(logging.ERROR, "PHYSICS_STEP_REJECTED", fields={"dt": dt, "reason": "invalid_dt"})
             raise ValueError("dt must be positive and finite")
         self.sim_time += dt
         events: list[dict] = []
@@ -266,6 +309,7 @@ class AuthoritativeSimulation:
         rvx, rvy = b.vx - a.vx, b.vy - a.vy
         normal_velocity = rvx * nx + rvy * ny
         if normal_velocity >= 0:
+            self._domain_event(logging.DEBUG, "COLLISION_SEPARATED_NO_IMPACT", fields={"piece_a": a.id, "piece_b": b.id, "overlap": overlap})
             return None
         impact = -normal_velocity
         restitution = (a.restitution + b.restitution) * 0.5
@@ -277,16 +321,20 @@ class AuthoritativeSimulation:
         b.vy += iy * inv_b
 
         if impact < GAME_CONFIG["minDamageImpact"]:
-            return {"type": "collision", "impact": impact, "damaged": False}
+            event = {"type": "collision", "impact": impact, "damaged": False}
+            self._domain_event(logging.INFO, "COLLISION_RESOLVED", fields={"piece_a": a.id, "piece_b": b.id, "impact": impact, "damaged": False})
+            return event
 
         key = tuple(sorted((a.id, b.id)))
         last = self._hit_pairs.get(key, -math.inf)
         if self.sim_time - last < GAME_CONFIG["collisionCooldown"]:
+            self._domain_event(logging.DEBUG, "COLLISION_COOLDOWN", fields={"piece_a": a.id, "piece_b": b.id, "impact": impact, "elapsed_since_hit": self.sim_time - last})
             return {"type": "collision", "impact": impact, "damaged": False, "cooldown": True}
         self._hit_pairs[key] = self.sim_time
 
         damage_a = self._damage(b, impact)
         damage_b = self._damage(a, impact)
+        hp_before_a, hp_before_b = a.hp, b.hp
         a.hp = max(0, a.hp - damage_a)
         b.hp = max(0, b.hp - damage_b)
         destroyed = []
@@ -300,6 +348,7 @@ class AuthoritativeSimulation:
             destroyed.append(b.id)
         if any(p.type == "king" and not p.alive for p in self.pieces):
             self.game_over = True
+        self._domain_event(logging.INFO, "COLLISION_DAMAGE_APPLIED", fields={"piece_a": a.id, "piece_b": b.id, "piece_a_type": a.type, "piece_b_type": b.type, "impact": impact, "damage_to_a": damage_a, "damage_to_b": damage_b, "hp_before_a": hp_before_a, "hp_after_a": a.hp, "hp_before_b": hp_before_b, "hp_after_b": b.hp, "destroyed": destroyed, "game_over": self.game_over})
         return {
             "type": "collision",
             "impact": impact,
