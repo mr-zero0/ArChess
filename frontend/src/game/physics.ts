@@ -1,4 +1,4 @@
-import { ArenaPiece, Team } from "./types";
+import type { ArenaPiece, Team } from "./types.ts";
 
 export const PHYSICS = {
   boardSize: 8,
@@ -54,7 +54,7 @@ export class PhysicsWorld {
     this.events = [];
     const wasActive = pieces.some((piece) => piece.alive && (piece.moving || speed(piece) > PHYSICS.impulseEpsilon));
 
-    // Velocity is authoritative. The `moving` flag is only compatibility state.
+    // Velocity is authoritative. The `moving` flag is compatibility state only.
     // Any real velocity is integrated, including collision impulses below the
     // normal settle threshold, so a struck piece can visibly recoil.
     for (const piece of pieces) {
@@ -116,8 +116,6 @@ export class PhysicsWorld {
       }
     }
 
-    // Small residual motion is still simulated, but the turn can settle once
-    // every piece is below the visible-motion threshold for settleDelay.
     const stillFast = pieces.some((piece) => piece.alive && speed(piece) >= PHYSICS.minVelocity);
     if (!stillFast && wasActive) this.settleTimer += dt;
     else if (stillFast) this.settleTimer = 0;
