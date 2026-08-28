@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 import subprocess
 import sys
 from datetime import datetime
@@ -15,7 +14,7 @@ import core.logging_config as lc
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE = ROOT / "templates" / "index.html"
-OBSERVABILITY_JS = ROOT / "static" / "js" / "observability.js"
+OBSERVABILITY_JS = ROOT / "static/js/observability.js"
 
 
 @pytest.fixture
@@ -32,7 +31,6 @@ def isolated_observability(tmp_path, monkeypatch):
         yield tmp_path
     finally:
         lc._ACTIVE_RUN_ID = original_run_id
-        lc._ACTIVE_RUN_DIR = original_run_dir
         lc._ACTIVE_RUN_DIR = original_run_dir
         lc._BROWSER_LOG_PATH = original_browser_path
 
@@ -161,9 +159,10 @@ def test_browser_observability_contract_is_present_before_main_runtime():
     assert observation_index >= 0
     assert main_index >= 0
     assert observation_index < main_index
-    assert "/api/observability/browser" in OBSERVABILITY_JS.read_text(encoding="utf-8")
-    assert "GAME_STATE_TRANSITION" in OBSERVABILITY_JS.read_text(encoding="utf-8")
-    assert "CONSOLE_EVENT" in OBSERVABILITY_JS.read_text(encoding="utf-8")
+    observer = OBSERVABILITY_JS.read_text(encoding="utf-8")
+    assert "/api/observability/browser" in observer
+    assert "GAME_STATE_TRANSITION" in observer
+    assert "CONSOLE_EVENT" in observer
 
 
 def test_application_python_roots_are_in_tracing_surface():
