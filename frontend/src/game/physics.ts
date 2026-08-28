@@ -1,15 +1,16 @@
 import type { ArenaPiece, Team } from "./types.ts";
+import { GAME_RULES, calculateDamage } from "./rules.ts";
 
 export const PHYSICS = {
-  boardSize: 8,
-  friction: 0.972,
-  minVelocity: 0.18,
-  bounce: 0.62,
+  boardSize: GAME_RULES.boardSize,
+  friction: GAME_RULES.friction,
+  minVelocity: GAME_RULES.minVelocity,
+  bounce: GAME_RULES.collisionRestitution,
   separation: 0.003,
-  impactThreshold: 1.2,
-  damageMultiplier: 1.45,
-  settleDelay: 0.12,
-  maxSpeed: 12,
+  impactThreshold: GAME_RULES.minDamageImpact,
+  damageMultiplier: GAME_RULES.damageMultiplier,
+  settleDelay: GAME_RULES.settleDelay,
+  maxSpeed: GAME_RULES.maxLaunchSpeed,
   impulseEpsilon: 0.001,
 };
 
@@ -23,14 +24,10 @@ function speed(piece: ArenaPiece) { return Math.hypot(piece.vx, piece.vy); }
 function clampPiece(piece: ArenaPiece) {
   const min = piece.radius;
   const max = PHYSICS.boardSize - piece.radius;
-  if (piece.x < min) { piece.x = min; piece.vx = Math.abs(piece.vx) * PHYSICS.bounce; }
-  else if (piece.x > max) { piece.x = max; piece.vx = -Math.abs(piece.vx) * PHYSICS.bounce; }
-  if (piece.y < min) { piece.y = min; piece.vy = Math.abs(piece.vy) * PHYSICS.bounce; }
-  else if (piece.y > max) { piece.y = max; piece.vy = -Math.abs(piece.vy) * PHYSICS.bounce; }
-}
-
-function damage(attacker: ArenaPiece, impact: number) {
-  return Math.max(1, Math.min(30, Math.round(attacker.power * impact * PHYSICS.damageMultiplier / 6)));
+  if (piece.x < min) { piece.x = min; piece.vx = Math.abs(piece.vx) * piece.restitution; }
+  else if (piece.x > max) { piece.x = max; piece.vx = -Math.abs(piece.vx) * piece.restitution; }
+  if (piece.y < min) { piece.y = min; piece.vy = Math.abs(piece.vy) * piece.restitution; }
+  else if (piece.y > max) { piece.y = max; piece.vy = -Math.abs(piece.vy) * piece.restitution; }
 }
 
 export class PhysicsWorld {
@@ -41,11 +38,20 @@ export class PhysicsWorld {
 
   launch(piece: ArenaPiece, dx: number, dy: number, power: number) {
     const distance = Math.hypot(dx, dy);
-    if (distance < 0.001) return false;
+    if (distance < GAME_RULES.minDragDistance) return false;
+    const clampedDistance = Math.min(distance, GAME_RULES.maxDragDistance);
+    const scale = clampedDistance / distance;
     const force = Math.min(1, Math.max(0, power));
-    const strength = 7 + force * 6;
-    piece.vx = (dx / distance) * strength;
-    piece.vy = (dy / distance) * strength;
+    let vx = dx * scale * GAME_RULES.launchStrength * (piece.launchMul || 1) * force;
+    let vy = dy * scale * GAME_RULES.launchStrength * (piece.launchMul || 1) * force;
+    const launchSpeed = Math.hypot(vx, vy);
+    if (launchSpeed > GAME_RULES.maxLaunchSpeed) {
+      const ratio = GAME_RULES.maxLaunchSpeed / launchSpeed;
+      vx *= ratio;
+      vy *= ratio;
+    }
+    piece.vx = vx;
+    piece.vy = vy;
     piece.moving = true;
     return true;
   }
@@ -54,53 +60,75 @@ export class PhysicsWorld {
     this.events = [];
     const wasActive = pieces.some((piece) => piece.alive && (piece.moving || speed(piece) > PHYSICS.impulseEpsilon));
 
-    // Velocity is authoritative. The `moving` flag is compatibility state only.
-    // Any real velocity is integrated, including collision impulses below the
-    // normal settle threshold, so a struck piece can visibly recoil.
     for (const piece of pieces) {
       if (!piece.alive || (speed(piece) <= PHYSICS.impulseEpsilon && !piece.moving)) continue;
       piece.moving = true;
       piece.x += piece.vx * dt;
       piece.y += piece.vy * dt;
-      piece.vx *= Math.pow(PHYSICS.friction, dt * 60);
-      piece.vy *= Math.pow(PHYSICS.friction, dt * 60);
+      const decay = Math.pow(piece.friction || GAME_RULES.friction, dt * 60);
+      piece.vx *= decay;
+      piece.vy *= decay;
       const currentSpeed = speed(piece);
-      if (currentSpeed > PHYSICS.maxSpeed) {
-        piece.vx *= PHYSICS.maxSpeed / currentSpeed;
-        piece.vy *= PHYSICS.maxSpeed / currentSpeed;
+      if (currentSpeed > GAME_RULES.maxLaunchSpeed) {
+        const ratio = GAME_RULES.maxLaunchSpeed / currentSpeed;
+        piece.vx *= ratio;
+        piece.vy *= ratio;
       }
       clampPiece(piece);
     }
 
     for (let i = 0; i < pieces.length; i += 1) {
-      const a = pieces[i]; if (!a.alive) continue;
+      const a = pieces[i];
+      if (!a.alive) continue;
       for (let j = i + 1; j < pieces.length; j += 1) {
-        const b = pieces[j]; if (!b.alive) continue;
-        let dx = b.x - a.x; let dy = b.y - a.y; const distance = Math.hypot(dx, dy); const minDistance = a.radius + b.radius;
+        const b = pieces[j];
+        if (!b.alive) continue;
+        let dx = b.x - a.x;
+        let dy = b.y - a.y;
+        let distance = Math.hypot(dx, dy);
+        const minDistance = a.radius + b.radius;
         if (distance >= minDistance) continue;
-        if (distance < 1e-6) { dx = 1; dy = 0; }
-        const d = Math.max(1e-6, Math.hypot(dx, dy)); const nx = dx / d; const ny = dy / d;
-        const overlap = minDistance + PHYSICS.separation - d;
-        const invA = 1 / a.mass; const invB = 1 / b.mass; const total = invA + invB;
-        a.x -= nx * overlap * invA / total; a.y -= ny * overlap * invA / total;
-        b.x += nx * overlap * invB / total; b.y += ny * overlap * invB / total;
-        const relative = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
-        const impact = Math.max(0, -relative);
-        if (relative < 0) {
-          const restitution = PHYSICS.bounce;
-          const impulse = (-(1 + restitution) * relative) / total;
-          const ix = impulse * nx; const iy = impulse * ny;
-          a.vx -= ix * invA; a.vy -= iy * invA;
-          b.vx += ix * invB; b.vy += iy * invB;
+        if (distance < 1e-6) { dx = 1; dy = 0; distance = 1; }
+        const nx = dx / distance;
+        const ny = dy / distance;
+        const overlap = minDistance + PHYSICS.separation - distance;
+        const invA = 1 / a.mass;
+        const invB = 1 / b.mass;
+        const total = invA + invB;
+        a.x -= nx * overlap * invA / total;
+        a.y -= ny * overlap * invA / total;
+        b.x += nx * overlap * invB / total;
+        b.y += ny * overlap * invB / total;
+
+        const relativeNormalVelocity = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+        const impact = Math.max(0, -relativeNormalVelocity);
+        if (relativeNormalVelocity < 0) {
+          const restitution = ((a.restitution || PHYSICS.bounce) + (b.restitution || PHYSICS.bounce)) * 0.5;
+          const impulse = (-(1 + restitution) * relativeNormalVelocity) / total;
+          const ix = impulse * nx;
+          const iy = impulse * ny;
+          a.vx -= ix * invA;
+          a.vy -= iy * invA;
+          b.vx += ix * invB;
+          b.vy += iy * invB;
           if (speed(a) > PHYSICS.impulseEpsilon) a.moving = true;
           if (speed(b) > PHYSICS.impulseEpsilon) b.moving = true;
         }
-        if (impact >= PHYSICS.impactThreshold) {
-          const damageA = damage(b, impact); const damageB = damage(a, impact);
-          a.hp = Math.max(0, a.hp - damageA); b.hp = Math.max(0, b.hp - damageB);
+
+        if (impact >= GAME_RULES.minDamageImpact) {
+          const damageA = calculateDamage(b, impact);
+          const damageB = calculateDamage(a, impact);
+          a.hp = Math.max(0, a.hp - damageA);
+          b.hp = Math.max(0, b.hp - damageB);
           this.events.push({ type: "collision", a, b, impact, damageA, damageB });
-          if (a.hp === 0 && a.alive) { a.alive = false; a.moving = false; a.vx = 0; a.vy = 0; this.events.push({ type: "destroyed", piece: a, killer: b.team }); }
-          if (b.hp === 0 && b.alive) { b.alive = false; b.moving = false; b.vx = 0; b.vy = 0; this.events.push({ type: "destroyed", piece: b, killer: a.team }); }
+          if (a.hp === 0 && a.alive) {
+            a.alive = false; a.moving = false; a.vx = 0; a.vy = 0;
+            this.events.push({ type: "destroyed", piece: a, killer: b.team });
+          }
+          if (b.hp === 0 && b.alive) {
+            b.alive = false; b.moving = false; b.vx = 0; b.vy = 0;
+            this.events.push({ type: "destroyed", piece: b, killer: a.team });
+          }
         }
       }
     }
@@ -116,11 +144,11 @@ export class PhysicsWorld {
       }
     }
 
-    const stillFast = pieces.some((piece) => piece.alive && speed(piece) >= PHYSICS.minVelocity);
-    if (!stillFast && wasActive) this.settleTimer += dt;
-    else if (stillFast) this.settleTimer = 0;
+    const stillMoving = pieces.some((piece) => piece.alive && speed(piece) >= PHYSICS.minVelocity);
+    if (!stillMoving && wasActive) this.settleTimer += dt;
+    else if (stillMoving) this.settleTimer = 0;
 
-    if (!stillFast && wasActive && this.settleTimer >= PHYSICS.settleDelay) {
+    if (!stillMoving && wasActive && this.settleTimer >= PHYSICS.settleDelay) {
       for (const piece of pieces) {
         if (!piece.alive || speed(piece) >= PHYSICS.minVelocity) continue;
         piece.vx = 0;
