@@ -1,8 +1,9 @@
 # ArChess — Product, Engineering & Verification Tracker
 
 **Repository:** `mr-zero0/ArChess`  
+**Active branch:** `main`  
 **Stable branch:** `main`  
-**Active development branch:** `fix/observability-complete`  
+**Development work:** `fix/observability-complete`  
 **Branch policy:** fixes are developed and verified on dedicated branches; only verified work is merged to `main`  
 **Current product mode: 2D only**  
 **3D:** DEFERRED — no 3D renderer, camera, WebGL runtime or 2D/3D switch is active  
