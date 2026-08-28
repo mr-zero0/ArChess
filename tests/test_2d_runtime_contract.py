@@ -31,6 +31,8 @@ def test_physics_canvas_is_transparent_overlay():
 
 
 def test_tracker_keeps_release_gate_and_2d_scope():
-    assert "2D only" in TRACKER
+    assert "Current product mode: 2D only" in TRACKER
     assert "GitHub Actions" in TRACKER
-    assert "Do not move `ui-rebuild-2d-v2` to `main`" in TRACKER
+    assert "**Active branch:** `main`" in TRACKER
+    assert "single-branch repository" in TRACKER
+    assert "Collision → settle → next turn" in TRACKER
