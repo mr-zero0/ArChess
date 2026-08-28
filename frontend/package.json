@@ -14,10 +14,12 @@
     "phaser": "4.2.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "motion": "13.1.0"
+    "motion": "13.1.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.3.3",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.5",
     "@vitejs/plugin-react": "6.1.0",
     "tailwindcss": "4.3.3",
     "typescript": "7.0.2",
