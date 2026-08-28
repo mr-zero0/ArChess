@@ -215,7 +215,7 @@ Open-source attributions remain documented in `THIRD_PARTY_NOTICES.md` and `docs
 
 **Latest confirmed automated baseline before this gameplay fix:** 99 Python tests passed, 17 skipped, 61 warnings; 18 JavaScript tests passed.
 
-**Current collision fix:** `static/js/physics.js` now uses epsilon-separated recovery and excludes stationary overlap cleanup from the active-collision settle gate. `game/constants.py` centralizes the separation tolerance. `tests/collision_settlement.test.js` adds direct regression coverage.
+**Current collision fix:** `static/js/physics.js` uses epsilon-separated recovery and excludes stationary overlap cleanup from the active-collision settle gate. `game/constants.py` centralizes the separation tolerance. `tests/collision_settlement.test.js` adds direct regression coverage.
 
 **Live browser result before this fix:** page renders and local drag/launch works; the first collision could still stall the physics/turn transition. Fresh local browser verification is required after this fix.
 
