@@ -33,7 +33,6 @@ def isolated_observability(tmp_path, monkeypatch):
     finally:
         lc._ACTIVE_RUN_ID = original_run_id
         lc._ACTIVE_RUN_DIR = original_run_dir
-        lc._ACTIVE_RUN_DIR = original_run_dir
         lc._BROWSER_LOG_PATH = original_browser_path
 
 
@@ -157,8 +156,11 @@ def test_browser_observability_is_syntax_valid():
 def test_browser_observability_bootstraps_before_main_runtime():
     template = TEMPLATE.read_text(encoding="utf-8")
     board = BOARD_JS.read_text(encoding="utf-8")
+    board_index = template.find("static/js/board.js")
     main_index = template.find("static/js/main.js")
+    assert board_index >= 0
     assert main_index >= 0
+    assert board_index < main_index
     assert 'document.write(\'<script src="/static/js/observability.js"></script>\')' in board
     assert "window.ArChessObservability" in board
     observer = OBSERVABILITY_JS.read_text(encoding="utf-8")
