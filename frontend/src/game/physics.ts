@@ -53,6 +53,8 @@ export class PhysicsWorld {
   step(pieces: ArenaPiece[], dt: number): boolean {
     this.events = [];
     let movingCount = 0;
+    const collisionActivated = new Set<string>();
+
     for (const piece of pieces) {
       if (!piece.alive || !piece.moving) continue;
       movingCount += 1;
@@ -84,11 +86,8 @@ export class PhysicsWorld {
           const impulse = (-(1 + restitution) * relative) / total;
           const ix = impulse * nx; const iy = impulse * ny;
           a.vx -= ix * invA; a.vy -= iy * invA; b.vx += ix * invB; b.vy += iy * invB;
-          // A real collision impulse must enter the simulation even when it is
-          // below the eventual settle threshold. Otherwise a struck piece can
-          // have non-zero velocity while moving=false and appear frozen.
-          if (speed(a) > PHYSICS.impulseEpsilon) a.moving = true;
-          if (speed(b) > PHYSICS.impulseEpsilon) b.moving = true;
+          if (speed(a) > PHYSICS.impulseEpsilon) { a.moving = true; collisionActivated.add(a.id); }
+          if (speed(b) > PHYSICS.impulseEpsilon) { b.moving = true; collisionActivated.add(b.id); }
         }
         if (impact >= PHYSICS.impactThreshold) {
           const damageA = damage(b, impact); const damageB = damage(a, impact);
@@ -102,7 +101,11 @@ export class PhysicsWorld {
 
     for (const piece of pieces) {
       if (!piece.alive || !piece.moving) continue;
-      if (speed(piece) < PHYSICS.minVelocity) { piece.vx = 0; piece.vy = 0; piece.moving = false; }
+      // A piece newly activated by a collision must survive this frame so the
+      // collision impulse becomes visible in the next integration step.
+      if (!collisionActivated.has(piece.id) && speed(piece) < PHYSICS.minVelocity) {
+        piece.vx = 0; piece.vy = 0; piece.moving = false;
+      }
     }
 
     const active = pieces.some((piece) => piece.alive && piece.moving);
