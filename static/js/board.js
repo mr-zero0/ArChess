@@ -2,9 +2,9 @@
 
 // Observability must be active before the game runtime is constructed.
 // board.js is loaded before main.js in the 2D runtime, so synchronously load
-// the browser observer here rather than allowing the game to start unobserved.
+// the browser observer and module instrumentation before continuing.
 if (typeof window !== "undefined" && !window.ArChessObservability && typeof document !== "undefined") {
-  document.write('<script src="/static/js/observability.js"></script>');
+  document.write('<script src="/static/js/observability.js"></script><script src="/static/js/observability_targets.js"></script>');
 }
 
 window.GameBoard = class GameBoard {
