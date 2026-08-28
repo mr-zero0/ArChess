@@ -25,6 +25,16 @@ test("Phaser owns the game loop and turn lifecycle", () => {
   assert.doesNotMatch(arena, /requestAnimationFrame/);
 });
 
+test("Phaser normalizes responsive pointer input for drag and release", () => {
+  assert.match(app, /mode: Phaser\.Scale\.FIT/);
+  assert.match(app, /autoCenter: Phaser\.Scale\.CENTER_BOTH/);
+  assert.match(app, /windowEvents: true/);
+  assert.match(arena, /pointer\.worldX/);
+  assert.match(arena, /pointer\.worldY/);
+  assert.match(arena, /pointerupoutside/);
+  assert.match(arena, /drawAim/);
+});
+
 test("collision settlement uses velocity rather than a persistent collision gate", () => {
   assert.match(physics, /piece\.moving = false/);
   assert.match(physics, /speed\(piece\) < PHYSICS\.minVelocity/);
