@@ -16,3 +16,6 @@ instance/
 *.sqlite3
 Logs/
 logs/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
