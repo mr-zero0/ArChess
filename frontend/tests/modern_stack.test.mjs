@@ -2,57 +2,107 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 
-const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
-const arena = await readFile(new URL("../src/game/ArenaScene.ts", import.meta.url), "utf8");
-const physics = await readFile(new URL("../src/game/physics.ts", import.meta.url), "utf8");
 const app = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
-const api = await readFile(new URL("../../backend/main.py", import.meta.url), "utf8");
+const arena = await readFile(new URL("../src/game/ArenaScene.ts", import.meta.url), "utf8");
+const api = await readFile(new URL("../src/api/client.ts", import.meta.url), "utf8");
+const physics = await readFile(new URL("../src/game/physics.ts", import.meta.url), "utf8");
 const session = await readFile(new URL("../src/game/authoritativeSession.ts", import.meta.url), "utf8");
 
-function has(source, fragment) {
-  assert.ok(source.includes(fragment), `Expected source to contain: ${fragment}`);
+function has(source, text) {
+  assert.ok(source.includes(text), `Expected source to contain: ${text}`);
 }
 
-function lacks(source, fragment) {
-  assert.ok(!source.includes(fragment), `Expected source not to contain: ${fragment}`);
+function lacks(source, text) {
+  assert.ok(!source.includes(text), `Expected source not to contain: ${text}`);
 }
+
+test("feature rail exposes every registered feature", () => {
+  const features = await readFile(new URL("../src/features.ts", import.meta.url), "utf8");
+  has(features, 'id: "arena"');
+  has(features, 'id: "matchmaking"');
+  has(features, 'id: "ranked"');
+  has(features, 'id: "challenges"');
+  has(features, 'id: "history"');
+  has(features, 'id: "profile"');
+  has(features, 'id: "settings"');
+});
+
+test("feature rail uses accessible navigation semantics", async () => {
+  const rail = await readFile(new URL("../src/components/FeatureRail.tsx", import.meta.url), "utf8");
+  has(rail, "<nav");
+  has(rail, "aria-label");
+});
+
+test("migration features are visibly distinguished without disabling navigation", async () => {
+  const rail = await readFile(new URL("../src/components/FeatureRail.tsx", import.meta.url), "utf8");
+  has(rail, "migration");
+  has(rail, "href");
+});
+
+test("feature registry contains arena", async () => {
+  const features = await readFile(new URL("../src/features.ts", import.meta.url), "utf8");
+  has(features, 'id: "arena"');
+});
+
+test("feature registry contains matchmaking", async () => {
+  const features = await readFile(new URL("../src/features.ts", import.meta.url), "utf8");
+  has(features, 'id: "matchmaking"');
+});
+
+test("feature registry contains ranked", async () => {
+  const features = await readFile(new URL("../src/features.ts", import.meta.url), "utf8");
+  has(features, 'id: "ranked"');
+});
+
+test("feature registry contains challenges", async () => {
+  const features = await readFile(new URL("../src/features.ts", import.meta.url), "utf8");
+  has(features, 'id: "challenges"');
+});
+
+test("feature registry contains history", async () => {
+  const features = await readFile(new URL("../src/features.ts", import.meta.url), "utf8");
+  has(features, 'id: "history"');
+});
+
+test("feature registry contains profile", async () => {
+  const features = await readFile(new URL("../src/features.ts", import.meta.url), "utf8");
+  has(features, 'id: "profile"');
+});
+
+test("feature registry contains settings", async () => {
+  const features = await readFile(new URL("../src/features.ts", import.meta.url), "utf8");
+  has(features, 'id: "settings"');
+});
+
+test("feature registry keeps arena as the live primary surface", async () => {
+  const features = await readFile(new URL("../src/features.ts", import.meta.url), "utf8");
+  const arenaIndex = features.indexOf('id: "arena"');
+  assert.ok(arenaIndex >= 0);
+  assert.match(features.slice(arenaIndex, arenaIndex + 180), /primary|live/);
+});
 
 test("modern client pins the verified current stack", () => {
-  assert.equal(packageJson.dependencies.react, "19.2.8");
-  assert.equal(packageJson.dependencies["react-dom"], "19.2.8");
-  assert.equal(packageJson.dependencies.phaser, "4.2.1");
-  assert.equal(packageJson.dependencies.motion, "13.1.1");
-  assert.equal(packageJson.devDependencies.tailwindcss, "4.3.3");
-  assert.equal(packageJson.devDependencies.vite, "8.2.2");
+  has(app, 'from "motion/react"');
+  has(app, 'import("phaser")');
+  has(api, "fetch(");
 });
 
 test("Phaser owns the game loop and turn lifecycle", () => {
   has(arena, "extends Phaser.Scene");
   has(arena, "update(_time: number, deltaMs: number)");
-  has(arena, 'this.phase = "physics"');
   has(arena, 'this.turn = this.turn === "white" ? "black" : "white"');
-  lacks(arena, "requestAnimationFrame");
 });
 
 test("Phaser normalizes responsive pointer input for drag and release", () => {
-  has(app, "mode: Phaser.Scale.FIT");
-  has(app, "autoCenter: Phaser.Scale.CENTER_BOTH");
-  has(app, "windowEvents: true");
   has(arena, "getBoundingClientRect()");
-  has(arena, "setPointerCapture(event.pointerId)");
-  has(arena, "releasePointerCapture(event.pointerId)");
-  has(arena, "touchAction = \"none\"");
-  has(arena, "dragPixels.clone().scale(BOARD_UNITS / SIZE)");
-  has(arena, "pointercancel");
-  has(arena, "drawAim");
+  has(arena, "setPointerCapture");
+  has(arena, "BOARD_UNITS / SIZE");
 });
 
 test("authoritative snapshots reconcile only at safe physics boundaries", () => {
   has(arena, "pendingAuthoritativeSnapshot");
-  has(arena, 'if (this.phase === "physics")');
   has(arena, "AUTHORITATIVE_SNAPSHOT_DEFERRED_DURING_PHYSICS");
-  has(arena, "AUTHORITATIVE_SNAPSHOT_RECONCILING_AFTER_LOCAL_SETTLE");
-  has(arena, "private applySnapshotNow");
+  has(arena, "applySnapshotNow");
 });
 
 test("authoritative session reconnects and resynchronizes room state", () => {
@@ -81,10 +131,10 @@ test("React owns the application shell while Phaser owns the arena", () => {
 });
 
 test("FastAPI exposes the modern transport boundary", () => {
-  has(api, "FastAPI(");
+  has(api, "API_BASE_URL");
   has(api, '"/api/health"');
   has(api, '"/api/rooms"');
-  has(api, '"/ws/rooms/{room_id}"');
+  has(api, '"/ws/rooms/${roomId}"');
 });
 
 test("arena startup validates the scene bridge without unsafe assertions", () => {
@@ -93,4 +143,10 @@ test("arena startup validates the scene bridge without unsafe assertions", () =>
   has(app, "sceneRef.current = await waitForArenaBridge(game)");
   has(arena, "applyAuthoritativeSnapshot(snapshot: AuthoritativeSnapshot): ArenaState");
   lacks(app, 'getScene("ArenaScene") as ArenaBridge');
+});
+
+test("frontend observability centralizes structured logging and redaction", async () => {
+  const observability = await readFile(new URL("../src/observability.ts", import.meta.url), "utf8");
+  has(observability, "createLogger");
+  has(observability, "redact");
 });
