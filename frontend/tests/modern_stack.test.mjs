@@ -35,8 +35,10 @@ test("feature rail uses accessible navigation semantics", async () => {
 
 test("migration features are visibly distinguished without disabling navigation", async () => {
   const rail = await readFile(new URL("../src/components/FeatureRail.tsx", import.meta.url), "utf8");
-  has(rail, "migration");
-  has(rail, "href");
+  has(rail, "status === \"migration\"");
+  has(rail, "Soon");
+  has(rail, "<button");
+  lacks(rail, "disabled");
 });
 
 test("feature registry contains arena", async () => {
@@ -131,10 +133,11 @@ test("React owns the application shell while Phaser owns the arena", () => {
 });
 
 test("FastAPI exposes the modern transport boundary", () => {
-  has(api, "API_BASE_URL");
   has(api, '"/api/health"');
   has(api, '"/api/rooms"');
-  has(api, '"/ws/rooms/${roomId}"');
+  has(api, '"/api/rooms/${encodeURIComponent(roomId)}/state"');
+  has(session, '"/ws/rooms/${encodeURIComponent(id)}"');
+  lacks(api, "API_BASE_URL");
 });
 
 test("arena startup validates the scene bridge without unsafe assertions", () => {
@@ -149,5 +152,7 @@ test("arena startup validates the scene bridge without unsafe assertions", () =>
 test("frontend observability centralizes structured logging and redaction", async () => {
   const observability = await readFile(new URL("../src/observability.ts", import.meta.url), "utf8");
   has(observability, "createLogger");
-  has(observability, "redact");
+  has(observability, "sanitize");
+  has(observability, "SENSITIVE_KEYS");
+  has(observability, "[REDACTED]");
 });
