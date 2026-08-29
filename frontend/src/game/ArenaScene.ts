@@ -36,6 +36,7 @@ const BOARD_UNITS = 8;
 const MAX_DRAG_DISTANCE = 2.6;
 const PIECE_HIT_RADIUS = CELL * 0.55;
 const MIN_DRAG_DISTANCE_PIXELS = 12;
+const KEYBOARD_LAUNCH_DISTANCE = 2.0;
 
 type CanvasPointerEvent = PointerEvent;
 
@@ -55,6 +56,8 @@ export class ArenaScene extends Phaser.Scene {
   private onLaunch?: ArenaLaunchHandler;
   private pendingAuthoritativeSnapshot: AuthoritativeSnapshot | null = null;
   private lastPublished = "";
+  private keyboardSelectionIndex = 0;
+  private keyboardAim = new Phaser.Math.Vector2(0, -1);
 
   constructor() { super("ArenaScene"); }
 
@@ -104,6 +107,7 @@ export class ArenaScene extends Phaser.Scene {
 
     const previousTurn = this.turn;
     this.turn = this.turn === "white" ? "black" : "white";
+    this.keyboardSelectionIndex = 0;
     logger.debug("TURN_SETTLED", { previousTurn, nextTurn: this.turn, collisions: this.collisions });
     this.publish(`${this.turn === "white" ? "White" : "Black"} to move.`, true);
   }
@@ -137,6 +141,7 @@ export class ArenaScene extends Phaser.Scene {
     this.pendingAuthoritativeSnapshot = null;
     this.turn = snapshot.currentTeam;
     this.phase = snapshot.gameOver ? "gameover" : "aim";
+    this.keyboardSelectionIndex = 0;
     this.clearDragState();
     this.selectPiece(null);
     const message = snapshot.gameOver ? `${this.winner()?.toUpperCase() ?? "GAME"} wins.` : `${this.turn === "white" ? "White" : "Black"} to move.`;
@@ -163,7 +168,7 @@ export class ArenaScene extends Phaser.Scene {
 
   private addPiece(piece: ArenaPiece) {
     const sprite = this.add.text(piece.x * CELL, piece.y * CELL, GLYPH[piece.type][piece.team], {
-      fontFamily: "Georgia, serif", fontSize: `${Math.round(CELL * 0.7)}px`,
+      fontFamily: "Georgia, serif", fontSize: `${Math.round(CELL * 0.7)}px",
       color: piece.team === "white" ? "#f7fbff" : "#05080c", stroke: piece.team === "white" ? "#172131" : "#dde6ef", strokeThickness: 5,
     }).setOrigin(0.5).setDepth(10);
     sprite.setData("pieceId", piece.id);
@@ -206,11 +211,15 @@ export class ArenaScene extends Phaser.Scene {
   private attachCanvasInput() {
     const canvas = this.game.canvas;
     canvas.style.touchAction = "none";
+    canvas.tabIndex = 0;
+    canvas.setAttribute("role", "application");
+    canvas.setAttribute("aria-label", "ArChess arena. Arrow keys choose a piece. Enter or Space selects and launches. W A S D aim.");
     canvas.addEventListener("pointerdown", this.handleCanvasPointerDown);
     canvas.addEventListener("pointermove", this.handleCanvasPointerMove);
     canvas.addEventListener("pointerup", this.handleCanvasPointerUp);
     canvas.addEventListener("pointercancel", this.handleCanvasPointerCancel);
-    logger.debug("CANVAS_POINTER_INPUT_ATTACHED", { touchAction: canvas.style.touchAction });
+    canvas.addEventListener("keydown", this.handleCanvasKeyDown);
+    logger.debug("CANVAS_POINTER_INPUT_ATTACHED", { touchAction: canvas.style.touchAction, keyboard: true });
   }
 
   private detachCanvasInput() {
@@ -219,9 +228,80 @@ export class ArenaScene extends Phaser.Scene {
     canvas.removeEventListener("pointermove", this.handleCanvasPointerMove);
     canvas.removeEventListener("pointerup", this.handleCanvasPointerUp);
     canvas.removeEventListener("pointercancel", this.handleCanvasPointerCancel);
+    canvas.removeEventListener("keydown", this.handleCanvasKeyDown);
     if (this.dragPointerId !== null && canvas.hasPointerCapture(this.dragPointerId)) canvas.releasePointerCapture(this.dragPointerId);
     this.dragPointerId = null;
     this.clearDragState();
+  }
+
+  private readonly handleCanvasKeyDown = (event: KeyboardEvent) => {
+    if (this.phase !== "aim" || (event.target !== this.game.canvas && document.activeElement !== this.game.canvas)) return;
+    const key = event.key.toLowerCase();
+    if (["arrowleft", "arrowright", "arrowup", "arrowdown", " ", "enter", "w", "a", "s", "d"].includes(key)) event.preventDefault();
+
+    if (key === "arrowleft" || key === "arrowright" || key === "arrowup" || key === "arrowdown") {
+      this.selectNextKeyboardPiece(key === "arrowup" || key === "arrowleft" ? -1 : 1);
+      return;
+    }
+
+    if (["w", "a", "s", "d"].includes(key)) {
+      if (!this.selected) this.selectNextKeyboardPiece(1);
+      this.keyboardAim.set(0, 0);
+      if (key === "w") this.keyboardAim.y = -1;
+      if (key === "s") this.keyboardAim.y = 1;
+      if (key === "a") this.keyboardAim.x = -1;
+      if (key === "d") this.keyboardAim.x = 1;
+      logger.debug("KEYBOARD_AIM_CHANGED", { pieceId: this.selected?.id ?? null, key, dx: this.keyboardAim.x, dy: this.keyboardAim.y });
+      this.drawKeyboardAim();
+      return;
+    }
+
+    if (key === "enter" || key === " ") {
+      if (!this.selected) {
+        this.selectKeyboardPieceAtIndex();
+        return;
+      }
+      this.launchFromKeyboard();
+    }
+  };
+
+  private selectNextKeyboardPiece(direction: number) {
+    const selectable = this.pieces.filter((piece) => piece.alive && piece.team === this.turn);
+    if (!selectable.length) return;
+    this.keyboardSelectionIndex = (this.keyboardSelectionIndex + direction + selectable.length) % selectable.length;
+    const piece = selectable[this.keyboardSelectionIndex];
+    this.selectPiece(piece);
+    logger.debug("KEYBOARD_PIECE_CYCLED", { pieceId: piece.id, team: piece.team, index: this.keyboardSelectionIndex, direction });
+  }
+
+  private selectKeyboardPieceAtIndex() {
+    const selectable = this.pieces.filter((piece) => piece.alive && piece.team === this.turn);
+    if (!selectable.length) return;
+    this.keyboardSelectionIndex = Math.min(this.keyboardSelectionIndex, selectable.length - 1);
+    const piece = selectable[this.keyboardSelectionIndex];
+    this.selectPiece(piece);
+    logger.debug("KEYBOARD_PIECE_SELECTED", { pieceId: piece.id, team: piece.team, index: this.keyboardSelectionIndex });
+  }
+
+  private drawKeyboardAim() {
+    if (!this.aimGuide || !this.selected) return;
+    this.aimGuide.clear();
+    const piecePoint = new Phaser.Math.Vector2(this.selected.x * CELL, this.selected.y * CELL);
+    const length = KEYBOARD_LAUNCH_DISTANCE * CELL;
+    this.aimGuide.lineStyle(5, 0x7ee7ff, 0.9);
+    this.aimGuide.beginPath();
+    this.aimGuide.moveTo(piecePoint.x, piecePoint.y);
+    this.aimGuide.lineTo(piecePoint.x + this.keyboardAim.x * length, piecePoint.y + this.keyboardAim.y * length);
+    this.aimGuide.strokePath();
+  }
+
+  private launchFromKeyboard() {
+    if (!this.selected || this.selected.team !== this.turn || this.phase !== "aim") return;
+    const piece = this.selected;
+    this.dragStart = new Phaser.Math.Vector2(piece.x * CELL, piece.y * CELL);
+    const point = this.dragStart.clone().subtract(this.keyboardAim.clone().scale(KEYBOARD_LAUNCH_DISTANCE * CELL));
+    logger.info("KEYBOARD_LAUNCH_REQUESTED", { pieceId: piece.id, team: piece.team, dx: Number((this.keyboardAim.x * KEYBOARD_LAUNCH_DISTANCE).toFixed(3)), dy: Number((this.keyboardAim.y * KEYBOARD_LAUNCH_DISTANCE).toFixed(3)) });
+    this.finishDrag(point);
   }
 
   private readonly handleCanvasPointerDown = (event: CanvasPointerEvent) => {
