@@ -16,9 +16,9 @@
 
 ## Current modernization verification snapshot
 
-- Latest user-run full gate before the current transport-test hardening: **backend 13/13 passed; frontend 47/48 passed; TypeScript passed; production build passed**.
-- The remaining frontend failure was a brittle implementation-detail assertion for the launch transport path; production behavior was not the failing component.
-- Current branch contains the semantic transport-test hardening and requires a fresh local verification gate.
+- Latest user-run full gate before the current WebSocket contract cleanup: **backend 13/13 passed; frontend 47/48 passed; TypeScript passed; production build passed**.
+- The remaining frontend failure was a brittle implementation-detail assertion for WebSocket construction; production transport code remained intact.
+- Current branch contains the semantic WebSocket transport-test cleanup and requires a fresh local verification gate.
 - User-validated live core issue: drag/play became usable and collision distortion was corrected.
 - Implemented: accessibility hardening, abortable arena bootstrap, reconnect-state hardening, shared HUD health rules, and focused lifecycle/regression coverage.
 - Browser input uses captured native Pointer Events, explicit CSS-pixel-to-game-coordinate mapping, board-unit conversion, and post-settlement authoritative reconciliation.
@@ -78,6 +78,7 @@
 - [x] Added focused reconnect-launch race regression coverage.
 - [x] Aligned modern-stack tests with current feature-rail, same-origin API, and observability contracts.
 - [x] Hardened transport assertions to verify endpoint construction semantics without coupling tests to template-literal formatting.
+- [x] Removed the final WebSocket implementation-detail assertion from the modern-stack transport contract.
 
 ### Gameplay parity — remaining
 
