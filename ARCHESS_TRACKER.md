@@ -10,16 +10,15 @@
 
 ## Main comparison checkpoint
 
-- `feat/react-phaser-fastapi-migration` is now **176 commits ahead** of `main` and **1 commit behind** `main` at the latest comparison.
-- The single commit ahead on `main` is `refactor(backend): route API through room service`; it is semantically related to the current FastAPI room-service work and must be reconciled before final cutover rather than silently ignored.
+- `feat/react-phaser-fastapi-migration` is **176 commits ahead** of `main` and **1 commit behind** `main` at the latest comparison.
+- The single commit unique to `main` is `refactor(backend): route API through room service`; it is semantically related to the current FastAPI room-service work and must be reconciled before final cutover rather than silently ignored.
 - No new development branch should be created for that reconciliation.
 
 ## Current modernization verification snapshot
 
-- Latest user-run full gate before the current bootstrap-test alignment: **backend 13/13 passed; frontend 30/30 passed; TypeScript passed; production build passed**. The build retains the known Phaser large-chunk warning.
+- Latest user-run full gate before the current reconnect-state hardening: **backend 13/13 passed; frontend 30/30 passed; TypeScript passed; production build passed**. The build retains the known Phaser large-chunk warning.
 - User-validated live core issue: drag/play became usable and collision distortion was corrected.
-- Implemented since that verified gate, pending fresh local verification: accessibility hardening, abortable arena bootstrap, and focused bootstrap lifecycle regression coverage.
-- The modern-stack regression was aligned to the current abortable bootstrap signature after the previous stale assertion failure.
+- Implemented since that verified gate, pending fresh local verification: accessibility hardening, abortable arena bootstrap, and authoritative-session reconnect state hardening.
 - Browser input uses captured native Pointer Events, explicit CSS-pixel-to-game-coordinate mapping, board-unit conversion, and post-settlement authoritative reconciliation.
 - Browser E2E remains **PENDING**; reconnect recovery remains **PENDING LIVE VERIFICATION**.
 - Generated local files such as `frontend/package-lock.json` and `frontend/tsconfig.tsbuildinfo` are not product changes and must not be committed unless intentionally adopted.
@@ -73,6 +72,8 @@
 - [x] Added an abortable arena bootstrap so unmounts cancel pending scene-bridge polling cleanly.
 - [x] Added focused arena bootstrap lifecycle regression coverage.
 - [x] Aligned the modern-stack regression with the current abortable bootstrap contract.
+- [x] Hardened authoritative-session connection state to prevent reconnect scheduling races with gameplay launches.
+- [x] Added focused reconnect-launch race regression coverage.
 
 ### Gameplay parity — remaining
 
