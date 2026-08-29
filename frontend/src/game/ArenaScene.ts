@@ -24,8 +24,10 @@ export type ArenaLaunchHandler = (payload: LaunchPayload) => Promise<unknown> | 
 const GLYPH: Record<ArenaPiece["type"], string> = { king: "♚", queen: "♛", rook: "♜", bishop: "♝", knight: "♞", pawn: "♟" };
 const SIZE = 640;
 const CELL = SIZE / 8;
+const BOARD_UNITS = 8;
+const MAX_DRAG_DISTANCE = 2.6;
 const PIECE_HIT_RADIUS = CELL * 0.48;
-const MIN_DRAG_DISTANCE = 16;
+const MIN_DRAG_DISTANCE_PIXELS = 16;
 
 export class ArenaScene extends Phaser.Scene {
   private pieces: ArenaPiece[] = createInitialPieces();
@@ -54,6 +56,7 @@ export class ArenaScene extends Phaser.Scene {
     this.drawBoard();
     for (const piece of this.pieces) this.addPiece(piece);
     this.aimGuide = this.add.graphics().setDepth(1000);
+    this.input.setPollAlways();
     this.input.on("pointerdown", this.handleDown, this);
     this.input.on("pointermove", this.handleMove, this);
     this.input.on("pointerup", this.handleUp, this);
@@ -104,7 +107,7 @@ export class ArenaScene extends Phaser.Scene {
     this.turn = snapshot.currentTeam;
     this.phase = snapshot.gameOver ? "gameover" : "aim";
     this.clearDragState();
-    if (!this.selected?.alive) this.selectPiece(null);
+    this.selectPiece(null);
     const message = snapshot.gameOver ? `${this.winner()?.toUpperCase() ?? "GAME"} wins.` : `${this.turn === "white" ? "White" : "Black"} to move.`;
     logger.info("AUTHORITATIVE_SNAPSHOT_APPLIED", { turn: this.turn, gameOver: snapshot.gameOver, pieceCount: snapshot.pieces.length });
     this.publish(message, true);
@@ -149,7 +152,8 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   private pointerWorld(pointer: Phaser.Input.Pointer): Phaser.Math.Vector2 {
-    return pointer.positionToCamera(this.cameras.main) as Phaser.Math.Vector2;
+    pointer.updateWorldPoint(this.cameras.main);
+    return new Phaser.Math.Vector2(pointer.worldX, pointer.worldY);
   }
 
   private pieceAt(x: number, y: number) {
@@ -164,11 +168,14 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   private handleDown(pointer: Phaser.Input.Pointer) {
-    if (this.phase !== "aim") return;
+    if (this.phase !== "aim" || !pointer.primaryDown) return;
     const point = this.pointerWorld(pointer);
     const piece = this.pieceAt(point.x, point.y);
+    if (!piece || piece.team !== this.turn) {
+      this.selectPiece(null);
+      return;
+    }
     this.selectPiece(piece);
-    if (!piece || piece.team !== this.turn) return;
     this.dragStart = point.clone();
     this.sprites.get(piece.id)?.setScale(1.12);
     this.drawAim(point);
@@ -184,10 +191,8 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   private handleMove(pointer: Phaser.Input.Pointer) {
-    if (!this.selected || !this.dragStart || this.phase !== "aim" || this.selected.team !== this.turn) return;
+    if (!this.selected || !this.dragStart || this.phase !== "aim" || this.selected.team !== this.turn || !pointer.primaryDown) return;
     const point = this.pointerWorld(pointer);
-    const d = this.dragStart.distance(point);
-    this.sprites.get(this.selected.id)?.setScale(1 + Math.min(0.15, d / 500));
     this.drawAim(point);
   }
 
@@ -213,15 +218,11 @@ export class ArenaScene extends Phaser.Scene {
     this.dragStart = null;
   }
 
-  private clearAim() {
-    this.aimGuide?.clear();
-    if (this.selected) this.sprites.get(this.selected.id)?.setScale(1);
-  }
-
   private handlePointerCancel() {
     if (!this.dragStart) return;
     logger.debug("DRAG_CANCELLED", { pieceId: this.selected?.id ?? null });
     this.clearDragState();
+    this.selectPiece(null);
   }
 
   private handleUp(pointer: Phaser.Input.Pointer) {
@@ -229,21 +230,36 @@ export class ArenaScene extends Phaser.Scene {
     const piece = this.selected;
     const start = this.dragStart;
     const point = this.pointerWorld(pointer);
-    const drag = new Phaser.Math.Vector2(start.x - point.x, start.y - point.y);
+    const dragPixels = new Phaser.Math.Vector2(start.x - point.x, start.y - point.y);
     this.clearDragState();
     this.selected = null;
     this.hpLabels.forEach((label) => label.setVisible(false));
-    if (drag.length() < MIN_DRAG_DISTANCE) { this.selectPiece(piece); return; }
-    const power = Math.min(1, drag.length() / 220);
-    if (!this.world.launch(piece, drag.x, drag.y, power)) {
+
+    if (dragPixels.length() < MIN_DRAG_DISTANCE_PIXELS) {
       this.selectPiece(piece);
       return;
     }
-    logger.info("LOCAL_LAUNCH_STARTED", { pieceId: piece.id, team: piece.team, dragLength: Number(drag.length().toFixed(3)), power: Number(power.toFixed(3)) });
+
+    const dragBoard = dragPixels.clone().scale(1 / CELL);
+    const boardDistance = Math.min(MAX_DRAG_DISTANCE, dragBoard.length());
+    const power = Math.min(1, boardDistance / MAX_DRAG_DISTANCE);
+    if (!this.world.launch(piece, dragBoard.x, dragBoard.y, power)) {
+      this.selectPiece(piece);
+      return;
+    }
+
+    logger.info("LOCAL_LAUNCH_STARTED", {
+      pieceId: piece.id,
+      team: piece.team,
+      dragBoardX: Number(dragBoard.x.toFixed(3)),
+      dragBoardY: Number(dragBoard.y.toFixed(3)),
+      dragBoardDistance: Number(boardDistance.toFixed(3)),
+      power: Number(power.toFixed(3)),
+    });
     this.phase = "physics";
     this.publish("Physics resolving…", true);
     if (this.onLaunch) {
-      void Promise.resolve(this.onLaunch({ team: piece.team, pieceId: piece.id, dx: drag.x, dy: drag.y })).catch((error) => {
+      void Promise.resolve(this.onLaunch({ team: piece.team, pieceId: piece.id, dx: dragBoard.x, dy: dragBoard.y })).catch((error) => {
         logger.warn("AUTHORITATIVE_LAUNCH_ERROR", { pieceId: piece.id, error: error instanceof Error ? error.message : String(error) });
       });
     }
