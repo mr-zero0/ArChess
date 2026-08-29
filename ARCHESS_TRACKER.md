@@ -68,6 +68,8 @@
 - [x] Corrected FastAPI launch response handling so room-service tuples are never exposed as endpoint responses.
 - [x] Made WebSocket connection ownership single-layered to prevent duplicate accept/send lifecycle failures.
 - [x] Made validation-error serialization safe for exception objects and non-finite values.
+- [x] Derived HUD team health scale from the canonical starting piece roster instead of duplicated magic totals.
+- [x] Added a rules regression for the exact starting team health total.
 
 ### Gameplay parity — remaining
 
