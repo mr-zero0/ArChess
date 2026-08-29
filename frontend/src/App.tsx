@@ -13,12 +13,24 @@ function isArenaBridge(value: unknown): value is ArenaBridge {
   return value !== null && typeof value === "object" && "applyAuthoritativeSnapshot" in value && typeof value.applyAuthoritativeSnapshot === "function";
 }
 
-async function waitForArenaBridge(game: { scene: { getScene: (key: string) => unknown } }, timeoutMs = 5000): Promise<ArenaBridge> {
+async function waitForArenaBridge(
+  game: { scene: { getScene: (key: string) => unknown } },
+  timeoutMs = 5000,
+  signal?: AbortSignal,
+): Promise<ArenaBridge> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
+    if (signal?.aborted) throw new Error("Arena startup cancelled");
     const scene = game.scene.getScene("ArenaScene");
     if (isArenaBridge(scene)) return scene;
-    await new Promise((resolve) => window.setTimeout(resolve, 50));
+    await new Promise<void>((resolve, reject) => {
+      const timer = window.setTimeout(resolve, 50);
+      const abort = () => {
+        window.clearTimeout(timer);
+        reject(new Error("Arena startup cancelled"));
+      };
+      signal?.addEventListener("abort", abort, { once: true });
+    });
   }
   throw new Error(`ArenaScene authoritative bridge unavailable after ${timeoutMs}ms`);
 }
@@ -50,6 +62,7 @@ export function App() {
 
   useEffect(() => {
     let cancelled = false;
+    const startupAbort = new AbortController();
     const startArena = async () => {
       try {
         const session = createAuthoritativeSession(
@@ -62,30 +75,30 @@ export function App() {
         sessionRef.current = session;
 
         const [{ default: Phaser }, { ArenaScene }] = await Promise.all([import("phaser"), import("./game/ArenaScene")]);
-        if (cancelled || !mount.current) return;
+        if (cancelled || startupAbort.signal.aborted || !mount.current) return;
         const game = new Phaser.Game({ type: Phaser.AUTO, width: 640, height: 640, parent: mount.current, transparent: true, scene: [], scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, width: 640, height: 640 }, input: { activePointers: 2, windowEvents: true } });
         gameRef.current = game;
         game.scene.add("ArenaScene", ArenaScene, true, {
           onState: setState,
           onLaunch: (payload: { team: "white" | "black"; pieceId: string; dx: number; dy: number }) => session.launch(payload),
         });
-        sceneRef.current = await waitForArenaBridge(game);
-        if (cancelled) return;
+        sceneRef.current = await waitForArenaBridge(game, 5000, startupAbort.signal);
+        if (cancelled || startupAbort.signal.aborted) return;
         await session.connect();
         if (!cancelled) setArenaStatus("ready");
       } catch (error) {
         sessionRef.current?.close();
         sessionRef.current = null;
+        if (cancelled || startupAbort.signal.aborted) return;
         console.error("ARCHESS_ARENA_INIT_FAILED", error);
-        if (!cancelled) {
-          setArenaStatus("error");
-          setArenaError(error instanceof Error ? error.message : "Unknown arena initialization error");
-        }
+        setArenaStatus("error");
+        setArenaError(error instanceof Error ? error.message : "Unknown arena initialization error");
       }
     };
     void startArena();
     return () => {
       cancelled = true;
+      startupAbort.abort();
       sessionRef.current?.close();
       sessionRef.current = null;
       sceneRef.current = null;
