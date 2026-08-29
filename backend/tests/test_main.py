@@ -40,6 +40,18 @@ def test_create_room_and_state_contract() -> None:
     assert len(snapshot["pieces"]) == 32
 
 
+def test_authoritative_piece_ids_match_browser_contract() -> None:
+    room = client.post("/api/rooms").json()["room_id"]
+    snapshot = client.get(f"/api/rooms/{room}/state").json()["snapshot"]
+    ids = {piece["id"] for piece in snapshot["pieces"]}
+    assert "white-pawn-0" in ids
+    assert "white-pawn-7" in ids
+    assert "white-king-4" in ids
+    assert "black-pawn-0" in ids
+    assert "black-king-4" in ids
+    assert len(ids) == 32
+
+
 def test_unknown_room_launch_is_rejected() -> None:
     response = client.post("/api/rooms/NOPE/launch", json={"game_id": "game-1", "team": "white", "piece_id": "white-pawn-1", "dx": 1, "dy": 0})
     assert response.status_code == 200
