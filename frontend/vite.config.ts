@@ -12,5 +12,15 @@ export default defineConfig({
       "/ws": { target: "ws://127.0.0.1:8000", ws: true },
     },
   },
-  build: { sourcemap: true },
+  build: {
+    sourcemap: true,
+    rolldownOptions: {
+      output: {
+        manualChunks: {
+          phaser: ["phaser"],
+          motion: ["motion/react"],
+        },
+      },
+    },
+  },
 });
