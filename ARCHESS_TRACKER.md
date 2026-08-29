@@ -10,20 +10,20 @@
 
 ## Main comparison checkpoint
 
-- `feat/react-phaser-fastapi-migration` is now **162 commits ahead** of `main` and **1 commit behind** `main` at the latest comparison.
+- `feat/react-phaser-fastapi-migration` is now **166 commits ahead** of `main` and **1 commit behind** `main` at the latest comparison.
 - The single commit ahead on `main` is `refactor(backend): route API through room service`; it is semantically related to the current FastAPI room-service work and must be reconciled before final cutover rather than silently ignored.
 - No new development branch should be created for that reconciliation.
 
 ## Current modernization verification snapshot
 
-- Latest verified backend gate before the current physics parity hardening: **11 passed**.
-- Latest verified frontend gate before the current physics parity hardening: **25 passed**.
-- Latest verified TypeScript check before the current physics parity hardening: **passed**.
-- Latest verified production build before the current physics parity hardening: **passed**, with the existing Vite/Rolldown large-chunk warning for the Phaser bundle.
-- User-validated live core issue: drag/play became usable and collision distortion was corrected; work is now focused on keeping authoritative and client simulation semantics aligned under repeated play and reconnect.
-- Implemented, pending local gate: bounded WebSocket reconnect/resync, finite API vector validation, authoritative physics substeps, collision separation epsilon, settle delay alignment, expanded collision stability coverage, and team-specific piece rendering parity.
-- The browser uses captured native Pointer Events, explicit CSS-pixel-to-game-coordinate mapping, board-unit conversion, and post-settlement authoritative reconciliation.
-- Browser E2E remains **PENDING**; reconnect recovery also remains **PENDING LIVE VERIFICATION**.
+- Latest verified backend gate before the current reconnect/physics-parity hardening: **11 passed**.
+- Latest verified frontend gate before the current reconnect/physics-parity hardening: **25 passed**.
+- Latest verified TypeScript check before the current reconnect/physics-parity hardening: **passed**.
+- Latest verified production build before the current reconnect/physics-parity hardening: **passed**, with the existing Vite/Rolldown large-chunk warning for the Phaser bundle.
+- User-validated live core issue: drag/play became usable and collision distortion was corrected.
+- Implemented since that gate, pending local verification: bounded WebSocket reconnect/resync, finite API vector validation, authoritative physics substep/settlement alignment, collision-separation epsilon alignment, expanded frontend collision stability coverage, and team-specific white/black glyph parity.
+- Browser input uses captured native Pointer Events, explicit CSS-pixel-to-game-coordinate mapping, board-unit conversion, and post-settlement authoritative reconciliation.
+- Browser E2E remains **PENDING**; reconnect recovery remains **PENDING LIVE VERIFICATION**.
 - Generated local files such as `frontend/package-lock.json` and `frontend/tsconfig.tsbuildinfo` are not product changes and must not be committed unless intentionally adopted.
 
 ## Branch hygiene
