@@ -37,11 +37,13 @@ test("Phaser normalizes responsive pointer input for drag and release", () => {
   has(app, "mode: Phaser.Scale.FIT");
   has(app, "autoCenter: Phaser.Scale.CENTER_BOTH");
   has(app, "windowEvents: true");
-  has(arena, "positionToCamera(this.cameras.main)");
-  lacks(arena, "pointer.worldX");
-  lacks(arena, "pointer.worldY");
-  has(arena, "pointerupoutside");
+  has(arena, "pointer.updateWorldPoint(this.cameras.main)");
+  has(arena, "pointer.worldX");
+  has(arena, "pointer.worldY");
+  has(arena, 'this.input.on("pointerupoutside", this.handleUp, this)');
   has(arena, 'this.input.on("gameout", this.handlePointerCancel, this)');
+  has(arena, "dragPixels.clone().scale(1 / CELL)");
+  has(arena, "MAX_DRAG_DISTANCE");
   has(arena, "drawAim");
 });
 
