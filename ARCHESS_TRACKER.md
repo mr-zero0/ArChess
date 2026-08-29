@@ -3,24 +3,28 @@
 **Repository:** `mr-zero0/ArChess`  
 **Stable branch:** `main`  
 **Current development branch:** `feat/react-phaser-fastapi-migration`  
-**Legacy verification branch:** `fix/observability-complete`  
-**Branch policy:** development work stays on dedicated branches; only verified work is merged to `main`  
+**Branch policy:** maintain exactly one active non-main development branch; modernization work stays on `feat/react-phaser-fastapi-migration`; only verified work is merged to `main`  
 **Current product mode:** 2D only  
 **3D:** DEFERRED — no 3D renderer or 2D/3D switch is part of the current product  
 **Repository policy:** `main` remains the stable baseline
 
 ## Current modernization verification snapshot
 
-- Latest automated backend gate: **11 passed** before the latest frontend reconciliation fix; re-run after the new frontend reconciliation behavior.
-- Latest automated frontend gate: **25 passed** before the latest frontend reconciliation fix; re-run after the new frontend reconciliation behavior.
-- Latest local TypeScript check: **passed** before the latest frontend reconciliation fix.
-- Latest local production build: **passed** before the latest frontend reconciliation fix, with the existing Vite/Rolldown large-chunk warning for the Phaser bundle.
+- Latest automated backend gate before the latest frontend reconciliation/input changes: **11 passed**; re-run after the newest changes.
+- Latest automated frontend gate before the latest frontend reconciliation/input changes: **25 passed**; re-run after the newest changes.
+- Latest local TypeScript check before the latest frontend reconciliation/input changes: **passed**.
+- Latest local production build before the latest frontend reconciliation/input changes: **passed**, with the existing Vite/Rolldown large-chunk warning for the Phaser bundle.
 - User-reported live issue: drag became usable, but collision settlement caused visible distortion/jumps and did not look like clean expected gameplay.
 - Root causes addressed so far: render-space drag vectors needed explicit board-space conversion; authoritative/browser piece identity had to be canonical; Phaser scene-level pointer lifecycle needed a captured native canvas path; authoritative snapshots were being applied immediately while the client prediction was still physically settling.
-- Remediation: **IMPLEMENTED — pending local browser verification**. Accepted authoritative snapshots are now buffered during active physics and reconciled only after the local simulation reaches a safe settlement boundary, preventing mid-collision state replacement and visual teleporting.
+- Remediation: **IMPLEMENTED — pending local browser verification**. The arena uses captured native canvas Pointer Events, explicit CSS-pixel-to-game-coordinate mapping, board-unit conversion, and safe reconciliation after local physics reaches settlement.
 - Canonical deterministic piece IDs are covered by backend tests and match the browser setup.
 - Browser E2E remains **PENDING**; do not mark browser parity green until the live migrated stack is exercised successfully.
 - Generated local files such as `frontend/package-lock.json` and `frontend/tsconfig.tsbuildinfo` are not product changes and must not be committed unless intentionally adopted.
+
+## Branch hygiene
+
+- `feat/react-phaser-fastapi-migration` is the **only active non-main development branch**.
+- `fix/observability-complete` is retired legacy verification work and should be deleted locally and remotely; no new commits belong there.
 
 ## Latest verified legacy baseline
 
