@@ -8,8 +8,18 @@ type ArenaBridge = { applyAuthoritativeSnapshot: (snapshot: AuthoritativeSnapsho
 type Team = "white" | "black";
 type ArenaStatus = "loading" | "ready" | "error";
 
-function isArenaBridge(value: object): value is ArenaBridge {
-  return "applyAuthoritativeSnapshot" in value && typeof value.applyAuthoritativeSnapshot === "function";
+function isArenaBridge(value: unknown): value is ArenaBridge {
+  return value !== null && typeof value === "object" && "applyAuthoritativeSnapshot" in value && typeof value.applyAuthoritativeSnapshot === "function";
+}
+
+async function waitForArenaBridge(game: { scene: { getScene: (key: string) => unknown } }, timeoutMs = 5000): Promise<ArenaBridge> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const scene = game.scene.getScene("ArenaScene");
+    if (isArenaBridge(scene)) return scene;
+    await new Promise((resolve) => window.setTimeout(resolve, 50));
+  }
+  throw new Error(`ArenaScene authoritative bridge unavailable after ${timeoutMs}ms`);
 }
 
 const initialState: ArenaState = {
@@ -59,9 +69,8 @@ export function App() {
           onState: setState,
           onLaunch: (payload: { team: "white" | "black"; pieceId: string; dx: number; dy: number }) => session.launch(payload),
         });
-        const scene = game.scene.getScene("ArenaScene");
-        if (!isArenaBridge(scene)) throw new Error("ArenaScene authoritative bridge is unavailable");
-        sceneRef.current = scene;
+        sceneRef.current = await waitForArenaBridge(game);
+        if (cancelled) return;
         await session.connect();
         if (!cancelled) setArenaStatus("ready");
       } catch (error) {
@@ -70,7 +79,7 @@ export function App() {
         console.error("ARCHESS_ARENA_INIT_FAILED", error);
         if (!cancelled) {
           setArenaStatus("error");
-          setArenaError(error instanceof Error ? error.message : "Unknown initialization error");
+          setArenaError(error instanceof Error ? error.message : "Unknown arena initialization error");
         }
       }
     };
