@@ -45,6 +45,7 @@ export class ArenaScene extends Phaser.Scene {
   private collisions = 0;
   private callbacks?: ArenaCallbacks;
   private onLaunch?: ArenaLaunchHandler;
+  private pendingAuthoritativeSnapshot: AuthoritativeSnapshot | null = null;
   private lastPublished = "";
 
   constructor() { super("ArenaScene"); }
@@ -70,6 +71,7 @@ export class ArenaScene extends Phaser.Scene {
     const settled = this.world.step(this.pieces, Math.min(0.033, Math.max(0, deltaMs / 1000)));
     for (const piece of this.pieces) this.syncPiece(piece);
     for (const event of this.world.events) this.processPhysicsEvent(event);
+
     const winner = this.winner();
     if (winner) {
       this.phase = "gameover";
@@ -77,18 +79,37 @@ export class ArenaScene extends Phaser.Scene {
       this.publish(`${winner.toUpperCase()} wins.`, true);
       return;
     }
-    if (settled) {
-      const previousTurn = this.turn;
-      this.phase = "aim";
-      this.turn = this.turn === "white" ? "black" : "white";
-      logger.debug("TURN_SETTLED", { previousTurn, nextTurn: this.turn, collisions: this.collisions });
-      this.publish(`${this.turn === "white" ? "White" : "Black"} to move.`, true);
+
+    if (!settled) {
+      this.publish();
       return;
     }
-    this.publish();
+
+    this.phase = "aim";
+    if (this.pendingAuthoritativeSnapshot) {
+      const snapshot = this.pendingAuthoritativeSnapshot;
+      this.pendingAuthoritativeSnapshot = null;
+      logger.debug("AUTHORITATIVE_SNAPSHOT_RECONCILING_AFTER_LOCAL_SETTLE", { turn: snapshot.currentTeam, gameOver: snapshot.gameOver });
+      this.applySnapshotNow(snapshot);
+      return;
+    }
+
+    const previousTurn = this.turn;
+    this.turn = this.turn === "white" ? "black" : "white";
+    logger.debug("TURN_SETTLED", { previousTurn, nextTurn: this.turn, collisions: this.collisions });
+    this.publish(`${this.turn === "white" ? "White" : "Black"} to move.`, true);
   }
 
   applyAuthoritativeSnapshot(snapshot: AuthoritativeSnapshot): ArenaState {
+    if (this.phase === "physics") {
+      this.pendingAuthoritativeSnapshot = snapshot;
+      logger.debug("AUTHORITATIVE_SNAPSHOT_DEFERRED_DURING_PHYSICS", { turn: snapshot.currentTeam, gameOver: snapshot.gameOver });
+      return this.currentState("Physics resolving…");
+    }
+    return this.applySnapshotNow(snapshot);
+  }
+
+  private applySnapshotNow(snapshot: AuthoritativeSnapshot): ArenaState {
     const byId = new Map(snapshot.pieces.map((piece) => [piece.id, piece]));
     let missingPieces = 0;
     for (const piece of this.pieces) {
@@ -105,6 +126,7 @@ export class ArenaScene extends Phaser.Scene {
     }
     if (missingPieces) logger.warn("AUTHORITATIVE_PIECES_MISSING", { missingPieces, localPieceCount: this.pieces.length, remotePieceCount: snapshot.pieces.length });
     this.world.reset();
+    this.pendingAuthoritativeSnapshot = null;
     this.turn = snapshot.currentTeam;
     this.phase = snapshot.gameOver ? "gameover" : "aim";
     this.clearDragState();
@@ -159,10 +181,7 @@ export class ArenaScene extends Phaser.Scene {
     if (rect.width <= 0 || rect.height <= 0) return null;
     const x = ((event.clientX - rect.left) / rect.width) * SIZE;
     const y = ((event.clientY - rect.top) / rect.height) * SIZE;
-    return new Phaser.Math.Vector2(
-      Phaser.Math.Clamp(x, 0, SIZE),
-      Phaser.Math.Clamp(y, 0, SIZE),
-    );
+    return new Phaser.Math.Vector2(Phaser.Math.Clamp(x, 0, SIZE), Phaser.Math.Clamp(y, 0, SIZE));
   }
 
   private pieceAt(x: number, y: number) {
@@ -257,20 +276,14 @@ export class ArenaScene extends Phaser.Scene {
     this.clearDragState();
     this.selected = null;
     this.hpLabels.forEach((label) => label.setVisible(false));
-
-    if (dragPixels.length() < MIN_DRAG_DISTANCE_PIXELS) {
-      this.selectPiece(piece);
-      return;
-    }
+    if (dragPixels.length() < MIN_DRAG_DISTANCE_PIXELS) { this.selectPiece(piece); return; }
 
     const dragBoard = dragPixels.clone().scale(BOARD_UNITS / SIZE);
     const boardDistance = Math.min(MAX_DRAG_DISTANCE, dragBoard.length());
     const power = Math.min(1, boardDistance / MAX_DRAG_DISTANCE);
-    if (!this.world.launch(piece, dragBoard.x, dragBoard.y, power)) {
-      this.selectPiece(piece);
-      return;
-    }
+    if (!this.world.launch(piece, dragBoard.x, dragBoard.y, power)) { this.selectPiece(piece); return; }
 
+    this.pendingAuthoritativeSnapshot = null;
     logger.info("LOCAL_LAUNCH_STARTED", {
       pieceId: piece.id,
       team: piece.team,
@@ -321,7 +334,10 @@ export class ArenaScene extends Phaser.Scene {
 
   private processPhysicsEvent(event: PhysicsEvent) {
     if (event.type === "collision") {
-      this.collisions += 1; this.flashCollision(event.a, event.b, event.impact); this.showDamage(event.a, event.damageA); this.showDamage(event.b, event.damageB);
+      this.collisions += 1;
+      this.flashCollision(event.a, event.b, event.impact);
+      this.showDamage(event.a, event.damageA);
+      this.showDamage(event.b, event.damageB);
       logger.debug("COLLISION", { pieceA: event.a.id, pieceB: event.b.id, impact: Number(event.impact.toFixed(3)), damageA: event.damageA, damageB: event.damageB });
       this.publish(`${event.a.type} -${event.damageA} HP · ${event.b.type} -${event.damageB} HP`, true);
     }
@@ -332,12 +348,17 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   private showDamage(piece: ArenaPiece, amount: number) {
-    const text = this.add.text(piece.x * CELL, piece.y * CELL, `-${Math.max(0, Math.round(amount))}`, { fontFamily: "Arial, sans-serif", fontSize: "22px", color: "#ff6875", stroke: "#18080b", strokeThickness: 5, fontStyle: "bold" }).setOrigin(0.5).setDepth(50);
+    const text = this.add.text(piece.x * CELL, piece.y * CELL, `-${Math.max(0, Math.round(amount))}`, {
+      fontFamily: "Arial, sans-serif", fontSize: "22px", color: "#ff6875", stroke: "#18080b", strokeThickness: 5, fontStyle: "bold",
+    }).setOrigin(0.5).setDepth(50);
     this.tweens.add({ targets: text, y: text.y - 26, alpha: 0, duration: 500, ease: "Cubic.easeOut", onComplete: () => text.destroy() });
   }
 
   private flashCollision(a: ArenaPiece, b: ArenaPiece, impact: number) {
-    const x = ((a.x + b.x) * CELL) / 2; const y = ((a.y + b.y) * CELL) / 2; const ring = this.add.circle(x, y, 8, 0xffffff, 0); ring.setStrokeStyle(4, 0xffd37d, 1);
+    const x = ((a.x + b.x) * CELL) / 2;
+    const y = ((a.y + b.y) * CELL) / 2;
+    const ring = this.add.circle(x, y, 8, 0xffffff, 0);
+    ring.setStrokeStyle(4, 0xffd37d, 1);
     this.tweens.add({ targets: ring, radius: Math.min(70, 16 + impact * 8), alpha: 0, duration: 220, onComplete: () => ring.destroy() });
   }
 
