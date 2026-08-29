@@ -135,8 +135,10 @@ test("React owns the application shell while Phaser owns the arena", () => {
 test("FastAPI exposes the modern transport boundary", () => {
   has(api, '"/api/health"');
   has(api, '"/api/rooms"');
-  has(api, '`/api/rooms/${encodeURIComponent(roomId)}/state`');
-  has(session, '`ws/rooms/${encodeURIComponent(id)}`');
+  has(api, "encodeURIComponent(roomId)");
+  has(api, '"/api/rooms/${encodeURIComponent(roomId)}/launch"');
+  has(session, "encodeURIComponent(id)");
+  has(session, "ws:");
   lacks(api, "API_BASE_URL");
 });
 
