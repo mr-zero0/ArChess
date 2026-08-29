@@ -68,15 +68,7 @@ def test_room_websocket_sends_authoritative_initial_snapshot() -> None:
         assert len(state["snapshot"]["pieces"]) == 32
 
 
-def test_missing_room_websocket_is_rejected() -> None:
-    try:
-        with client.websocket_connect("/ws/ROOMNO"):
-            raise AssertionError("missing room websocket unexpectedly connected")
-    except WebSocketDisconnect:
-        assert room_service.get("ROOMNO") is None
-
-
-def test_missing_room_websocket_never_creates_room() -> None:
+def test_missing_room_websocket_is_rejected_without_creating_room() -> None:
     assert room_service.get("ROOMNO") is None
     try:
         with client.websocket_connect("/ws/ROOMNO"):
@@ -149,15 +141,17 @@ def test_zero_drag_is_rejected_without_state_change() -> None:
 
 def test_non_finite_drag_is_rejected_at_api_boundary() -> None:
     room = client.post("/api/rooms").json()["room_id"]
-    body = f'{{"game_id":"finite-check","team":"white","piece_id":"white-pawn-0","dx":NaN,"dy":0.5}}'
+    body = '{"game_id":"finite-check","team":"white","piece_id":"white-pawn-0","dx":NaN,"dy":0.5}'
     response = client.post(f"/api/rooms/{room}/launch", content=body, headers={"Content-Type": "application/json"})
     assert response.status_code == 422
     assert "finite" in response.json()["detail"][0]["msg"].lower()
+    assert response.json()["detail"][0]["ctx"]["error"] == "launch vector components must be finite"
 
 
 def test_infinite_drag_is_rejected_at_api_boundary() -> None:
     room = client.post("/api/rooms").json()["room_id"]
-    body = f'{{"game_id":"finite-check","team":"white","piece_id":"white-pawn-0","dx":0.5,"dy":Infinity}}'
+    body = '{"game_id":"finite-check","team":"white","piece_id":"white-pawn-0","dx":0.5,"dy":Infinity}'
     response = client.post(f"/api/rooms/{room}/launch", content=body, headers={"Content-Type": "application/json"})
     assert response.status_code == 422
     assert "finite" in response.json()["detail"][0]["msg"].lower()
+    assert response.json()["detail"][0]["ctx"]["error"] == "launch vector components must be finite"
