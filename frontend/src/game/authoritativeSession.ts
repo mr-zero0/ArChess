@@ -1,6 +1,6 @@
 import type { AuthoritativeSnapshot, LaunchResult } from "../api/client.ts";
 import { createLogger } from "../observability.ts";
-import { createRoom, launchRoomPiece } from "../api/client.ts";
+import { createRoom, getRoomState, launchRoomPiece } from "../api/client.ts";
 
 export type AuthoritativeStateHandler = (snapshot: AuthoritativeSnapshot) => void;
 export type AuthoritativeEventHandler = (event: string, detail?: Record<string, unknown>) => void;
@@ -14,6 +14,8 @@ export type AuthoritativeSession = {
 };
 
 const logger = createLogger("game.authoritative-session");
+const RECONNECT_BASE_DELAY_MS = 250;
+const RECONNECT_MAX_DELAY_MS = 5000;
 
 function socketUrl(roomId: string): string {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -31,6 +33,8 @@ export function createAuthoritativeSession(
   let roomId: string | null = null;
   let socket: WebSocket | null = null;
   let connectPromise: Promise<void> | null = null;
+  let reconnectTimer: number | null = null;
+  let reconnectAttempt = 0;
   let closed = false;
   const gameId = window.crypto.randomUUID();
 
@@ -39,7 +43,49 @@ export function createAuthoritativeSession(
     onEvent?.(event, detail);
   };
 
+  const clearReconnectTimer = () => {
+    if (reconnectTimer === null) return;
+    window.clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  };
+
+  const resync = async (id: string) => {
+    const state = await getRoomState(id);
+    if (!state.ok) throw new Error(state.error || "Authoritative room state unavailable");
+    onState(state.snapshot);
+    emit("AUTHORITATIVE_STATE_RESYNCED", {
+      roomId: id,
+      turn: state.snapshot.currentTeam,
+      gameOver: state.snapshot.gameOver,
+    });
+  };
+
+  const scheduleReconnect = (id: string) => {
+    if (closed || reconnectTimer !== null || roomId !== id) return;
+    const delayMs = Math.min(RECONNECT_MAX_DELAY_MS, RECONNECT_BASE_DELAY_MS * 2 ** reconnectAttempt);
+    reconnectAttempt += 1;
+    emit("AUTHORITATIVE_WS_RECONNECT_SCHEDULED", { roomId: id, attempt: reconnectAttempt, delayMs });
+    reconnectTimer = window.setTimeout(() => {
+      reconnectTimer = null;
+      void connectSocket(id)
+        .then(async () => {
+          await resync(id);
+          reconnectAttempt = 0;
+          emit("AUTHORITATIVE_WS_RECONNECTED", { roomId: id });
+        })
+        .catch((error) => {
+          emit("AUTHORITATIVE_WS_RECONNECT_FAILED", {
+            roomId: id,
+            attempt: reconnectAttempt,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          scheduleReconnect(id);
+        });
+    }, delayMs);
+  };
+
   const connectSocket = (id: string): Promise<void> => new Promise((resolve, reject) => {
+    clearReconnectTimer();
     const ws = new WebSocket(socketUrl(id));
     socket = ws;
     let completed = false;
@@ -87,13 +133,17 @@ export function createAuthoritativeSession(
     ws.onerror = () => fail(new Error("Authoritative WebSocket connection failed"));
     ws.onclose = () => {
       if (socket === ws) socket = null;
-      if (!closed) emit("AUTHORITATIVE_WS_CLOSED", { roomId: id });
+      if (!closed) {
+        emit("AUTHORITATIVE_WS_CLOSED", { roomId: id });
+        scheduleReconnect(id);
+      }
     };
   });
 
   const connect = async () => {
     if (closed) throw new Error("Authoritative session is closed");
     if (connectPromise) return connectPromise;
+    clearReconnectTimer();
     connectPromise = (async () => {
       if (!roomId) {
         const room = await createRoom();
@@ -127,6 +177,7 @@ export function createAuthoritativeSession(
 
   const close = () => {
     closed = true;
+    clearReconnectTimer();
     socket?.close(1000, "client_shutdown");
     socket = null;
     connectPromise = null;
