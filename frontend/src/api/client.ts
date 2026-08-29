@@ -52,19 +52,29 @@ export type LaunchResult = {
 import { createLogger } from "../observability.ts";
 
 const logger = createLogger("api.client");
+const API_REQUEST_TIMEOUT_MS = 10_000;
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const requestId = crypto.randomUUID();
   const started = performance.now();
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), API_REQUEST_TIMEOUT_MS);
+  const callerSignal = init?.signal;
+  const forwardAbort = () => controller.abort();
+  if (callerSignal?.aborted) controller.abort();
+  else callerSignal?.addEventListener("abort", forwardAbort, { once: true });
+
   logger.debug("API_REQUEST_START", {
     requestId,
     method: init?.method ?? "GET",
     path,
+    timeoutMs: API_REQUEST_TIMEOUT_MS,
   });
 
   try {
     const response = await fetch(path, {
       ...init,
+      signal: controller.signal,
       headers: {
         Accept: "application/json",
         "X-Request-ID": requestId,
@@ -96,16 +106,31 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     });
     return payload as T;
   } catch (error) {
+    const durationMs = Math.round((performance.now() - started) * 100) / 100;
+    const timedOut = controller.signal.aborted && !(callerSignal?.aborted ?? false);
+    if (timedOut) {
+      logger.warn("API_REQUEST_TIMEOUT", {
+        requestId,
+        method: init?.method ?? "GET",
+        path,
+        durationMs,
+        timeoutMs: API_REQUEST_TIMEOUT_MS,
+      });
+      throw new Error(`ArChess API request timed out after ${API_REQUEST_TIMEOUT_MS}ms`);
+    }
     if (error instanceof Error && !error.message.startsWith("ArChess API request failed")) {
       logger.error("API_REQUEST_ERROR", {
         requestId,
         method: init?.method ?? "GET",
         path,
-        durationMs: Math.round((performance.now() - started) * 100) / 100,
+        durationMs,
         error: error.message,
       });
     }
     throw error;
+  } finally {
+    window.clearTimeout(timeout);
+    callerSignal?.removeEventListener("abort", forwardAbort);
   }
 }
 
