@@ -21,7 +21,15 @@ export type ArenaState = {
 export type ArenaCallbacks = (state: ArenaState) => void;
 export type ArenaLaunchHandler = (payload: LaunchPayload) => Promise<unknown> | unknown;
 
-const GLYPH: Record<ArenaPiece["type"], string> = { king: "♚", queen: "♛", rook: "♜", bishop: "♝", knight: "♞", pawn: "♟" };
+type TeamGlyph = Record<Team, string>;
+const GLYPH: Record<ArenaPiece["type"], TeamGlyph> = {
+  king: { white: "♔", black: "♚" },
+  queen: { white: "♕", black: "♛" },
+  rook: { white: "♖", black: "♜" },
+  bishop: { white: "♗", black: "♝" },
+  knight: { white: "♘", black: "♞" },
+  pawn: { white: "♙", black: "♟" },
+};
 const SIZE = 640;
 const CELL = SIZE / 8;
 const BOARD_UNITS = 8;
@@ -154,7 +162,7 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   private addPiece(piece: ArenaPiece) {
-    const sprite = this.add.text(piece.x * CELL, piece.y * CELL, GLYPH[piece.type], {
+    const sprite = this.add.text(piece.x * CELL, piece.y * CELL, GLYPH[piece.type][piece.team], {
       fontFamily: "Georgia, serif", fontSize: `${Math.round(CELL * 0.7)}px`,
       color: piece.team === "white" ? "#f7fbff" : "#05080c", stroke: piece.team === "white" ? "#172131" : "#dde6ef", strokeThickness: 5,
     }).setOrigin(0.5).setDepth(10);
