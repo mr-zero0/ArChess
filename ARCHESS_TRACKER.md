@@ -17,10 +17,10 @@
 ## Current modernization verification snapshot
 
 - Latest user-run full gate before the current transport-test hardening: **backend 13/13 passed; frontend 47/48 passed; TypeScript passed; production build passed**.
-- The remaining frontend failure was an implementation-detail string assertion for the encoded room-state transport path; production behavior itself was already correct.
+- The remaining frontend failure was a brittle implementation-detail assertion for the launch transport path; production behavior was not the failing component.
+- Current branch contains the semantic transport-test hardening and requires a fresh local verification gate.
 - User-validated live core issue: drag/play became usable and collision distortion was corrected.
 - Implemented: accessibility hardening, abortable arena bootstrap, reconnect-state hardening, shared HUD health rules, and focused lifecycle/regression coverage.
-- The modern-stack regression now validates transport behavior by checking endpoint construction primitives rather than brittle full template-string formatting.
 - Browser input uses captured native Pointer Events, explicit CSS-pixel-to-game-coordinate mapping, board-unit conversion, and post-settlement authoritative reconciliation.
 - Browser E2E remains **PENDING**; reconnect recovery remains **PENDING LIVE VERIFICATION**.
 - Generated local files such as `frontend/package-lock.json` and `frontend/tsconfig.tsbuildinfo` are not product changes and must not be committed unless intentionally adopted.
@@ -77,7 +77,7 @@
 - [x] Hardened authoritative-session connection state to prevent reconnect scheduling races with gameplay launches.
 - [x] Added focused reconnect-launch race regression coverage.
 - [x] Aligned modern-stack tests with current feature-rail, same-origin API, and observability contracts.
-- [x] Hardened transport assertions to verify encoded endpoint construction without coupling tests to template-literal formatting.
+- [x] Hardened transport assertions to verify endpoint construction semantics without coupling tests to template-literal formatting.
 
 ### Gameplay parity — remaining
 
