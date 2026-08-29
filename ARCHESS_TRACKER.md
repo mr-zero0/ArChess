@@ -10,18 +10,18 @@
 
 ## Main comparison checkpoint
 
-- `feat/react-phaser-fastapi-migration` is now **166 commits ahead** of `main` and **1 commit behind** `main` at the latest comparison.
+- `feat/react-phaser-fastapi-migration` is now **168 commits ahead** of `main` and **1 commit behind** `main` at the latest comparison.
 - The single commit ahead on `main` is `refactor(backend): route API through room service`; it is semantically related to the current FastAPI room-service work and must be reconciled before final cutover rather than silently ignored.
 - No new development branch should be created for that reconciliation.
 
 ## Current modernization verification snapshot
 
-- Latest verified backend gate before the current reconnect/physics-parity hardening: **11 passed**.
-- Latest verified frontend gate before the current reconnect/physics-parity hardening: **25 passed**.
-- Latest verified TypeScript check before the current reconnect/physics-parity hardening: **passed**.
-- Latest verified production build before the current reconnect/physics-parity hardening: **passed**, with the existing Vite/Rolldown large-chunk warning for the Phaser bundle.
-- User-validated live core issue: drag/play became usable and collision distortion was corrected.
-- Implemented since that gate, pending local verification: bounded WebSocket reconnect/resync, finite API vector validation, authoritative physics substep/settlement alignment, collision-separation epsilon alignment, expanded frontend collision stability coverage, and team-specific white/black glyph parity.
+- Latest user-run backend gate: **12 passed, 2 failed**. The two failures were test-harness serialization errors while trying to send `NaN`/`Infinity` through HTTPX; they occurred before FastAPI received the request.
+- Latest user-run frontend gate: **30 passed**.
+- Latest user-run TypeScript check: **failed on `RoomState.error` typing** in the reconnect/resync client; this has now been fixed in the branch.
+- Latest user-run production build: **same TypeScript failure**, now addressed by the type fix.
+- Implemented since the previous verified baseline, pending a fresh user/local gate: bounded WebSocket reconnect/resync, finite API vector validation, authoritative physics substep/settlement alignment, collision-separation epsilon alignment, expanded frontend collision stability coverage, team-specific white/black glyph parity, and strict room-state error typing.
+- API regression tests now send raw non-finite JSON tokens so the validation path is exercised by FastAPI/Pydantic instead of failing during client-side JSON serialization.
 - Browser input uses captured native Pointer Events, explicit CSS-pixel-to-game-coordinate mapping, board-unit conversion, and post-settlement authoritative reconciliation.
 - Browser E2E remains **PENDING**; reconnect recovery remains **PENDING LIVE VERIFICATION**.
 - Generated local files such as `frontend/package-lock.json` and `frontend/tsconfig.tsbuildinfo` are not product changes and must not be committed unless intentionally adopted.
@@ -64,6 +64,8 @@
 - [x] Aligned authoritative collision separation epsilon with the browser solver.
 - [x] Expanded frontend collision regression coverage for canonical setup, separation stability, and chained collisions.
 - [x] Restored team-specific white/black chess glyph rendering to match the legacy presentation contract.
+- [x] Added strict TypeScript typing for room-state error responses.
+- [x] Corrected API tests so non-finite validation is exercised at the FastAPI boundary.
 
 ### Gameplay parity — remaining
 
