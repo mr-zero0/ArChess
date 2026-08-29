@@ -16,9 +16,11 @@
 
 ## Current modernization verification snapshot
 
-- Latest user-run full gate before the current reconnect-state hardening: **backend 13/13 passed; frontend 30/30 passed; TypeScript passed; production build passed**. The build retains the known Phaser large-chunk warning.
+- Latest user-run full gate before the current test-contract cleanup: **backend 13/13 passed; frontend 30/30 passed; TypeScript passed; production build passed**. The build retains the known Phaser large-chunk warning.
+- Latest attempted frontend gate after reconnect-state hardening: **45/48 passed**. The three failures were stale source-contract assertions for feature navigation (`href`), API configuration (`API_BASE_URL`), and the observability helper name (`redact`); production TypeScript/build remained successful.
 - User-validated live core issue: drag/play became usable and collision distortion was corrected.
-- Implemented since that verified gate, pending fresh local verification: accessibility hardening, abortable arena bootstrap, and authoritative-session reconnect state hardening.
+- Implemented: accessibility hardening, abortable arena bootstrap, reconnect-state hardening, shared HUD health rules, and focused lifecycle/regression coverage.
+- The modern-stack regression has now been aligned to the actual React button-based feature rail, same-origin relative API transport, and `sanitize()` observability implementation rather than obsolete implementation-detail strings.
 - Browser input uses captured native Pointer Events, explicit CSS-pixel-to-game-coordinate mapping, board-unit conversion, and post-settlement authoritative reconciliation.
 - Browser E2E remains **PENDING**; reconnect recovery remains **PENDING LIVE VERIFICATION**.
 - Generated local files such as `frontend/package-lock.json` and `frontend/tsconfig.tsbuildinfo` are not product changes and must not be committed unless intentionally adopted.
@@ -74,6 +76,7 @@
 - [x] Aligned the modern-stack regression with the current abortable bootstrap contract.
 - [x] Hardened authoritative-session connection state to prevent reconnect scheduling races with gameplay launches.
 - [x] Added focused reconnect-launch race regression coverage.
+- [x] Aligned modern-stack tests with current feature-rail, same-origin API, and observability contracts.
 
 ### Gameplay parity — remaining
 
