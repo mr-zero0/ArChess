@@ -3,10 +3,18 @@ import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 
 const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
-const arena = await readFile(new URL("../src/game/ArenaScene.ts", import.meta.url), "utf8");
-const physics = await readFile(new URL("../src/game/physics.ts", import.meta.url), "utf8");
-const app = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
-const api = await readFile(new URL("../../backend/main.py", import.meta.url), "utf8");
+const arena = await readFile(new URL("../src/game/ArenaScene.ts", import.meta.url), "utf8"));
+const physics = await readFile(new URL("../src/game/physics.ts", import.meta.url), "utf8"));
+const app = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8"));
+const api = await readFile(new URL("../../backend/main.py", import.meta.url), "utf8"));
+
+function has(source, fragment) {
+  assert.ok(source.includes(fragment), `Expected source to contain: ${fragment}`);
+}
+
+function lacks(source, fragment) {
+  assert.ok(!source.includes(fragment), `Expected source not to contain: ${fragment}`);
+}
 
 test("modern client pins the verified current stack", () => {
   assert.equal(packageJson.dependencies.react, "19.2.8");
@@ -18,47 +26,46 @@ test("modern client pins the verified current stack", () => {
 });
 
 test("Phaser owns the game loop and turn lifecycle", () => {
-  assert.match(arena, /extends Phaser\\.Scene/);
-  assert.match(arena, /update\\(_time: number, deltaMs: number\\)/);
-  assert.match(arena, /this\\.phase = "physics"/);
-  assert.match(arena, /this\\.turn = this\\.turn === "white" \\? "black" : "white"/);
-  assert.doesNotMatch(arena, /requestAnimationFrame/);
+  has(arena, "extends Phaser.Scene");
+  has(arena, "update(_time: number, deltaMs: number)");
+  has(arena, 'this.phase = "physics"');
+  has(arena, 'this.turn = this.turn === "white" ? "black" : "white"');
+  lacks(arena, "requestAnimationFrame");
 });
 
 test("Phaser normalizes responsive pointer input for drag and release", () => {
-  assert.match(app, /mode: Phaser\\.Scale\\.FIT/);
-  assert.match(app, /autoCenter: Phaser\\.Scale\\.CENTER_BOTH/);
-  assert.match(app, /windowEvents: true/);
-  assert.match(arena, /pointer\\.worldX/);
-  assert.match(arena, /pointer\\.worldY/);
-  assert.match(arena, /pointerupoutside/);
-  assert.match(arena, /drawAim/);
+  has(app, "mode: Phaser.Scale.FIT");
+  has(app, "autoCenter: Phaser.Scale.CENTER_BOTH");
+  has(app, "windowEvents: true");
+  has(arena, "pointer.worldX");
+  has(arena, "pointer.worldY");
+  has(arena, 'pointerupoutside');
+  has(arena, "drawAim");
 });
 
 test("collision settlement is velocity-authoritative", () => {
-  assert.match(physics, /minVelocity:\\s*GAME_RULES\\.minVelocity/);
-  assert.match(physics, /const stillMoving = pieces\\.some/);
-  assert.match(physics, /settleTimer/);
-  assert.doesNotMatch(physics, /activeCollisions/);
+  has(physics, "minVelocity: GAME_RULES.minVelocity");
+  has(physics, "const stillMoving = pieces.some");
+  has(physics, "settleTimer");
+  lacks(physics, "activeCollisions");
 });
 
 test("React owns the application shell while Phaser owns the arena", () => {
-  assert.match(app, /from "motion\\/react"/);
-  assert.match(app, /new Phaser\\.Game/);
-  assert.match(app, /phaser-host/);
+  has(app, 'from "motion/react"');
+  has(app, "new Phaser.Game");
+  has(app, "phaser-host");
 });
 
 test("FastAPI exposes the modern transport boundary", () => {
-  assert.match(api, /FastAPI\\(/);
-  assert.match(api, /\\/api\\/health/);
-  assert.match(api, /\\/api\\/rooms/);
-  assert.match(api, /\\/ws\\/rooms\\/\\{room_id\\}/);
+  has(api, "FastAPI(");
+  has(api, '"/api/health"');
+  has(api, '"/api/rooms"');
+  has(api, '"/ws/rooms/{room_id}"');
 });
 
 test("arena startup waits for a real authoritative scene bridge", () => {
-  assert.match(app, /function isArenaBridge\\(value: unknown\\)/);
-  assert.match(app, /value !== null && typeof value === "object"/);
-  assert.match(app, /async function waitForArenaBridge/);
-  assert.match(app, /sceneRef\\.current = await waitForArenaBridge\\(game\\)/);
-  assert.doesNotMatch(app, /getScene\\("ArenaScene"\\) as ArenaBridge/);
+  has(app, "function isArenaBridge(value: object)");
+  has(app, 'if (!isArenaBridge(scene)) throw new Error("ArenaScene authoritative bridge is unavailable")');
+  has(arena, "applyAuthoritativeSnapshot(snapshot: AuthoritativeSnapshot): ArenaState");
+  lacks(app, 'getScene("ArenaScene") as ArenaBridge');
 });
