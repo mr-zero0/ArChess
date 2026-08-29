@@ -97,24 +97,29 @@ class LaunchRequest(BaseModel):
 def _json_safe(value):
     if isinstance(value, float) and not math.isfinite(value):
         return repr(value)
+    if isinstance(value, BaseException):
+        return str(value)
     if isinstance(value, dict):
         return {key: _json_safe(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):
         return [_json_safe(item) for item in value]
+    if isinstance(value, set):
+        return [_json_safe(item) for item in sorted(value, key=str)]
     return value
 
 
 @app.exception_handler(RequestValidationError)
 async def request_validation_error_handler(request: Request, exc: RequestValidationError):
+    errors = exc.errors()
     logger.warning(
         "REQUEST_VALIDATION_ERROR",
         extra={
             "path": request.url.path,
             "method": request.method,
-            "error_count": len(exc.errors()),
+            "error_count": len(errors),
         },
     )
-    return JSONResponse(status_code=422, content={"detail": _json_safe(exc.errors())})
+    return JSONResponse(status_code=422, content={"detail": _json_safe(errors)})
 
 
 @app.get("/api/health", response_model=HealthResponse)
@@ -148,7 +153,7 @@ async def room_state(room_id: str) -> dict:
 
 @app.post("/api/rooms/{room_id}/launch")
 async def launch(room_id: str, payload: LaunchRequest) -> dict:
-    result = await room_service.launch(
+    result, _broadcast_snapshot = await room_service.launch(
         room_id,
         game_id=payload.game_id,
         team=payload.team,
@@ -166,13 +171,12 @@ async def room_websocket(websocket: WebSocket, room_id: str) -> None:
         logger.warning("WEBSOCKET_ROOM_NOT_FOUND", extra={"room_id": room_id})
         await websocket.close(code=1008)
         return
-    await websocket.accept()
-    await room_service.connect(room_id, websocket)
+
     try:
-        await websocket.send_json({"event": "state", "room_id": room_id, "snapshot": room.snapshot()})
+        await room_service.connect(room_id, websocket)
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
         pass
     finally:
-        await room_service.disconnect(room_id, websocket)
+        await room_service.disconnect(room, websocket)
