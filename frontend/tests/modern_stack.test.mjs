@@ -3,10 +3,10 @@ import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 
 const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
-const arena = await readFile(new URL("../src/game/ArenaScene.ts", import.meta.url), "utf8"));
-const physics = await readFile(new URL("../src/game/physics.ts", import.meta.url), "utf8"));
-const app = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8"));
-const api = await readFile(new URL("../../backend/main.py", import.meta.url), "utf8"));
+const arena = await readFile(new URL("../src/game/ArenaScene.ts", import.meta.url), "utf8");
+const physics = await readFile(new URL("../src/game/physics.ts", import.meta.url), "utf8");
+const app = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
+const api = await readFile(new URL("../../backend/main.py", import.meta.url), "utf8");
 
 function has(source, fragment) {
   assert.ok(source.includes(fragment), `Expected source to contain: ${fragment}`);
