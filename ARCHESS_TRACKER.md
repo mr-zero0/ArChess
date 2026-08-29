@@ -16,12 +16,14 @@
 
 ## Current modernization verification snapshot
 
-- Latest user-run full gate before the current transport-resilience batch: **backend 13/13 passed; frontend 41/41 passed; TypeScript passed; production build passed**. The build retains the known Phaser large-chunk warning.
+- Latest user-run full gate before the current physics-state batch: **backend 13/13 passed; frontend 41/41 passed; TypeScript passed; production build passed**. The build retains the known Phaser large-chunk warning.
 - Added best-effort authoritative room-state resynchronization when a launch request fails after local prediction, preserving the local gameplay flow while recovering from transport/API failure.
 - Added bounded frontend API request timeouts with caller-signal propagation and structured timeout telemetry so startup/network stalls cannot remain indefinite.
 - Added focused regression coverage for launch-failure resynchronization and explicit failure telemetry.
+- Added collision cooldown-state pruning so long sessions do not retain expired pair timestamps indefinitely.
+- Added focused regression coverage proving a collision pair can damage again after cooldown expiry while remaining protected inside the cooldown window.
 - User-validated live core issue: drag/play became usable and collision distortion was corrected.
-- Implemented: accessibility hardening, abortable arena bootstrap, reconnect-state hardening, shared HUD health rules, launch-failure resync, bounded API request duration, and focused lifecycle/regression coverage.
+- Implemented: accessibility hardening, abortable arena bootstrap, reconnect-state hardening, shared HUD health rules, launch-failure resync, bounded API request duration, collision cooldown pruning, and focused lifecycle/regression coverage.
 - Browser input uses captured native Pointer Events, explicit CSS-pixel-to-game-coordinate mapping, board-unit conversion, and post-settlement authoritative reconciliation.
 - Browser E2E remains **PENDING**; reconnect recovery remains **PENDING LIVE VERIFICATION**.
 - Generated local files such as `frontend/package-lock.json` and `frontend/tsconfig.tsbuildinfo` are not product changes and must not be committed unless intentionally adopted.
@@ -83,6 +85,8 @@
 - [x] Added best-effort authoritative resynchronization after failed launch requests.
 - [x] Added launch-failure resync regression coverage.
 - [x] Added bounded frontend API request duration with caller-abort propagation and timeout telemetry.
+- [x] Added collision cooldown-state pruning for long-session memory stability.
+- [x] Added collision cooldown expiry regression coverage.
 
 ### Gameplay parity — remaining
 
