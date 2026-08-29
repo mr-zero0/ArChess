@@ -18,39 +18,47 @@ test("modern client pins the verified current stack", () => {
 });
 
 test("Phaser owns the game loop and turn lifecycle", () => {
-  assert.match(arena, /extends Phaser\.Scene/);
-  assert.match(arena, /update\(_time: number, deltaMs: number\)/);
-  assert.match(arena, /this\.phase = "physics"/);
-  assert.match(arena, /this\.turn = this\.turn === "white" \? "black" : "white"/);
+  assert.match(arena, /extends Phaser\\.Scene/);
+  assert.match(arena, /update\\(_time: number, deltaMs: number\\)/);
+  assert.match(arena, /this\\.phase = "physics"/);
+  assert.match(arena, /this\\.turn = this\\.turn === "white" \\? "black" : "white"/);
   assert.doesNotMatch(arena, /requestAnimationFrame/);
 });
 
 test("Phaser normalizes responsive pointer input for drag and release", () => {
-  assert.match(app, /mode: Phaser\.Scale\.FIT/);
-  assert.match(app, /autoCenter: Phaser\.Scale\.CENTER_BOTH/);
+  assert.match(app, /mode: Phaser\\.Scale\\.FIT/);
+  assert.match(app, /autoCenter: Phaser\\.Scale\\.CENTER_BOTH/);
   assert.match(app, /windowEvents: true/);
-  assert.match(arena, /pointer\.worldX/);
-  assert.match(arena, /pointer\.worldY/);
+  assert.match(arena, /pointer\\.worldX/);
+  assert.match(arena, /pointer\\.worldY/);
   assert.match(arena, /pointerupoutside/);
   assert.match(arena, /drawAim/);
 });
 
 test("collision settlement is velocity-authoritative", () => {
-  assert.match(physics, /minVelocity:\s*GAME_RULES\.minVelocity/);
-  assert.match(physics, /const stillMoving = pieces\.some/);
+  assert.match(physics, /minVelocity:\\s*GAME_RULES\\.minVelocity/);
+  assert.match(physics, /const stillMoving = pieces\\.some/);
   assert.match(physics, /settleTimer/);
   assert.doesNotMatch(physics, /activeCollisions/);
 });
 
 test("React owns the application shell while Phaser owns the arena", () => {
-  assert.match(app, /from "motion\/react"/);
-  assert.match(app, /new Phaser\.Game/);
+  assert.match(app, /from "motion\\/react"/);
+  assert.match(app, /new Phaser\\.Game/);
   assert.match(app, /phaser-host/);
 });
 
 test("FastAPI exposes the modern transport boundary", () => {
-  assert.match(api, /FastAPI\(/);
-  assert.match(api, /\/api\/health/);
-  assert.match(api, /\/api\/rooms/);
-  assert.match(api, /\/ws\/rooms\/\{room_id\}/);
+  assert.match(api, /FastAPI\\(/);
+  assert.match(api, /\\/api\\/health/);
+  assert.match(api, /\\/api\\/rooms/);
+  assert.match(api, /\\/ws\\/rooms\\/\\{room_id\\}/);
+});
+
+test("arena startup waits for a real authoritative scene bridge", () => {
+  assert.match(app, /function isArenaBridge\\(value: unknown\\)/);
+  assert.match(app, /value !== null && typeof value === "object"/);
+  assert.match(app, /async function waitForArenaBridge/);
+  assert.match(app, /sceneRef\\.current = await waitForArenaBridge\\(game\\)/);
+  assert.doesNotMatch(app, /getScene\\("ArenaScene"\\) as ArenaBridge/);
 });
