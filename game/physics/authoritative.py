@@ -62,6 +62,7 @@ class AuthoritativeSimulation:
         self.pieces = pieces
         self.current_team = current_team
         self.sim_time = 0.0
+        self._settle_timer = 0.0
         self._hit_pairs: dict[tuple[str, str], float] = {}
         self._pending_integrity: dict | None = None
         self.last_integrity: dict | None = None
@@ -217,6 +218,7 @@ class AuthoritativeSimulation:
         piece = next(p for p in self.pieces if p.id == piece_id)
         piece.vx = vx
         piece.vy = vy
+        self._settle_timer = 0.0
         previous_team = self.current_team
         self.current_team = "black" if team == "white" else "white"
         self._domain_event(logging.INFO, "LAUNCH_ACCEPTED", fields={"team": team, "piece_id": piece_id, "piece_type": piece.type, "vx": vx, "vy": vy, "speed": math.hypot(vx, vy), "previous_team": previous_team, "next_team": self.current_team})
@@ -225,9 +227,9 @@ class AuthoritativeSimulation:
     def advance_until_settled(self, dt: float = 1.0 / 120.0, max_steps: int = 720) -> list[dict]:
         events: list[dict] = []
         for step_number in range(max_steps):
-            events.extend(self.step(dt))
-            active = any(p.alive and math.hypot(p.vx, p.vy) >= GAME_CONFIG["minVelocity"] for p in self.pieces)
-            if not active or self.game_over:
+            step_events = self.step(dt)
+            events.extend(step_events)
+            if self.game_over or any(event.get("type") == "settled" for event in step_events):
                 self._domain_event(logging.INFO, "PHYSICS_SETTLED", fields={"step_count": step_number + 1, "event_count": len(events), "game_over": self.game_over, "moving_piece_count": sum(1 for p in self.pieces if p.alive and math.hypot(p.vx, p.vy) >= GAME_CONFIG["minVelocity"])})
                 break
         else:
@@ -241,32 +243,51 @@ class AuthoritativeSimulation:
         if dt <= 0 or not math.isfinite(dt):
             self._domain_event(logging.ERROR, "PHYSICS_STEP_REJECTED", fields={"dt": dt, "reason": "invalid_dt"})
             raise ValueError("dt must be positive and finite")
-        self.sim_time += dt
         events: list[dict] = []
+        substeps = max(2, min(4, int(GAME_CONFIG.get("physicsSubsteps", 3))))
+        step_dt = min(0.033, dt) / substeps
+        impulse_epsilon = 0.001
+        was_active = any(p.alive and (math.hypot(p.vx, p.vy) > impulse_epsilon) for p in self.pieces)
 
-        for piece in self.pieces:
-            if not piece.alive:
-                continue
-            piece.x += piece.vx * dt
-            piece.y += piece.vy * dt
-            decay = PIECE_STATS[piece.type]["friction"] ** (dt * 60.0)
-            piece.vx *= decay
-            piece.vy *= decay
-            self._bounce(piece)
-
-        for i, a in enumerate(self.pieces):
-            if not a.alive:
-                continue
-            for b in self.pieces[i + 1:]:
-                if not b.alive:
+        for _ in range(substeps):
+            self.sim_time += step_dt
+            for piece in self.pieces:
+                if not piece.alive:
                     continue
-                event = self._collide(a, b)
-                if event:
-                    events.append(event)
+                piece.x += piece.vx * step_dt
+                piece.y += piece.vy * step_dt
+                decay = PIECE_STATS[piece.type]["friction"] ** (step_dt * 60.0)
+                piece.vx *= decay
+                piece.vy *= decay
+                self._bounce(piece)
+
+            for i, a in enumerate(self.pieces):
+                if not a.alive:
+                    continue
+                for b in self.pieces[i + 1:]:
+                    if not b.alive:
+                        continue
+                    event = self._collide(a, b)
+                    if event:
+                        events.append(event)
 
         for piece in self.pieces:
             if piece.alive and math.hypot(piece.vx, piece.vy) < GAME_CONFIG["minVelocity"]:
                 piece.vx = piece.vy = 0.0
+
+        still_moving = any(p.alive and math.hypot(p.vx, p.vy) >= GAME_CONFIG["minVelocity"] for p in self.pieces)
+        if not still_moving and was_active:
+            self._settle_timer += dt
+        elif still_moving:
+            self._settle_timer = 0.0
+
+        if not still_moving and was_active and self._settle_timer >= GAME_CONFIG["settleDelay"]:
+            for piece in self.pieces:
+                if not piece.alive or math.hypot(piece.vx, piece.vy) >= GAME_CONFIG["minVelocity"]:
+                    continue
+                piece.vx = piece.vy = 0.0
+            events.append({"type": "settled"})
+            self._settle_timer = 0.0
         return events
 
     def _bounce(self, piece: ServerPiece):
@@ -297,7 +318,8 @@ class AuthoritativeSimulation:
         if distance < 1e-9:
             dx, dy, distance = 1.0, 0.0, 1.0
         nx, ny = dx / distance, dy / distance
-        overlap = minimum - distance
+        separation = GAME_CONFIG.get("collisionSeparationEpsilon", 0.0)
+        overlap = minimum + separation - distance
         inv_a, inv_b = 1 / a.mass, 1 / b.mass
         total = inv_a + inv_b
         a.x -= nx * overlap * inv_a / total
