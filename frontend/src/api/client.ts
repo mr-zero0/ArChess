@@ -48,17 +48,64 @@ export type LaunchResult = {
   events: Array<Record<string, unknown>>;
 };
 
+import { createLogger } from "../observability.ts";
+
+const logger = createLogger("api.client");
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
-    ...init,
-    headers: { Accept: "application/json", ...(init?.headers ?? {}) },
+  const requestId = crypto.randomUUID();
+  const started = performance.now();
+  logger.debug("API_REQUEST_START", {
+    requestId,
+    method: init?.method ?? "GET",
+    path,
   });
-  const payload = (await response.json().catch(() => null)) as T | { error?: string } | null;
-  if (!response.ok) {
-    const message = payload && typeof payload === "object" && "error" in payload ? payload.error : undefined;
-    throw new Error(message || `ArChess API request failed: HTTP ${response.status}`);
+
+  try {
+    const response = await fetch(path, {
+      ...init,
+      headers: {
+        Accept: "application/json",
+        "X-Request-ID": requestId,
+        ...(init?.headers ?? {}),
+      },
+    });
+    const payload = (await response.json().catch(() => null)) as T | { error?: string } | null;
+    const durationMs = Math.round((performance.now() - started) * 100) / 100;
+
+    if (!response.ok) {
+      const message = payload && typeof payload === "object" && "error" in payload ? payload.error : undefined;
+      logger.warn("API_REQUEST_FAILED", {
+        requestId,
+        method: init?.method ?? "GET",
+        path,
+        status: response.status,
+        durationMs,
+        error: message ?? `HTTP ${response.status}`,
+      });
+      throw new Error(message || `ArChess API request failed: HTTP ${response.status}`);
+    }
+
+    logger.debug("API_REQUEST_END", {
+      requestId,
+      method: init?.method ?? "GET",
+      path,
+      status: response.status,
+      durationMs,
+    });
+    return payload as T;
+  } catch (error) {
+    if (error instanceof Error && !error.message.startsWith("ArChess API request failed")) {
+      logger.error("API_REQUEST_ERROR", {
+        requestId,
+        method: init?.method ?? "GET",
+        path,
+        durationMs: Math.round((performance.now() - started) * 100) / 100,
+        error: error.message,
+      });
+    }
+    throw error;
   }
-  return payload as T;
 }
 
 export function getHealth(signal?: AbortSignal) {
