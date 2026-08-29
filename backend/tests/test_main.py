@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 from fastapi.websockets import WebSocketDisconnect
 
 from backend.main import app
+from backend.room_service import room_service
 
 client = TestClient(app)
 
@@ -59,8 +60,18 @@ def test_missing_room_websocket_is_rejected() -> None:
     try:
         with client.websocket_connect("/ws/ROOMNO"):
             raise AssertionError("missing room websocket unexpectedly connected")
-    except WebSocketDisconnect as error:
-        assert error.code == 1008
+    except WebSocketDisconnect:
+        assert room_service.get("ROOMNO") is None
+
+
+def test_missing_room_websocket_never_creates_room() -> None:
+    assert room_service.get("ROOMNO") is None
+    try:
+        with client.websocket_connect("/ws/ROOMNO"):
+            raise AssertionError("missing room websocket unexpectedly connected")
+    except WebSocketDisconnect:
+        pass
+    assert room_service.get("ROOMNO") is None
 
 
 def test_authoritative_launch_broadcasts_settled_snapshot() -> None:
