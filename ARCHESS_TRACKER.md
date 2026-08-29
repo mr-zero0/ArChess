@@ -11,12 +11,13 @@
 
 ## Current modernization verification snapshot
 
-- Latest local backend gate: **9 passed, 1 failed** before the WebSocket test adjustment; the failure was the Starlette TestClient surfacing the deliberate missing-room close as code `1000` during handshake instead of the expected `1008`. The application still correctly does not create the missing room.
-- Latest local frontend gate: **25 passed**.
+- Latest local backend gate: **11 passed**.
+- Latest local frontend gate before the drag remediation: **25 passed**.
 - Latest local TypeScript check: **passed**.
 - Latest local production build: **passed**, with the existing Vite/Rolldown large-chunk warning for the Phaser bundle.
-- Backend WebSocket verification test has been adjusted to assert the observable invariant (missing room remains absent) without coupling the test to the TestClient handshake close-code quirk.
-- FastAPI room-service wiring remains **IMPLEMENTED — re-run backend tests after the test adjustment**.
+- User-reported live issue: initial White-piece drag was not reliably interactive in the browser.
+- Drag remediation: **IMPLEMENTED — pending local browser verification**. Arena pointer input now uses explicit camera-space conversion, a stable hit radius, explicit drag cancellation, and safer invalid-launch recovery.
+- Regression contract updated to require camera-space pointer conversion and drag-cancel handling.
 - Browser E2E remains **PENDING**; do not mark browser parity green until the live migrated stack is exercised successfully.
 - Generated local files such as `frontend/package-lock.json` and `frontend/tsconfig.tsbuildinfo` are not product changes and must not be committed unless intentionally adopted.
 
@@ -50,6 +51,7 @@
 - [x] Dedicated authoritative room service with per-room serialization and WebSocket fan-out.
 - [x] FastAPI routes wired to authoritative room state and launch processing.
 - [x] Rejected launches return authoritative snapshots for client reconciliation.
+- [x] Hardened arena pointer drag handling after live browser feedback.
 
 ### Gameplay parity — remaining
 
