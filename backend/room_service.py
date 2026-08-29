@@ -85,14 +85,28 @@ class RoomService:
             return {"ok": False, "accepted": False, "error": "room_not_found"}, None
 
         async with room.lock:
+            current_snapshot = room.snapshot
             if room.game_id is None:
                 room.game_id = game_id
             elif room.game_id != game_id:
                 logger.warning(
                     "LAUNCH_REJECTED",
-                    extra={"event": "LAUNCH_REJECTED", "room_id": room.room_id, "reason": "game_mismatch"},
+                    extra={
+                        "event": "LAUNCH_REJECTED",
+                        "room_id": room.room_id,
+                        "reason": "game_mismatch",
+                        "game_id": game_id,
+                    },
                 )
-                return {"ok": False, "accepted": False, "error": "game_mismatch"}, room.snapshot
+                return {
+                    "ok": False,
+                    "accepted": False,
+                    "room_id": room.room_id,
+                    "game_id": room.game_id,
+                    "error": "game_mismatch",
+                    "snapshot": current_snapshot,
+                    "events": [],
+                }, current_snapshot
 
             simulation = room.simulation
             accepted, reason = simulation.launch_intent(team, piece_id, dx, dy)
@@ -120,7 +134,10 @@ class RoomService:
                 "events": events,
             }
 
-        await self.broadcast(room, {"event": "state", "room_id": room.room_id, "snapshot": snapshot, "events": events})
+        await self.broadcast(
+            room,
+            {"event": "state", "room_id": room.room_id, "snapshot": snapshot, "events": events},
+        )
         logger.info(
             "AUTHORITATIVE_LAUNCH_SETTLED",
             extra={
