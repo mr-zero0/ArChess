@@ -116,8 +116,8 @@ export function createAuthoritativeSession(
     if (!roomId || !socket || socket.readyState !== WebSocket.OPEN) await connect();
     if (!roomId) throw new Error("Authoritative room is unavailable");
     const result = await launchRoomPiece(roomId, { gameId, ...payload });
+    onState(result.snapshot);
     if (result.accepted) {
-      onState(result.snapshot);
       emit("AUTHORITATIVE_LAUNCH_ACCEPTED", { roomId, pieceId: payload.pieceId, team: payload.team });
     } else {
       emit("AUTHORITATIVE_LAUNCH_REJECTED", { roomId, pieceId: payload.pieceId, reason: result.error ?? "rejected" });
