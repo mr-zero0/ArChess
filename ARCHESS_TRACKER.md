@@ -10,17 +10,18 @@
 
 ## Main comparison checkpoint
 
-- `feat/react-phaser-fastapi-migration` is **178 commits ahead** of `main` and **1 commit behind** `main` at the latest comparison.
+- `feat/react-phaser-fastapi-migration` is **209 commits ahead** of `main` and **1 commit behind** `main` at the latest comparison.
 - The single commit unique to `main` is `refactor(backend): route API through room service`; it is semantically related to the current FastAPI room-service work and must be reconciled before final cutover rather than silently ignored.
 - No new development branch should be created for that reconciliation.
 
 ## Current modernization verification snapshot
 
-- Latest user-run full gate before the current WebSocket contract cleanup: **backend 13/13 passed; frontend 47/48 passed; TypeScript passed; production build passed**.
-- The remaining frontend failure was a brittle implementation-detail assertion for WebSocket construction; production transport code remained intact.
-- Current branch contains the semantic WebSocket transport-test cleanup and requires a fresh local verification gate.
+- Latest user-run full gate: **backend 13/13 passed; frontend 41/41 passed; TypeScript passed; production build passed**. The build retains the known Phaser large-chunk warning.
+- Added best-effort authoritative room-state resynchronization when a launch request fails after local prediction, preserving the local gameplay flow while recovering from transport/API failure.
+- Added focused regression coverage for launch-failure resynchronization and explicit failure telemetry.
+- Added arena bootstrap cleanup hardening so each polling timer removes its abort listener on completion or cancellation.
 - User-validated live core issue: drag/play became usable and collision distortion was corrected.
-- Implemented: accessibility hardening, abortable arena bootstrap, reconnect-state hardening, shared HUD health rules, and focused lifecycle/regression coverage.
+- Implemented: accessibility hardening, abortable arena bootstrap, reconnect-state hardening, shared HUD health rules, launch-failure resync, and focused lifecycle/regression coverage.
 - Browser input uses captured native Pointer Events, explicit CSS-pixel-to-game-coordinate mapping, board-unit conversion, and post-settlement authoritative reconciliation.
 - Browser E2E remains **PENDING**; reconnect recovery remains **PENDING LIVE VERIFICATION**.
 - Generated local files such as `frontend/package-lock.json` and `frontend/tsconfig.tsbuildinfo` are not product changes and must not be committed unless intentionally adopted.
@@ -79,6 +80,9 @@
 - [x] Aligned modern-stack tests with current feature-rail, same-origin API, and observability contracts.
 - [x] Hardened transport assertions to verify endpoint construction semantics without coupling tests to template-literal formatting.
 - [x] Removed the final WebSocket implementation-detail assertion from the modern-stack transport contract.
+- [x] Added best-effort authoritative resynchronization after failed launch requests.
+- [x] Added launch-failure resync regression coverage.
+- [x] Hardened per-iteration arena bootstrap abort-listener cleanup.
 
 ### Gameplay parity — remaining
 
