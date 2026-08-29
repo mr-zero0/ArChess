@@ -16,11 +16,9 @@
 
 ## Current modernization verification snapshot
 
-- Latest user-run backend gate before the current fix: **6 passed, 8 failed**. Failures were caused by a response-shape regression in the FastAPI room endpoint, duplicate WebSocket acceptance/sending, and non-serializable validation-error context.
-- Latest user-run frontend gate: **30 passed**.
-- Latest user-run TypeScript/build gate: production build completed, but TypeScript had a `RoomState.error` mismatch; the type fix is now in the branch.
-- Current remediation implemented and pending fresh local gate: correct room-service launch response unpacking, single-owner WebSocket acceptance/initial state send, and fully JSON-safe validation-error serialization including exception objects.
-- API regression tests now cover these response/lifecycle contracts directly.
+- Latest user-run full gate: **backend 13/13 passed; frontend 30/30 passed; TypeScript passed; production build passed**. The build retains the known Phaser large-chunk warning.
+- User-validated live core issue: drag/play became usable and collision distortion was corrected.
+- Implemented since the verified gate, pending fresh local verification: accessibility hardening, abortable arena bootstrap, and focused bootstrap lifecycle regression coverage.
 - Browser input uses captured native Pointer Events, explicit CSS-pixel-to-game-coordinate mapping, board-unit conversion, and post-settlement authoritative reconciliation.
 - Browser E2E remains **PENDING**; reconnect recovery remains **PENDING LIVE VERIFICATION**.
 - Generated local files such as `frontend/package-lock.json` and `frontend/tsconfig.tsbuildinfo` are not product changes and must not be committed unless intentionally adopted.
@@ -70,6 +68,9 @@
 - [x] Made validation-error serialization safe for exception objects and non-finite values.
 - [x] Derived HUD team health scale from the canonical starting piece roster instead of duplicated magic totals.
 - [x] Added a rules regression for the exact starting team health total.
+- [x] Added accessibility presentation hardening for focus states, coarse-pointer targets, touch handling, and reduced motion.
+- [x] Added an abortable arena bootstrap so unmounts cancel pending scene-bridge polling cleanly.
+- [x] Added focused arena bootstrap lifecycle regression coverage.
 
 ### Gameplay parity — remaining
 
@@ -79,7 +80,7 @@
 - [ ] Verify repeated collisions do not freeze the scene.
 - [ ] Verify reconnect during and after a completed launch resynchronizes cleanly.
 - [ ] Add full VFX/audio/replay/history/challenges parity.
-- [ ] Add accessibility and keyboard/touch parity.
+- [ ] Add keyboard gameplay parity beyond touch/pointer access.
 - [ ] Add browser matrix for the modern client.
 
 ### Backend parity — remaining
