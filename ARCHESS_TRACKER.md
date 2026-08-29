@@ -16,14 +16,15 @@
 
 ## Current modernization verification snapshot
 
-- Latest automated backend gate before the reconnect hardening: **11 passed**.
-- Latest automated frontend gate before the reconnect hardening: **25 passed**.
-- Latest local TypeScript check before the reconnect hardening: **passed**.
-- Latest local production build before the reconnect hardening: **passed**, with the existing Vite/Rolldown large-chunk warning for the Phaser bundle.
-- User-validated live core issue: drag/play became usable and collision distortion was corrected; the current priority is robustness around continued authoritative play.
-- Current remediation baseline: **IMPLEMENTED — pending local verification** for the newest reconnect changes. Browser input uses captured native Pointer Events, explicit CSS-pixel-to-game-coordinate mapping, board-unit conversion, and safe post-settlement authority reconciliation.
-- New hardening: authoritative WebSocket reconnect now uses bounded exponential backoff and performs an HTTP room-state resync after reconnect before declaring the session recovered.
-- Browser E2E remains **PENDING**; do not mark browser parity green until the live migrated stack is exercised successfully after the latest batch.
+- Latest verified backend gate before the latest reconnect/input hardening: **11 passed**.
+- Latest verified frontend gate before the latest reconnect/input hardening: **25 passed**.
+- Latest verified TypeScript check before the latest reconnect/input hardening: **passed**.
+- Latest verified production build before the latest reconnect/input hardening: **passed**, with the existing Vite/Rolldown large-chunk warning for the Phaser bundle.
+- User-validated live core issue: drag/play became usable and collision distortion was corrected; the current priority is continued authoritative-play robustness.
+- New hardening implemented: bounded WebSocket reconnect with exponential backoff plus authoritative HTTP state resynchronization after recovery.
+- New API hardening implemented: non-finite launch-vector components are rejected at the FastAPI validation boundary before physics execution.
+- **Verification status:** the newest changes are **IMPLEMENTED — PENDING LOCAL GATE**. Do not claim the new batch is green until the user reruns backend, frontend, TypeScript and production build verification.
+- Browser E2E remains **PENDING**; reconnect recovery also remains **PENDING LIVE VERIFICATION**.
 - Generated local files such as `frontend/package-lock.json` and `frontend/tsconfig.tsbuildinfo` are not product changes and must not be committed unless intentionally adopted.
 
 ## Branch hygiene
@@ -59,6 +60,7 @@
 - [x] Replaced scene-only drag lifecycle with captured native canvas Pointer Events.
 - [x] Deferred authoritative snapshot reconciliation until local physics settlement to avoid mid-flight visual distortion.
 - [x] Added bounded authoritative WebSocket reconnect and room-state resynchronization.
+- [x] Added API-boundary validation for non-finite launch vectors.
 
 ### Gameplay parity — remaining
 
