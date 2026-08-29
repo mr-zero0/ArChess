@@ -46,6 +46,14 @@ test("Phaser normalizes responsive pointer input for drag and release", () => {
   has(arena, "drawAim");
 });
 
+test("authoritative snapshots reconcile only at safe physics boundaries", () => {
+  has(arena, "pendingAuthoritativeSnapshot");
+  has(arena, 'if (this.phase === "physics")');
+  has(arena, "AUTHORITATIVE_SNAPSHOT_DEFERRED_DURING_PHYSICS");
+  has(arena, "AUTHORITATIVE_SNAPSHOT_RECONCILING_AFTER_LOCAL_SETTLE");
+  has(arena, "private applySnapshotNow");
+});
+
 test("collision settlement is velocity-authoritative", () => {
   has(physics, "minVelocity: GAME_RULES.minVelocity");
   has(physics, "const stillMoving = pieces.some");
