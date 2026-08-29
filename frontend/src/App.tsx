@@ -4,9 +4,13 @@ import type { ArenaState } from "./game/ArenaScene";
 import { createAuthoritativeSession } from "./game/authoritativeSession";
 import type { AuthoritativeSnapshot } from "./api/client";
 
- type ArenaBridge = { applyAuthoritativeSnapshot: (snapshot: AuthoritativeSnapshot) => ArenaState };
+type ArenaBridge = { applyAuthoritativeSnapshot: (snapshot: AuthoritativeSnapshot) => ArenaState };
 type Team = "white" | "black";
 type ArenaStatus = "loading" | "ready" | "error";
+
+function isArenaBridge(value: object): value is ArenaBridge {
+  return "applyAuthoritativeSnapshot" in value && typeof value.applyAuthoritativeSnapshot === "function";
+}
 
 const initialState: ArenaState = {
   turn: "white", phase: "aim", whiteHp: 0, blackHp: 0, collisions: 0, winner: null, message: "White to move.", selectedPiece: null,
@@ -55,7 +59,9 @@ export function App() {
           onState: setState,
           onLaunch: (payload: { team: "white" | "black"; pieceId: string; dx: number; dy: number }) => session.launch(payload),
         });
-        sceneRef.current = game.scene.getScene("ArenaScene") as ArenaBridge;
+        const scene = game.scene.getScene("ArenaScene");
+        if (!isArenaBridge(scene)) throw new Error("ArenaScene authoritative bridge is unavailable");
+        sceneRef.current = scene;
         await session.connect();
         if (!cancelled) setArenaStatus("ready");
       } catch (error) {
