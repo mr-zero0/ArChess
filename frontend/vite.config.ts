@@ -16,9 +16,10 @@ export default defineConfig({
     sourcemap: true,
     rolldownOptions: {
       output: {
-        manualChunks: {
-          phaser: ["phaser"],
-          motion: ["motion/react"],
+        manualChunks(id) {
+          if (id.includes("node_modules/phaser")) return "phaser";
+          if (id.includes("node_modules/motion") || id.includes("node_modules/framer-motion")) return "motion";
+          return undefined;
         },
       },
     },
