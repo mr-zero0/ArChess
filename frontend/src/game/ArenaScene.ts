@@ -168,7 +168,7 @@ export class ArenaScene extends Phaser.Scene {
 
   private addPiece(piece: ArenaPiece) {
     const sprite = this.add.text(piece.x * CELL, piece.y * CELL, GLYPH[piece.type][piece.team], {
-      fontFamily: "Georgia, serif", fontSize: `${Math.round(CELL * 0.7)}px",
+      fontFamily: "Georgia, serif", fontSize: `${Math.round(CELL * 0.7)}px`,
       color: piece.team === "white" ? "#f7fbff" : "#05080c", stroke: piece.team === "white" ? "#172131" : "#dde6ef", strokeThickness: 5,
     }).setOrigin(0.5).setDepth(10);
     sprite.setData("pieceId", piece.id);
