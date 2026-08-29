@@ -21,8 +21,8 @@
 - Latest verified TypeScript check before the current physics parity hardening: **passed**.
 - Latest verified production build before the current physics parity hardening: **passed**, with the existing Vite/Rolldown large-chunk warning for the Phaser bundle.
 - User-validated live core issue: drag/play became usable and collision distortion was corrected; work is now focused on keeping authoritative and client simulation semantics aligned under repeated play and reconnect.
-- Implemented, pending local gate: bounded WebSocket reconnect/resync, finite API vector validation, authoritative physics substeps, collision separation epsilon, settle delay alignment, and expanded client collision stability coverage.
-- Browser input uses captured native Pointer Events, explicit CSS-pixel-to-game-coordinate mapping, board-unit conversion, and post-settlement authoritative reconciliation.
+- Implemented, pending local gate: bounded WebSocket reconnect/resync, finite API vector validation, authoritative physics substeps, collision separation epsilon, settle delay alignment, expanded collision stability coverage, and team-specific piece rendering parity.
+- The browser uses captured native Pointer Events, explicit CSS-pixel-to-game-coordinate mapping, board-unit conversion, and post-settlement authoritative reconciliation.
 - Browser E2E remains **PENDING**; reconnect recovery also remains **PENDING LIVE VERIFICATION**.
 - Generated local files such as `frontend/package-lock.json` and `frontend/tsconfig.tsbuildinfo` are not product changes and must not be committed unless intentionally adopted.
 
@@ -63,10 +63,11 @@
 - [x] Aligned authoritative physics substeps and settlement timing with the browser solver.
 - [x] Aligned authoritative collision separation epsilon with the browser solver.
 - [x] Expanded frontend collision regression coverage for canonical setup, separation stability, and chained collisions.
+- [x] Restored team-specific white/black chess glyph rendering to match the legacy presentation contract.
 
 ### Gameplay parity — remaining
 
-- [ ] Match the legacy board's exact piece stats and initial presentation.
+- [ ] Match the legacy board's remaining exact presentation details.
 - [ ] Verify real White → collision → settlement → Black flow in Chromium after latest changes.
 - [ ] Verify Black → collision → settlement → White.
 - [ ] Verify repeated collisions do not freeze the scene.
