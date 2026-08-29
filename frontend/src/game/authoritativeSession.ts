@@ -13,6 +13,8 @@ export type AuthoritativeSession = {
   close(): void;
 };
 
+type ConnectionState = "idle" | "connecting" | "connected" | "reconnecting" | "closed";
+
 const logger = createLogger("game.authoritative-session");
 const RECONNECT_BASE_DELAY_MS = 250;
 const RECONNECT_MAX_DELAY_MS = 5000;
@@ -35,6 +37,7 @@ export function createAuthoritativeSession(
   let connectPromise: Promise<void> | null = null;
   let reconnectTimer: number | null = null;
   let reconnectAttempt = 0;
+  let connectionState: ConnectionState = "idle";
   let closed = false;
   const gameId = window.crypto.randomUUID();
 
@@ -60,14 +63,81 @@ export function createAuthoritativeSession(
     });
   };
 
+  const connectSocket = (id: string, reconnecting = false): Promise<void> => {
+    if (connectPromise) return connectPromise;
+    connectionState = reconnecting ? "reconnecting" : "connecting";
+    connectPromise = new Promise<void>((resolve, reject) => {
+      const ws = new WebSocket(socketUrl(id));
+      socket = ws;
+      let completed = false;
+
+      const fail = (error: Error) => {
+        if (completed) return;
+        completed = true;
+        if (socket === ws) socket = null;
+        reject(error);
+      };
+
+      ws.onopen = () => {
+        completed = true;
+        connectionState = "connected";
+        emit("AUTHORITATIVE_WS_CONNECTED", { roomId: id });
+        resolve();
+      };
+
+      ws.onmessage = ({ data }) => {
+        try {
+          const message = JSON.parse(String(data)) as {
+            event?: string;
+            snapshot?: AuthoritativeSnapshot;
+            state?: AuthoritativeSnapshot;
+            error?: string;
+          };
+          const snapshot = message.snapshot ?? message.state;
+          if (snapshot) {
+            onState(snapshot);
+            emit("AUTHORITATIVE_STATE_RECEIVED", {
+              roomId: id,
+              turn: snapshot.currentTeam,
+              gameOver: snapshot.gameOver,
+            });
+            return;
+          }
+          if (message.event === "error") emit("AUTHORITATIVE_WS_ERROR", { roomId: id, error: message.error ?? "unknown" });
+        } catch (error) {
+          logger.warn("AUTHORITATIVE_WS_MESSAGE_INVALID", {
+            roomId: id,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      };
+
+      ws.onerror = () => fail(new Error("Authoritative WebSocket connection failed"));
+      ws.onclose = () => {
+        if (socket === ws) socket = null;
+        if (!closed) {
+          connectionState = "reconnecting";
+          emit("AUTHORITATIVE_WS_CLOSED", { roomId: id });
+          scheduleReconnect(id);
+        }
+      };
+    });
+
+    connectPromise = connectPromise.finally(() => {
+      connectPromise = null;
+    });
+    return connectPromise;
+  };
+
   const scheduleReconnect = (id: string) => {
     if (closed || reconnectTimer !== null || roomId !== id) return;
+    connectionState = "reconnecting";
     const delayMs = Math.min(RECONNECT_MAX_DELAY_MS, RECONNECT_BASE_DELAY_MS * 2 ** reconnectAttempt);
     reconnectAttempt += 1;
     emit("AUTHORITATIVE_WS_RECONNECT_SCHEDULED", { roomId: id, attempt: reconnectAttempt, delayMs });
     reconnectTimer = window.setTimeout(() => {
       reconnectTimer = null;
-      void connectSocket(id)
+      void connectSocket(id, true)
         .then(async () => {
           await resync(id);
           reconnectAttempt = 0;
@@ -84,81 +154,23 @@ export function createAuthoritativeSession(
     }, delayMs);
   };
 
-  const connectSocket = (id: string): Promise<void> => new Promise((resolve, reject) => {
-    clearReconnectTimer();
-    const ws = new WebSocket(socketUrl(id));
-    socket = ws;
-    let completed = false;
-
-    const fail = (error: Error) => {
-      if (completed) return;
-      completed = true;
-      if (socket === ws) socket = null;
-      reject(error);
-    };
-
-    ws.onopen = () => {
-      completed = true;
-      emit("AUTHORITATIVE_WS_CONNECTED", { roomId: id });
-      resolve();
-    };
-
-    ws.onmessage = ({ data }) => {
-      try {
-        const message = JSON.parse(String(data)) as {
-          event?: string;
-          snapshot?: AuthoritativeSnapshot;
-          state?: AuthoritativeSnapshot;
-          error?: string;
-        };
-        const snapshot = message.snapshot ?? message.state;
-        if (snapshot) {
-          onState(snapshot);
-          emit("AUTHORITATIVE_STATE_RECEIVED", {
-            roomId: id,
-            turn: snapshot.currentTeam,
-            gameOver: snapshot.gameOver,
-          });
-          return;
-        }
-        if (message.event === "error") emit("AUTHORITATIVE_WS_ERROR", { roomId: id, error: message.error ?? "unknown" });
-      } catch (error) {
-        logger.warn("AUTHORITATIVE_WS_MESSAGE_INVALID", {
-          roomId: id,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    };
-
-    ws.onerror = () => fail(new Error("Authoritative WebSocket connection failed"));
-    ws.onclose = () => {
-      if (socket === ws) socket = null;
-      if (!closed) {
-        emit("AUTHORITATIVE_WS_CLOSED", { roomId: id });
-        scheduleReconnect(id);
-      }
-    };
-  });
-
   const connect = async () => {
     if (closed) throw new Error("Authoritative session is closed");
-    if (connectPromise) return connectPromise;
+    if (socket?.readyState === WebSocket.OPEN && connectionState === "connected") return;
+    if (connectionState === "connecting" || connectionState === "reconnecting") {
+      if (connectPromise) return connectPromise;
+    }
     clearReconnectTimer();
-    connectPromise = (async () => {
-      if (!roomId) {
-        const room = await createRoom();
-        roomId = room.room_id;
-        emit("AUTHORITATIVE_ROOM_CREATED", { roomId });
-      }
-      await connectSocket(roomId);
-    })();
+    if (!roomId) {
+      const room = await createRoom();
+      roomId = room.room_id;
+      emit("AUTHORITATIVE_ROOM_CREATED", { roomId });
+    }
     try {
-      await connectPromise;
+      await connectSocket(roomId);
     } catch (error) {
       emit("AUTHORITATIVE_CONNECT_FAILED", { error: error instanceof Error ? error.message : String(error) });
       throw error;
-    } finally {
-      connectPromise = null;
     }
   };
 
@@ -177,6 +189,7 @@ export function createAuthoritativeSession(
 
   const close = () => {
     closed = true;
+    connectionState = "closed";
     clearReconnectTimer();
     socket?.close(1000, "client_shutdown");
     socket = null;
