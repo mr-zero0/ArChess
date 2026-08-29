@@ -17,3 +17,10 @@ test("reconnect state prevents launch from cancelling scheduled recovery", () =>
   has("connectionState = \"closed\"");
   has("connectPromise");
 });
+
+test("failed authoritative launch triggers a best-effort state resynchronization", () => {
+  has("AUTHORITATIVE_LAUNCH_REQUEST_FAILED");
+  has("await resync(roomId)");
+  has("AUTHORITATIVE_STATE_RESYNC_FAILED");
+  has("throw error;");
+});
