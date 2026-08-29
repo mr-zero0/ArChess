@@ -1,6 +1,6 @@
 import math
 
-from game.constants import BOARD_SIZE, PIECE_STATS
+from game.constants import BOARD_SIZE, GAME_CONFIG, PIECE_STATS
 from game.physics.authoritative import AuthoritativeSimulation, ServerPiece
 
 
@@ -51,6 +51,33 @@ def test_collision_cooldown_prevents_stationary_hp_drain():
     second = sim.step(0.01)
     assert any(event.get("damaged") for event in first)
     assert (pieces[0].hp, pieces[1].hp) == hp_after_first or all(not event.get("damaged") for event in second)
+
+
+def test_collision_separation_matches_browser_epsilon():
+    pieces = [
+        make_piece("a", "rook", "white", 2.0, 2.0),
+        make_piece("b", "pawn", "black", 2.5, 2.0),
+    ]
+    sim = AuthoritativeSimulation(pieces)
+    sim.step(0.01)
+    distance = math.hypot(pieces[1].x - pieces[0].x, pieces[1].y - pieces[0].y)
+    expected = pieces[0].radius + pieces[1].radius + GAME_CONFIG["collisionSeparationEpsilon"]
+    assert distance >= expected - 1e-9
+
+
+def test_settlement_waits_for_configured_delay():
+    piece = make_piece("w1", "rook", "white", 2.0, 2.0)
+    piece.vx = 1.0
+    sim = AuthoritativeSimulation([piece])
+    settled = False
+    for _ in range(720):
+        events = sim.step(0.01)
+        if any(event.get("type") == "settled" for event in events):
+            settled = True
+            break
+    assert settled is True
+    assert sim._settle_timer == 0.0
+    assert sim.sim_time >= GAME_CONFIG["settleDelay"]
 
 
 def test_king_destruction_sets_game_over():
