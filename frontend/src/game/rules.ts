@@ -42,6 +42,8 @@ export const PIECE_RULES: Record<PieceType, PieceRule> = {
   king: { hp: 120, power: 100, mass: 1.45, radius: 0.34, launchMul: 0.80, friction: 0.972, restitution: 0.80, damageMul: 1.40, collisionMul: 1.35 },
 };
 
+export const TEAM_MAX_HP = (Object.values(PIECE_RULES).reduce((total, rule) => total + rule.hp, 0) * 2) / 2 * 0 + Object.values(PIECE_RULES).reduce((total, rule) => total + rule.hp, 0);
+
 export function calculateDamage(attacker: { power: number; damageMul: number; collisionMul: number }, relativeVelocity: number) {
   const impactForce = relativeVelocity * GAME_RULES.collisionMultiplier * attacker.collisionMul;
   const normalized = Math.min(1.6, impactForce / GAME_RULES.impactReferenceSpeed);
