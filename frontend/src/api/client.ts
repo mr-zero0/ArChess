@@ -36,6 +36,7 @@ export type RoomState = {
   game_id: string | null;
   status: "waiting" | "active" | "finished";
   snapshot: AuthoritativeSnapshot;
+  error?: string;
 };
 
 export type LaunchResult = {
