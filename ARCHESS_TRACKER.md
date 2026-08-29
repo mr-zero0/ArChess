@@ -10,17 +10,17 @@
 
 ## Main comparison checkpoint
 
-- `feat/react-phaser-fastapi-migration` is **177 commits ahead** of `main` and **1 commit behind** `main` at the latest comparison.
+- `feat/react-phaser-fastapi-migration` is **178 commits ahead** of `main` and **1 commit behind** `main` at the latest comparison.
 - The single commit unique to `main` is `refactor(backend): route API through room service`; it is semantically related to the current FastAPI room-service work and must be reconciled before final cutover rather than silently ignored.
 - No new development branch should be created for that reconciliation.
 
 ## Current modernization verification snapshot
 
-- Latest user-run full gate before the current test-contract cleanup: **backend 13/13 passed; frontend 30/30 passed; TypeScript passed; production build passed**. The build retains the known Phaser large-chunk warning.
-- Latest attempted frontend gate after reconnect-state hardening: **47/48 passed**. The remaining failure was a stale transport-path assertion in `modern_stack.test.mjs`; production TypeScript/build remained successful.
+- Latest user-run full gate before the current transport-test hardening: **backend 13/13 passed; frontend 47/48 passed; TypeScript passed; production build passed**.
+- The remaining frontend failure was an implementation-detail string assertion for the encoded room-state transport path; production behavior itself was already correct.
 - User-validated live core issue: drag/play became usable and collision distortion was corrected.
 - Implemented: accessibility hardening, abortable arena bootstrap, reconnect-state hardening, shared HUD health rules, and focused lifecycle/regression coverage.
-- The modern-stack regression has been aligned to the actual React button-based feature rail, same-origin relative API transport, encoded WebSocket paths, and `sanitize()` observability implementation.
+- The modern-stack regression now validates transport behavior by checking endpoint construction primitives rather than brittle full template-string formatting.
 - Browser input uses captured native Pointer Events, explicit CSS-pixel-to-game-coordinate mapping, board-unit conversion, and post-settlement authoritative reconciliation.
 - Browser E2E remains **PENDING**; reconnect recovery remains **PENDING LIVE VERIFICATION**.
 - Generated local files such as `frontend/package-lock.json` and `frontend/tsconfig.tsbuildinfo` are not product changes and must not be committed unless intentionally adopted.
@@ -77,6 +77,7 @@
 - [x] Hardened authoritative-session connection state to prevent reconnect scheduling races with gameplay launches.
 - [x] Added focused reconnect-launch race regression coverage.
 - [x] Aligned modern-stack tests with current feature-rail, same-origin API, and observability contracts.
+- [x] Hardened transport assertions to verify encoded endpoint construction without coupling tests to template-literal formatting.
 
 ### Gameplay parity — remaining
 
