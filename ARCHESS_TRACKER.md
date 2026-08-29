@@ -9,6 +9,15 @@
 **3D:** DEFERRED — no 3D renderer or 2D/3D switch is part of the current product  
 **Repository policy:** `main` remains the stable baseline
 
+## Current modernization verification snapshot
+
+- Last verified frontend gate: **25 passed**, TypeScript clean, production build passed.
+- Last verified backend gate before FastAPI room-service wiring: **5 passed**.
+- Current FastAPI room-service wiring: **IMPLEMENTED — pending local verification**.
+- Current authoritative room-service rejection-state fix: **IMPLEMENTED — pending local verification**.
+- Current browser E2E: **PENDING**; the earlier smoke run exposed and led to fixing the Phaser scene-start race. Do not mark browser parity green until the live migrated stack is exercised successfully.
+- Generated local files such as `frontend/package-lock.json` and `frontend/tsconfig.tsbuildinfo` are not product changes and must not be committed unless intentionally adopted.
+
 ## Latest verified legacy baseline
 
 - Full Python regression: **125 passed, 17 skipped, 61 warnings** before the modernization branch was created.
@@ -36,6 +45,9 @@
 - [x] FastAPI service contract tests.
 - [x] Executable TypeScript physics runtime tests.
 - [x] Removed redundant source-regex collision/activation tests after equivalent behavioral coverage was established.
+- [x] Dedicated authoritative room service with per-room serialization and WebSocket fan-out.
+- [x] FastAPI routes wired to authoritative room state and launch processing.
+- [x] Rejected launches return authoritative snapshots for client reconciliation.
 
 ### Gameplay parity — remaining
 
@@ -49,11 +61,11 @@
 
 ### Backend parity — remaining
 
-- [ ] Port authoritative room lifecycle from the existing Python service.
-- [ ] Port authoritative launch validation and canonical state persistence.
+- [x] Port authoritative room lifecycle into the FastAPI room service.
+- [x] Port authoritative launch validation and canonical state persistence into the FastAPI room service.
 - [ ] Port ranked settlement/outcome hooks.
 - [ ] Port authentication/social contracts.
-- [ ] Replace the FastAPI placeholder room state with the real game service.
+- [x] Replace the FastAPI placeholder room state with the real authoritative simulation service.
 - [ ] Verify WebSocket reconnect/resync behavior.
 
 ### Cutover — blocked until parity
