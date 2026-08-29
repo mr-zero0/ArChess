@@ -89,12 +89,11 @@ class AuthoritativeSimulation:
     def new_match(cls) -> "AuthoritativeSimulation":
         pieces: list[ServerPiece] = []
         back_rank = ("rook", "knight", "bishop", "queen", "king", "bishop", "knight", "rook")
-        from uuid import uuid4
         for col, piece_type in enumerate(back_rank):
-            pieces.append(ServerPiece(str(uuid4()), piece_type, "black", col + 0.5, 0.5))
-            pieces.append(ServerPiece(str(uuid4()), "pawn", "black", col + 0.5, 1.5))
-            pieces.append(ServerPiece(str(uuid4()), "pawn", "white", col + 0.5, 6.5))
-            pieces.append(ServerPiece(str(uuid4()), piece_type, "white", col + 0.5, 7.5))
+            pieces.append(ServerPiece(f"black-{piece_type}-{col}", piece_type, "black", col + 0.5, 0.5))
+            pieces.append(ServerPiece(f"black-pawn-{col}", "pawn", "black", col + 0.5, 1.5))
+            pieces.append(ServerPiece(f"white-pawn-{col}", "pawn", "white", col + 0.5, 6.5))
+            pieces.append(ServerPiece(f"white-{piece_type}-{col}", piece_type, "white", col + 0.5, 7.5))
         simulation = cls(pieces)
         simulation._domain_event(logging.INFO, "MATCH_CREATED", fields={"piece_count": len(pieces)})
         return simulation
@@ -337,53 +336,36 @@ class AuthoritativeSimulation:
         hp_before_a, hp_before_b = a.hp, b.hp
         a.hp = max(0, a.hp - damage_a)
         b.hp = max(0, b.hp - damage_b)
-        destroyed = []
-        if a.hp == 0:
+        destroyed: list[dict] = []
+        if a.hp == 0 and a.alive:
             a.alive = False
             a.vx = a.vy = 0.0
-            destroyed.append(a.id)
-        if b.hp == 0:
+            destroyed.append({"type": "destroyed", "piece": a.id, "killer": b.team})
+        if b.hp == 0 and b.alive:
             b.alive = False
             b.vx = b.vy = 0.0
-            destroyed.append(b.id)
-        if any(p.type == "king" and not p.alive for p in self.pieces):
+            destroyed.append({"type": "destroyed", "piece": b.id, "killer": a.team})
+        if a.type == "king" and not a.alive or b.type == "king" and not b.alive:
             self.game_over = True
-        self._domain_event(logging.INFO, "COLLISION_DAMAGE_APPLIED", fields={"piece_a": a.id, "piece_b": b.id, "piece_a_type": a.type, "piece_b_type": b.type, "impact": impact, "damage_to_a": damage_a, "damage_to_b": damage_b, "hp_before_a": hp_before_a, "hp_after_a": a.hp, "hp_before_b": hp_before_b, "hp_after_b": b.hp, "destroyed": destroyed, "game_over": self.game_over})
-        return {
-            "type": "collision",
-            "impact": impact,
-            "damaged": True,
-            "damageToA": damage_a,
-            "damageToB": damage_b,
-            "destroyed": destroyed,
-        }
+        self._domain_event(logging.INFO, "COLLISION_DAMAGE", fields={"piece_a": a.id, "piece_b": b.id, "impact": impact, "damage_a": damage_a, "damage_b": damage_b, "hp_before_a": hp_before_a, "hp_before_b": hp_before_b, "hp_after_a": a.hp, "hp_after_b": b.hp})
+        return {"type": "collision", "impact": impact, "damaged": True, "pieceA": a.id, "pieceB": b.id, "damageA": damage_a, "damageB": damage_b, "destroyed": destroyed}
 
-    @staticmethod
-    def _damage(attacker: ServerPiece, impact: float) -> int:
-        normalized = min(1.6, impact * attacker.collision_mul / GAME_CONFIG["impactReferenceSpeed"])
-        raw = attacker.power * normalized * GAME_CONFIG["damageMultiplier"] * attacker.damage_mul
+    def _damage(self, attacker: ServerPiece, impact: float) -> int:
+        stats = PIECE_STATS[attacker.type]
+        impact_force = impact * GAME_CONFIG["collisionMultiplier"] * stats["collisionMul"]
+        normalized = min(1.6, impact_force / GAME_CONFIG["impactReferenceSpeed"])
+        raw = stats["power"] * normalized * GAME_CONFIG["damageMultiplier"] * stats["damageMul"]
         return max(1, min(GAME_CONFIG["maxCollisionDamage"], round(raw)))
 
-    def snapshot(self, include_integrity: bool = True) -> dict:
-        snapshot = {
+    def snapshot(self, *, include_integrity: bool = True) -> dict:
+        payload = {
             "currentTeam": self.current_team,
             "gameOver": self.game_over,
             "pieces": [
-                {
-                    "id": p.id,
-                    "type": p.type,
-                    "team": p.team,
-                    "x": p.x,
-                    "y": p.y,
-                    "vx": p.vx,
-                    "vy": p.vy,
-                    "hp": p.hp,
-                    "maxHp": PIECE_STATS[p.type]["hp"],
-                    "alive": p.alive,
-                }
+                {"id": p.id, "type": p.type, "team": p.team, "x": p.x, "y": p.y, "vx": p.vx, "vy": p.vy, "hp": p.hp, "alive": p.alive}
                 for p in self.pieces
             ],
         }
         if include_integrity and self.last_integrity:
-            snapshot["integrity"] = self.last_integrity
-        return snapshot
+            payload["integrity"] = self.last_integrity
+        return payload
