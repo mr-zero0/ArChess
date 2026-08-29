@@ -100,6 +100,32 @@ test("collision cooldown prevents repeated damage while a pair remains in contac
   assert.equal(black.hp, hpAfterFirstHit.black);
 });
 
+test("collision pair becomes damageable again after cooldown expiry", () => {
+  const world = new PhysicsWorld();
+  const white = piece("white-pawn", "white", 3.0, 3.0);
+  const black = piece("black-pawn", "black", 3.48, 3.0);
+  const pieces = [white, black];
+
+  white.vx = 10;
+  white.moving = true;
+  world.step(pieces, 0.016);
+  const firstCollision = world.events.find((event) => event.type === "collision");
+  assert.ok(firstCollision);
+  const hpAfterFirstHit = { white: white.hp, black: black.hp };
+
+  white.x = 3.0;
+  black.x = 3.48;
+  white.vx = 0;
+  black.vx = 0;
+  white.moving = true;
+  black.moving = false;
+
+  world.step(pieces, Math.max(PHYSICS.collisionCooldown * 2, 0.05));
+  const secondCollision = world.events.find((event) => event.type === "collision");
+  assert.ok(secondCollision, "the pair should become damageable after cooldown expiry");
+  assert.ok(white.hp < hpAfterFirstHit.white || black.hp < hpAfterFirstHit.black);
+});
+
 test("three-piece collision chain remains finite and moving", () => {
   const world = new PhysicsWorld();
   const left = piece("left", "white", 2.6, 3.0);
