@@ -113,14 +113,21 @@ test("collision pair becomes damageable again after cooldown expiry", () => {
   assert.ok(firstCollision);
   const hpAfterFirstHit = { white: white.hp, black: black.hp };
 
-  white.x = 3.0;
-  black.x = 3.48;
+  // Advance the internal simulation clock without putting the pair back in contact.
+  white.x = 1.5;
+  black.x = 5.5;
   white.vx = 0;
   black.vx = 0;
-  white.moving = true;
+  white.moving = false;
   black.moving = false;
+  for (let i = 0; i < 4; i += 1) world.step(pieces, PHYSICS.collisionCooldown * 0.5);
 
-  world.step(pieces, Math.max(PHYSICS.collisionCooldown * 2, 0.05));
+  // Create a fresh inbound impact after the cooldown has elapsed.
+  white.x = 3.0;
+  black.x = 3.48;
+  white.vx = 10;
+  white.moving = true;
+  world.step(pieces, 0.016);
   const secondCollision = world.events.find((event) => event.type === "collision");
   assert.ok(secondCollision, "the pair should become damageable after cooldown expiry");
   assert.ok(white.hp < hpAfterFirstHit.white || black.hp < hpAfterFirstHit.black);
