@@ -39,7 +39,7 @@ test("Phaser normalizes responsive pointer input for drag and release", () => {
   has(app, "windowEvents: true");
   has(arena, "pointer.worldX");
   has(arena, "pointer.worldY");
-  has(arena, 'pointerupoutside');
+  has(arena, "pointerupoutside");
   has(arena, "drawAim");
 });
 
