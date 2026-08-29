@@ -138,7 +138,8 @@ test("FastAPI exposes the modern transport boundary", () => {
   has(api, "function getRoomState");
   has(api, "function launchRoomPiece");
   has(api, "encodeURIComponent(roomId)");
-  has(api, '"/launch"');
+  has(api, "method: \"POST\"");
+  has(api, "game_id: payload.gameId");
   has(session, "encodeURIComponent(id)");
   has(session, "ws:");
   lacks(api, "API_BASE_URL");
