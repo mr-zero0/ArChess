@@ -26,8 +26,10 @@ const SIZE = 640;
 const CELL = SIZE / 8;
 const BOARD_UNITS = 8;
 const MAX_DRAG_DISTANCE = 2.6;
-const PIECE_HIT_RADIUS = CELL * 0.48;
-const MIN_DRAG_DISTANCE_PIXELS = 16;
+const PIECE_HIT_RADIUS = CELL * 0.55;
+const MIN_DRAG_DISTANCE_PIXELS = 12;
+
+type CanvasPointerEvent = PointerEvent;
 
 export class ArenaScene extends Phaser.Scene {
   private pieces: ArenaPiece[] = createInitialPieces();
@@ -38,6 +40,7 @@ export class ArenaScene extends Phaser.Scene {
   private phase = "aim";
   private selected: ArenaPiece | null = null;
   private dragStart: Phaser.Math.Vector2 | null = null;
+  private dragPointerId: number | null = null;
   private aimGuide?: Phaser.GameObjects.Graphics;
   private collisions = 0;
   private callbacks?: ArenaCallbacks;
@@ -56,12 +59,8 @@ export class ArenaScene extends Phaser.Scene {
     this.drawBoard();
     for (const piece of this.pieces) this.addPiece(piece);
     this.aimGuide = this.add.graphics().setDepth(1000);
-    this.input.setPollAlways();
-    this.input.on("pointerdown", this.handleDown, this);
-    this.input.on("pointermove", this.handleMove, this);
-    this.input.on("pointerup", this.handleUp, this);
-    this.input.on("pointerupoutside", this.handleUp, this);
-    this.input.on("gameout", this.handlePointerCancel, this);
+    this.attachCanvasInput();
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.detachCanvasInput, this);
     this.publish("White to move.", true);
     logger.info("ARENA_READY", { turn: this.turn, pieceCount: this.pieces.length });
   }
@@ -91,9 +90,10 @@ export class ArenaScene extends Phaser.Scene {
 
   applyAuthoritativeSnapshot(snapshot: AuthoritativeSnapshot): ArenaState {
     const byId = new Map(snapshot.pieces.map((piece) => [piece.id, piece]));
+    let missingPieces = 0;
     for (const piece of this.pieces) {
       const remote = byId.get(piece.id);
-      if (!remote) continue;
+      if (!remote) { missingPieces += 1; continue; }
       piece.x = remote.x;
       piece.y = remote.y;
       piece.vx = remote.vx;
@@ -103,6 +103,7 @@ export class ArenaScene extends Phaser.Scene {
       piece.moving = remote.alive && Math.hypot(remote.vx, remote.vy) > 0;
       this.syncPiece(piece);
     }
+    if (missingPieces) logger.warn("AUTHORITATIVE_PIECES_MISSING", { missingPieces, localPieceCount: this.pieces.length, remotePieceCount: snapshot.pieces.length });
     this.world.reset();
     this.turn = snapshot.currentTeam;
     this.phase = snapshot.gameOver ? "gameover" : "aim";
@@ -134,7 +135,7 @@ export class ArenaScene extends Phaser.Scene {
     const sprite = this.add.text(piece.x * CELL, piece.y * CELL, GLYPH[piece.type], {
       fontFamily: "Georgia, serif", fontSize: `${Math.round(CELL * 0.7)}px`,
       color: piece.team === "white" ? "#f7fbff" : "#05080c", stroke: piece.team === "white" ? "#172131" : "#dde6ef", strokeThickness: 5,
-    }).setOrigin(0.5).setDepth(10).setInteractive({ useHandCursor: true });
+    }).setOrigin(0.5).setDepth(10);
     sprite.setData("pieceId", piece.id);
     this.sprites.set(piece.id, sprite);
     const hp = this.add.text(piece.x * CELL, piece.y * CELL - CELL * 0.42, `${piece.hp}/${piece.maxHp}`, {
@@ -151,9 +152,17 @@ export class ArenaScene extends Phaser.Scene {
     if (hp) hp.setVisible(piece.alive && this.selected?.id === piece.id).setPosition(x, y - CELL * 0.42).setText(`${piece.hp}/${piece.maxHp}`);
   }
 
-  private pointerWorld(pointer: Phaser.Input.Pointer): Phaser.Math.Vector2 {
-    pointer.updateWorldPoint(this.cameras.main);
-    return new Phaser.Math.Vector2(pointer.worldX, pointer.worldY);
+  private canvasPoint(event: CanvasPointerEvent): Phaser.Math.Vector2 | null {
+    const canvas = this.game.canvas;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return null;
+    const x = ((event.clientX - rect.left) / rect.width) * SIZE;
+    const y = ((event.clientY - rect.top) / rect.height) * SIZE;
+    return new Phaser.Math.Vector2(
+      Phaser.Math.Clamp(x, 0, SIZE),
+      Phaser.Math.Clamp(y, 0, SIZE),
+    );
   }
 
   private pieceAt(x: number, y: number) {
@@ -167,20 +176,118 @@ export class ArenaScene extends Phaser.Scene {
     return found;
   }
 
-  private handleDown(pointer: Phaser.Input.Pointer) {
-    if (this.phase !== "aim" || !pointer.primaryDown) return;
-    const point = this.pointerWorld(pointer);
+  private attachCanvasInput() {
+    const canvas = this.game.canvas;
+    canvas.style.touchAction = "none";
+    canvas.addEventListener("pointerdown", this.handleCanvasPointerDown);
+    canvas.addEventListener("pointermove", this.handleCanvasPointerMove);
+    canvas.addEventListener("pointerup", this.handleCanvasPointerUp);
+    canvas.addEventListener("pointercancel", this.handleCanvasPointerCancel);
+    logger.debug("CANVAS_POINTER_INPUT_ATTACHED", { touchAction: canvas.style.touchAction });
+  }
+
+  private detachCanvasInput() {
+    const canvas = this.game.canvas;
+    canvas.removeEventListener("pointerdown", this.handleCanvasPointerDown);
+    canvas.removeEventListener("pointermove", this.handleCanvasPointerMove);
+    canvas.removeEventListener("pointerup", this.handleCanvasPointerUp);
+    canvas.removeEventListener("pointercancel", this.handleCanvasPointerCancel);
+    if (this.dragPointerId !== null && canvas.hasPointerCapture(this.dragPointerId)) canvas.releasePointerCapture(this.dragPointerId);
+    this.dragPointerId = null;
+    this.clearDragState();
+  }
+
+  private readonly handleCanvasPointerDown = (event: CanvasPointerEvent) => {
+    if (this.phase !== "aim" || (event.pointerType === "mouse" && event.button !== 0) || this.dragPointerId !== null) return;
+    const point = this.canvasPoint(event);
+    if (!point) return;
     const piece = this.pieceAt(point.x, point.y);
     if (!piece || piece.team !== this.turn) {
       this.selectPiece(null);
       return;
     }
+    event.preventDefault();
     this.selectPiece(piece);
     this.dragStart = point.clone();
+    this.dragPointerId = event.pointerId;
+    try { this.game.canvas.setPointerCapture(event.pointerId); } catch { /* capture unsupported */ }
     this.sprites.get(piece.id)?.setScale(1.12);
     this.drawAim(point);
     this.publish(`Aiming ${piece.type}.`, true);
-    logger.debug("DRAG_STARTED", { pieceId: piece.id, team: piece.team, x: Number(point.x.toFixed(2)), y: Number(point.y.toFixed(2)) });
+    logger.debug("DRAG_STARTED", { pieceId: piece.id, team: piece.team, pointerId: event.pointerId, x: Number(point.x.toFixed(2)), y: Number(point.y.toFixed(2)) });
+  };
+
+  private readonly handleCanvasPointerMove = (event: CanvasPointerEvent) => {
+    if (this.dragPointerId !== event.pointerId || !this.selected || !this.dragStart || this.phase !== "aim") return;
+    const point = this.canvasPoint(event);
+    if (!point) return;
+    event.preventDefault();
+    this.drawAim(point);
+  };
+
+  private readonly handleCanvasPointerUp = (event: CanvasPointerEvent) => {
+    if (this.dragPointerId !== event.pointerId) return;
+    const point = this.canvasPoint(event);
+    if (!point) { this.cancelCanvasDrag("invalid_pointer_position"); return; }
+    event.preventDefault();
+    this.finishDrag(point);
+    try { this.game.canvas.releasePointerCapture(event.pointerId); } catch { /* already released */ }
+    this.dragPointerId = null;
+  };
+
+  private readonly handleCanvasPointerCancel = (event: CanvasPointerEvent) => {
+    if (this.dragPointerId !== event.pointerId) return;
+    this.cancelCanvasDrag("pointer_cancel");
+    try { this.game.canvas.releasePointerCapture(event.pointerId); } catch { /* already released */ }
+    this.dragPointerId = null;
+  };
+
+  private cancelCanvasDrag(reason: string) {
+    logger.debug("DRAG_CANCELLED", { pieceId: this.selected?.id ?? null, reason });
+    this.clearDragState();
+    this.selectPiece(null);
+    this.dragPointerId = null;
+  }
+
+  private finishDrag(point: Phaser.Math.Vector2) {
+    if (!this.selected || !this.dragStart || this.phase !== "aim" || this.selected.team !== this.turn) return;
+    const piece = this.selected;
+    const start = this.dragStart;
+    const dragPixels = new Phaser.Math.Vector2(start.x - point.x, start.y - point.y);
+    this.clearDragState();
+    this.selected = null;
+    this.hpLabels.forEach((label) => label.setVisible(false));
+
+    if (dragPixels.length() < MIN_DRAG_DISTANCE_PIXELS) {
+      this.selectPiece(piece);
+      return;
+    }
+
+    const dragBoard = dragPixels.clone().scale(BOARD_UNITS / SIZE);
+    const boardDistance = Math.min(MAX_DRAG_DISTANCE, dragBoard.length());
+    const power = Math.min(1, boardDistance / MAX_DRAG_DISTANCE);
+    if (!this.world.launch(piece, dragBoard.x, dragBoard.y, power)) {
+      this.selectPiece(piece);
+      return;
+    }
+
+    logger.info("LOCAL_LAUNCH_STARTED", {
+      pieceId: piece.id,
+      team: piece.team,
+      dragPixelsX: Number(dragPixels.x.toFixed(2)),
+      dragPixelsY: Number(dragPixels.y.toFixed(2)),
+      dragBoardX: Number(dragBoard.x.toFixed(3)),
+      dragBoardY: Number(dragBoard.y.toFixed(3)),
+      dragBoardDistance: Number(boardDistance.toFixed(3)),
+      power: Number(power.toFixed(3)),
+    });
+    this.phase = "physics";
+    this.publish("Physics resolving…", true);
+    if (this.onLaunch) {
+      void Promise.resolve(this.onLaunch({ team: piece.team, pieceId: piece.id, dx: dragBoard.x, dy: dragBoard.y })).catch((error) => {
+        logger.warn("AUTHORITATIVE_LAUNCH_ERROR", { pieceId: piece.id, error: error instanceof Error ? error.message : String(error) });
+      });
+    }
   }
 
   private selectPiece(piece: ArenaPiece | null) {
@@ -188,12 +295,6 @@ export class ArenaScene extends Phaser.Scene {
     this.selected = piece;
     for (const current of this.pieces) this.hpLabels.get(current.id)?.setVisible(Boolean(piece && current.id === piece.id && current.alive));
     this.publish(piece ? `${piece.type} selected.` : "", true);
-  }
-
-  private handleMove(pointer: Phaser.Input.Pointer) {
-    if (!this.selected || !this.dragStart || this.phase !== "aim" || this.selected.team !== this.turn || !pointer.primaryDown) return;
-    const point = this.pointerWorld(pointer);
-    this.drawAim(point);
   }
 
   private drawAim(pointerPoint: Phaser.Math.Vector2) {
@@ -216,53 +317,6 @@ export class ArenaScene extends Phaser.Scene {
     this.aimGuide?.clear();
     if (this.selected) this.sprites.get(this.selected.id)?.setScale(1);
     this.dragStart = null;
-  }
-
-  private handlePointerCancel() {
-    if (!this.dragStart) return;
-    logger.debug("DRAG_CANCELLED", { pieceId: this.selected?.id ?? null });
-    this.clearDragState();
-    this.selectPiece(null);
-  }
-
-  private handleUp(pointer: Phaser.Input.Pointer) {
-    if (!this.selected || !this.dragStart || this.phase !== "aim" || this.selected.team !== this.turn) return;
-    const piece = this.selected;
-    const start = this.dragStart;
-    const point = this.pointerWorld(pointer);
-    const dragPixels = new Phaser.Math.Vector2(start.x - point.x, start.y - point.y);
-    this.clearDragState();
-    this.selected = null;
-    this.hpLabels.forEach((label) => label.setVisible(false));
-
-    if (dragPixels.length() < MIN_DRAG_DISTANCE_PIXELS) {
-      this.selectPiece(piece);
-      return;
-    }
-
-    const dragBoard = dragPixels.clone().scale(1 / CELL);
-    const boardDistance = Math.min(MAX_DRAG_DISTANCE, dragBoard.length());
-    const power = Math.min(1, boardDistance / MAX_DRAG_DISTANCE);
-    if (!this.world.launch(piece, dragBoard.x, dragBoard.y, power)) {
-      this.selectPiece(piece);
-      return;
-    }
-
-    logger.info("LOCAL_LAUNCH_STARTED", {
-      pieceId: piece.id,
-      team: piece.team,
-      dragBoardX: Number(dragBoard.x.toFixed(3)),
-      dragBoardY: Number(dragBoard.y.toFixed(3)),
-      dragBoardDistance: Number(boardDistance.toFixed(3)),
-      power: Number(power.toFixed(3)),
-    });
-    this.phase = "physics";
-    this.publish("Physics resolving…", true);
-    if (this.onLaunch) {
-      void Promise.resolve(this.onLaunch({ team: piece.team, pieceId: piece.id, dx: dragBoard.x, dy: dragBoard.y })).catch((error) => {
-        logger.warn("AUTHORITATIVE_LAUNCH_ERROR", { pieceId: piece.id, error: error instanceof Error ? error.message : String(error) });
-      });
-    }
   }
 
   private processPhysicsEvent(event: PhysicsEvent) {
