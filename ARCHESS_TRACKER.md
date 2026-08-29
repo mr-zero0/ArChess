@@ -11,13 +11,14 @@
 
 ## Current modernization verification snapshot
 
-- Latest local backend gate: **11 passed**.
-- Latest local frontend gate before the drag remediation: **25 passed**.
-- Latest local TypeScript check: **passed**.
-- Latest local production build: **passed**, with the existing Vite/Rolldown large-chunk warning for the Phaser bundle.
-- User-reported live issue: initial White-piece drag was not reliably interactive in the browser.
-- Drag remediation: **IMPLEMENTED — pending local browser verification**. Arena pointer input now uses explicit camera-space conversion, a stable hit radius, explicit drag cancellation, and safer invalid-launch recovery.
-- Regression contract updated to require camera-space pointer conversion and drag-cancel handling.
+- Latest local backend gate: **11 passed** before the canonical-ID/input-space remediation; re-run after the new authority/client changes.
+- Latest local frontend gate before the canonical-ID/input-space remediation: **25 passed**.
+- Latest local TypeScript check: **passed** before the canonical-ID/input-space remediation.
+- Latest local production build: **passed** before the canonical-ID/input-space remediation, with the existing Vite/Rolldown large-chunk warning for the Phaser bundle.
+- User-reported live issue: initial White-piece drag/play was not reliably interactive in the browser.
+- Root causes identified: browser drag vectors were in 640px render space while physics/API expect 8x8 board units; browser and authoritative server generated different piece IDs, preventing server lookup and snapshot reconciliation.
+- Remediation: **IMPLEMENTED — pending local verification**. Canonical deterministic piece IDs now match between browser and server, and drag vectors are explicitly converted from pixels to board units before local physics and authoritative submission.
+- Regression coverage updated for canonical server piece IDs and board-space drag handling.
 - Browser E2E remains **PENDING**; do not mark browser parity green until the live migrated stack is exercised successfully.
 - Generated local files such as `frontend/package-lock.json` and `frontend/tsconfig.tsbuildinfo` are not product changes and must not be committed unless intentionally adopted.
 
@@ -52,6 +53,8 @@
 - [x] FastAPI routes wired to authoritative room state and launch processing.
 - [x] Rejected launches return authoritative snapshots for client reconciliation.
 - [x] Hardened arena pointer drag handling after live browser feedback.
+- [x] Canonicalized browser/server piece IDs for authoritative reconciliation.
+- [x] Normalized drag vectors from render pixels to board-space physics units.
 
 ### Gameplay parity — remaining
 
