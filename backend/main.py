@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import logging
+import math
 from datetime import UTC, datetime
 from typing import Literal
 from uuid import uuid4
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from backend.room_service import room_service
@@ -82,6 +83,13 @@ class LaunchRequest(BaseModel):
     piece_id: str = Field(min_length=1)
     dx: float
     dy: float
+
+    @field_validator("dx", "dy")
+    @classmethod
+    def validate_finite_vector_component(cls, value: float) -> float:
+        if not math.isfinite(value):
+            raise ValueError("launch vector components must be finite")
+        return value
 
 
 @app.get("/api/health", response_model=HealthResponse)
