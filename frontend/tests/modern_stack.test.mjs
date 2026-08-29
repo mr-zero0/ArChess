@@ -7,6 +7,7 @@ const arena = await readFile(new URL("../src/game/ArenaScene.ts", import.meta.ur
 const physics = await readFile(new URL("../src/game/physics.ts", import.meta.url), "utf8");
 const app = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
 const api = await readFile(new URL("../../backend/main.py", import.meta.url), "utf8");
+const session = await readFile(new URL("../src/game/authoritativeSession.ts", import.meta.url), "utf8");
 
 function has(source, fragment) {
   assert.ok(source.includes(fragment), `Expected source to contain: ${fragment}`);
@@ -52,6 +53,18 @@ test("authoritative snapshots reconcile only at safe physics boundaries", () => 
   has(arena, "AUTHORITATIVE_SNAPSHOT_DEFERRED_DURING_PHYSICS");
   has(arena, "AUTHORITATIVE_SNAPSHOT_RECONCILING_AFTER_LOCAL_SETTLE");
   has(arena, "private applySnapshotNow");
+});
+
+test("authoritative session reconnects and resynchronizes room state", () => {
+  has(session, "getRoomState");
+  has(session, "RECONNECT_BASE_DELAY_MS");
+  has(session, "RECONNECT_MAX_DELAY_MS");
+  has(session, "scheduleReconnect");
+  has(session, "AUTHORITATIVE_WS_RECONNECT_SCHEDULED");
+  has(session, "AUTHORITATIVE_WS_RECONNECTED");
+  has(session, "AUTHORITATIVE_STATE_RESYNCED");
+  has(session, "window.clearTimeout");
+  has(session, "clearReconnectTimer");
 });
 
 test("collision settlement is velocity-authoritative", () => {
