@@ -140,8 +140,9 @@ test("FastAPI exposes the modern transport boundary", () => {
   has(api, "encodeURIComponent(roomId)");
   has(api, "method: \"POST\"");
   has(api, "game_id: payload.gameId");
-  has(session, "encodeURIComponent(id)");
-  has(session, "ws:");
+  has(session, "function socketUrl");
+  has(session, "encodeURIComponent(roomId)");
+  has(session, "new WebSocket(socketUrl(roomId))");
   lacks(api, "API_BASE_URL");
 });
 
