@@ -63,7 +63,7 @@ test("FastAPI exposes the modern transport boundary", () => {
   has(api, '"/ws/rooms/{room_id}"');
 });
 
-test("arena startup waits for a real authoritative scene bridge", () => {
+test("arena startup validates the scene bridge without unsafe assertions", () => {
   has(app, "function isArenaBridge(value: object)");
   has(app, 'if (!isArenaBridge(scene)) throw new Error("ArenaScene authoritative bridge is unavailable")');
   has(arena, "applyAuthoritativeSnapshot(snapshot: AuthoritativeSnapshot): ArenaState");
