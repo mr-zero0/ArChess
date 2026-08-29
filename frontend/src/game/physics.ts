@@ -65,6 +65,13 @@ export class PhysicsWorld {
     return true;
   }
 
+  private pruneExpiredHitPairs() {
+    const cutoff = this.simTime - PHYSICS.collisionCooldown;
+    for (const [pairKey, lastHit] of this.hitPairs) {
+      if (lastHit < cutoff) this.hitPairs.delete(pairKey);
+    }
+  }
+
   step(pieces: ArenaPiece[], dt: number): boolean {
     this.events = [];
     const wasActive = pieces.some((piece) => piece.alive && (piece.moving || speed(piece) > PHYSICS.impulseEpsilon));
@@ -73,6 +80,7 @@ export class PhysicsWorld {
 
     for (let substep = 0; substep < substeps; substep += 1) {
       this.simTime += stepDt;
+      this.pruneExpiredHitPairs();
       for (const piece of pieces) {
         if (!piece.alive || (speed(piece) <= PHYSICS.impulseEpsilon && !piece.moving)) continue;
         piece.moving = true;
