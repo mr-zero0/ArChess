@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ArenaState } from "./game/ArenaScene";
 import { createAuthoritativeSession } from "./game/authoritativeSession";
 import type { AuthoritativeSnapshot } from "./api/client";
+import { STARTING_TEAM_MAX_HP } from "./game/rules.ts";
 
 type ArenaBridge = { applyAuthoritativeSnapshot: (snapshot: AuthoritativeSnapshot) => ArenaState };
 type Team = "white" | "black";
@@ -28,8 +29,7 @@ const initialState: ArenaState = {
 
 function StatCard({ team, hp }: { team: Team; hp: number }) {
   const label = team === "white" ? "WHITE TOTAL" : "BLACK TOTAL";
-  const total = 8 * 45 + 120 + 75 + 80 + 65 + 70;
-  const value = Math.max(0, Math.min(100, total ? (hp / total) * 100 : 0));
+  const value = Math.max(0, Math.min(100, (hp / STARTING_TEAM_MAX_HP) * 100));
   return (
     <div className="rounded-3xl border border-slate-800 bg-slate-950/80 p-5 shadow-2xl">
       <div className="flex items-center justify-between"><span className="text-xs font-semibold tracking-[0.24em] text-slate-500">{label}</span><span className="text-sm font-bold">{hp} HP</span></div>
