@@ -177,14 +177,32 @@ export function createAuthoritativeSession(
   const launch = async (payload: { team: "white" | "black"; pieceId: string; dx: number; dy: number }) => {
     if (!roomId || !socket || socket.readyState !== WebSocket.OPEN) await connect();
     if (!roomId) throw new Error("Authoritative room is unavailable");
-    const result = await launchRoomPiece(roomId, { gameId, ...payload });
-    onState(result.snapshot);
-    if (result.accepted) {
-      emit("AUTHORITATIVE_LAUNCH_ACCEPTED", { roomId, pieceId: payload.pieceId, team: payload.team });
-    } else {
-      emit("AUTHORITATIVE_LAUNCH_REJECTED", { roomId, pieceId: payload.pieceId, reason: result.error ?? "rejected" });
+    try {
+      const result = await launchRoomPiece(roomId, { gameId, ...payload });
+      onState(result.snapshot);
+      if (result.accepted) {
+        emit("AUTHORITATIVE_LAUNCH_ACCEPTED", { roomId, pieceId: payload.pieceId, team: payload.team });
+      } else {
+        emit("AUTHORITATIVE_LAUNCH_REJECTED", { roomId, pieceId: payload.pieceId, reason: result.error ?? "rejected" });
+      }
+      return result;
+    } catch (error) {
+      emit("AUTHORITATIVE_LAUNCH_REQUEST_FAILED", {
+        roomId,
+        pieceId: payload.pieceId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      try {
+        await resync(roomId);
+      } catch (resyncError) {
+        emit("AUTHORITATIVE_STATE_RESYNC_FAILED", {
+          roomId,
+          pieceId: payload.pieceId,
+          error: resyncError instanceof Error ? resyncError.message : String(resyncError),
+        });
+      }
+      throw error;
     }
-    return result;
   };
 
   const close = () => {
