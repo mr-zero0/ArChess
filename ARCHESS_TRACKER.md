@@ -8,31 +8,28 @@
 **3D:** DEFERRED — no 3D renderer or 2D/3D switch is part of the current product  
 **Repository policy:** `main` remains the stable baseline
 
+## Main comparison checkpoint
+
+- `feat/react-phaser-fastapi-migration` is **153 commits ahead** of `main` and **1 commit behind** `main` at the comparison checkpoint.
+- The single commit ahead on `main` is `refactor(backend): route API through room service`; it is semantically related to the current FastAPI room-service work and must be reconciled before final cutover rather than silently ignored.
+- No new development branch should be created for that reconciliation.
+
 ## Current modernization verification snapshot
 
-- Latest automated backend gate before the latest frontend reconciliation/input changes: **11 passed**; re-run after the newest changes.
-- Latest automated frontend gate before the latest frontend reconciliation/input changes: **25 passed**; re-run after the newest changes.
-- Latest local TypeScript check before the latest frontend reconciliation/input changes: **passed**.
-- Latest local production build before the latest frontend reconciliation/input changes: **passed**, with the existing Vite/Rolldown large-chunk warning for the Phaser bundle.
-- User-reported live issue: drag became usable, but collision settlement caused visible distortion/jumps and did not look like clean expected gameplay.
-- Root causes addressed so far: render-space drag vectors needed explicit board-space conversion; authoritative/browser piece identity had to be canonical; Phaser scene-level pointer lifecycle needed a captured native canvas path; authoritative snapshots were being applied immediately while the client prediction was still physically settling.
-- Remediation: **IMPLEMENTED — pending local browser verification**. The arena uses captured native canvas Pointer Events, explicit CSS-pixel-to-game-coordinate mapping, board-unit conversion, and safe reconciliation after local physics reaches settlement.
-- Canonical deterministic piece IDs are covered by backend tests and match the browser setup.
-- Browser E2E remains **PENDING**; do not mark browser parity green until the live migrated stack is exercised successfully.
+- Latest automated backend gate before the reconnect hardening: **11 passed**.
+- Latest automated frontend gate before the reconnect hardening: **25 passed**.
+- Latest local TypeScript check before the reconnect hardening: **passed**.
+- Latest local production build before the reconnect hardening: **passed**, with the existing Vite/Rolldown large-chunk warning for the Phaser bundle.
+- User-validated live core issue: drag/play became usable and collision distortion was corrected; the current priority is robustness around continued authoritative play.
+- Current remediation baseline: **IMPLEMENTED — pending local verification** for the newest reconnect changes. Browser input uses captured native Pointer Events, explicit CSS-pixel-to-game-coordinate mapping, board-unit conversion, and safe post-settlement authority reconciliation.
+- New hardening: authoritative WebSocket reconnect now uses bounded exponential backoff and performs an HTTP room-state resync after reconnect before declaring the session recovered.
+- Browser E2E remains **PENDING**; do not mark browser parity green until the live migrated stack is exercised successfully after the latest batch.
 - Generated local files such as `frontend/package-lock.json` and `frontend/tsconfig.tsbuildinfo` are not product changes and must not be committed unless intentionally adopted.
 
 ## Branch hygiene
 
 - `feat/react-phaser-fastapi-migration` is the **only active non-main development branch**.
 - `fix/observability-complete` is retired legacy verification work and should be deleted locally and remotely; no new commits belong there.
-
-## Latest verified legacy baseline
-
-- Full Python regression: **125 passed, 17 skipped, 61 warnings** before the modernization branch was created.
-- Logging/retention targeted suite: **17 passed**.
-- Targeted observability/authoritative suite: **24 passed**.
-- Collision/runtime JavaScript regression: **7 passed**.
-- Live legacy browser gameplay: **BLOCKED** by the known first-collision freeze; this is the primary reason for modernizing the browser game runtime instead of continuing to patch the legacy loop.
 
 ## Modernization workstream
 
@@ -61,13 +58,15 @@
 - [x] Normalized drag vectors from render pixels to board-space physics units.
 - [x] Replaced scene-only drag lifecycle with captured native canvas Pointer Events.
 - [x] Deferred authoritative snapshot reconciliation until local physics settlement to avoid mid-flight visual distortion.
+- [x] Added bounded authoritative WebSocket reconnect and room-state resynchronization.
 
 ### Gameplay parity — remaining
 
 - [ ] Match the legacy board's exact piece stats and initial presentation.
-- [ ] Verify real White → collision → settlement → Black flow in Chromium.
+- [ ] Verify real White → collision → settlement → Black flow in Chromium after latest changes.
 - [ ] Verify Black → collision → settlement → White.
 - [ ] Verify repeated collisions do not freeze the scene.
+- [ ] Verify reconnect during and after a completed launch resynchronizes cleanly.
 - [ ] Add full VFX/audio/replay/history/challenges parity.
 - [ ] Add accessibility and keyboard/touch parity.
 - [ ] Add browser matrix for the modern client.
@@ -79,10 +78,11 @@
 - [ ] Port ranked settlement/outcome hooks.
 - [ ] Port authentication/social contracts.
 - [x] Replace the FastAPI placeholder room state with the real authoritative simulation service.
-- [ ] Verify WebSocket reconnect/resync behavior.
+- [ ] Verify WebSocket reconnect/resync behavior in a live browser session.
 
 ### Cutover — blocked until parity
 
+- [ ] Reconcile the one `main` commit difference cleanly on the existing development branch.
 - [ ] Dual-run modern client against verified backend.
 - [ ] Full application regression after integration.
 - [ ] Modern browser matrix green.
