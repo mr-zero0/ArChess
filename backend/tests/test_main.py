@@ -145,3 +145,23 @@ def test_zero_drag_is_rejected_without_state_change() -> None:
     assert response.json()["accepted"] is False
     assert response.json()["error"] == "zero_drag"
     assert client.get(f"/api/rooms/{room}/state").json()["snapshot"] == snapshot
+
+
+def test_non_finite_drag_is_rejected_at_api_boundary() -> None:
+    room = client.post("/api/rooms").json()["room_id"]
+    response = client.post(
+        f"/api/rooms/{room}/launch",
+        json={"game_id": "finite-check", "team": "white", "piece_id": "white-pawn-0", "dx": float("nan"), "dy": 0.5},
+    )
+    assert response.status_code == 422
+    assert "finite" in response.json()["detail"][0]["msg"].lower()
+
+
+def test_infinite_drag_is_rejected_at_api_boundary() -> None:
+    room = client.post("/api/rooms").json()["room_id"]
+    response = client.post(
+        f"/api/rooms/{room}/launch",
+        json={"game_id": "finite-check", "team": "white", "piece_id": "white-pawn-0", "dx": 0.5, "dy": float("inf")},
+    )
+    assert response.status_code == 422
+    assert "finite" in response.json()["detail"][0]["msg"].lower()
