@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import UTC, datetime
+from typing import Literal
 from uuid import uuid4
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 from starlette.middleware.base import BaseHTTPMiddleware
+
+from backend.room_service import room_service
 
 logger = logging.getLogger("archess.api")
 app = FastAPI(title="ArChess API", version="0.1.0", docs_url="/api/docs", openapi_url="/api/openapi.json")
@@ -18,18 +20,43 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         request_id = request.headers.get("X-Request-ID") or uuid4().hex[:16]
         correlation_id = request.headers.get("X-Correlation-ID") or request_id
         started = datetime.now(UTC)
-        extra = {"event": "REQUEST_START", "request_id": request_id, "correlation_id": correlation_id, "method": request.method, "path": request.url.path}
-        logger.info("REQUEST_START", extra=extra)
+        logger.info(
+            "REQUEST_START",
+            extra={
+                "event": "REQUEST_START",
+                "request_id": request_id,
+                "correlation_id": correlation_id,
+                "method": request.method,
+                "path": request.url.path,
+            },
+        )
         try:
             response = await call_next(request)
         except Exception:
             duration_ms = (datetime.now(UTC) - started).total_seconds() * 1000
-            logger.exception("REQUEST_ERROR", extra={"event": "REQUEST_ERROR", "request_id": request_id, "correlation_id": correlation_id, "duration_ms": round(duration_ms, 3)})
+            logger.exception(
+                "REQUEST_ERROR",
+                extra={
+                    "event": "REQUEST_ERROR",
+                    "request_id": request_id,
+                    "correlation_id": correlation_id,
+                    "duration_ms": round(duration_ms, 3),
+                },
+            )
             raise
         duration_ms = (datetime.now(UTC) - started).total_seconds() * 1000
         response.headers["X-Request-ID"] = request_id
         response.headers["X-Correlation-ID"] = correlation_id
-        logger.info("REQUEST_END", extra={"event": "REQUEST_END", "request_id": request_id, "correlation_id": correlation_id, "status": response.status_code, "duration_ms": round(duration_ms, 3)})
+        logger.info(
+            "REQUEST_END",
+            extra={
+                "event": "REQUEST_END",
+                "request_id": request_id,
+                "correlation_id": correlation_id,
+                "status": response.status_code,
+                "duration_ms": round(duration_ms, 3),
+            },
+        )
         return response
 
 
@@ -51,18 +78,20 @@ class RoomResponse(BaseModel):
 
 class LaunchRequest(BaseModel):
     game_id: str = Field(min_length=1)
+    team: Literal["white", "black"]
     piece_id: str = Field(min_length=1)
     dx: float
     dy: float
 
 
-_rooms: dict[str, dict] = {}
-_clients: dict[str, set[WebSocket]] = {}
-
-
 @app.get("/api/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
-    return HealthResponse(ok=True, service="archess-api", version=app.version, timestamp=datetime.now(UTC).isoformat())
+    return HealthResponse(
+        ok=True,
+        service="archess-api",
+        version=app.version,
+        timestamp=datetime.now(UTC).isoformat(),
+    )
 
 
 @app.get("/api/version")
@@ -72,43 +101,73 @@ async def version() -> dict[str, str]:
 
 @app.post("/api/rooms", response_model=RoomResponse, status_code=201)
 async def create_room() -> RoomResponse:
-    room_id = uuid4().hex[:6].upper()
-    created_at = datetime.now(UTC).isoformat()
-    _rooms[room_id] = {"status": "waiting", "created_at": created_at}
-    _clients.setdefault(room_id, set())
-    logger.info("ROOM_CREATED", extra={"event": "ROOM_CREATED", "room_id": room_id})
-    return RoomResponse(room_id=room_id, status="waiting", created_at=created_at)
+    room = await room_service.create_room()
+    return RoomResponse(room_id=room.room_id, status=room.status, created_at=room.created_at)
+
+
+@app.get("/api/rooms/{room_id}/state")
+async def room_state(room_id: str) -> dict:
+    state = room_service.room_state(room_id)
+    if state is None:
+        logger.warning(
+            "ROOM_NOT_FOUND",
+            extra={"event": "ROOM_NOT_FOUND", "room_id": room_id.upper()},
+        )
+        return {"ok": False, "error": "room_not_found"}
+    return state
 
 
 @app.post("/api/rooms/{room_id}/launch")
 async def launch(room_id: str, request: LaunchRequest) -> dict:
     normalized = room_id.upper()
-    room = _rooms.get(normalized)
-    if not room:
-        logger.warning("ROOM_NOT_FOUND", extra={"event": "ROOM_NOT_FOUND", "room_id": normalized, "game_id": request.game_id})
-        return {"ok": False, "error": "room_not_found"}
-    logger.info("AUTHORITATIVE_LAUNCH_REQUEST", extra={"event": "AUTHORITATIVE_LAUNCH_REQUEST", "room_id": normalized, "game_id": request.game_id, "piece_id": request.piece_id})
-    return {"ok": True, "room_id": normalized, "game_id": request.game_id, "piece_id": request.piece_id, "accepted": True}
+    logger.info(
+        "AUTHORITATIVE_LAUNCH_REQUEST",
+        extra={
+            "event": "AUTHORITATIVE_LAUNCH_REQUEST",
+            "room_id": normalized,
+            "game_id": request.game_id,
+            "piece_id": request.piece_id,
+            "team": request.team,
+        },
+    )
+    payload, _ = await room_service.launch(
+        normalized,
+        game_id=request.game_id,
+        team=request.team,
+        piece_id=request.piece_id,
+        dx=request.dx,
+        dy=request.dy,
+    )
+    return payload
 
 
 @app.websocket("/ws/rooms/{room_id}")
 async def room_socket(websocket: WebSocket, room_id: str) -> None:
     normalized = room_id.upper()
-    await websocket.accept()
-    clients = _clients.setdefault(normalized, set())
-    clients.add(websocket)
-    logger.info("WS_CONNECTED", extra={"event": "WS_CONNECTED", "room_id": normalized, "clients": len(clients)})
     try:
-        await websocket.send_json({"event": "connected", "room_id": normalized, "timestamp": datetime.now(UTC).isoformat()})
+        room = await room_service.connect(normalized, websocket)
+    except KeyError:
+        logger.warning(
+            "WS_ROOM_NOT_FOUND",
+            extra={"event": "WS_ROOM_NOT_FOUND", "room_id": normalized},
+        )
+        await websocket.close(code=1008, reason="room_not_found")
+        return
+
+    try:
         while True:
             message = await websocket.receive_json()
-            logger.info("WS_MESSAGE", extra={"event": "WS_MESSAGE", "room_id": normalized, "message_event": message.get("event", "unknown")})
-            payload = {"event": "ack", "room_id": normalized, "received": message}
-            await asyncio.gather(*(client.send_json(payload) for client in list(clients)))
+            logger.debug(
+                "WS_CONTROL_MESSAGE",
+                extra={
+                    "event": "WS_CONTROL_MESSAGE",
+                    "room_id": room.room_id,
+                    "message_event": message.get("event", "unknown"),
+                },
+            )
     except WebSocketDisconnect:
-        clients.discard(websocket)
-        logger.info("WS_DISCONNECTED", extra={"event": "WS_DISCONNECTED", "room_id": normalized, "clients": len(clients)})
+        await room_service.disconnect(room, websocket)
     except Exception:
-        clients.discard(websocket)
-        logger.exception("WS_ERROR", extra={"event": "WS_ERROR", "room_id": normalized})
+        await room_service.disconnect(room, websocket)
+        logger.exception("WS_ERROR", extra={"event": "WS_ERROR", "room_id": room.room_id})
         raise
