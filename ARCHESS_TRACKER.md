@@ -16,14 +16,16 @@
 
 ## Current modernization verification snapshot
 
-- Latest user-run full gate before the current physics-state batch: **backend 13/13 passed; frontend 41/41 passed; TypeScript passed; production build passed**. The build retains the known Phaser large-chunk warning.
+- Latest user-run full gate before the current keyboard-gameplay batch: **backend 13/13 passed; frontend 43/43 passed; TypeScript passed; production build passed**. The build retains the known Phaser large-chunk warning.
 - Added best-effort authoritative room-state resynchronization when a launch request fails after local prediction, preserving the local gameplay flow while recovering from transport/API failure.
 - Added bounded frontend API request timeouts with caller-signal propagation and structured timeout telemetry so startup/network stalls cannot remain indefinite.
 - Added focused regression coverage for launch-failure resynchronization and explicit failure telemetry.
 - Added collision cooldown-state pruning so long sessions do not retain expired pair timestamps indefinitely.
 - Added a physically valid cooldown-expiry regression that advances simulation time without contact, then verifies a fresh inbound impact is damageable again.
+- Added keyboard gameplay parity to the Phaser arena using the existing launch path: focusable canvas, active-team piece cycling, Enter/Space selection and launch, WASD direction, and keyboard telemetry.
+- Added focused keyboard gameplay regression coverage.
 - User-validated live core issue: drag/play became usable and collision distortion was corrected.
-- Implemented: accessibility hardening, abortable arena bootstrap, reconnect-state hardening, shared HUD health rules, launch-failure resync, bounded API request duration, collision cooldown pruning, and focused lifecycle/regression coverage.
+- Implemented: accessibility hardening, abortable arena bootstrap, reconnect-state hardening, shared HUD health rules, launch-failure resync, bounded API request duration, collision cooldown pruning, keyboard gameplay controls, and focused lifecycle/regression coverage.
 - Browser input uses captured native Pointer Events, explicit CSS-pixel-to-game-coordinate mapping, board-unit conversion, and post-settlement authoritative reconciliation.
 - Browser E2E remains **PENDING**; reconnect recovery remains **PENDING LIVE VERIFICATION**.
 - Generated local files such as `frontend/package-lock.json` and `frontend/tsconfig.tsbuildinfo` are not product changes and must not be committed unless intentionally adopted.
@@ -87,6 +89,8 @@
 - [x] Added bounded frontend API request duration with caller-abort propagation and timeout telemetry.
 - [x] Added collision cooldown-state pruning for long-session memory stability.
 - [x] Added collision cooldown expiry regression coverage using a fresh post-cooldown impact.
+- [x] Added keyboard gameplay parity using the existing drag launch path.
+- [x] Added focused keyboard gameplay regression coverage.
 
 ### Gameplay parity — remaining
 
@@ -96,7 +100,7 @@
 - [ ] Verify repeated collisions do not freeze the scene.
 - [ ] Verify reconnect during and after a completed launch resynchronizes cleanly.
 - [ ] Add full VFX/audio/replay/history/challenges parity.
-- [ ] Add keyboard gameplay parity beyond touch/pointer access.
+- [ ] Verify keyboard gameplay in a real browser session.
 - [ ] Add browser matrix for the modern client.
 
 ### Backend parity — remaining
