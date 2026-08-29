@@ -10,18 +10,17 @@
 
 ## Main comparison checkpoint
 
-- `feat/react-phaser-fastapi-migration` is now **168 commits ahead** of `main` and **1 commit behind** `main` at the latest comparison.
+- `feat/react-phaser-fastapi-migration` is now **171 commits ahead** of `main` and **1 commit behind** `main` at the latest comparison.
 - The single commit ahead on `main` is `refactor(backend): route API through room service`; it is semantically related to the current FastAPI room-service work and must be reconciled before final cutover rather than silently ignored.
 - No new development branch should be created for that reconciliation.
 
 ## Current modernization verification snapshot
 
-- Latest user-run backend gate: **12 passed, 2 failed**. The two failures were test-harness serialization errors while trying to send `NaN`/`Infinity` through HTTPX; they occurred before FastAPI received the request.
+- Latest user-run backend gate before the current fix: **6 passed, 8 failed**. Failures were caused by a response-shape regression in the FastAPI room endpoint, duplicate WebSocket acceptance/sending, and non-serializable validation-error context.
 - Latest user-run frontend gate: **30 passed**.
-- Latest user-run TypeScript check: **failed on `RoomState.error` typing** in the reconnect/resync client; this has now been fixed in the branch.
-- Latest user-run production build: **same TypeScript failure**, now addressed by the type fix.
-- Implemented since the previous verified baseline, pending a fresh user/local gate: bounded WebSocket reconnect/resync, finite API vector validation, authoritative physics substep/settlement alignment, collision-separation epsilon alignment, expanded frontend collision stability coverage, team-specific white/black glyph parity, and strict room-state error typing.
-- API regression tests now send raw non-finite JSON tokens so the validation path is exercised by FastAPI/Pydantic instead of failing during client-side JSON serialization.
+- Latest user-run TypeScript/build gate: production build completed, but TypeScript had a `RoomState.error` mismatch; the type fix is now in the branch.
+- Current remediation implemented and pending fresh local gate: correct room-service launch response unpacking, single-owner WebSocket acceptance/initial state send, and fully JSON-safe validation-error serialization including exception objects.
+- API regression tests now cover these response/lifecycle contracts directly.
 - Browser input uses captured native Pointer Events, explicit CSS-pixel-to-game-coordinate mapping, board-unit conversion, and post-settlement authoritative reconciliation.
 - Browser E2E remains **PENDING**; reconnect recovery remains **PENDING LIVE VERIFICATION**.
 - Generated local files such as `frontend/package-lock.json` and `frontend/tsconfig.tsbuildinfo` are not product changes and must not be committed unless intentionally adopted.
@@ -66,6 +65,9 @@
 - [x] Restored team-specific white/black chess glyph rendering to match the legacy presentation contract.
 - [x] Added strict TypeScript typing for room-state error responses.
 - [x] Corrected API tests so non-finite validation is exercised at the FastAPI boundary.
+- [x] Corrected FastAPI launch response handling so room-service tuples are never exposed as endpoint responses.
+- [x] Made WebSocket connection ownership single-layered to prevent duplicate accept/send lifecycle failures.
+- [x] Made validation-error serialization safe for exception objects and non-finite values.
 
 ### Gameplay parity — remaining
 
