@@ -11,14 +11,14 @@
 
 ## Current modernization verification snapshot
 
-- Latest local backend gate: **11 passed** before the canonical-ID/input-space remediation; re-run after the new authority/client changes.
-- Latest local frontend gate before the canonical-ID/input-space remediation: **25 passed**.
-- Latest local TypeScript check: **passed** before the canonical-ID/input-space remediation.
-- Latest local production build: **passed** before the canonical-ID/input-space remediation, with the existing Vite/Rolldown large-chunk warning for the Phaser bundle.
-- User-reported live issue: initial White-piece drag/play was not reliably interactive in the browser.
-- Root causes identified: browser drag vectors were in 640px render space while physics/API expect 8x8 board units; browser and authoritative server generated different piece IDs, preventing server lookup and snapshot reconciliation.
-- Remediation: **IMPLEMENTED — pending local verification**. Canonical deterministic piece IDs now match between browser and server, and drag vectors are explicitly converted from pixels to board units before local physics and authoritative submission.
-- Regression coverage updated for canonical server piece IDs and board-space drag handling.
+- Latest automated backend gate: **11 passed** before the captured-canvas input remediation; re-run after the new frontend input implementation.
+- Latest automated frontend gate: **25 passed** before the captured-canvas input remediation; re-run after the new frontend input implementation.
+- Latest local TypeScript check: **passed** before the captured-canvas input remediation.
+- Latest local production build: **passed** before the captured-canvas input remediation, with the existing Vite/Rolldown large-chunk warning for the Phaser bundle.
+- User-reported live issue: initial White-piece drag/play remained unreliable despite green unit/source-contract gates.
+- Root causes identified and addressed: render-space drag vectors needed explicit board-space conversion; authoritative/browser piece identity had to be canonical; Phaser scene-level pointer lifecycle was not sufficiently robust for the responsive React-hosted canvas.
+- Remediation: **IMPLEMENTED — pending local browser verification**. The arena now uses captured native canvas Pointer Events, explicit CSS-pixel-to-game-coordinate mapping, pointer cancel/release handling, board-unit conversion, and structured drag telemetry.
+- Canonical deterministic piece IDs are covered by backend tests and match the browser setup.
 - Browser E2E remains **PENDING**; do not mark browser parity green until the live migrated stack is exercised successfully.
 - Generated local files such as `frontend/package-lock.json` and `frontend/tsconfig.tsbuildinfo` are not product changes and must not be committed unless intentionally adopted.
 
@@ -55,6 +55,7 @@
 - [x] Hardened arena pointer drag handling after live browser feedback.
 - [x] Canonicalized browser/server piece IDs for authoritative reconciliation.
 - [x] Normalized drag vectors from render pixels to board-space physics units.
+- [x] Replaced scene-only drag lifecycle with captured native canvas Pointer Events.
 
 ### Gameplay parity — remaining
 
