@@ -11,13 +11,13 @@
 
 ## Current modernization verification snapshot
 
-- Latest automated backend gate: **11 passed** before the captured-canvas input remediation; re-run after the new frontend input implementation.
-- Latest automated frontend gate: **25 passed** before the captured-canvas input remediation; re-run after the new frontend input implementation.
-- Latest local TypeScript check: **passed** before the captured-canvas input remediation.
-- Latest local production build: **passed** before the captured-canvas input remediation, with the existing Vite/Rolldown large-chunk warning for the Phaser bundle.
-- User-reported live issue: initial White-piece drag/play remained unreliable despite green unit/source-contract gates.
-- Root causes identified and addressed: render-space drag vectors needed explicit board-space conversion; authoritative/browser piece identity had to be canonical; Phaser scene-level pointer lifecycle was not sufficiently robust for the responsive React-hosted canvas.
-- Remediation: **IMPLEMENTED — pending local browser verification**. The arena now uses captured native canvas Pointer Events, explicit CSS-pixel-to-game-coordinate mapping, pointer cancel/release handling, board-unit conversion, and structured drag telemetry.
+- Latest automated backend gate: **11 passed** before the latest frontend reconciliation fix; re-run after the new frontend reconciliation behavior.
+- Latest automated frontend gate: **25 passed** before the latest frontend reconciliation fix; re-run after the new frontend reconciliation behavior.
+- Latest local TypeScript check: **passed** before the latest frontend reconciliation fix.
+- Latest local production build: **passed** before the latest frontend reconciliation fix, with the existing Vite/Rolldown large-chunk warning for the Phaser bundle.
+- User-reported live issue: drag became usable, but collision settlement caused visible distortion/jumps and did not look like clean expected gameplay.
+- Root causes addressed so far: render-space drag vectors needed explicit board-space conversion; authoritative/browser piece identity had to be canonical; Phaser scene-level pointer lifecycle needed a captured native canvas path; authoritative snapshots were being applied immediately while the client prediction was still physically settling.
+- Remediation: **IMPLEMENTED — pending local browser verification**. Accepted authoritative snapshots are now buffered during active physics and reconciled only after the local simulation reaches a safe settlement boundary, preventing mid-collision state replacement and visual teleporting.
 - Canonical deterministic piece IDs are covered by backend tests and match the browser setup.
 - Browser E2E remains **PENDING**; do not mark browser parity green until the live migrated stack is exercised successfully.
 - Generated local files such as `frontend/package-lock.json` and `frontend/tsconfig.tsbuildinfo` are not product changes and must not be committed unless intentionally adopted.
@@ -56,6 +56,7 @@
 - [x] Canonicalized browser/server piece IDs for authoritative reconciliation.
 - [x] Normalized drag vectors from render pixels to board-space physics units.
 - [x] Replaced scene-only drag lifecycle with captured native canvas Pointer Events.
+- [x] Deferred authoritative snapshot reconciliation until local physics settlement to avoid mid-flight visual distortion.
 
 ### Gameplay parity — remaining
 
