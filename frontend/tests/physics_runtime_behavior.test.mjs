@@ -2,10 +2,19 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 const { PhysicsWorld, PHYSICS } = await import("../src/game/physics.ts");
+const { createInitialPieces } = await import("../src/game/setup.ts");
 
 function piece(id, team, x, y) {
   return { id, type: "pawn", team, x, y, vx: 0, vy: 0, radius: 0.25, mass: 2, hp: 45, maxHp: 45, power: 5, launchMul: 1, friction: 0.985, restitution: 0.84, damageMul: 0.75, collisionMul: 0.85, alive: true, moving: false };
 }
+
+test("initial arena setup contains 32 canonical pieces", () => {
+  const pieces = createInitialPieces();
+  assert.equal(pieces.length, 32);
+  assert.equal(new Set(pieces.map((item) => item.id)).size, 32);
+  assert.ok(pieces.some((item) => item.id === "white-pawn-0" && item.x === 0.5 && item.y === 6.5));
+  assert.ok(pieces.some((item) => item.id === "black-king-4" && item.x === 4.5 && item.y === 0.5));
+});
 
 test("struck stationary pawn receives and integrates collision recoil", () => {
   const world = new PhysicsWorld();
@@ -21,6 +30,20 @@ test("struck stationary pawn receives and integrates collision recoil", () => {
   const beforeNextFrame = black.x;
   world.step([white, black], 0.016);
   assert.notEqual(black.x, beforeNextFrame, "struck pawn must be integrated on the following frame");
+});
+
+test("collision separation leaves a stable non-overlapping pair", () => {
+  const world = new PhysicsWorld();
+  const white = piece("white-pawn", "white", 3.0, 3.0);
+  const black = piece("black-pawn", "black", 3.48, 3.0);
+  white.vx = 6;
+  white.moving = true;
+
+  world.step([white, black], 0.016);
+  const distance = Math.hypot(black.x - white.x, black.y - white.y);
+  assert.ok(distance >= white.radius + black.radius + PHYSICS.separation - 1e-9);
+  assert.ok(Number.isFinite(white.x) && Number.isFinite(white.y));
+  assert.ok(Number.isFinite(black.x) && Number.isFinite(black.y));
 });
 
 test("settlement does not occur while a struck pawn still has visible residual speed", () => {
@@ -75,4 +98,26 @@ test("collision cooldown prevents repeated damage while a pair remains in contac
 
   assert.equal(white.hp, hpAfterFirstHit.white);
   assert.equal(black.hp, hpAfterFirstHit.black);
+});
+
+test("three-piece collision chain remains finite and moving", () => {
+  const world = new PhysicsWorld();
+  const left = piece("left", "white", 2.6, 3.0);
+  const center = piece("center", "black", 3.0, 3.0);
+  const right = piece("right", "white", 3.4, 3.0);
+  left.vx = 8;
+  left.moving = true;
+  right.vx = -2;
+  right.moving = true;
+  const pieces = [left, center, right];
+
+  for (let i = 0; i < 90; i += 1) {
+    world.step(pieces, 1 / 120);
+    for (const current of pieces) {
+      assert.ok(Number.isFinite(current.x) && Number.isFinite(current.y));
+      assert.ok(Number.isFinite(current.vx) && Number.isFinite(current.vy));
+      assert.ok(current.x >= current.radius && current.x <= PHYSICS.boardSize - current.radius);
+      assert.ok(current.y >= current.radius && current.y <= PHYSICS.boardSize - current.radius);
+    }
+  }
 });
