@@ -21,7 +21,7 @@
 - Added bounded frontend API request timeouts with caller-signal propagation and structured timeout telemetry so startup/network stalls cannot remain indefinite.
 - Added focused regression coverage for launch-failure resynchronization and explicit failure telemetry.
 - Added collision cooldown-state pruning so long sessions do not retain expired pair timestamps indefinitely.
-- Added focused regression coverage proving a collision pair can damage again after cooldown expiry while remaining protected inside the cooldown window.
+- Added a physically valid cooldown-expiry regression that advances simulation time without contact, then verifies a fresh inbound impact is damageable again.
 - User-validated live core issue: drag/play became usable and collision distortion was corrected.
 - Implemented: accessibility hardening, abortable arena bootstrap, reconnect-state hardening, shared HUD health rules, launch-failure resync, bounded API request duration, collision cooldown pruning, and focused lifecycle/regression coverage.
 - Browser input uses captured native Pointer Events, explicit CSS-pixel-to-game-coordinate mapping, board-unit conversion, and post-settlement authoritative reconciliation.
@@ -86,7 +86,7 @@
 - [x] Added launch-failure resync regression coverage.
 - [x] Added bounded frontend API request duration with caller-abort propagation and timeout telemetry.
 - [x] Added collision cooldown-state pruning for long-session memory stability.
-- [x] Added collision cooldown expiry regression coverage.
+- [x] Added collision cooldown expiry regression coverage using a fresh post-cooldown impact.
 
 ### Gameplay parity — remaining
 
