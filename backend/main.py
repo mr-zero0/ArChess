@@ -7,6 +7,8 @@ from typing import Literal
 from uuid import uuid4
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -92,6 +94,29 @@ class LaunchRequest(BaseModel):
         return value
 
 
+def _json_safe(value):
+    if isinstance(value, float) and not math.isfinite(value):
+        return repr(value)
+    if isinstance(value, dict):
+        return {key: _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(item) for item in value]
+    return value
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_error_handler(request: Request, exc: RequestValidationError):
+    logger.warning(
+        "REQUEST_VALIDATION_ERROR",
+        extra={
+            "path": request.url.path,
+            "method": request.method,
+            "error_count": len(exc.errors()),
+        },
+    )
+    return JSONResponse(status_code=422, content={"detail": _json_safe(exc.errors())})
+
+
 @app.get("/api/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
     return HealthResponse(
@@ -117,65 +142,37 @@ async def create_room() -> RoomResponse:
 async def room_state(room_id: str) -> dict:
     state = room_service.room_state(room_id)
     if state is None:
-        logger.warning(
-            "ROOM_NOT_FOUND",
-            extra={"event": "ROOM_NOT_FOUND", "room_id": room_id.upper()},
-        )
         return {"ok": False, "error": "room_not_found"}
     return state
 
 
 @app.post("/api/rooms/{room_id}/launch")
-async def launch(room_id: str, request: LaunchRequest) -> dict:
-    normalized = room_id.upper()
-    logger.info(
-        "AUTHORITATIVE_LAUNCH_REQUEST",
-        extra={
-            "event": "AUTHORITATIVE_LAUNCH_REQUEST",
-            "room_id": normalized,
-            "game_id": request.game_id,
-            "piece_id": request.piece_id,
-            "team": request.team,
-        },
+async def launch(room_id: str, payload: LaunchRequest) -> dict:
+    result = await room_service.launch(
+        room_id,
+        game_id=payload.game_id,
+        team=payload.team,
+        piece_id=payload.piece_id,
+        dx=payload.dx,
+        dy=payload.dy,
     )
-    payload, _ = await room_service.launch(
-        normalized,
-        game_id=request.game_id,
-        team=request.team,
-        piece_id=request.piece_id,
-        dx=request.dx,
-        dy=request.dy,
-    )
-    return payload
+    return result
 
 
 @app.websocket("/ws/rooms/{room_id}")
-async def room_socket(websocket: WebSocket, room_id: str) -> None:
-    normalized = room_id.upper()
-    try:
-        room = await room_service.connect(normalized, websocket)
-    except KeyError:
-        logger.warning(
-            "WS_ROOM_NOT_FOUND",
-            extra={"event": "WS_ROOM_NOT_FOUND", "room_id": normalized},
-        )
-        await websocket.close(code=1008, reason="room_not_found")
+async def room_websocket(websocket: WebSocket, room_id: str) -> None:
+    room = room_service.get(room_id)
+    if room is None:
+        logger.warning("WEBSOCKET_ROOM_NOT_FOUND", extra={"room_id": room_id})
+        await websocket.close(code=1008)
         return
-
+    await websocket.accept()
+    await room_service.connect(room_id, websocket)
     try:
+        await websocket.send_json({"event": "state", "room_id": room_id, "snapshot": room.snapshot()})
         while True:
-            message = await websocket.receive_json()
-            logger.debug(
-                "WS_CONTROL_MESSAGE",
-                extra={
-                    "event": "WS_CONTROL_MESSAGE",
-                    "room_id": room.room_id,
-                    "message_event": message.get("event", "unknown"),
-                },
-            )
+            await websocket.receive_text()
     except WebSocketDisconnect:
-        await room_service.disconnect(room, websocket)
-    except Exception:
-        await room_service.disconnect(room, websocket)
-        logger.exception("WS_ERROR", extra={"event": "WS_ERROR", "room_id": room.room_id})
-        raise
+        pass
+    finally:
+        await room_service.disconnect(room_id, websocket)
