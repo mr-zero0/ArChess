@@ -5,5 +5,14 @@ html, body, #root { min-height: 100%; margin: 0; }
 body { min-width: 320px; background: radial-gradient(circle at 50% 0%, #182438 0%, #080d15 44%, #03050a 100%); }
 * { box-sizing: border-box; }
 button { font: inherit; }
-
+button:focus-visible, [role="button"]:focus-visible { outline: 2px solid #67e8f9; outline-offset: 3px; }
+.phaser-host { touch-action: none; }
 .phaser-host canvas { display: block; width: 100% !important; height: 100% !important; image-rendering: auto; }
+
+@media (pointer: coarse) {
+  button { min-width: 44px; min-height: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+}
