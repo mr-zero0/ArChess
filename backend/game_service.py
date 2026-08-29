@@ -4,6 +4,7 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
+from uuid import uuid4
 
 from fastapi import WebSocket
 
@@ -22,20 +23,17 @@ class GameRoom:
 
 
 class AuthoritativeRoomService:
-    """Owns room lifecycle and delegates all game-state mutation to the server simulation."""
+    """Own room lifecycle while keeping mutable game state inside server simulation."""
 
     def __init__(self) -> None:
         self._rooms: dict[str, GameRoom] = {}
 
     def create_room(self) -> GameRoom:
-        room_id = self._new_room_id()
-        room = GameRoom(
-            room_id=room_id,
-            created_at=datetime.now(UTC).isoformat(),
-            simulation=AuthoritativeSimulation.new_match(),
-        )
-        self._rooms[room_id] = room
-        return room
+        return self._create_room(uuid4().hex[:6].upper())
+
+    def ensure_room(self, room_id: str) -> GameRoom:
+        normalized = room_id.upper()
+        return self._rooms.get(normalized) or self._create_room(normalized)
 
     def get(self, room_id: str) -> GameRoom | None:
         return self._rooms.get(room_id.upper())
@@ -110,11 +108,14 @@ class AuthoritativeRoomService:
             async with room.lock:
                 room.clients.difference_update(stale)
 
-    @staticmethod
-    def _new_room_id() -> str:
-        from uuid import uuid4
-
-        return uuid4().hex[:6].upper()
+    def _create_room(self, room_id: str) -> GameRoom:
+        room = GameRoom(
+            room_id=room_id,
+            created_at=datetime.now(UTC).isoformat(),
+            simulation=AuthoritativeSimulation.new_match(),
+        )
+        self._rooms[room_id] = room
+        return room
 
     @staticmethod
     def _rejected(room: GameRoom, reason: str) -> dict[str, Any]:
@@ -125,6 +126,3 @@ class AuthoritativeRoomService:
             "error": reason,
             "snapshot": room.simulation.snapshot(),
         }
-
-
-room_service = AuthoritativeRoomService()
