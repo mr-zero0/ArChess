@@ -1,7 +1,10 @@
 import Phaser from "phaser";
 import { createInitialPieces } from "./setup";
 import { PhysicsWorld, PhysicsEvent } from "./physics";
-import { ArenaPiece, Team } from "./types";
+import type { ArenaPiece, Team } from "./types";
+import { createLogger } from "../observability.ts";
+
+const logger = createLogger("game.arena");
 
 export type ArenaState = {
   turn: Team;
@@ -34,7 +37,11 @@ export class ArenaScene extends Phaser.Scene {
   private lastPublished = "";
 
   constructor() { super("ArenaScene"); }
-  init(data: { onState?: ArenaCallbacks }) { this.callbacks = data.onState; }
+
+  init(data: { onState?: ArenaCallbacks }) {
+    this.callbacks = data.onState;
+    logger.debug("ARENA_INITIALIZED", { callbackAttached: Boolean(data.onState), pieceCount: this.pieces.length });
+  }
 
   create() {
     this.drawBoard();
@@ -45,6 +52,7 @@ export class ArenaScene extends Phaser.Scene {
     this.input.on("pointerup", this.handleUp, this);
     this.input.on("pointerupoutside", this.handleUp, this);
     this.publish("White to move.", true);
+    logger.info("ARENA_READY", { turn: this.turn, pieceCount: this.pieces.length });
   }
 
   update(_time: number, deltaMs: number) {
@@ -55,12 +63,15 @@ export class ArenaScene extends Phaser.Scene {
     const winner = this.winner();
     if (winner) {
       this.phase = "gameover";
+      logger.info("ARENA_GAME_OVER", { winner, collisions: this.collisions });
       this.publish(`${winner.toUpperCase()} wins.`, true);
       return;
     }
     if (settled) {
+      const previousTurn = this.turn;
       this.phase = "aim";
       this.turn = this.turn === "white" ? "black" : "white";
+      logger.debug("TURN_SETTLED", { previousTurn, nextTurn: this.turn, collisions: this.collisions });
       this.publish(`${this.turn === "white" ? "White" : "Black"} to move.`, true);
       return;
     }
@@ -182,6 +193,7 @@ export class ArenaScene extends Phaser.Scene {
     if (drag.length() < 16) { this.selectPiece(piece); return; }
     const power = Math.min(1, drag.length() / 220);
     if (!this.world.launch(piece, drag.x, drag.y, power)) return;
+    logger.debug("LOCAL_LAUNCH_STARTED", { pieceId: piece.id, team: piece.team, dragLength: Number(drag.length().toFixed(3)), power: Number(power.toFixed(3)) });
     this.phase = "physics";
     this.publish("Physics resolving…", true);
   }
@@ -192,9 +204,13 @@ export class ArenaScene extends Phaser.Scene {
       this.flashCollision(event.a, event.b, event.impact);
       this.showDamage(event.a, event.damageA);
       this.showDamage(event.b, event.damageB);
+      logger.debug("COLLISION", { pieceA: event.a.id, pieceB: event.b.id, impact: Number(event.impact.toFixed(3)), damageA: event.damageA, damageB: event.damageB });
       this.publish(`${event.a.type} -${event.damageA} HP · ${event.b.type} -${event.damageB} HP`, true);
     }
-    if (event.type === "destroyed") this.publish(`${event.piece.type.toUpperCase()} destroyed.`, true);
+    if (event.type === "destroyed") {
+      logger.info("PIECE_DESTROYED", { pieceId: event.piece.id, pieceType: event.piece.type, killer: event.killer });
+      this.publish(`${event.piece.type.toUpperCase()} destroyed.`, true);
+    }
   }
 
   private showDamage(piece: ArenaPiece, amount: number) {
