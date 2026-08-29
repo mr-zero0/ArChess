@@ -64,8 +64,9 @@ test("FastAPI exposes the modern transport boundary", () => {
 });
 
 test("arena startup validates the scene bridge without unsafe assertions", () => {
-  has(app, "function isArenaBridge(value: object)");
-  has(app, 'if (!isArenaBridge(scene)) throw new Error("ArenaScene authoritative bridge is unavailable")');
+  has(app, "function isArenaBridge(value: unknown)");
+  has(app, "async function waitForArenaBridge");
+  has(app, "sceneRef.current = await waitForArenaBridge(game)");
   has(arena, "applyAuthoritativeSnapshot(snapshot: AuthoritativeSnapshot): ArenaState");
   lacks(app, 'getScene("ArenaScene") as ArenaBridge');
 });
