@@ -42,6 +42,20 @@
       }
       board.setAttribute("coordinates", "inside");
       board.removeAttribute("interactive");
+  function setBoardState(fen) {
+    if (fen && fen.length > 0) {
+      board.setAttribute("fen", fen);
+    } else {
+      board.removeAttribute("fen");
+    }
+  }
+
+  window.ArChessBoardUI = Object.freeze({
+    // ...
+    setFen: setBoardState,
+    // ...
+  });
+
       board.setAttribute("aria-label", "ArChess physics chess board");
       applyTheme();
       document.body.dataset.boardRenderer = "library";
