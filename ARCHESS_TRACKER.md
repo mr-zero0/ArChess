@@ -94,9 +94,9 @@
 
 ### Gameplay parity — remaining
 
-- [ ] Match the legacy board's remaining exact presentation details.
-- [ ] Verify real White → collision → settlement → Black flow in Chromium after latest changes.
-- [ ] Verify Black → collision → settlement → White.
+- [x] Match the legacy board's remaining exact presentation details.
+- [x] Verify real White → collision → settlement → Black flow in Chromium after latest changes.
+- [x] Verify Black → collision → settlement → White.
 - [ ] Verify repeated collisions do not freeze the scene.
 - [ ] Verify reconnect during and after a completed launch resynchronizes cleanly.
 - [ ] Add full VFX/audio/replay/history/challenges parity.

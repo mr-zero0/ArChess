@@ -32,7 +32,14 @@
 
   function activate() {
     try {
-      board.setAttribute("fen", EMPTY_FEN);
+      // Guard against setting empty FEN if it causes library errors
+      if (EMPTY_FEN) {
+        log.info?.("SETTING_FEN", { fen: EMPTY_FEN });
+        board.setAttribute("fen", EMPTY_FEN);
+      } else {
+        log.info?.("REMOVING_FEN_ATTRIBUTE");
+        board.removeAttribute("fen");
+      }
       board.setAttribute("coordinates", "inside");
       board.removeAttribute("interactive");
       board.setAttribute("aria-label", "ArChess physics chess board");
