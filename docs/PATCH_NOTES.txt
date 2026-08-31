@@ -1,0 +1,15 @@
+ArChess visual/settings patch
+
+Changes:
+- Wood theme is now the default visual theme.
+- Theme control cycles WOOD -> DARK -> LIGHT.
+- Wood board uses procedural grain/bevel rendering; no external image assets required.
+- White-side pieces use rosewood/mahogany material in Wood mode.
+- Black-side pieces use ebony/gunmetal material in Wood mode.
+- Pieces remain the physical projectiles and now visually tilt/tumble with velocity.
+- Added projectile contact-shadow stretch and restrained motion streaks.
+- Added BOARD size controls from 80% to 120%.
+- Board resizing only affects presentation; physics stays on the same logical 8x8 space.
+- Theme and board size preferences persist in localStorage.
+
+Extract this ZIP into the root of the existing ArChess repository and allow file replacement.
