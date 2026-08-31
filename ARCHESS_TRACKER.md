@@ -97,8 +97,8 @@
 - [x] Match the legacy board's remaining exact presentation details.
 - [x] Verify real White → collision → settlement → Black flow in Chromium after latest changes.
 - [x] Verify Black → collision → settlement → White.
-- [ ] Verify repeated collisions do not freeze the scene.
-- [ ] Verify reconnect during and after a completed launch resynchronizes cleanly.
+- [x] Verify repeated collisions do not freeze the scene.
+- [x] Verify reconnect during and after a completed launch resynchronizes cleanly.
 - [ ] Add full VFX/audio/replay/history/challenges parity.
 - [ ] Verify keyboard gameplay in a real browser session.
 - [ ] Add browser matrix for the modern client.
@@ -107,8 +107,8 @@
 
 - [x] Port authoritative room lifecycle into the FastAPI room service.
 - [x] Port authoritative launch validation and canonical state persistence into the FastAPI room service.
-- [ ] Port ranked settlement/outcome hooks.
-- [ ] Port authentication/social contracts.
+- [x] Port ranked settlement/outcome hooks.
+- [x] Port authentication/social contracts.
 - [x] Replace the FastAPI placeholder room state with the real authoritative simulation service.
 - [ ] Verify WebSocket reconnect/resync behavior in a live browser session.
 

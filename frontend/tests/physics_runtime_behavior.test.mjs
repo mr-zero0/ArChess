@@ -153,3 +153,28 @@ test("three-piece collision chain remains finite and moving", () => {
     }
   }
 });
+
+test("repeated collisions do not freeze the scene", () => {
+  const world = new PhysicsWorld();
+  // Create two pawns that will bounce back and forth repeatedly
+  const white = piece("white-pawn", "white", 3.0, 3.0);
+  const black = piece("black-pawn", "black", 3.48, 3.0);
+  white.vx = 6;
+  white.moving = true;
+  black.vx = -6;
+  black.moving = true;
+  const pieces = [white, black];
+
+  // Simulate many steps to ensure no freeze (positions/velocities stay finite)
+  for (let step = 0; step < 1000; step += 1) {
+    world.step(pieces, 0.016);
+    // After each step, ensure all values are finite
+    for (const p of pieces) {
+      assert.ok(Number.isFinite(p.x) && Number.isFinite(p.y), `position non-finite at step ${step}`);
+      assert.ok(Number.isFinite(p.vx) && Number.isFinite(p.vy), `velocity non-finite at step ${step}`);
+      // Optional: ensure they stay within board bounds (with some tolerance)
+      assert.ok(p.x >= -0.5 && p.x <= PHYSICS.boardSize + 0.5, `x out of reasonable bounds at step ${step}`);
+      assert.ok(p.y >= -0.5 && p.y <= PHYSICS.boardSize + 0.5, `y out of reasonable bounds at step ${step}`);
+    }
+  }
+});

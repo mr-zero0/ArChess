@@ -14,6 +14,22 @@ from game.physics.authoritative import AuthoritativeSimulation
 logger = logging.getLogger("archess.room")
 
 
+async def handle_ranked_settlement(snapshot: dict[str, Any]) -> None:
+    """Placeholder for ranked settlement/outcome processing.
+    In a full implementation, this would update ELO, record match outcomes, etc.
+    """
+    # No-op for now
+    return None
+
+
+async def handle_social_event(event_type: str, payload: dict[str, Any]) -> None:
+    """Placeholder for social contract processing (friends, chats, etc.).
+    In a full implementation, this would feed into social services.
+    """
+    # No-op for now
+    return None
+
+
 @dataclass
 class Room:
     room_id: str
@@ -125,6 +141,15 @@ class RoomService:
             events = await asyncio.to_thread(simulation.advance_until_settled)
             snapshot = simulation.snapshot()
             room.status = "finished" if simulation.game_over else "active"
+            # Hook: ranked settlement/outcome processing
+            await handle_ranked_settlement(snapshot)
+            # Hook: social contracts (e.g., match completed)
+            if simulation.game_over:
+                await handle_social_event("match_completed", {
+                    "room_id": room.room_id,
+                    "game_id": room.game_id,
+                    "snapshot": snapshot,
+                })
             payload = {
                 "ok": True,
                 "accepted": True,
