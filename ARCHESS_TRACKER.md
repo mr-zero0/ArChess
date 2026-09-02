@@ -27,7 +27,7 @@
 - Added responsive mobile toolbar wrapping, compact page gutters, stacked header behavior, and overflow protection for enlarged board settings.
 - Preserved the project open-source asset direction through the documented Cburnett-derived chess artwork and Phaser-native theme registry.
 - User-validated live core issue: drag/play became usable and collision distortion was corrected.
-- Implemented: accessibility hardening, abortable arena bootstrap, reconnect-state hardening, shared HUD health rules, launch-failure resync, bounded API request duration, collision cooldown pruning, keyboard gameplay controls, and focused lifecycle/regression coverage.
+- Implemented: accessibility hardening, abortable arena bootstrap, reconnect-state hardening, shared HUD health rules, launch-failure resync, bounded API request duration, collision cooldown pruning, keyboard gameplay controls, settings UI with persistent preferences, and focused lifecycle/regression coverage.
 - Browser input uses captured native Pointer Events, explicit CSS-pixel-to-game-coordinate mapping, board-unit conversion, and post-settlement authoritative reconciliation.
 - Browser E2E remains **PENDING**; reconnect recovery remains **PENDING LIVE VERIFICATION**.
 - Generated runtime logs and dependency directories are not product changes and must not be committed.
