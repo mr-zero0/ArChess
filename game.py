@@ -14,7 +14,7 @@ from core.extensions import db, migrate, limiter
 from game import BOARD_SIZE, GAME_CONFIG, PIECE_STATS
 from game.matchmaking import get_queue_status, join_queue, leave_queue
 from game.physics.authoritative import AuthoritativeSimulation
-from core.logging_config import configure_logging, reset_context, set_context
+from core.logging_config import configure_logging
 from core.rooms import create_room
 from game.room_service import room_service
 from game.auth_routes import AUTH_BP, configure_auth
@@ -393,21 +393,11 @@ def create_app(config_object=DevelopmentConfig):
 
     @application.before_request
     def validate_api_request():
-        request._archess_context_tokens = set_context(
-            request_id=request.headers.get("X-Request-ID"),
-            correlation_id=request.headers.get("X-Correlation-ID") or request.headers.get("X-Request-ID"),
-            game_id=request.get_json(silent=True).get("game_id") if request.is_json and isinstance(request.get_json(silent=True), dict) else None,
-            room_id=request.view_args.get("room_id") if request.view_args else None,
-        )
         if request.content_length and request.content_length > application.config["MAX_CONTENT_LENGTH"]:
             return jsonify({"error": "request_too_large", "message": "Request payload is too large"}), 413
         if request.path.startswith("/api/") and request.method in {"POST", "PUT", "PATCH"} and request.content_length and not request.is_json:
             return jsonify({"error": "json_required", "message": "JSON request body required"}), 415
         return None
-
-    @application.teardown_request
-    def clear_request_context(_error):
-        reset_context(getattr(request, "_archess_context_tokens", None))
 
     @application.get("/api/config")
     def legacy_config():

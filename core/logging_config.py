@@ -515,8 +515,8 @@ def configure_logging(application):
     def _request_started():
         from flask import g
 
-        request_id = os.urandom(8).hex()
-        correlation_id = request.headers.get("X-ArChess-Correlation-ID") or os.urandom(8).hex()
+        request_id = request.headers.get("X-Request-ID") or os.urandom(8).hex()
+        correlation_id = request.headers.get("X-Correlation-ID") or request.headers.get("X-ArChess-Correlation-ID") or request_id
         g.archess_context_tokens = set_context(request_id=request_id, correlation_id=correlation_id)
         g.archess_request_id = request_id
         g.archess_correlation_id = correlation_id
@@ -600,7 +600,7 @@ def configure_logging(application):
         )
 
     threading.excepthook = _uncaught_thread_exception
-    trace_enabled = os.environ.get("ARCHESS_TRACE_FUNCTIONS", "1") == "1"
+    trace_enabled = os.environ.get("ARCHESS_TRACE_FUNCTIONS", "0") == "1"
     _install_function_tracer(application.logger, enabled=trace_enabled)
 
     application.config["ARCHESS_LOG_RUN_ID"] = _ACTIVE_RUN_ID
