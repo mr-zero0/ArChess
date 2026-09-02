@@ -1,4 +1,3 @@
-console.log("APP MODULE EVALUATED");
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import type { ArenaState, BoardTheme, PieceTheme } from "./game/ArenaScene";
@@ -7,6 +6,7 @@ import type { AuthoritativeSnapshot } from "./api/client";
 import { STARTING_TEAM_MAX_HP } from "./game/rules.ts";
 import { FeatureRail } from "./components/FeatureRail";
 import { FEATURES, type FeatureId } from "./features";
+import { SettingsModal } from "./components/settings";
 
 type ArenaBridge = {
   applyAuthoritativeSnapshot: (snapshot: AuthoritativeSnapshot) => ArenaState;
@@ -159,6 +159,7 @@ export function App() {
   const sessionRef = useRef<ReturnType<typeof createAuthoritativeSession> | null>(null);
   const [state, setState] = useState(initialState);
   const [showHelp, setShowHelp] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [arenaStatus, setArenaStatus] = useState<ArenaStatus>("loading");
   const [arenaError, setArenaError] = useState("");
   const collisionsRef = useRef(0);
@@ -191,7 +192,6 @@ export function App() {
 
         const [{ default: Phaser }, { ArenaScene }] = await Promise.all([import("phaser"), import("./game/ArenaScene")]);
         if (cancelled || startupAbort.signal.aborted || !mount.current) return;
-        console.log("Mount div dimensions:", mount.current.getBoundingClientRect());
         const game = new Phaser.Game({ type: Phaser.AUTO, width: 640, height: 640, parent: mount.current, transparent: true, scene: [], scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, width: 640, height: 640 }, input: { activePointers: 2, windowEvents: true } });
         gameRef.current = game;
         game.scene.add("ArenaScene", ArenaScene, true, {
@@ -202,15 +202,12 @@ export function App() {
         });
         sceneRef.current = await waitForArenaBridge(game, 5000, startupAbort.signal);
         if (cancelled || startupAbort.signal.aborted) return;
-        console.log("AUTHORITATIVE SESSION ABOUT TO CONNECT");
         await session.connect();
-        console.log("AUTHORITATIVE SESSION CONNECTED");
         if (!cancelled) setArenaStatus("ready");
       } catch (error) {
         sessionRef.current?.close();
         sessionRef.current = null;
         if (cancelled || startupAbort.signal.aborted) return;
-        console.error("ARCHESS_ARENA_INIT_FAILED", error);
         setArenaStatus("error");
         setArenaError(error instanceof Error ? error.message : "Unknown arena initialization error");
       }
@@ -285,6 +282,12 @@ export function App() {
                   className="px-5 py-3 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-sm uppercase tracking-wider transition-all shadow-lg hover:shadow-cyan-500/30"
                 >
                   New Game
+                </button>
+                <button
+                  onClick={() => setShowSettings(true)}
+                  className="px-5 py-3 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-sm uppercase tracking-wider transition-all shadow-lg hover:shadow-purple-500/30"
+                >
+                  Settings
                 </button>
               </div>
             </div>
@@ -450,6 +453,19 @@ export function App() {
               </div>
               <button type="button" onClick={() => setShowHelp(false)} className="primary-button mt-6 w-full">Back to arena</button>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {showSettings && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowSettings(false)}
+          >
+            <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} />
           </motion.div>
         )}
       </AnimatePresence>

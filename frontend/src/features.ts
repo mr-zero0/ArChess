@@ -22,7 +22,7 @@ export const FEATURES: readonly FeatureDefinition[] = [
   { id: "challenges", label: "Challenges", description: "Challenge and progression loop", owner: "react", status: "migration" },
   { id: "history", label: "History", description: "Completed matches and replay access", owner: "fastapi", status: "migration" },
   { id: "profile", label: "Profile", description: "Identity, progression and stats", owner: "fastapi", status: "migration" },
-  { id: "settings", label: "Settings", description: "Theme, audio, input and accessibility", owner: "react", status: "migration" },
+  { id: "settings", label: "Settings", description: "Theme, audio, input and accessibility", owner: "react", status: "live" },
 ] as const;
 
 export const getFeature = (id: FeatureId) => FEATURES.find((feature) => feature.id === id) ?? FEATURES[0];
