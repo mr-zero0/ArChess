@@ -3,6 +3,7 @@ export type LogLevel = "debug" | "info" | "warn" | "error";
 type LogFields = Record<string, unknown>;
 
 const SENSITIVE_KEYS = /password|token|secret|authorization|cookie|set-cookie/i;
+const CLIENT_CORRELATION_ID = globalThis.crypto?.randomUUID?.() ?? `client-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 function sanitize(fields: LogFields): LogFields {
   return Object.fromEntries(
@@ -20,6 +21,7 @@ export function createLogger(scope: string) {
       level,
       scope,
       message,
+      correlation_id: CLIENT_CORRELATION_ID,
       ...sanitize(fields),
     };
 

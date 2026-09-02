@@ -1,6 +1,6 @@
 # ArChess Modern Client Architecture
 
-The modern client is an incremental replacement for the fragile legacy browser game runtime. The verified Flask/Python application remains the baseline until the new stack reaches parity.
+The modern client is now served by the Flask application. The legacy browser runtime remains available only as compatibility code while remaining parity work is completed.
 
 ## Stack
 
@@ -8,10 +8,10 @@ The modern client is an incremental replacement for the fragile legacy browser g
 - Phaser 4: interactive 2D arena, game loop, pointer/touch input, rendering and client presentation physics.
 - Tailwind CSS 4: responsive design system.
 - Motion for React: DOM/UI transitions and gesture animation, never authoritative game physics.
-- FastAPI: modern HTTP/WebSocket service boundary.
-- Existing Python game authority: source of truth until FastAPI parity is verified.
+- Flask: HTTP/WebSocket service boundary and application entry point.
+- Existing Python game authority: source of truth for authoritative simulation and persistence.
 
-Phaser is intentionally isolated from the React render cycle. React consumes coarse game snapshots/events; the Phaser scene owns the frame loop. Tailwind styles the application shell and Motion animates DOM surfaces. FastAPI will become the transport boundary for the modern client, while authoritative outcomes remain server-owned.
+Phaser is intentionally isolated from the React render cycle. React consumes coarse game snapshots/events; the Phaser scene owns the frame loop. Tailwind styles the application shell and Motion animates DOM surfaces. Flask serves the built client and owns the transport boundary, while authoritative outcomes remain server-owned.
 
 ## Gameplay state machine
 
@@ -31,7 +31,7 @@ Settlement is a physical state transition based on movement/velocity. A transien
 
 ## Backend boundary
 
-The FastAPI service currently exposes only migration-safe contracts: health, version, room creation, a launch request shape, and a WebSocket room channel. The existing authoritative service is not deleted or bypassed until parity work is completed.
+Flask exposes the modern contracts: health, version, room creation, room state, launch requests, and a WebSocket room channel. The legacy Flask routes remain available for compatibility until parity work is completed.
 
 ## Required migration order
 

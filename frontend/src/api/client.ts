@@ -53,6 +53,7 @@ import { createLogger } from "../observability.ts";
 
 const logger = createLogger("api.client");
 const API_REQUEST_TIMEOUT_MS = 10_000;
+const CLIENT_CORRELATION_ID = globalThis.crypto?.randomUUID?.() ?? `client-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const requestId = crypto.randomUUID();
@@ -78,6 +79,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       headers: {
         Accept: "application/json",
         "X-Request-ID": requestId,
+        "X-Correlation-ID": CLIENT_CORRELATION_ID,
         ...(init?.headers ?? {}),
       },
     });

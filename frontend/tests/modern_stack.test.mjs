@@ -97,7 +97,7 @@ test("React owns the application shell while Phaser owns the arena", () => {
   has(app, "phaser-host");
 });
 
-test("FastAPI exposes the modern transport boundary", () => {
+test("Flask exposes the modern transport boundary", () => {
   has(api, '"/api/health"');
   has(api, '"/api/rooms"');
   has(api, "function getRoomState");

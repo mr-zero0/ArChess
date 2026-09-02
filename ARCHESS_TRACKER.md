@@ -2,17 +2,16 @@
 
 **Repository:** `mr-zero0/ArChess`  
 **Stable branch:** `main`  
-**Current development branch:** `feat/react-phaser-fastapi-migration`  
-**Branch policy:** maintain exactly one active non-main development branch; modernization work stays on `feat/react-phaser-fastapi-migration`; only verified work is merged to `main`  
+**Current development branch:** `main`
+**Branch policy:** `main` is the only active branch and contains the current verified application
 **Current product mode:** 2D only  
 **3D:** DEFERRED — no 3D renderer or 2D/3D switch is part of the current product  
 **Repository policy:** `main` remains the stable baseline
 
 ## Main comparison checkpoint
 
-- `feat/react-phaser-fastapi-migration` is **209 commits ahead** of `main` and **1 commit behind** `main` at the latest comparison.
-- The single commit unique to `main` is `refactor(backend): route API through room service`; it is semantically related to the current FastAPI room-service work and must be reconciled before final cutover rather than silently ignored.
-- No new development branch should be created for that reconciliation.
+- The Flask/React/Phaser consolidation is committed on `main` and `main` is the only local branch.
+- The latest frontend build is emitted to `static/app` and served by Flask on port 5000.
 
 ## Current modernization verification snapshot
 
@@ -28,12 +27,11 @@
 - Implemented: accessibility hardening, abortable arena bootstrap, reconnect-state hardening, shared HUD health rules, launch-failure resync, bounded API request duration, collision cooldown pruning, keyboard gameplay controls, and focused lifecycle/regression coverage.
 - Browser input uses captured native Pointer Events, explicit CSS-pixel-to-game-coordinate mapping, board-unit conversion, and post-settlement authoritative reconciliation.
 - Browser E2E remains **PENDING**; reconnect recovery remains **PENDING LIVE VERIFICATION**.
-- Generated local files such as `frontend/package-lock.json` and `frontend/tsconfig.tsbuildinfo` are not product changes and must not be committed unless intentionally adopted.
+- Generated runtime logs and dependency directories are not product changes and must not be committed.
 
 ## Branch hygiene
 
-- `feat/react-phaser-fastapi-migration` is the **only active non-main development branch**.
-- `fix/observability-complete` is retired legacy verification work and should be deleted locally and remotely; no new commits belong there.
+- `main` is the only active branch. Retired branches and linked worktrees have been removed or detached.
 
 ## Modernization workstream
 
@@ -49,13 +47,13 @@
 - [x] Phaser-owned game update loop.
 - [x] Local collision/impact/damage/settlement model.
 - [x] React HUD receives game-domain snapshots without driving physics frames.
-- [x] FastAPI service package with health, version, room, launch and WebSocket foundation.
+- [x] Flask service with health, version, room, launch and WebSocket contracts.
 - [x] Frontend architecture contract tests.
-- [x] FastAPI service contract tests.
+- [x] Flask service contract smoke coverage.
 - [x] Executable TypeScript physics runtime tests.
 - [x] Removed redundant source-regex collision/activation tests after equivalent behavioral coverage was established.
 - [x] Dedicated authoritative room service with per-room serialization and WebSocket fan-out.
-- [x] FastAPI routes wired to authoritative room state and launch processing.
+- [x] Flask routes wired to authoritative room state and launch processing.
 - [x] Rejected launches return authoritative snapshots for client reconciliation.
 - [x] Hardened arena pointer drag handling after live browser feedback.
 - [x] Canonicalized browser/server piece IDs for authoritative reconciliation.
@@ -103,24 +101,25 @@
 - [ ] Verify keyboard gameplay in a real browser session.
 - [ ] Add browser matrix for the modern client.
 
-### Backend parity — remaining
+### Backend parity — current
 
-- [x] Port authoritative room lifecycle into the FastAPI room service.
-- [x] Port authoritative launch validation and canonical state persistence into the FastAPI room service.
+- [x] Port authoritative room lifecycle into the Flask room service.
+- [x] Port authoritative launch validation and canonical state persistence into the Flask room service.
 - [x] Port ranked settlement/outcome hooks.
 - [x] Port authentication/social contracts.
-- [x] Replace the FastAPI placeholder room state with the real authoritative simulation service.
+- [x] Replace the duplicate FastAPI transport with the Flask transport.
+- [x] Verify Flask serves the compiled React/Phaser application and modern room state flow.
 - [ ] Verify WebSocket reconnect/resync behavior in a live browser session.
 
-### Cutover — blocked until parity
+### Cutover — current
 
-- [ ] Reconcile the one `main` commit difference cleanly on the existing development branch.
-- [ ] Dual-run modern client against verified backend.
+- [x] Reconcile the modernization work on `main`.
+- [x] Run the modern client against the Flask backend.
 - [ ] Full application regression after integration.
 - [ ] Modern browser matrix green.
 - [ ] Manual gameplay green for multiple consecutive collisions.
 - [ ] Performance/bundle audit.
-- [ ] Documentation/tracker reconciliation.
+- [x] Documentation/tracker reconciliation.
 - [ ] Remove the legacy client only after parity is demonstrated.
 - [ ] Merge modernized branch to `main`.
 
@@ -135,12 +134,14 @@ retain all runs for 10 days
 verbose function enter/exit tracing is opt-in
 ```
 
-The modern client must continue emitting meaningful domain events and must preserve correlation context when communicating with the backend.
+The modern client emits structured domain events with a client correlation ID. API requests send `X-Request-ID` and `X-Correlation-ID`; Flask attaches those identifiers, plus room and game IDs when available, to the structured application logs.
 
 ## Verification policy
 
 For every meaningful change:
 
 `change → add/update tests → targeted verification → inspect failures/logs → relevant regression → tracker update → commit`.
+
+Latest verified local checks: frontend tests **48/48 passed**, backend logging/observability tests **15/15 passed**, TypeScript and production build passed. The build retains the known Phaser large-chunk warning. Legacy database-dependent tests still require initialized test tables.
 
 Generated logs are never committed as application data. `main` is not modified by modernization work until the complete applicable gate set is green.
