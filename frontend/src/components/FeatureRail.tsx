@@ -18,26 +18,42 @@ const ICONS: Record<FeatureId, string> = {
 
 export function FeatureRail({ active, onSelect }: Props) {
   return (
-    <nav aria-label="ArChess features" className="mb-5 overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/75 p-2 shadow-xl">
-      <div className="flex min-w-max gap-2">
+    <nav aria-label="ArChess features" className="overflow-x-auto">
+      <div className="flex min-w-max gap-3 pb-2">
         {FEATURES.map((feature) => {
           const selected = feature.id === active;
           return (
-            <button
+            <motion.button
               key={feature.id}
               type="button"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               aria-current={selected ? "page" : undefined}
               onClick={() => onSelect(feature.id)}
-              className={`relative rounded-xl px-3 py-2 text-left transition ${selected ? "bg-slate-800 text-white" : "text-slate-400 hover:bg-slate-900 hover:text-slate-200"}`}
+              className={`relative rounded-xl px-4 py-2 text-sm font-bold transition-all ${
+                selected
+                  ? "bg-gradient-to-r from-cyan-600/80 to-blue-600/80 text-white shadow-lg shadow-cyan-500/20 border border-cyan-400/50"
+                  : "bg-gradient-to-br from-slate-900/60 to-slate-950/40 text-slate-400 hover:text-slate-300 border border-slate-800/50 hover:border-slate-700/80"
+              }`}
               title={feature.description}
             >
-              {selected && <motion.span layoutId="active-feature" className="absolute inset-x-2 -bottom-0.5 h-0.5 rounded-full bg-cyan-300" />}
-              <span className="flex items-center gap-2 text-sm font-bold">
-                <span aria-hidden="true">{ICONS[feature.id]}</span>
+              <span className="flex items-center gap-2">
+                <span aria-hidden="true" className="text-base">{ICONS[feature.id]}</span>
                 {feature.label}
-                {feature.status === "migration" && <span className="rounded-full border border-amber-400/20 bg-amber-400/10 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-amber-300">Soon</span>}
+                {feature.status === "migration" && (
+                  <span className="rounded-full border border-amber-400/30 bg-amber-500/15 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-amber-300 font-semibold">
+                    Soon
+                  </span>
+                )}
               </span>
-            </button>
+              {selected && (
+                <motion.div
+                  layoutId="active-feature-bg"
+                  className="absolute inset-0 rounded-xl bg-gradient-to-r from-cyan-500/5 to-blue-500/5 -z-10"
+                  transition={{ duration: 0.3 }}
+                />
+              )}
+            </motion.button>
           );
         })}
       </div>
