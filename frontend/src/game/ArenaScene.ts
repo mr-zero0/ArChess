@@ -39,6 +39,20 @@ const MIN_DRAG_DISTANCE_PIXELS = 12;
 const KEYBOARD_LAUNCH_DISTANCE = 2.0;
 
 type CanvasPointerEvent = PointerEvent;
+export type BoardTheme = "midnight" | "woodland" | "ivory";
+export type PieceTheme = "classic" | "outline" | "mono";
+
+const BOARD_THEMES: Record<BoardTheme, { light: number; dark: number; border: number }> = {
+  midnight: { light: 0x2c3847, dark: 0x111923, border: 0xa7b3c1 },
+  woodland: { light: 0xb58863, dark: 0x6f4530, border: 0xe6c9a8 },
+  ivory: { light: 0xf0d9b5, dark: 0xb58863, border: 0x593b2c },
+};
+
+const PIECE_STYLES: Record<PieceTheme, { fontFamily: string; strokeThickness: number }> = {
+  classic: { fontFamily: "Georgia, serif", strokeThickness: 5 },
+  outline: { fontFamily: "Palatino Linotype, serif", strokeThickness: 2 },
+  mono: { fontFamily: "Segoe UI Symbol, sans-serif", strokeThickness: 1 },
+};
 
 export class ArenaScene extends Phaser.Scene {
   private pieces: ArenaPiece[] = createInitialPieces();
@@ -58,12 +72,17 @@ export class ArenaScene extends Phaser.Scene {
   private lastPublished = "";
   private keyboardSelectionIndex = 0;
   private keyboardAim = new Phaser.Math.Vector2(0, -1);
+  private boardTheme: BoardTheme = "midnight";
+  private pieceTheme: PieceTheme = "classic";
+  private boardGraphics?: Phaser.GameObjects.Graphics;
 
   constructor() { super("ArenaScene"); }
 
-  init(data: { onState?: ArenaCallbacks; onLaunch?: ArenaLaunchHandler }) {
+  init(data: { onState?: ArenaCallbacks; onLaunch?: ArenaLaunchHandler; boardTheme?: BoardTheme; pieceTheme?: PieceTheme }) {
     this.callbacks = data.onState;
     this.onLaunch = data.onLaunch;
+    this.boardTheme = data.boardTheme ?? "midnight";
+    this.pieceTheme = data.pieceTheme ?? "classic";
     logger.debug("ARENA_INITIALIZED", { callbackAttached: Boolean(data.onState), launchHandlerAttached: Boolean(data.onLaunch), pieceCount: this.pieces.length });
   }
 
@@ -158,18 +177,29 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   private drawBoard() {
-    const g = this.add.graphics();
+    const g = this.boardGraphics ?? this.add.graphics();
+    this.boardGraphics = g;
+    const theme = BOARD_THEMES[this.boardTheme];
+    g.clear();
     for (let y = 0; y < 8; y += 1) for (let x = 0; x < 8; x += 1) {
-      g.fillStyle((x + y) % 2 === 0 ? 0x2c3847 : 0x111923, 1);
+      g.fillStyle((x + y) % 2 === 0 ? theme.light : theme.dark, 1);
       g.fillRect(x * CELL, y * CELL, CELL, CELL);
     }
-    g.lineStyle(3, 0xa7b3c1, 0.35).strokeRect(0, 0, SIZE, SIZE);
+    g.lineStyle(3, theme.border, 0.35).strokeRect(0, 0, SIZE, SIZE);
+  }
+
+  setThemes(boardTheme: BoardTheme, pieceTheme: PieceTheme) {
+    this.boardTheme = boardTheme;
+    this.pieceTheme = pieceTheme;
+    this.drawBoard();
+    for (const piece of this.pieces) this.stylePiece(piece);
   }
 
   private addPiece(piece: ArenaPiece) {
+    const style = PIECE_STYLES[this.pieceTheme];
     const sprite = this.add.text(piece.x * CELL, piece.y * CELL, GLYPH[piece.type][piece.team], {
-      fontFamily: "Georgia, serif", fontSize: `${Math.round(CELL * 0.7)}px`,
-      color: piece.team === "white" ? "#f7fbff" : "#05080c", stroke: piece.team === "white" ? "#172131" : "#dde6ef", strokeThickness: 5,
+      fontFamily: style.fontFamily, fontSize: `${Math.round(CELL * 0.7)}px`,
+      color: piece.team === "white" ? "#f7fbff" : "#05080c", stroke: piece.team === "white" ? "#172131" : "#dde6ef", strokeThickness: style.strokeThickness,
     }).setOrigin(0.5).setDepth(10);
     sprite.setData("pieceId", piece.id);
     this.sprites.set(piece.id, sprite);
@@ -178,6 +208,15 @@ export class ArenaScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(20).setVisible(false);
     hp.setData("pieceId", piece.id);
     this.hpLabels.set(piece.id, hp);
+  }
+
+  private stylePiece(piece: ArenaPiece) {
+    const sprite = this.sprites.get(piece.id);
+    const style = PIECE_STYLES[this.pieceTheme];
+    sprite?.setStyle({
+      fontFamily: style.fontFamily,
+      strokeThickness: style.strokeThickness,
+    });
   }
 
   private syncPiece(piece: ArenaPiece) {

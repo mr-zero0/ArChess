@@ -66,6 +66,18 @@ test("Phaser normalizes responsive pointer input for drag and release", () => {
   has(arena, "BOARD_UNITS / SIZE");
 });
 
+test("arena exposes bounded board resizing and open-source-inspired themes", () => {
+  has(app, "Math.max(70, value - 10)");
+  has(app, "Math.min(120, value + 10)");
+  has(app, 'value="woodland"');
+  has(app, 'value="ivory"');
+  has(app, 'value="outline"');
+  has(app, 'value="mono"');
+  has(arena, 'export type BoardTheme = "midnight" | "woodland" | "ivory"');
+  has(arena, 'export type PieceTheme = "classic" | "outline" | "mono"');
+  has(arena, "setThemes(boardTheme: BoardTheme, pieceTheme: PieceTheme)");
+});
+
 test("authoritative snapshots reconcile only at safe physics boundaries", () => {
   has(arena, "pendingAuthoritativeSnapshot");
   has(arena, "AUTHORITATIVE_SNAPSHOT_DEFERRED_DURING_PHYSICS");

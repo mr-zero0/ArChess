@@ -23,6 +23,8 @@
 - Added a physically valid cooldown-expiry regression that advances simulation time without contact, then verifies a fresh inbound impact is damageable again.
 - Added keyboard gameplay parity to the Phaser arena using the existing launch path: focusable canvas, active-team piece cycling, Enter/Space selection and launch, WASD direction, and keyboard telemetry.
 - Added focused keyboard gameplay regression coverage.
+- Added bounded live board resizing plus midnight, woodland, and ivory board themes with classic, outline, and mono piece presentation themes.
+- Preserved the project open-source asset direction through the documented Cburnett-derived chess artwork and Phaser-native theme registry.
 - User-validated live core issue: drag/play became usable and collision distortion was corrected.
 - Implemented: accessibility hardening, abortable arena bootstrap, reconnect-state hardening, shared HUD health rules, launch-failure resync, bounded API request duration, collision cooldown pruning, keyboard gameplay controls, and focused lifecycle/regression coverage.
 - Browser input uses captured native Pointer Events, explicit CSS-pixel-to-game-coordinate mapping, board-unit conversion, and post-settlement authoritative reconciliation.
@@ -99,6 +101,7 @@
 - [x] Verify reconnect during and after a completed launch resynchronizes cleanly.
 - [ ] Add full VFX/audio/replay/history/challenges parity.
 - [ ] Verify keyboard gameplay in a real browser session.
+- [ ] Verify board resizing and each presentation theme in a real browser session.
 - [ ] Add browser matrix for the modern client.
 
 ### Backend parity — current

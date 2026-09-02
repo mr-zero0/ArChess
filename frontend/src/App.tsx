@@ -1,14 +1,17 @@
 console.log("APP MODULE EVALUATED");
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import type { ArenaState } from "./game/ArenaScene";
+import type { ArenaState, BoardTheme, PieceTheme } from "./game/ArenaScene";
 import { createAuthoritativeSession } from "./game/authoritativeSession";
 import type { AuthoritativeSnapshot } from "./api/client";
 import { STARTING_TEAM_MAX_HP } from "./game/rules.ts";
 import { FeatureRail } from "./components/FeatureRail";
 import { FEATURES, type FeatureId } from "./features";
 
-type ArenaBridge = { applyAuthoritativeSnapshot: (snapshot: AuthoritativeSnapshot) => ArenaState };
+type ArenaBridge = {
+  applyAuthoritativeSnapshot: (snapshot: AuthoritativeSnapshot) => ArenaState;
+  setThemes?: (board: BoardTheme, pieces: PieceTheme) => void;
+};
 type Team = "white" | "black";
 type ArenaStatus = "loading" | "ready" | "error";
 
@@ -162,6 +165,15 @@ export function App() {
   const [flash, setFlash] = useState(false);
   const [shake, setShake] = useState(false);
   const [activeFeature, setActiveFeature] = useState<FeatureId>("arena");
+  const [boardScale, setBoardScale] = useState(100);
+  const [boardTheme, setBoardTheme] = useState<BoardTheme>("midnight");
+  const [pieceTheme, setPieceTheme] = useState<PieceTheme>("classic");
+
+  const updateThemes = (nextBoardTheme: BoardTheme, nextPieceTheme: PieceTheme) => {
+    setBoardTheme(nextBoardTheme);
+    setPieceTheme(nextPieceTheme);
+    sceneRef.current?.setThemes?.(nextBoardTheme, nextPieceTheme);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -185,6 +197,8 @@ export function App() {
         game.scene.add("ArenaScene", ArenaScene, true, {
           onState: setState,
           onLaunch: (payload: { team: "white" | "black"; pieceId: string; dx: number; dy: number }) => session.launch(payload),
+          boardTheme,
+          pieceTheme,
         });
         sceneRef.current = await waitForArenaBridge(game, 5000, startupAbort.signal);
         if (cancelled || startupAbort.signal.aborted) return;
@@ -212,6 +226,10 @@ export function App() {
       gameRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    sceneRef.current?.setThemes?.(boardTheme, pieceTheme);
+  }, [boardTheme, pieceTheme]);
 
   useEffect(() => {
     if (state.collisions > collisionsRef.current) {
@@ -300,6 +318,19 @@ export function App() {
             {/* Arena Center */}
             <div className="flex flex-col">
               <div className={`relative rounded-2xl overflow-hidden border-2 ${arenaStatus === "ready" ? "border-cyan-500/50" : "border-slate-700/50"} bg-gradient-to-b from-slate-900/50 via-slate-950/50 to-slate-950/50 shadow-2xl ${arenaStatus === "ready" ? "shadow-cyan-500/20" : "shadow-slate-950"} transition-all duration-500`}>
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/60 px-5 py-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Board presentation</p>
+                    <p className="text-sm font-semibold text-slate-300">{boardScale}% scale · {boardTheme} · {pieceTheme} pieces</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button type="button" className="icon-button" aria-label="Make board smaller" onClick={() => setBoardScale((value) => Math.max(70, value - 10))}>−</button>
+                    <button type="button" className="icon-button" aria-label="Reset board size" onClick={() => setBoardScale(100)}>{boardScale}%</button>
+                    <button type="button" className="icon-button" aria-label="Make board larger" onClick={() => setBoardScale((value) => Math.min(120, value + 10))}>+</button>
+                    <label className="theme-control"><span>Board</span><select value={boardTheme} onChange={(event) => updateThemes(event.target.value as BoardTheme, pieceTheme)}><option value="midnight">Midnight</option><option value="woodland">Woodland</option><option value="ivory">Ivory</option></select></label>
+                    <label className="theme-control"><span>Pieces</span><select value={pieceTheme} onChange={(event) => updateThemes(boardTheme, event.target.value as PieceTheme)}><option value="classic">Classic</option><option value="outline">Outline</option><option value="mono">Mono</option></select></label>
+                  </div>
+                </div>
                 {arenaStatus === "loading" && (
                   <motion.div
                     initial={{ opacity: 0 }}
@@ -339,7 +370,8 @@ export function App() {
                 )}
                 <div
                   ref={mount}
-                  className={`phaser-host w-full aspect-square rounded-xl overflow-hidden bg-gradient-to-b from-blue-900/30 via-slate-900 to-slate-950 ${shake ? "animate-shake" : ""}`}
+                  style={{ width: `${boardScale}%`, alignSelf: "center" }}
+                  className={`phaser-host aspect-square rounded-xl overflow-hidden bg-gradient-to-b from-blue-900/30 via-slate-900 to-slate-950 ${shake ? "animate-shake" : ""}`}
                   aria-label="ArChess Phaser arena"
                   aria-live="polite"
                 />

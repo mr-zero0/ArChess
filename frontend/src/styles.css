@@ -42,6 +42,37 @@ button:focus-visible,
   min-width: 0;
   position: relative;
   touch-action: none;
+  transition: width 180ms ease;
+}
+
+.icon-button {
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 0.65rem;
+  background: rgba(15, 23, 42, 0.7);
+  color: #dbeafe;
+  font-weight: 800;
+}
+
+.theme-control {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 0.4rem;
+  color: #94a3b8;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.theme-control select {
+  min-height: 44px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 0.65rem;
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 0 0.65rem;
 }
 
 .phaser-host canvas {
