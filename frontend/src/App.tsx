@@ -256,8 +256,8 @@ export function App() {
       <div className="relative z-10">
         {/* Header */}
         <header className="border-b border-slate-800/50 bg-gradient-to-b from-slate-900/40 via-slate-900/20 to-transparent backdrop-blur-sm">
-          <div className="max-w-7xl mx-auto px-6 py-8">
-            <div className="flex items-start justify-between">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 sm:py-8">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <motion.div
                   initial={{ opacity: 0, y: -20 }}
@@ -266,13 +266,13 @@ export function App() {
                   className="mb-2"
                 >
                   <p className="text-xs font-bold uppercase tracking-[0.3em] text-cyan-400/70 mb-2">⚡ Authoritative Chess Engine</p>
-                  <h1 className="text-5xl font-black bg-gradient-to-r from-cyan-300 via-blue-300 to-cyan-300 bg-clip-text text-transparent tracking-tight">
+                  <h1 className="text-4xl sm:text-5xl font-black bg-gradient-to-r from-cyan-300 via-blue-300 to-cyan-300 bg-clip-text text-transparent tracking-tight">
                     ArChess Arena
                   </h1>
                   <p className="text-sm text-slate-400 mt-2 font-semibold">Launch. Collide. Conquer.</p>
                 </motion.div>
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                 <motion.div
                   animate={{ y: [0, -4, 0] }}
                   transition={{ duration: 3, repeat: Infinity }}
@@ -292,12 +292,12 @@ export function App() {
         </header>
 
         {/* Feature Rail */}
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
           <FeatureRail active={activeFeature} onSelect={setActiveFeature} />
         </div>
 
         {/* Main Content */}
-        <main className="max-w-7xl mx-auto px-6 pb-12">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 pb-10 sm:pb-12">
           <div className="grid grid-cols-1 xl:grid-cols-[300px_1fr_300px] gap-6">
             {/* Left Sidebar */}
             <div className="space-y-6">
@@ -318,7 +318,7 @@ export function App() {
             {/* Arena Center */}
             <div className="flex flex-col">
               <div className={`relative rounded-2xl overflow-hidden border-2 ${arenaStatus === "ready" ? "border-cyan-500/50" : "border-slate-700/50"} bg-gradient-to-b from-slate-900/50 via-slate-950/50 to-slate-950/50 shadow-2xl ${arenaStatus === "ready" ? "shadow-cyan-500/20" : "shadow-slate-950"} transition-all duration-500`}>
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/60 px-5 py-4">
+                <div className="arena-toolbar flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/60 px-4 sm:px-5 py-4">
                   <div>
                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Board presentation</p>
                     <p className="text-sm font-semibold text-slate-300">{boardScale}% scale · {boardTheme} · {pieceTheme} pieces</p>
@@ -371,7 +371,7 @@ export function App() {
                 <div
                   ref={mount}
                   style={{ width: `${boardScale}%`, alignSelf: "center" }}
-                  className={`phaser-host aspect-square rounded-xl overflow-hidden bg-gradient-to-b from-blue-900/30 via-slate-900 to-slate-950 ${shake ? "animate-shake" : ""}`}
+                  className={`phaser-host max-w-full aspect-square rounded-xl overflow-hidden bg-gradient-to-b from-blue-900/30 via-slate-900 to-slate-950 ${shake ? "animate-shake" : ""}`}
                   aria-label="ArChess Phaser arena"
                   aria-live="polite"
                 />

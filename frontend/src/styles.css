@@ -75,6 +75,30 @@ button:focus-visible,
   padding: 0 0.65rem;
 }
 
+@media (max-width: 640px) {
+  .arena-toolbar {
+    align-items: stretch;
+  }
+
+  .arena-toolbar > div:last-child {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .arena-toolbar .theme-control {
+    min-width: 0;
+    grid-column: span 3;
+    justify-content: space-between;
+  }
+
+  .arena-toolbar .theme-control select {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
 .phaser-host canvas {
   display: block;
   width: 100% !important;
