@@ -23,11 +23,9 @@ export function FeatureRail({ active, onSelect }: Props) {
         {FEATURES.map((feature) => {
           const selected = feature.id === active;
           return (
-            <motion.button
+            <button
               key={feature.id}
               type="button"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
               aria-current={selected ? "page" : undefined}
               onClick={() => onSelect(feature.id)}
               className={`relative rounded-xl px-4 py-2 text-sm font-bold transition-all ${
@@ -53,7 +51,7 @@ export function FeatureRail({ active, onSelect }: Props) {
                   transition={{ duration: 0.3 }}
                 />
               )}
-            </motion.button>
+            </button>
           );
         })}
       </div>

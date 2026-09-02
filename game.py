@@ -2,10 +2,12 @@ import json
 import math
 import os
 import sys
+from pathlib import Path
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, send_from_directory
+from flask_sock import Sock
 
 from config.config import DevelopmentConfig, ProductionConfig
 from core.extensions import db, migrate, limiter
@@ -14,14 +16,17 @@ from game.matchmaking import get_queue_status, join_queue, leave_queue
 from game.physics.authoritative import AuthoritativeSimulation
 from core.logging_config import configure_logging
 from core.rooms import create_room
+from game.room_service import room_service
 from game.auth_routes import AUTH_BP, configure_auth
 from game.social_routes import SOCIAL_BP
 
 VERSION = "v0.5.2"
+APP_BUILD = Path(__file__).resolve().parent / "static" / "app"
 
 
 def create_app(config_object=DevelopmentConfig):
     application = Flask(__name__, template_folder='templates', static_folder='static')
+    sock = Sock(application)
     application.config.from_object(config_object)
     if config_object is ProductionConfig and not os.environ.get("SECRET_KEY"):
         raise RuntimeError("SECRET_KEY must be set in production")
@@ -74,7 +79,57 @@ def create_app(config_object=DevelopmentConfig):
 
     @application.get("/")
     def index():
+        if (APP_BUILD / "index.html").is_file():
+            return send_from_directory(APP_BUILD, "index.html")
         return render_template("index.html")
+
+    @application.get("/assets/<path:filename>")
+    def app_assets(filename):
+        return send_from_directory(APP_BUILD / "assets", filename)
+
+    @application.get("/api/rooms/<room_id>/state")
+    def modern_room_state(room_id):
+        state = room_service.room_state(room_id)
+        if state is None:
+            return jsonify({"ok": False, "error": "room_not_found"}), 404
+        return jsonify(state)
+
+    @application.post("/api/rooms/<room_id>/launch")
+    def modern_launch(room_id):
+        payload = request.get_json(silent=True) or {}
+        if "game_id" not in payload:
+            return launch_piece(room_id)
+        required = ("game_id", "team", "piece_id", "dx", "dy")
+        if any(key not in payload for key in required):
+            return jsonify({"ok": False, "accepted": False, "error": "invalid_launch_payload"}), 422
+        try:
+            dx = float(payload["dx"])
+            dy = float(payload["dy"])
+        except (TypeError, ValueError):
+            return jsonify({"ok": False, "accepted": False, "error": "invalid_launch_vector"}), 422
+        if not math.isfinite(dx) or not math.isfinite(dy):
+            return jsonify({"ok": False, "accepted": False, "error": "invalid_launch_vector"}), 422
+        result, _ = room_service.launch(
+            room_id,
+            game_id=str(payload["game_id"]),
+            team=payload["team"],
+            piece_id=str(payload["piece_id"]),
+            dx=dx,
+            dy=dy,
+        )
+        return jsonify(result), 200 if result.get("ok") else 409
+
+    @sock.route("/ws/rooms/<room_id>")
+    def modern_room_websocket(ws, room_id):
+        room = room_service.connect(room_id, ws)
+        if room is None:
+            ws.close()
+            return
+        try:
+            while ws.receive() is not None:
+                pass
+        finally:
+            room_service.disconnect(room, ws)
 
     @application.get("/api/game/config")
     def game_config():
@@ -122,6 +177,9 @@ def create_app(config_object=DevelopmentConfig):
     def create_game_room():
         payload = request.get_json(silent=True) or {}
         guest_id = payload.get("guestId")
+        if guest_id is None:
+            room = room_service.create_room()
+            return jsonify({"room_id": room.room_id, "status": room.status, "created_at": room.created_at}), 201
         if not isinstance(guest_id, str) or not guest_id.strip() or len(guest_id) > 100:
             return jsonify({"error": "invalid_guest_id", "message": "A valid guestId is required"}), 400
         return jsonify(create_room(guest_id.strip())), 201

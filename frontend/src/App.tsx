@@ -340,7 +340,8 @@ export function App() {
                 <div
                   ref={mount}
                   className={`phaser-host w-full aspect-square rounded-xl overflow-hidden bg-gradient-to-b from-blue-900/30 via-slate-900 to-slate-950 ${shake ? "animate-shake" : ""}`}
-                  aria-label="ArChess Phaser Arena"
+                  aria-label="ArChess Phaser arena"
+                  aria-live="polite"
                 />
               </div>
               {state.message && (

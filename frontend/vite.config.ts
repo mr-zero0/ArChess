@@ -5,6 +5,10 @@ import tailwindcss from '@tailwindcss/vite';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  build: {
+    outDir: '../static/app',
+    emptyOutDir: true,
+  },
   server: {
     proxy: {
       '/api': {
