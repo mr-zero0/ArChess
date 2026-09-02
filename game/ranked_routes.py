@@ -1,11 +1,12 @@
 from flask import jsonify, request
 from flask.signals import appcontext_pushed
+import json
 
 
 def register_ranked_routes():
     from core.extensions import db
     from game.leaderboard import get_leaderboard, ranked_profile
-    from game.models import User
+    from game.models import Room, User
     from game.progression import equip_cosmetic, progression_profile
     from game.ranked import TIERS
     from game.telemetry import record_event
@@ -65,11 +66,35 @@ def register_ranked_routes():
             db.session.commit()
             return jsonify(result), 200
 
+        def disconnect(room_code):
+            payload = request.get_json(silent=True) or {}
+            guest_id = payload.get("guestId")
+            reason = payload.get("reason") or "abandonment"
+            if not isinstance(guest_id, str) or not guest_id.strip() or len(guest_id) > 100:
+                return jsonify({"error": "invalid_guest_id", "message": "A valid guestId is required"}), 400
+            if reason not in {"surrender", "timeout", "abandonment"}:
+                return jsonify({"error": "invalid_reason", "message": "Invalid disconnect reason"}), 400
+            room = Room.query.filter_by(room_code=room_code).first()
+            if room is None:
+                return jsonify({"error": "room_not_found"}), 404
+            if room.status != "active":
+                return jsonify({"error": "room_not_active"}), 409
+            user = User.query.filter_by(guest_id=guest_id.strip()).first()
+            if user is None or user.room_id != room.id:
+                return jsonify({"error": "unauthorized"}), 403
+            user.room_id = None
+            room.status = "finished"
+            disconnect_record = json.dumps({"type": "ranked_disconnect", "guestId": guest_id.strip(), "reason": reason}, separators=(",", ":"))
+            room.match_log = disconnect_record if not room.match_log else room.match_log + "\n" + disconnect_record
+            db.session.commit()
+            return jsonify({"status": "disconnected", "reason": reason, "room": room.to_dict()}), 200
+
         sender.add_url_rule("/api/ranked/leaderboard", endpoint="ranked_leaderboard", view_func=leaderboard, methods=["GET"])
         sender.add_url_rule("/api/ranked/profile/<guest_id>", endpoint="ranked_profile", view_func=profile, methods=["GET"])
         sender.add_url_rule("/api/ranked/tiers", endpoint="ranked_tiers", view_func=tiers, methods=["GET"])
         sender.add_url_rule("/api/progression/profile/<guest_id>", endpoint="progression_profile", view_func=progression, methods=["GET"])
         sender.add_url_rule("/api/progression/equip", endpoint="progression_equip", view_func=equip, methods=["POST"])
+        sender.add_url_rule("/api/rooms/<room_code>/disconnect", endpoint="room_disconnect", view_func=disconnect, methods=["POST"])
         sender.extensions["archess_ranked_routes_registered"] = True
 
     appcontext_pushed.connect(_register, weak=False)

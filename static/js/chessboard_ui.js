@@ -32,9 +32,30 @@
 
   function activate() {
     try {
-      board.setAttribute("fen", EMPTY_FEN);
+      // Guard against setting empty FEN if it causes library errors
+      if (EMPTY_FEN) {
+        log.info?.("SETTING_FEN", { fen: EMPTY_FEN });
+        board.setAttribute("fen", EMPTY_FEN);
+      } else {
+        log.info?.("REMOVING_FEN_ATTRIBUTE");
+        board.removeAttribute("fen");
+      }
       board.setAttribute("coordinates", "inside");
       board.removeAttribute("interactive");
+  function setBoardState(fen) {
+    if (fen && fen.length > 0) {
+      board.setAttribute("fen", fen);
+    } else {
+      board.removeAttribute("fen");
+    }
+  }
+
+  window.ArChessBoardUI = Object.freeze({
+    // ...
+    setFen: setBoardState,
+    // ...
+  });
+
       board.setAttribute("aria-label", "ArChess physics chess board");
       applyTheme();
       document.body.dataset.boardRenderer = "library";

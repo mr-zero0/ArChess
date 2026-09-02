@@ -149,7 +149,26 @@
   function settle(dt){if(game.gameOver||game.phase!=="physics")return;const stopped=game.pieces.every(p=>!p.alive||!p.moving);if(!stopped){game.settledFor=0;return}game.settledFor+=dt;if(game.settledFor<GAME_CONFIG.settleDelay)return;if(window.ReplayRecorder)ReplayRecorder.recordTurnEnd(game.pieces);if(game.challenge&&window.ChallengeManager){ChallengeManager.recordTurn();const result=ChallengeManager.check(game);if(result){game.gameOver=true;game.phase="gameover";const card=document.getElementById("challengeResultCard");if(card)card.className=`challenge-result ${result.passed?"passed":"failed"}`;document.getElementById("challengeResultTitle").textContent=result.passed?"CHALLENGE COMPLETE":"CHALLENGE FAILED";document.getElementById("challengeResultStars").innerHTML=[0,1,2].map(i=>`<span class="${i<result.stars?"":"empty"}">★</span>`).join("");document.getElementById("challengeResultMsg").textContent=result.message;UI.modal("challengeResultModal",true);return}}game.combo=0;game.maxCombo=0;switchTurn()}
 
   function updateDebug(dt){game.debugMetrics={fps:dt?Math.round(1/dt):60,activeBodies:game.pieces.filter(p=>p.alive&&p.moving).length,collisionCount:game.collisionCount,selectedPiece:game.selectedPiece?.id||"None",settleTimer:`${game.settledFor.toFixed(2)}s`}}
-  function loop(now){const dt=Math.min(.033,Math.max(0,(now-(loop.last||now))/1000));loop.last=now;game.simTime+=dt;if(game.phase==="physics"&&!game.gameOver)Physics.step(game,dt);else for(const p of game.pieces)Physics.recordTrail(p,dt);updateEffects(dt);if(game.comboTimer>0){game.comboTimer-=dt;if(game.comboTimer<=0)game.combo=0}checkWin();settle(dt);updateDebug(dt);renderer.draw(game);UI.update();requestAnimationFrame(loop)}
+  function loop(now){
+    const dt = Math.min(0.033, Math.max(0, (now - (loop.last || now)) / 1000));
+    loop.last = now;
+    game.simTime += dt;
+    safe("Physics.step", () => {
+      if (game.phase === "physics" && !game.gameOver) Physics.step(game, dt);
+      else for (const p of game.pieces) Physics.recordTrail(p, dt);
+    });
+    safe("updateEffects", () => updateEffects(dt));
+    if (game.comboTimer > 0) {
+      game.comboTimer -= dt;
+      if (game.comboTimer <= 0) game.combo = 0;
+    }
+    safe("checkWin", checkWin);
+    safe("settle", () => settle(dt));
+    safe("updateDebug", () => updateDebug(dt));
+    safe("renderer.draw", () => renderer.draw(game));
+    safe("UI.update", () => UI.update());
+    requestAnimationFrame(loop);
+  }
 
   function bind(id,event,fn){const el=document.getElementById(id);if(!el)return;el.addEventListener(event,(e)=>safe(`${id}:${event}`,()=>fn(e)));}
   bind("newGameBtn","click",()=>{window.ChallengeManager?.reset?.();game.challenge=null;resetGame()});
