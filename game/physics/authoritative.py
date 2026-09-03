@@ -247,7 +247,7 @@ class AuthoritativeSimulation:
         substeps = max(2, min(4, int(GAME_CONFIG.get("physicsSubsteps", 3))))
         step_dt = min(0.033, dt) / substeps
         impulse_epsilon = 0.001
-        was_active = any(p.alive and (math.hypot(p.vx, p.vy) > impulse_epsilon) for p in self.pieces)
+        was_active = any(p.alive and math.hypot(p.vx, p.vy) >= GAME_CONFIG["minVelocity"] for p in self.pieces)
 
         for _ in range(substeps):
             self.sim_time += step_dt
@@ -276,12 +276,12 @@ class AuthoritativeSimulation:
                 piece.vx = piece.vy = 0.0
 
         still_moving = any(p.alive and math.hypot(p.vx, p.vy) >= GAME_CONFIG["minVelocity"] for p in self.pieces)
-        if not still_moving and was_active:
+        if not still_moving:
             self._settle_timer += dt
-        elif still_moving:
+        else:
             self._settle_timer = 0.0
 
-        if not still_moving and was_active and self._settle_timer >= GAME_CONFIG["settleDelay"]:
+        if not still_moving and self._settle_timer >= GAME_CONFIG["settleDelay"]:
             for piece in self.pieces:
                 if not piece.alive or math.hypot(piece.vx, piece.vy) >= GAME_CONFIG["minVelocity"]:
                     continue
@@ -369,7 +369,7 @@ class AuthoritativeSimulation:
             destroyed.append({"type": "destroyed", "piece": b.id, "killer": a.team})
         if a.type == "king" and not a.alive or b.type == "king" and not b.alive:
             self.game_over = True
-        self._domain_event(logging.INFO, "COLLISION_DAMAGE", fields={"piece_a": a.id, "piece_b": b.id, "impact": impact, "damage_a": damage_a, "damage_b": damage_b, "hp_before_a": hp_before_a, "hp_before_b": hp_before_b, "hp_after_a": a.hp, "hp_after_b": b.hp})
+        self._domain_event(logging.INFO, "COLLISION_DAMAGE_APPLIED", fields={"piece_a": a.id, "piece_b": b.id, "impact": impact, "damage_a": damage_a, "damage_b": damage_b, "hp_before_a": hp_before_a, "hp_before_b": hp_before_b, "hp_after_a": a.hp, "hp_after_b": b.hp})
         return {"type": "collision", "impact": impact, "damaged": True, "pieceA": a.id, "pieceB": b.id, "damageA": damage_a, "damageB": damage_b, "destroyed": destroyed}
 
     def _damage(self, attacker: ServerPiece, impact: float) -> int:

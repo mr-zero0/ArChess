@@ -34,6 +34,10 @@ def _install_compatibility_modules():
         app_module = types.ModuleType("app")
         app_module.create_app = game_module.create_app
         app_module.app = game_module.create_app()
+        # Initialize database for the app
+        with app_module.app.app_context():
+            game_module.db.drop_all()
+            game_module.db.create_all()
         app_module.db = game_module.db
         app_module.migrate = game_module.migrate
         app_module.limiter = game_module.limiter

@@ -27,6 +27,9 @@ APP_BUILD = Path(__file__).resolve().parent / "static" / "app"
 def create_app(config_object=DevelopmentConfig):
     application = Flask(__name__, template_folder='templates', static_folder='static')
     sock = Sock(application)
+    application.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+    application.config['TEMPLATES_AUTO_RELOAD'] = True
+
     application.config.from_object(config_object)
     if config_object is ProductionConfig and not os.environ.get("SECRET_KEY"):
         raise RuntimeError("SECRET_KEY must be set in production")

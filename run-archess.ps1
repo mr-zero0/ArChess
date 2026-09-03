@@ -13,11 +13,10 @@ if (-not (Test-Path $venvPython)) {
 Write-Host "Installing Python dependencies..."
 & $venvPython -m pip install -r requirements.txt
 
+Write-Host "Building React and Phaser..."
 Push-Location (Join-Path $root "frontend")
 try {
-    Write-Host "Installing frontend dependencies..."
     npm install
-    Write-Host "Building React and Phaser..."
     npm run build
 }
 finally {

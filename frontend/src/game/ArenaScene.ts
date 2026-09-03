@@ -197,13 +197,13 @@ export class ArenaScene extends Phaser.Scene {
 
   private addPiece(piece: ArenaPiece) {
     const style = PIECE_STYLES[this.pieceTheme];
-    const sprite = this.add.text(piece.x * CELL, piece.y * CELL, GLYPH[piece.type][piece.team], {
+    const sprite = this.add.text(piece.x * CELL + CELL/2, piece.y * CELL + CELL/2, GLYPH[piece.type][piece.team], {
       fontFamily: style.fontFamily, fontSize: `${Math.round(CELL * 0.7)}px`,
       color: piece.team === "white" ? "#f7fbff" : "#05080c", stroke: piece.team === "white" ? "#172131" : "#dde6ef", strokeThickness: style.strokeThickness,
     }).setOrigin(0.5).setDepth(10);
     sprite.setData("pieceId", piece.id);
     this.sprites.set(piece.id, sprite);
-    const hp = this.add.text(piece.x * CELL, piece.y * CELL - CELL * 0.42, `${piece.hp}/${piece.maxHp}`, {
+    const hp = this.add.text(piece.x * CELL + CELL/2, piece.y * CELL - CELL * 0.42 + CELL/2, `${piece.hp}/${piece.maxHp}`, {
       fontFamily: "Arial, sans-serif", fontSize: "13px", color: "#ffffff", stroke: "#000000", strokeThickness: 4, fontStyle: "bold",
     }).setOrigin(0.5).setDepth(20).setVisible(false);
     hp.setData("pieceId", piece.id);
@@ -221,7 +221,7 @@ export class ArenaScene extends Phaser.Scene {
 
   private syncPiece(piece: ArenaPiece) {
     const sprite = this.sprites.get(piece.id); const hp = this.hpLabels.get(piece.id);
-    const x = piece.x * CELL; const y = piece.y * CELL;
+    const x = piece.x * CELL + CELL/2; const y = piece.y * CELL + CELL/2;
     if (sprite) sprite.setVisible(piece.alive).setPosition(x, y).setAlpha(piece.alive ? 1 : 0.2);
     if (hp) hp.setVisible(piece.alive && this.selected?.id === piece.id).setPosition(x, y - CELL * 0.42).setText(`${piece.hp}/${piece.maxHp}`);
   }
@@ -475,7 +475,7 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   private showDamage(piece: ArenaPiece, amount: number) {
-    const text = this.add.text(piece.x * CELL, piece.y * CELL, `-${Math.max(0, Math.round(amount))}`, {
+    const text = this.add.text(piece.x * CELL + CELL/2, piece.y * CELL + CELL/2, `-${Math.max(0, Math.round(amount))}`, {
       fontFamily: "Arial, sans-serif", fontSize: "22px", color: "#ff6875", stroke: "#18080b", strokeThickness: 5, fontStyle: "bold",
     }).setOrigin(0.5).setDepth(50);
     this.tweens.add({ targets: text, y: text.y - 26, alpha: 0, duration: 500, ease: "Cubic.easeOut", onComplete: () => text.destroy() });

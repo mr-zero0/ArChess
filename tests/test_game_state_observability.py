@@ -14,12 +14,12 @@ def test_new_emits_creation_event_with_meaningful_counts(monkeypatch):
     assert state.current_player == "white"
     assert len(state.pieces) == 32
     assert events
-    event, kwargs = events[-1]
-    assert event == "GAME_STATE_CREATED"
-    assert kwargs["fields"]["current_player"] == "white"
-    assert kwargs["fields"]["piece_count"] == 32
-    assert kwargs["fields"]["white_piece_count"] == 16
-    assert kwargs["fields"]["black_piece_count"] == 16
+    event_args, event_kwargs = events[-1]
+    assert event_args[0] == "GAME_STATE_CREATED"
+    assert event_kwargs["fields"]["current_player"] == "white"
+    assert event_kwargs["fields"]["piece_count"] == 32
+    assert event_kwargs["fields"]["white_piece_count"] == 16
+    assert event_kwargs["fields"]["black_piece_count"] == 16
 
 
 def test_snapshot_emits_state_summary_without_changing_payload(monkeypatch):
@@ -32,10 +32,10 @@ def test_snapshot_emits_state_summary_without_changing_payload(monkeypatch):
 
     assert snapshot["currentPlayer"] == "white"
     assert len(snapshot["pieces"]) == 32
-    event, kwargs = events[-1]
-    assert event == "GAME_STATE_SNAPSHOT"
-    assert kwargs["fields"]["current_player"] == "white"
-    assert kwargs["fields"]["piece_count"] == 32
+    event_args, event_kwargs = events[-1]
+    assert event_args[0] == "GAME_STATE_SNAPSHOT"
+    assert event_kwargs["fields"]["current_player"] == "white"
+    assert event_kwargs["fields"]["piece_count"] == 32
 
 
 def test_snapshot_counts_alive_pieces(monkeypatch):
@@ -46,9 +46,9 @@ def test_snapshot_counts_alive_pieces(monkeypatch):
 
     state.snapshot()
 
-    event, kwargs = events[-1]
-    assert event == "GAME_STATE_SNAPSHOT"
-    assert kwargs["fields"]["alive_piece_count"] == 31
+    event_args, event_kwargs = events[-1]
+    assert event_args[0] == "GAME_STATE_SNAPSHOT"
+    assert event_kwargs["fields"]["alive_piece_count"] == 31
 
 
 def test_event_helper_accepts_explicit_error_level(monkeypatch):
