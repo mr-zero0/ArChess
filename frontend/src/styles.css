@@ -1,35 +1,51 @@
 @import "tailwindcss";
-
 :root {
-  color-scheme: dark;
-  font-family: "Avenir Next", "Segoe UI", sans-serif;
-  background: #05080d;
-  color: #edf4ff;
+  --bg-app: #05080d;
+  --bg-card: #070b12;
+  --bg-modal: #101826;
+  --text-main: #edf4ff;
+  --text-muted: #94a3b8;
+  --accent: #06b6d4;
+  --border: #1e293b;
 }
 
-html,
-body,
-#root {
+[data-theme="light"] {
+  --bg-app: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-modal: #ffffff;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --accent: #0284c7;
+  --border: #e2e8f0;
+}
+
+html, body, #root {
   height: 100%;
   width: 100%;
   margin: 0;
-  overflow: hidden;
+  background: var(--bg-app);
+  color: var(--text-main);
+  font-family: sans-serif;
 }
 
-body {
-  background: #070b12;
+* { box-sizing: border-box; }
+
+button:focus-visible {
+  outline: 2px solid white;
 }
 
-* {
-  box-sizing: border-box;
+@media (pointer: coarse) {
+  button {
+    min-width: 44px;
+    min-height: 44px;
+    touch-action: none;
+  }
 }
 
-/* UI Overlays */
-.absolute-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }

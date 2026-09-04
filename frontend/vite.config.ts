@@ -1,27 +1,15 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import tailwindcss from '@tailwindcss/vite';
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  build: {
-    outDir: '../static/app',
-    emptyOutDir: true,
-  },
   server: {
+    hmr: { overlay: false },
     proxy: {
-      '/api': {
-        target: 'http://localhost:5000',
-        changeOrigin: true,
-        secure: false,
-      },
-      '/ws': {
-        target: 'http://localhost:5000',
-        changeOrigin: true,
-        secure: false,
-        ws: true,
-      },
-    },
+      "/api": { target: "http://localhost:5000", changeOrigin: true },
+      "/ws": { target: "http://localhost:5000", changeOrigin: true, ws: true }
+    }
   },
+  build: { outDir: "../static/app", emptyOutDir: true }
 });
