@@ -1,0 +1,194 @@
+{
+  "demo.py": {
+    "mtime": 1788674578.0368469,
+    "seen": 1788680861.238151,
+    "ast_hash": "14202ebff0729f18942adb2d92324034",
+    "semantic_hash": "14202ebff0729f18942adb2d92324034"
+  },
+  "play_game.py": {
+    "mtime": 1788678060.7798104,
+    "seen": 1788680861.238157,
+    "ast_hash": "8b6b43ea1cff95bfa40cef328f0bb8f3",
+    "semantic_hash": "8b6b43ea1cff95bfa40cef328f0bb8f3"
+  },
+  "skills-lock.json": {
+    "mtime": 1788677027.5188012,
+    "seen": 1788680861.2381597,
+    "ast_hash": "d5ab6ed19e5a015de89521b2014fe3d0",
+    "semantic_hash": "d5ab6ed19e5a015de89521b2014fe3d0"
+  },
+  "src/archess/__init__.py": {
+    "mtime": 1788673142.3769848,
+    "seen": 1788680861.2381608,
+    "ast_hash": "9121ce12ba0603fed3e89e45041705a0",
+    "semantic_hash": "9121ce12ba0603fed3e89e45041705a0"
+  },
+  "src/archess/__main__.py": {
+    "mtime": 1788673445.9009385,
+    "seen": 1788680861.2381625,
+    "ast_hash": "f70266c36940f330ab1d1c786a08c84a",
+    "semantic_hash": "f70266c36940f330ab1d1c786a08c84a"
+  },
+  "src/archess/app/__init__.py": {
+    "mtime": 1788673149.5676606,
+    "seen": 1788680861.2381637,
+    "ast_hash": "d1d730e76f708c8fba13e8edab8c2f28",
+    "semantic_hash": "d1d730e76f708c8fba13e8edab8c2f28"
+  },
+  "src/archess/app/bootstrap/app.py": {
+    "mtime": 1788675897.667586,
+    "seen": 1788680861.2381647,
+    "ast_hash": "6cf62674bc46e79621e02ca2aff41b35",
+    "semantic_hash": "6cf62674bc46e79621e02ca2aff41b35"
+  },
+  "src/archess/app/bootstrap/logging.py": {
+    "mtime": 1788673158.5593703,
+    "seen": 1788680861.238166,
+    "ast_hash": "18710b70ce795e137646bd402b087564",
+    "semantic_hash": "18710b70ce795e137646bd402b087564"
+  },
+  "src/archess/app/combat/__init__.py": {
+    "mtime": 1788675039.7203352,
+    "seen": 1788680861.2381668,
+    "ast_hash": "fde73ec50813ae06aa2ac3e1facf9806",
+    "semantic_hash": "fde73ec50813ae06aa2ac3e1facf9806"
+  },
+  "src/archess/app/combat/combat_system.py": {
+    "mtime": 1788677088.591493,
+    "seen": 1788680861.2381678,
+    "ast_hash": "d92c3d3a177a5a52f49dd2814ba8c97a",
+    "semantic_hash": "d92c3d3a177a5a52f49dd2814ba8c97a"
+  },
+  "src/archess/app/config/__init__.py": {
+    "mtime": 1788673197.188429,
+    "seen": 1788680861.2381685,
+    "ast_hash": "77a3541b3193461e7e89bbe794d89cd9",
+    "semantic_hash": "77a3541b3193461e7e89bbe794d89cd9"
+  },
+  "src/archess/app/core/__init__.py": {
+    "mtime": 1788673217.6953855,
+    "seen": 1788680861.23817,
+    "ast_hash": "1e12e0675e658793b169300058bc88ea",
+    "semantic_hash": "1e12e0675e658793b169300058bc88ea"
+  },
+  "src/archess/app/core/game_state.py": {
+    "mtime": 1788679645.1186447,
+    "seen": 1788680861.2381709,
+    "ast_hash": "ff87da2ac513bdfb377ec6331bfd7577",
+    "semantic_hash": "ff87da2ac513bdfb377ec6331bfd7577"
+  },
+  "src/archess/app/input/__init__.py": {
+    "mtime": 1788673641.8305986,
+    "seen": 1788680861.2381718,
+    "ast_hash": "ddfa46a2702fab5a12f645a9cd23d7f0",
+    "semantic_hash": "ddfa46a2702fab5a12f645a9cd23d7f0"
+  },
+  "src/archess/app/input/handler.py": {
+    "mtime": 1788678392.2262373,
+    "seen": 1788680861.238173,
+    "ast_hash": "cbe668eea8b7378682e8948a26ef0490",
+    "semantic_hash": "cbe668eea8b7378682e8948a26ef0490"
+  },
+  "src/archess/app/physics/__init__.py": {
+    "mtime": 1788675007.9423263,
+    "seen": 1788680861.2381737,
+    "ast_hash": "4de5a843a8fdc07b1cc346512e9617e8",
+    "semantic_hash": "4de5a843a8fdc07b1cc346512e9617e8"
+  },
+  "src/archess/app/physics/physics_engine.py": {
+    "mtime": 1788677053.251934,
+    "seen": 1788680861.2381747,
+    "ast_hash": "6faa0f3528e2654145d5c5947e346caf",
+    "semantic_hash": "6faa0f3528e2654145d5c5947e346caf"
+  },
+  "src/archess/app/pieces/__init__.py": {
+    "mtime": 1788675086.7556899,
+    "seen": 1788680861.2381754,
+    "ast_hash": "304c0f828f09b07105b71e39518c2d68",
+    "semantic_hash": "304c0f828f09b07105b71e39518c2d68"
+  },
+  "src/archess/app/pieces/piece_factory.py": {
+    "mtime": 1788675097.0063405,
+    "seen": 1788680861.2381766,
+    "ast_hash": "4d6c6a4a423a1918861a5df60479c99b",
+    "semantic_hash": "4d6c6a4a423a1918861a5df60479c99b"
+  },
+  "src/archess/app/pieces/piece_manager.py": {
+    "mtime": 1788677508.5222447,
+    "seen": 1788680861.2381773,
+    "ast_hash": "c1d09f712335ab27c9c65ef80a49c488",
+    "semantic_hash": "c1d09f712335ab27c9c65ef80a49c488"
+  },
+  "src/archess/app/rendering/__init__.py": {
+    "mtime": 1788673589.9095762,
+    "seen": 1788680861.2381783,
+    "ast_hash": "6d6d10fabb799ebedc6100f3ab7eff59",
+    "semantic_hash": "6d6d10fabb799ebedc6100f3ab7eff59"
+  },
+  "src/archess/app/rendering/renderer.py": {
+    "mtime": 1788680736.6431804,
+    "seen": 1788680861.2381794,
+    "ast_hash": "3dd011a58894f7da81953ec7c50e2e9d",
+    "semantic_hash": "3dd011a58894f7da81953ec7c50e2e9d"
+  },
+  "src/archess/app/ui/__init__.py": {
+    "mtime": 1788673678.3559258,
+    "seen": 1788680861.238181,
+    "ast_hash": "a4088f2e3306363eae496282af07bba3",
+    "semantic_hash": "a4088f2e3306363eae496282af07bba3"
+  },
+  "src/archess/app/ui/manager.py": {
+    "mtime": 1788679283.6495314,
+    "seen": 1788680861.2381818,
+    "ast_hash": "d6bd66f7dfb3b33fffbf907a1d3ebf4c",
+    "semantic_hash": "d6bd66f7dfb3b33fffbf907a1d3ebf4c"
+  },
+  "tests/unit/__init__.py": {
+    "mtime": 1788673420.6981196,
+    "seen": 1788680861.238183,
+    "ast_hash": "c810bc389b6931fa71b242b27e5629ee",
+    "semantic_hash": "c810bc389b6931fa71b242b27e5629ee"
+  },
+  "tests/unit/test_combat_system.py": {
+    "mtime": 1788679503.490558,
+    "seen": 1788680861.238184,
+    "ast_hash": "46f1a4388272c94b5bc2a38f1b00a1d7",
+    "semantic_hash": "46f1a4388272c94b5bc2a38f1b00a1d7"
+  },
+  "tests/unit/test_config.py": {
+    "mtime": 1788673377.1909478,
+    "seen": 1788680861.2381852,
+    "ast_hash": "2735364ec0b00e01dd19d389f6f45594",
+    "semantic_hash": "2735364ec0b00e01dd19d389f6f45594"
+  },
+  "tests/unit/test_game_state.py": {
+    "mtime": 1788679911.467901,
+    "seen": 1788680861.2381861,
+    "ast_hash": "54488b5771245e8bc1d4c8dfc461fc65",
+    "semantic_hash": "54488b5771245e8bc1d4c8dfc461fc65"
+  },
+  "tests/unit/test_physics_engine.py": {
+    "mtime": 1788679950.347575,
+    "seen": 1788680861.2381873,
+    "ast_hash": "b49a17137879c60b9f2bc462264977d7",
+    "semantic_hash": "b49a17137879c60b9f2bc462264977d7"
+  },
+  "tests/unit/test_piece_factory.py": {
+    "mtime": 1788679579.6186829,
+    "seen": 1788680861.2381883,
+    "ast_hash": "87d47e5da07e4da5b0d87a00bd82f5bc",
+    "semantic_hash": "87d47e5da07e4da5b0d87a00bd82f5bc"
+  },
+  "tests/unit/test_piece_manager.py": {
+    "mtime": 1788679299.6783834,
+    "seen": 1788680861.2381892,
+    "ast_hash": "858b85353d8093d1eb376a35c506e966",
+    "semantic_hash": "858b85353d8093d1eb376a35c506e966"
+  },
+  "tests/unit/test_ui_ux.py": {
+    "mtime": 1788680749.3683589,
+    "seen": 1788680861.2381904,
+    "ast_hash": "7eb582e8738c53b225bf892fe48bb621",
+    "semantic_hash": "7eb582e8738c53b225bf892fe48bb621"
+  }
+}
