@@ -1,0 +1,350 @@
+.lobby-scene {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Hero Background with Cursor Tracking */
+.hero-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-primary);
+  overflow: hidden;
+  z-index: -1;
+}
+
+.hero-background::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle at var(--mouse-x) var(--mouse-y),
+    rgba(var(--accent-primary-rgb), 0.15) 0%,
+    transparent 70%);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: pulse 3s ease-in-out infinite;
+}
+
+.hero-background::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle at var(--mouse-x) var(--mouse-y),
+    rgba(var(--accent-secondary-rgb), 0.1) 0%,
+    transparent 60%);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: pulse 5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+}
+
+.hero-content {
+  position: relative;
+  text-align: center;
+  padding: 4rem 1rem;
+}
+
+.lobby-header h1 {
+  font-size: 3.5rem;
+  margin-bottom: 1.5rem;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  position: relative;
+  display: inline-block;
+}
+
+.lobby-header h1::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  width: 80px;
+  height: 4px;
+  background: var(--accent-primary);
+  transform: translateX(-50%);
+  border-radius: 2px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .lobby-header h1 {
+    font-size: 2.5rem;
+  }
+
+  .hero-background::before {
+    width: 300px;
+    height: 300px;
+  }
+
+  .hero-background::after {
+    width: 150px;
+    height: 150px;
+  }
+}
+
+@media (max-width: 480px) {
+  .lobby-header h1 {
+    font-size: 2rem;
+  }
+
+  .hero-content {
+    padding: 3rem 1rem;
+  }
+
+  .hero-background::before {
+    width: 200px;
+    height: 200px;
+  }
+
+  .hero-background::after {
+    width: 100px;
+    height: 100px;
+  }
+}
+
+.lobby-header {
+  padding: 2rem 1rem;
+  text-align: center;
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.lobby-header h1 {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.lobby-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.username-input {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.username-input input {
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-md);
+  background-color: rgba(0, 0, 0, 0.3);
+  color: var(--text-primary);
+  font-size: 1rem;
+  width: 200px;
+  max-width: 100%;
+}
+
+.username-input input::placeholder {
+  color: var(--text-muted);
+}
+
+.lobby-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0 1rem;
+  overflow-y: auto;
+}
+
+.room-list {
+  flex: 1;
+  width: 100%;
+}
+
+.room-list h2 {
+  font-size: 1.75rem;
+  margin-bottom: 1.5rem;
+  color: var(--text-primary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.5rem;
+}
+
+.room-list-items {
+  list-style: none;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.room-item {
+  background-color: var(--bg-tertiary);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  transition: all var(--transition-normal);
+  display: flex;
+  flex-direction: column;
+}
+
+.room-item:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.room-info {
+  padding: 1.5rem;
+  flex: 1;
+}
+
+.room-info h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.room-info p {
+  margin: 0.5rem 0;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.room-full {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: var(--accent-danger);
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.room-actions {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  justify-content: flex-end;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.no-rooms {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.lobby-footer {
+  text-align: center;
+  padding: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+/* Connection error styling */
+.connection-error {
+  text-align: center;
+  padding: 3rem;
+  background-color: var(--bg-tertiary);
+  border-radius: var(--radius-lg);
+  margin: 2rem;
+}
+
+.connection-error h1 {
+  color: var(--accent-danger);
+  margin-bottom: 1rem;
+}
+
+.connection-error p {
+  margin-bottom: 1.5rem;
+  color: var(--text-secondary);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .lobby-header {
+    padding: 1.5rem 1rem;
+  }
+
+  .lobby-header h1 {
+    font-size: 2rem;
+  }
+
+  .lobby-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .username-input {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .username-input input {
+    width: 100%;
+    max-width: none;
+  }
+
+  .room-list h2 {
+    font-size: 1.5rem;
+  }
+
+  .room-info {
+    padding: 1rem;
+  }
+
+  .room-actions {
+    padding: 1rem;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .lobby-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .room-info h3 {
+    font-size: 1.1rem;
+  }
+
+  .room-info p {
+    font-size: 0.85rem;
+    flex-wrap: wrap;
+  }
+
+  .room-actions {
+    gap: 0.5rem;
+  }
+
+  .menu-content {
+    width: 95%;
+    margin: 0 auto;
+  }
+}

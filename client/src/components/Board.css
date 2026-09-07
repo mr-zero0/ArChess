@@ -1,0 +1,80 @@
+.board-container {
+  position: relative;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  background-color: var(--bg-secondary);
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  width: 100%;
+  aspect-ratio: 1;
+}
+
+.board-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-lg);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.board-cell.light {
+  background-color: var(--chess-wood-light);
+}
+
+.board-cell.dark {
+  background-color: var(--chess-wood-dark);
+}
+
+.board-cell:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.board-cell.selected {
+  background-color: var(--accent-primary);
+  color: var(--text-primary);
+}
+
+.board-cell.valid-move {
+  background-color: rgba(16, 185, 129, 0.3);
+}
+
+.board-cell.last-move {
+  background-color: rgba(59, 130, 246, 0.2);
+}
+
+.board-piece {
+  font-size: var(--font-size-2xl);
+  width: 80%;
+  height: 80%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Piece colors */
+.board-piece.white {
+  color: var(--text-secondary);
+}
+
+.board-piece.black {
+  color: var(--text-primary);
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .board-container {
+    max-width: 100%;
+    margin: 0;
+    border-radius: 0;
+  }
+}

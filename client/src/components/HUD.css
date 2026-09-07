@@ -1,0 +1,136 @@
+.hud {
+  position: fixed;
+  top: var(--space-3);
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--bg-backdrop);
+  color: var(--text-primary);
+  padding: var(--space-1-5) var(--space-2-5);
+  border-radius: var(--radius-md);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 80%;
+  max-width: 800px;
+  z-index: var(--z-index-sticky);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-base);
+}
+
+.hud-left,
+.hud-center,
+.hud-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+}
+
+.hud-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.hud-label {
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.hud-value {
+  font-weight: 600;
+  min-width: var(--space-2);
+  text-align: center;
+}
+
+.hud-turn-indicator {
+  width: var(--space-1-5);
+  height: var(--space-1-5);
+  border-radius: var(--radius-full);
+  display: inline-block;
+}
+
+.hud-turn-indicator.your-turn {
+  background-color: var(--accent-secondary);
+  box-shadow: 0 0 0 var(--space-2) rgba(16, 185, 129, 0.6);
+}
+
+.hud-turn-indicator.opponent-turn {
+  background-color: var(--accent-danger);
+  box-shadow: 0 0 0 var(--space-2) rgba(239, 68, 68, 0.6);
+}
+
+.hud-item.game-over {
+  background-color: rgba(217, 119, 6, 0.2);
+  border: 1px solid rgba(217, 119, 6, 0.3);
+  border-radius: var(--radius-sm);
+  padding: var(--space-0-5) var(--space-1);
+}
+
+.hud-item.game-over .hud-label {
+  color: var(--accent-warning);
+}
+
+.hud-item.game-over .hud-value {
+  color: var(--accent-warning);
+  text-shadow: 0 0 0 var(--space-0-5) rgba(245, 158, 11, 0.5);
+}
+
+.team-white {
+  color: var(--text-secondary);
+}
+
+.team-black {
+  color: var(--text-primary);
+}
+
+.team-white .hud-value {
+  color: var(--text-secondary);
+}
+
+.team-black .hud-value {
+  color: var(--text-primary);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .hud {
+    padding: var(--space-1-5) var(--space-2);
+    font-size: var(--font-size-sm);
+    width: 90%;
+  }
+
+  .hud-left,
+  .hud-center,
+  .hud-right {
+    gap: var(--space-1-5);
+  }
+
+  .hud-label {
+    font-size: var(--font-size-xs);
+  }
+
+  .hud-value {
+    min-width: var(--space-1-5);
+  }
+}
+
+@media (max-width: 480px) {
+  .hud {
+    flex-direction: column;
+    gap: var(--space-1-5);
+    padding: var(--space-1-5);
+    width: 95%;
+  }
+
+  .hud-left,
+  .hud-center,
+  .hud-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .hud-item {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

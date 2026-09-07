@@ -1,1 +1,0 @@
-python C:\Users\mohda\Archess\test_ai_controller.py

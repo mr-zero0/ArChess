@@ -1,3 +1,0 @@
-"""
-Archess application package.
-"""

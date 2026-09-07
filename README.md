@@ -1,171 +1,202 @@
-# Archess - Production-Grade Python Game
+# Physics-Based Chess Variant
 
-A high-quality physics-based game built with production-grade Python engineering standards.
+A innovative chess variant where pieces are launched as projectiles with physics-based combat. Destroy the enemy king by reducing its HP to 0 through collisions and special abilities.
 
-## Project Overview
+## Features
 
-Archess is a physics game where players launch pieces at each other, simulating combat with realistic physics, damage calculation, and game state management. Built following strict production-grade engineering standards including:
+- **Physics-Based Combat**: Pieces have HP, mass, radius, and velocity vectors
+- **Realistic Physics Engine**: Advanced rigid body dynamics with collision detection
+- **Special Abilities**: Each piece type has unique abilities (charge shots, curve shots, piercing, blast, etc.)
+- **Multiple Game Modes**: Standard, Timed, Points, Survivor, Assassin, King Protection
+- **Real-Time Multiplayer**: Authoritative server architecture with Socket.IO
+- **3D Visualization**: Stunning Three.js graphics with trajectory previews
+- **Replay System**: Save, share, and analyze matches with multiple camera angles
+- **Analytics & Statistics**: Track player performance and game metrics
+- **Custom Variant Editor**: Create and share your own game variants
+- **Tournament System**: Competitive play with brackets and leagues
+- **Environmental Hazards**: Dynamic board elements affecting trajectories
+- **Spectator Mode**: Watch live games with commentary tools
 
-- Clean, idiomatic Python with type hints
-- Proper separation of concerns (game rules, physics, combat, rendering)
-- Comprehensive logging with correlation IDs
-- Resource management and graceful shutdown
-- Automated testing at unit, integration, and gameplay levels
-- Configuration management
-- Observability and diagnostics
+## Technology Stack
 
-## Project Structure
+### Backend
+- **Node.js** with Express and Socket.IO for real-time communication
+- **cannon-es** for advanced physics simulation
+- **PostgreSQL** for persistent data storage
+- **Redis** for caching and real-time state sharing
+- **Winston** for structured logging
 
-```
-archess/
-│
-├── app/
-│   ├── bootstrap/      # Application initialization and logging
-│   ├── config          # Centralized configuration
-│   ├── core            # Core game systems (game state, update tracking)
-│   ├── game            # Game logic and rules
-│   ├── physics         # Physics engine (independent of rendering)
-│   ├── combat          # Combat and damage systems
-│   ├── pieces          # Piece factory and management
-│   ├── rendering       # Rendering system (placeholder)
-│   ├── input           # Input handling (placeholder)
-│   ├── audio           # Audio system (placeholder)
-│   ├── ui              # User interface (placeholder)
-│   ├── services        # Business services
-│   └── infrastructure  # External services and utilities
-│
-├── tests/
-│   ├── unit/           # Unit tests
-│   ├── integration/    # Integration tests
-│   ├── gameplay/       # Gameplay-specific tests
-│   └── e2e/            # End-to-end tests
-│
-├── assets/             # Game assets (images, sounds, etc.)
-└── tools/              # Development tools and scripts
-```
-
-## Key Features
-
-### Engineering Excellence
-- **Type Safety**: Full type hinting throughout
-- **Separation of Concerns**: Physics engine has zero dependencies on rendering or UI
-- **Structured Logging**: Correlation IDs for tracking game sessions
-- **Resource Management**: Proper lifecycles for all resources
-- **Graceful Shutdown**: Handles SIGINT, SIGTERM, window close events
-- **Defensive Programming**: Input validation and error handling throughout
-
-### Game Systems
-- **Physics Engine**: Realistic physics simulation with collision detection
-- **Combat System**: Damage calculation based on impact velocity and piece types
-- **Game State Management**: Turn-based gameplay with update tracking
-- **Piece Factory**: Configurable piece creation with proper typing
-- **Update Tracker**: Records important game state changes for debugging
-
-### Testing
-- **Unit Tests**: Testing individual components in isolation
-- **Integration Tests**: Testing systems working together
-- **Gameplay Tests**: Testing specific game mechanics
-- **Automatic Test Generation**: Tests created alongside features
+### Frontend
+- **React** for component-based UI
+- **Three.js** for 3D rendering and physics visualization
+- **Socket.IO Client** for real-time server communication
+- **CSS3** with modern animations and responsive design
 
 ## Getting Started
 
 ### Prerequisites
-- Python 3.12+
-- pip (Python package installer)
+- Node.js 18.x or higher
+- PostgreSQL 13.x or higher
+- Redis 6.x or higher
+- npm or yarn
 
 ### Installation
+
+1. Clone the repository:
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd archess
-
-# Install dependencies (optional for basic functionality)
-pip install -r requirements.txt
+git clone https://github.com/yourusername/physics-chess-variant.git
+cd physics-chess-variant
 ```
 
-### Running Tests
+2. Install backend dependencies:
 ```bash
-# Run all tests
-pytest
-
-# Run unit tests only
-pytest tests/unit/
-
-# Run integration tests only
-pytest tests/integration/
-
-# Run tests with coverage
-pytest --cov=archess tests/
+npm install
 ```
 
-### Running the Application
+3. Install frontend dependencies:
 ```bash
-# Run the main application
-python -m archess
+cd client
+npm install
+cd ..
 ```
 
-## Architecture Principles
-
-### Domain Separation
-```
-Domain/Game Rules
-    ↓
-Game State
-    ↓
-Physics Engine (independent)
-    ↓
-Combat System (independent)
-    ↓
-Application Services
-    ↓
-Rendering/UI (independent)
+4. Set up environment variables:
+```bash
+cp .env.example .env
+# Edit .env with your configuration
 ```
 
-### Key Architectural Decisions
-1. **Physics Independence**: Physics engine has no knowledge of pieces, game state, or rendering
-2. **Combat Independence**: Combat system calculates damage without physics dependencies
-3. **Configuration Centralization**: All configurable values in `app/config/`
-4. **Structured Logging**: All logging includes correlation IDs and structured fields
-5. **Resource Lifecycle**: Every resource has clear initialization and cleanup paths
-6. **Update Tracking**: Important state changes are tracked for debugging and observability
+5. Initialize the database:
+```bash
+# Create database and run migrations
+createdb chess_variant
+npm run db:migrate
+```
 
-## Development Guidelines
+### Development
 
-### Code Quality
-- Follow PEP 8 and PEP 257
-- Use type hints for all public APIs
-- Keep functions and classes small and focused
-- Prefer composition over inheritance
-- Use dependency injection where appropriate
+Start the development servers:
 
-### Logging
-- Use structured logging with correlation IDs
-- Log meaningful events, not every frame
-- Use appropriate log levels (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-- Include contextual fields in logs when useful
+```bash
+# Start backend server
+npm run dev:server
 
-### Testing
-- Write tests before or alongside implementation
-- Test normal cases, edge cases, and error conditions
-- Mock external dependencies in unit tests
-- Make physics tests deterministic when possible
+# In another terminal, start frontend
+npm run dev:client
+```
 
-### Configuration
-- Centralize all configurable values
-- Use named constants instead of magic numbers
-- Support different configurations for development/testing/production
-- Never commit secrets or credentials
+### Production
 
-## Production Readiness
+Build and run for production:
 
-This implementation follows the production-grade standards outlined in the project documentation, including:
+```bash
+# Build frontend
+npm run build
 
-“…….”
+# Start production server
+npm start
+```
+
+## Game Modes
+
+1. **Standard Mode**: Destroy the enemy king to win
+2. **Timed Mode**: Most destruction wins when time runs out
+3. **Points Mode**: First to N points wins
+4. **Survivor Mode**: Last team with pieces remaining wins
+5. **Assassin Mode**: Eliminate specific high-value pieces first
+6. **King Protection**: Defend your king for N turns while attacking opponent's
+
+## Piece Abilities
+
+### Pawn
+- **Swarm**: Launch 3 weaker shots in a spread pattern
+- **Shield**: Temporary damage resistance for 5 seconds
+
+### Knight
+- **Jump Shot**: Ignore first collision, continue with reduced velocity
+- **Teleport**: Short-range blink before launch
+
+### Bishop
+- **Piercing Shot**: Damage continues through pieces with reduction
+- **Reflective Shot**: Bounce off pieces instead of stopping
+
+### Rook
+- **Blast Shot**: Area damage on impact in radius
+- **Magnetic Shot**: Pull pieces toward impact point
+
+### Queen
+- **Hybrid Shot**: Combine two abilities of your choice
+- **Cascade Shot**: Chain reaction between pieces
+
+### King
+- **Last Stand**: Enhanced abilities when HP < 30%
+- **Guard Stance**: Reflect damage back to attacker
+
+## API Endpoints
+
+### Authentication
+- `POST /auth/register` - Register a new user
+- `POST /auth/login` - Log in an existing user
+
+### Game Management
+- `POST /games` - Create a new game
+- `PUT /games/:gameId/result` - Update game result
+
+### Analytics
+- `GET /analytics/game/:gameId` - Get analytics for a specific game
+- `GET /analytics/user/:userId` - Get statistics for a specific user
+- `GET /leaderboard` - Get global leaderboard
+
+### Variants
+- `GET /variants` - List available game variants
+- `POST /variants` - Create a custom variant
+
+## Project Structure
+
+```
+src/
+├── server/
+│   ├── index.js              # Server entry point
+│   ├── api/                  # REST API routes
+│   ├── game/                 # Game logic and state management
+│   │   ├── state.js          # Game state class
+│   │   └── rules/            # Game rules and win conditions
+│   ├── network/              # Socket.IO connection handling
+│   │   └── handlers.js       # Connection and event handlers
+│   ├── physics/              # Physics engine and collision detection
+│   │   ├── engine.js         # Core physics simulation
+│   │   └── collision.js      # Collision detection and resolution
+│   ├── pieces/               # Piece definitions and abilities
+│   │   ├── abilities/        # Piece-specific ability implementations
+│   │   └── base.js           # Base piece class
+│   ├── services/             # Background services (analytics, matchmaking, etc.)
+│   ├── storage/              # Data persistence (database, redis)
+│   └── utils/                # Utility functions (logger, validation, etc.)
+└── client/
+    ├── src/
+    │   ├── components/       # Reusable React components
+    │   ├── scenes/           # Different application scenes (game, lobby, etc.)
+    │   ├── hooks/            # Custom React hooks
+    │   ├── lib/              # Utility libraries
+    │   └── styles/           # CSS and styling
+    └── public/               # Static assets
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
 
-[License information would go here]
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
-[Any acknowledgments would go here]
+- Inspired by traditional chess and physics-based games
+- Built with the cannon-es physics engine
+- Uses React and Three.js for immersive 3D visualization
+- Thanks to the open-source community for various libraries and tools
