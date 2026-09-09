@@ -46,7 +46,6 @@ c:\Users\mohda\Python Codes\ARCHESS\
 │       ├── logo.png       # Transparent vector-grade knight crest
 │       ├── logo.jpg       # Master composite emblem
 │       ├── hero-banner.jpg
-│       ├── hero-video.mp4
 │       └── Chess_pieces_colliding_on_boad.mp4
 │
 └── Logs/                  # Generated run logs

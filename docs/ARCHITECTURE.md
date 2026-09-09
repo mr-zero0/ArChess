@@ -50,7 +50,7 @@ This document outlines the architectural patterns, component responsibilities, d
 | **`templates/`** | Server-rendered HTML multi-page templates. | `index.html`, `play.html`, `arsenal.html`, `leaderboard.html` |
 | **`static/css/`** | Styling, typography, luxury dark design system tokens, animations, and responsive media queries. | `style.css` |
 | **`static/js/`** | Interactive client scripts: auth state manager, background canvas motion, side drawer, and 32-piece physics engine. | `main.js`, `auth.js`, `game.js` |
-| **`static/media/`**| High-resolution visual assets, emblems, and cinematic MP4 gameplay videos. | `hero-video.mp4`, `Chess_pieces_colliding_on_boad.mp4`, `logo.png`, `logo.jpg` |
+| **`static/media/`**| High-resolution visual assets, emblems, and cinematic MP4 gameplay videos. | `Chess_pieces_colliding_on_boad.mp4`, `hero-banner.jpg`, `logo.png`, `logo.jpg` |
 | **`Logs/`** | Generated structured execution logs categorized by date and auto-incrementing process runs. | `YYYY/MMM/DD_Logs/RunXX/app.log` |
 
 ---
