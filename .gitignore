@@ -1,0 +1,25 @@
+# Python virtual environments & caches
+.venv/
+env/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Database files
+data/*.db
+data/*.db-journal
+
+# Operating system artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs & temporary run traces
+*.log
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo

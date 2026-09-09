@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARCHESS | Kinetic Chess Variant — Physical Strategy Reimagined</title>
+  <meta name="description" content="Archess is a minimalist tactical chess variant. Aim, launch pieces across the board with momentum, and shatter enemy lines in real time across 2D and 3D perspectives.">
+  
+  <link rel="icon" type="image/jpeg" href="/static/media/logo.jpg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+  <!-- Dynamic Motion Background Canvas -->
+  <canvas id="bgMotionCanvas"></canvas>
+
+  <!-- Side Expansion Menu Drawer Backdrop & Drawer -->
+  <div class="side-drawer-backdrop" id="sideDrawerBackdrop" aria-hidden="true">
+    <aside class="side-expansion-drawer" id="sideExpansionDrawer" aria-label="Tactical Navigation">
+      <div class="drawer-header">
+        <a href="/" class="brand-logo" style="gap: 8px;">
+          <div class="logo-icon-wrap" style="width: 28px; height: 28px;">
+            <img src="/static/media/logo.jpg" alt="Archess Crest">
+          </div>
+          <div class="brand-text" style="font-size: 1.1rem;">ARC<span>H</span>ESS</div>
+        </a>
+        <button class="drawer-close-btn" id="drawerCloseBtn" aria-label="Close navigation drawer">&times;</button>
+      </div>
+
+      <ul class="drawer-nav-list">
+        <li>
+          <a href="play.html">
+            <span>Tactical Arena</span>
+            <span class="nav-num">01</span>
+          </a>
+        </li>
+        <li>
+          <a href="#themesSection">
+            <span>Chess Themes</span>
+            <span class="nav-num">02</span>
+          </a>
+        </li>
+        <li>
+          <a href="arsenal.html">
+            <span>Piece Codex</span>
+            <span class="nav-num">03</span>
+          </a>
+        </li>
+        <li>
+          <a href="leaderboard.html">
+            <span>Rankings & Ladder</span>
+            <span class="nav-num">04</span>
+          </a>
+        </li>
+      </ul>
+
+      <div class="drawer-footer-actions">
+        <a href="play.html" class="btn-gold" style="width: 100%; justify-content: center;">
+          <span>Launch Arena</span>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </a>
+        <div style="font-size: 0.72rem; color: var(--text-muted); text-align: center; margin-top: 6px;">
+          ARCHESS Engine &bull; mr-zero0/ArChess
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Slim Minimalist Navigation Header -->
+  <header class="site-header">
+    <div class="container nav-container">
+      <a href="/" class="brand-logo" aria-label="Archess Home">
+        <div class="logo-icon-wrap">
+          <img src="/static/media/logo.jpg" alt="Archess Logo">
+        </div>
+        <div class="brand-text">ARC<span>H</span>ESS</div>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="/" class="active">Overview</a></li>
+        <li><a href="play.html">Arena</a></li>
+        <li><a href="#themesSection">Themes</a></li>
+        <li><a href="arsenal.html">Pieces</a></li>
+        <li><a href="leaderboard.html">Rankings</a></li>
+      </ul>
+
+      <div class="nav-actions">
+        <button class="btn-audio-toggle" id="audioToggleBtn" title="Toggle Ambient Audio" aria-label="Toggle Audio">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+          </svg>
+        </button>
+
+        <!-- Side Expansion Menu Trigger Button -->
+        <button class="btn-side-menu-toggle" id="sideMenuToggleBtn" aria-label="Open Navigation Menu">
+          <span class="menu-icon-bars">
+            <span class="bar bar-1"></span>
+            <span class="bar bar-2"></span>
+          </span>
+          <span>Menu</span>
+        </button>
+
+        <div id="navAuthContainer"></div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Full-Width Video Hero Section -->
+    <section class="hero-full-width-section">
+      <div class="hero-video-chassis">
+        <video id="heroVideo" class="hero-video-element" autoplay loop muted playsinline poster="/static/media/hero-banner.jpg">
+          <source src="/static/media/Chess_pieces_colliding_on_boad.mp4" type="video/mp4">
+          <source src="/static/media/hero-video.mp4" type="video/mp4">
+        </video>
+        <div class="hero-video-vignette"></div>
+      </div>
+
+      <!-- Minimal Video Playback Control Pill -->
+      <button class="btn-video-control" id="videoControlBtn" aria-label="Toggle Hero Video Playback">
+        <span id="videoControlIcon">&#10074;&#10074;</span>
+        <span id="videoControlText">Pause</span>
+      </button>
+
+      <div class="hero-content-layer container">
+        <div class="tag-badge">
+          <span class="dot"></span>
+          <span>Kinetic Chess Protocol &bull; Full Physical Dynamics</span>
+        </div>
+
+        <h1 class="hero-title-minimal">
+          Tactical Chess, <span>Reimagined by Physics.</span>
+        </h1>
+
+        <p class="hero-subhead-minimal">
+          Drag to aim. Launch with momentum. Rebound off perimeter cushions and shatter enemy formations in real time across an authoritative arena.
+        </p>
+
+        <div class="hero-ctas-cluster">
+          <a href="play.html" class="btn-gold">
+            <span>Launch Arena</span>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </a>
+          <a href="#themesSection" class="btn-ghost">
+            <span>Explore Themes</span>
+          </a>
+          <a href="arsenal.html" class="btn-ghost">
+            <span>Piece Codex</span>
+          </a>
+        </div>
+
+        <!-- 3-Stat Precision Metric Strip -->
+        <div class="hero-metric-strip">
+          <div class="metric-col">
+            <div class="metric-num">32</div>
+            <div class="metric-lbl">Classical Pieces</div>
+          </div>
+          <div class="metric-col">
+            <div class="metric-num">2D &bull; 3D</div>
+            <div class="metric-lbl">Arena Perspectives</div>
+          </div>
+          <div class="metric-col">
+            <div class="metric-num">100%</div>
+            <div class="metric-lbl">Skill & Momentum</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Dedicated Chess Themes Showcase Section -->
+    <section class="themes-showcase-section" id="themesSection">
+      <div class="container">
+        <div class="section-head-chess">
+          <div class="rank-file-label">[ 02 &bull; THEME PROTOCOL ]</div>
+          <h2>Chess Themes & Presentation</h2>
+          <p>Curated board palettes and piece renderings tailored for tactical clarity and aesthetic focus.</p>
+        </div>
+
+        <div class="themes-grid-3">
+          <!-- Theme 1: Midnight Obsidian -->
+          <div class="theme-card">
+            <div class="theme-preview-box theme-midnight-bg">
+              <div class="theme-grid-tiles">
+                <div class="tile-light"></div><div class="tile-dark"></div><div class="tile-light"></div><div class="tile-dark"></div>
+                <div class="tile-dark"></div><div class="tile-light"></div><div class="tile-dark"></div><div class="tile-light"></div>
+                <div class="tile-light"></div><div class="tile-dark"></div><div class="tile-light"></div><div class="tile-dark"></div>
+                <div class="tile-dark"></div><div class="tile-light"></div><div class="tile-dark"></div><div class="tile-light"></div>
+              </div>
+            </div>
+            <div class="theme-card-body">
+              <div class="theme-badge-row">
+                <span class="tag-badge" style="font-size: 0.7rem; padding: 2px 8px;">Tournament Standard</span>
+                <span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--gold-light);">#01</span>
+              </div>
+              <h3 class="theme-card-title">Midnight Obsidian</h3>
+              <p class="theme-card-desc">
+                Deep cosmic navy and obsidian slate with high-contrast luminescent piece highlights. Engineered for competitive precision and night matches.
+              </p>
+              <div class="theme-card-footer">
+                <div class="piece-style-chips">
+                  <span class="chip-tag">Classic</span>
+                  <span class="chip-tag">Outline</span>
+                  <span class="chip-tag">Mono</span>
+                </div>
+                <a href="play.html?theme=midnight" class="btn-ghost" style="padding: 6px 14px; font-size: 0.78rem;">
+                  <span>Play Midnight &rarr;</span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Theme 2: Woodland Walnut -->
+          <div class="theme-card">
+            <div class="theme-preview-box theme-woodland-bg">
+              <div class="theme-grid-tiles">
+                <div class="tile-light"></div><div class="tile-dark"></div><div class="tile-light"></div><div class="tile-dark"></div>
+                <div class="tile-dark"></div><div class="tile-light"></div><div class="tile-dark"></div><div class="tile-light"></div>
+                <div class="tile-light"></div><div class="tile-dark"></div><div class="tile-light"></div><div class="tile-dark"></div>
+                <div class="tile-dark"></div><div class="tile-light"></div><div class="tile-dark"></div><div class="tile-light"></div>
+              </div>
+            </div>
+            <div class="theme-card-body">
+              <div class="theme-badge-row">
+                <span class="tag-badge" style="font-size: 0.7rem; padding: 2px 8px;">Heritage Wood</span>
+                <span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--gold-light);">#02</span>
+              </div>
+              <h3 class="theme-card-title">Woodland Walnut</h3>
+              <p class="theme-card-desc">
+                Warm handcrafted walnut and golden maple grain tones. Evokes classical salon chess sets with authentic timber warmth and soft reflections.
+              </p>
+              <div class="theme-card-footer">
+                <div class="piece-style-chips">
+                  <span class="chip-tag">Classic</span>
+                  <span class="chip-tag">Outline</span>
+                  <span class="chip-tag">Mono</span>
+                </div>
+                <a href="play.html?theme=woodland" class="btn-ghost" style="padding: 6px 14px; font-size: 0.78rem;">
+                  <span>Play Woodland &rarr;</span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Theme 3: Ivory Classical -->
+          <div class="theme-card">
+            <div class="theme-preview-box theme-ivory-bg">
+              <div class="theme-grid-tiles">
+                <div class="tile-light"></div><div class="tile-dark"></div><div class="tile-light"></div><div class="tile-dark"></div>
+                <div class="tile-dark"></div><div class="tile-light"></div><div class="tile-dark"></div><div class="tile-light"></div>
+                <div class="tile-light"></div><div class="tile-dark"></div><div class="tile-light"></div><div class="tile-dark"></div>
+                <div class="tile-dark"></div><div class="tile-light"></div><div class="tile-dark"></div><div class="tile-light"></div>
+              </div>
+            </div>
+            <div class="theme-card-body">
+              <div class="theme-badge-row">
+                <span class="tag-badge" style="font-size: 0.7rem; padding: 2px 8px;">Alabaster Slate</span>
+                <span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--gold-light);">#03</span>
+              </div>
+              <h3 class="theme-card-title">Ivory Classical</h3>
+              <p class="theme-card-desc">
+                Refined alabaster stone and smoked charcoal slate. Balanced contrast with minimalist serenity inspired by European grandmaster halls.
+              </p>
+              <div class="theme-card-footer">
+                <div class="piece-style-chips">
+                  <span class="chip-tag">Classic</span>
+                  <span class="chip-tag">Outline</span>
+                  <span class="chip-tag">Mono</span>
+                </div>
+                <a href="play.html?theme=ivory" class="btn-ghost" style="padding: 6px 14px; font-size: 0.78rem;">
+                  <span>Play Ivory &rarr;</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 Core Tactical Principles (Minimalist, Zero Emojis) -->
+    <section class="tactical-principles-section">
+      <div class="container">
+        <div class="section-head-chess">
+          <div class="rank-file-label">[ 03 &bull; TACTICAL ENGINE ]</div>
+          <h2>Physics Meets Classical Strategy</h2>
+          <p>Strict conservation of momentum replaces rigid tile steps.</p>
+        </div>
+
+        <div class="principles-grid">
+          <div class="principle-card">
+            <div class="principle-glyph">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="22" y1="12" x2="18" y2="12"/>
+                <line x1="6" y1="12" x2="2" y2="12"/>
+                <line x1="12" y1="6" x2="12" y2="2"/>
+                <line x1="12" y1="22" x2="12" y2="18"/>
+              </svg>
+            </div>
+            <h3>Trajectory & Impulse</h3>
+            <p>Sub-degree vector aiming with power scaling. Bank shots off high-elasticity perimeter cushions allow strikes into guarded backlines.</p>
+          </div>
+
+          <div class="principle-card">
+            <div class="principle-glyph">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </div>
+            <h3>Mass-Scaled Damage</h3>
+            <p>Each unit has distinct mass. Heavy Rooks deliver bulldozer impacts, while agile Knights and Bishops gain kinetic force through rebounds.</p>
+          </div>
+
+          <div class="principle-card">
+            <div class="principle-glyph">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                <polyline points="2 17 12 22 22 17"/>
+                <polyline points="2 12 12 17 22 12"/>
+              </svg>
+            </div>
+            <h3>2D & 3D Perspectives</h3>
+            <p>Seamless toggle between top-down 2D tactical precision and immersive 3D isometric board depth at any point during your match.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Minimalist Call to Action Banner -->
+    <section class="minimal-action-banner">
+      <div class="container">
+        <div class="action-banner-box">
+          <h2>Ready to Launch?</h2>
+          <p>Experience tactical physical chess with full 32-piece standard ranks, live telemetry, and instant rematch capability.</p>
+          <div class="hero-ctas-cluster">
+            <a href="play.html" class="btn-gold">
+              <span>Enter Arena</span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </a>
+            <a href="arsenal.html" class="btn-ghost">
+              <span>Inspect Piece Codex</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-top">
+        <div class="brand-text" style="font-size: 1.15rem;">ARC<span>H</span>ESS</div>
+        <div class="footer-nav">
+          <a href="play.html">Arena</a>
+          <a href="#themesSection">Themes</a>
+          <a href="arsenal.html">Pieces</a>
+          <a href="leaderboard.html">Rankings</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <div>&copy; 2026 ARCHESS &bull; mr-zero0/ArChess. Free & Open-Source.</div>
+        <div style="color: var(--text-muted);">Aim &bull; Launch &bull; Collide &bull; Conquer</div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="/static/js/auth.js"></script>
+  <script src="/static/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,153 @@
+"""
+ARCHESS - Automated Test Suite
+Validates backend APIs, database persistence, authentication,
+telemetry, and logger conformity.
+"""
+
+import os
+import sys
+import json
+import pytest
+
+# Ensure project root is in sys.path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from backend.app import app
+from backend.database import (
+    init_db,
+    register_user,
+    authenticate_user,
+    get_user_by_id,
+    get_leaderboard,
+    record_match_result,
+    log_telemetry_event,
+    get_connection
+)
+from backend.logger import TrackerJsonFormatter
+import logging
+
+@pytest.fixture
+def client():
+    app.config["TESTING"] = True
+    with app.test_client() as client:
+        yield client
+
+def test_page_routes(client):
+    """Ensure all multi-page HTML views return HTTP 200."""
+    for path in ["/", "/play", "/arsenal", "/leaderboard"]:
+        res = client.get(path)
+        assert res.status_code == 200, f"Failed GET {path}"
+        assert b"<!DOCTYPE html>" in res.data or b"<html" in res.data
+
+def test_legacy_asset_fallbacks(client):
+    """Ensure backward-compatible fallback routes serve assets without 404."""
+    for path in ["/style.css", "/main.js", "/auth.js", "/game.js"]:
+        res = client.get(path)
+        assert res.status_code == 200, f"Legacy route {path} failed"
+        assert len(res.data) > 0
+
+def test_health_api(client):
+    """Verify health endpoint structure."""
+    res = client.get("/api/health")
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data["status"] == "healthy"
+    assert data["version"] == "2.0.0"
+
+def test_leaderboard_api(client):
+    """Verify leaderboard returns array of players sorted by rating."""
+    res = client.get("/api/leaderboard?limit=10")
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data["success"] is True
+    assert isinstance(data["leaderboard"], list)
+    if len(data["leaderboard"]) > 1:
+        # Check sorted descending
+        ratings = [p["elo_rating"] for p in data["leaderboard"]]
+        assert ratings == sorted(ratings, reverse=True)
+
+def test_auth_registration_and_login(client):
+    """Test user registration and subsequent login with both formats."""
+    unique_user = f"AutoTester_{os.urandom(3).hex()}"
+    email = f"{unique_user.lower()}@test.io"
+    password = "secretpassword123"
+
+    # Register
+    reg_res = client.post("/api/auth/register", json={
+        "username": unique_user,
+        "email": email,
+        "password": password
+    })
+    assert reg_res.status_code == 201
+    reg_data = reg_res.get_json()
+    assert reg_data["success"] is True
+    assert reg_data["user"]["username"] == unique_user
+
+    # Login with username_or_email
+    log_res1 = client.post("/api/auth/login", json={
+        "username_or_email": unique_user,
+        "password": password
+    })
+    assert log_res1.status_code == 200
+    assert log_res1.get_json()["success"] is True
+
+    # Login with identifier (frontend format)
+    log_res2 = client.post("/api/auth/login", json={
+        "identifier": email,
+        "password": password
+    })
+    assert log_res2.status_code == 200
+    assert log_res2.get_json()["success"] is True
+
+    # Check /api/auth/me session
+    me_res = client.get("/api/auth/me")
+    assert me_res.status_code == 200
+    assert me_res.get_json()["authenticated"] is True
+
+    # Logout
+    logout_res = client.post("/api/auth/logout")
+    assert logout_res.status_code == 200
+    me_res_after = client.get("/api/auth/me")
+    assert me_res_after.get_json()["authenticated"] is False
+
+def test_matches_record_and_elo(client):
+    """Test match settlement and ELO calculation."""
+    res = client.post("/api/matches/record", json={
+        "white_username": "Magnus_Kinetic",
+        "black_username": "Hikaru_Impulse",
+        "winner": "white",
+        "white_damage": 300,
+        "black_damage": 150,
+        "turns": 18,
+        "duration_sec": 120
+    })
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data["success"] is True
+
+def test_telemetry_event(client):
+    """Test telemetry logging endpoint."""
+    res = client.post("/api/telemetry", json={
+        "event_type": "KINETIC_IMPULSE",
+        "payload": {"piece": "knight", "impulse": 45.2, "vector": [1.2, -0.8]}
+    })
+    assert res.status_code == 200
+    assert res.get_json()["recorded"] is True
+
+def test_logger_json_format():
+    """Verify TrackerJsonFormatter handles both dict and string logs as valid JSON."""
+    formatter = TrackerJsonFormatter()
+    
+    # Test JSON string message
+    record1 = logging.LogRecord("ArChess", logging.INFO, "test.py", 10, '{"event":"test"}', (), None)
+    out1 = formatter.format(record1)
+    parsed1 = json.loads(out1)
+    assert parsed1["level"] == "INFO"
+    assert parsed1["message"]["event"] == "test"
+
+    # Test plain text message
+    record2 = logging.LogRecord("ArChess", logging.WARNING, "test.py", 20, 'Simple plain warning message', (), None)
+    out2 = formatter.format(record2)
+    parsed2 = json.loads(out2)
+    assert parsed2["level"] == "WARNING"
+    assert parsed2["message"] == "Simple plain warning message"

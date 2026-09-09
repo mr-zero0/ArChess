@@ -1,0 +1,167 @@
+# ARCHESS — System Architecture & Technical Specifications
+
+This document outlines the architectural patterns, component responsibilities, data flow, API contracts, physics formulas, and logging conventions governing **ArChess**.
+
+---
+
+## 🏗️ 1. High-Level Architecture Overview
+
+```
+                          ┌────────────────────────────┐
+                          │   Client Web Browser       │
+                          │ (Templates / Vanilla CSS)  │
+                          └─────────────┬──────────────┘
+                                        │
+                         HTTP / REST API │ Web Audio & Canvas
+                                        ▼
+                          ┌────────────────────────────┐
+                          │      run.py (Entrypoint)   │
+                          └─────────────┬──────────────┘
+                                        │
+                                        ▼
+                          ┌────────────────────────────┐
+                          │     backend/app.py         │
+                          │   (Flask Application Core) │
+                          └──────┬──────────────┬──────┘
+                                 │              │
+                    SQL Queries  │              │ Structured JSON
+                                 ▼              ▼
+                    ┌──────────────────┐  ┌───────────────────────┐
+                    │ backend/database │  │ backend/logger.py     │
+                    │  (data/archess)  │  │ (Logs/.../RunXX.log)  │
+                    └──────────────────┘  └───────────────────────┘
+```
+
+### Core Design Principles
+1. **Zero Root Clutter**: The root directory contains solely the entry point (`run.py`), project metadata (`README.md`, `requirements.txt`), and `.gitignore`. All functional logic is encapsulated within `/backend`, `/templates`, `/static`, and `/data`.
+2. **Authoritative Backend**: Session authentication, match persistence, ELO calculations, and telemetry recording are securely handled on the server.
+3. **Decoupled Client-Side Engine**: The 32-piece physics engine, 2D/3D perspective projection, and procedural Web Audio run in the browser without requiring external heavy gaming libraries.
+
+---
+
+## 📁 2. Directory Responsibilities
+
+| Directory | Responsibilities | Key Files |
+| :--- | :--- | :--- |
+| **`/` (Root)** | Top-level project entry point, dependency specifications, and general documentation. | `run.py`, `requirements.txt`, `README.md`, `.gitignore` |
+| **`backend/`** | Python application server, database access layer, and structured logging middleware. | `app.py`, `database.py`, `logger.py`, `__init__.py` |
+| **`data/`** | Persistent file storage for the SQLite database. | `archess.db` |
+| **`docs/`** | Authoritative documentation suite, product trackers, architectural blueprints, and changelogs. | `TRACKER.md`, `ARCHITECTURE.md`, `CHANGELOG.md` |
+| **`templates/`** | Server-rendered HTML multi-page templates. | `index.html`, `play.html`, `arsenal.html`, `leaderboard.html` |
+| **`static/css/`** | Styling, typography, luxury dark design system tokens, animations, and responsive media queries. | `style.css` |
+| **`static/js/`** | Interactive client scripts: auth state manager, background canvas motion, side drawer, and 32-piece physics engine. | `main.js`, `auth.js`, `game.js` |
+| **`static/media/`**| High-resolution visual assets, emblems, and cinematic MP4 gameplay videos. | `hero-video.mp4`, `Chess_pieces_colliding_on_boad.mp4`, `logo.jpg` |
+| **`Logs/`** | Generated structured execution logs categorized by date and auto-incrementing process runs. | `YYYY/MMM/DD_Logs/RunXX/app.log` |
+
+---
+
+## 🗄️ 3. Database Schema (`data/archess.db`)
+
+### `users` Table
+Stores authenticated user accounts, encrypted password hashes, and competitive ELO ratings.
+```sql
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    elo_rating INTEGER DEFAULT 1200,
+    matches_played INTEGER DEFAULT 0,
+    wins INTEGER DEFAULT 0,
+    losses INTEGER DEFAULT 0,
+    avatar TEXT DEFAULT 'knight',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### `matches` Table
+Maintains match settlements, player participation, winner declarations, and physical damage metrics.
+```sql
+CREATE TABLE matches (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    white_username TEXT NOT NULL,
+    black_username TEXT NOT NULL,
+    winner TEXT NOT NULL,
+    white_damage INTEGER DEFAULT 0,
+    black_damage INTEGER DEFAULT 0,
+    turns INTEGER DEFAULT 0,
+    duration_sec INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### `telemetry` Table
+Captures gameplay events, vector launch data, collision impulses, and client diagnostics with request correlation IDs.
+```sql
+CREATE TABLE telemetry (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    correlation_id TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+---
+
+## 🔌 4. REST API Specifications
+
+### `GET /api/health`
+- **Description**: Returns service status, software version, and active run directory.
+- **Response**:
+  ```json
+  {
+    "status": "healthy",
+    "service": "ArChess Authoritative Backend",
+    "version": "2.0.0",
+    "active_run": "Logs/2026/Sep/09_Logs/Run01"
+  }
+  ```
+
+### `POST /api/auth/register`
+- **Payload**: `{"username": "...", "email": "...", "password": "..."}`
+- **Response**: `201 Created` with user object, sets session cookie.
+
+### `POST /api/auth/login`
+- **Payload**: `{"username_or_email": "...", "password": "..."}`
+- **Response**: `200 OK` with user profile, sets session cookie.
+
+### `GET /api/auth/me`
+- **Description**: Checks session authenticity and returns active player profile with live ELO.
+
+### `GET /api/leaderboard?limit=25`
+- **Description**: Retrieves top Grandmasters sorted descending by `elo_rating`.
+
+---
+
+## ⚛️ 5. Physics & Collision Mechanics
+
+Archess replaces tile-based moves with physical vector impulse:
+
+### 1. Vector Impulse Launch
+A piece is aimed by dragging in reverse (slingshot vector). The launch velocity $\vec{v}_0$ is scaled by power factor $k$:
+$$\vec{v}_0 = -k \cdot (\vec{p}_{\text{drag}} - \vec{p}_{\text{piece}})$$
+
+### 2. Perimeter Cushion Elastic Bounce
+When a piece strikes a board boundary cushion, its velocity normal to the cushion is inverted and dampened by restitution coefficient $e = 0.92$:
+$$\vec{v}_{\text{normal}}' = -e \cdot \vec{v}_{\text{normal}}$$
+
+### 3. Conservation of Momentum Collision
+Upon collision between Piece 1 (mass $m_1$) and Piece 2 (mass $m_2$):
+$$\vec{v}_1' = \frac{m_1 - m_2}{m_1 + m_2}\vec{v}_1 + \frac{2m_2}{m_1 + m_2}\vec{v}_2$$
+$$\vec{v}_2' = \frac{2m_1}{m_1 + m_2}\vec{v}_1 + \frac{m_2 - m_1}{m_1 + m_2}\vec{v}_2$$
+
+Damage dealt is proportional to momentum transfer $\Delta p = m \cdot \Delta v$.
+
+---
+
+## 📊 6. Tracker Logging Standard
+
+All process runs auto-discover the current date and append an auto-incrementing `RunXX` directory:
+`Logs/YYYY/MMM/DD_Logs/RunXX/app.log`
+
+Log entries are emitted as structured JSON lines:
+```json
+{"timestamp":"2026-09-09T14:00:18+0530", "level":"INFO", "logger":"ArChess", "message":{"req_id":"3a0066fc-0bd8", "method":"GET", "path":"/style.css", "status":200, "latency_ms":0.58}}
+```
+Every incoming HTTP request receives an injected `X-Request-ID` and `X-Correlation-ID` for cross-system traceability.
