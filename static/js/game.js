@@ -118,6 +118,44 @@ class ArchessAudio {
       });
     } catch(e) {}
   }
+
+  playShatter() {
+    if (this.muted || !this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const oscGain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(140, now);
+      osc.frequency.exponentialRampToValueAtTime(25, now + 0.35);
+      oscGain.gain.setValueAtTime(0.4, now);
+      oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+      osc.connect(oscGain);
+      oscGain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.4);
+
+      const bufferSize = Math.floor(this.ctx.sampleRate * 0.2);
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.25));
+      }
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buffer;
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'highpass';
+      filter.frequency.setValueAtTime(900, now);
+      filter.frequency.exponentialRampToValueAtTime(250, now + 0.2);
+      const noiseGain = this.ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.45, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      noise.connect(filter);
+      filter.connect(noiseGain);
+      noiseGain.connect(this.ctx.destination);
+      noise.start(now);
+    } catch(e) {}
+  }
 }
 
 class ArchessArena {
@@ -131,7 +169,16 @@ class ArchessArena {
     this.renderMode = '3d'; // '2d' or '3d'
     this.boardTheme = 'midnight'; // 'midnight', 'woodland', 'ivory'
     this.pieceTheme = 'classic'; // 'classic', 'outline', 'mono'
+    this.gameMode = 'bot'; // 'bot' (vs AI) or 'pvp' (local pass & play)
     this.currentTurn = 'white'; // 'white' or 'black'
+
+    // Match tracking
+    this.turns = 0;
+    this.matchStartTime = Date.now();
+    this.isGameOver = false;
+    this.winner = null;
+    this.botThinking = false;
+    this.botTimeout = null;
 
     // Physics constants
     this.friction = 0.985;
@@ -279,6 +326,169 @@ class ArchessArena {
     this.logTelemetry('THEME_CHANGE', `Piece style updated to ${theme.toUpperCase()}.`);
   }
 
+  setGameMode(mode) {
+    this.gameMode = mode;
+    this.logTelemetry('MODE_CHANGE', `Match Mode set to: ${mode === 'bot' ? 'SOLO VS BOT AI' : 'LOCAL PASS & PLAY'}`);
+    if (this.currentTurn === 'black' && this.gameMode === 'bot' && !this.isGameOver) {
+      this.triggerBotTurn();
+    }
+  }
+
+  triggerBotTurn() {
+    if (this.gameMode !== 'bot' || this.currentTurn !== 'black' || this.isGameOver || this.botThinking) return;
+
+    this.botThinking = true;
+    this.logTelemetry('BOT_THINKING', 'ArChess Bot calculating tactical impulse trajectory...');
+
+    clearTimeout(this.botTimeout);
+    this.botTimeout = setTimeout(() => {
+      this.executeBotTurn();
+    }, 850);
+  }
+
+  executeBotTurn() {
+    this.botThinking = false;
+    if (this.currentTurn !== 'black' || this.isGameOver) return;
+
+    const blackPieces = this.pieces.filter(p => !p.dead && p.team === 'black');
+    const whitePieces = this.pieces.filter(p => !p.dead && p.team === 'white');
+
+    if (blackPieces.length === 0 || whitePieces.length === 0) return;
+
+    const targetWeights = { king: 200, queen: 100, rook: 65, bishop: 55, knight: 50, pawn: 25 };
+
+    // Select candidate shooters (prioritize offensive backline or nearest)
+    const offensiveShooters = blackPieces.filter(p => ['queen', 'knight', 'bishop', 'rook'].includes(p.type));
+    const candidateShooters = offensiveShooters.length > 0 ? offensiveShooters : blackPieces;
+
+    let candidatePairs = [];
+    candidateShooters.forEach(shooter => {
+      whitePieces.forEach(target => {
+        const dx = target.x - shooter.x;
+        const dy = target.y - shooter.y;
+        const d = Math.hypot(dx, dy);
+        const score = (targetWeights[target.type] || 25) / (d + 60);
+        candidatePairs.push({ shooter, target, d, score, dx, dy });
+      });
+    });
+
+    candidatePairs.sort((a, b) => b.score - a.score);
+    const chosen = candidatePairs[0] || { shooter: blackPieces[0], target: whitePieces[0], dx: 0, dy: 1, d: 100 };
+    const shooter = chosen.shooter;
+    const target = chosen.target;
+
+    // Launch angle towards target
+    const dx = target.x - shooter.x;
+    const dy = target.y - shooter.y;
+    let aimAngle = Math.atan2(dy, dx);
+    aimAngle += (Math.random() - 0.5) * 0.08;
+
+    // Pull distance in opposite direction for slingshot
+    const desiredPower = Math.min(1.0, Math.max(0.48, chosen.d / (this.width * 0.7)));
+    const pullDist = desiredPower * this.maxPullDistance;
+    const pullX = Math.cos(aimAngle) * pullDist;
+    const pullY = Math.sin(aimAngle) * pullDist;
+
+    // Show visual aim preview briefly so user sees the bot aiming
+    this.selectedPiece = shooter;
+    this.keyboardAiming = true;
+    this.keyboardAimAngle = aimAngle;
+    this.keyboardAimPower = desiredPower;
+
+    setTimeout(() => {
+      if (this.currentTurn === 'black' && !this.isGameOver) {
+        this.launchPiece(shooter, pullX, pullY, pullDist);
+      }
+      this.keyboardAiming = false;
+      this.selectedPiece = null;
+    }, 450);
+  }
+
+  handleKingElimination(king) {
+    if (this.isGameOver) return;
+    this.isGameOver = true;
+    this.winner = king.team === 'white' ? 'black' : 'white';
+
+    this.audio.playVictory();
+    this.logTelemetry('VICTORY', `CHECKMATE! ${this.winner.toUpperCase()} ARMY WINS THE MATCH!`);
+
+    const durationSec = Math.max(1, Math.round((Date.now() - this.matchStartTime) / 1000));
+    const whiteUser = (window.ArchessAuth && window.ArchessAuth.currentUser) ? window.ArchessAuth.currentUser.username : 'Player1';
+    const blackUser = this.gameMode === 'bot' ? 'ArChess Bot' : 'Player2';
+
+    const payload = {
+      white_username: whiteUser,
+      black_username: blackUser,
+      winner: this.winner,
+      white_damage: this.whiteDamage,
+      black_damage: this.blackDamage,
+      turns: this.turns,
+      duration_sec: durationSec
+    };
+
+    fetch('/api/matches/record', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      credentials: 'include'
+    })
+    .then(res => res.json())
+    .then(data => {
+      this.showVictoryModal(this.winner, payload, data.settlement);
+    })
+    .catch(() => {
+      this.showVictoryModal(this.winner, payload, null);
+    });
+
+    // Telemetry event
+    fetch('/api/telemetry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event_type: 'MATCH_COMPLETED',
+        payload: payload
+      })
+    }).catch(() => {});
+  }
+
+  showVictoryModal(winner, payload, settlement) {
+    const modal = document.getElementById('victoryModal');
+    if (!modal) return;
+
+    const badge = document.getElementById('victoryBadge');
+    const title = document.getElementById('victoryTitle');
+    const sub = document.getElementById('victorySub');
+    const statTurns = document.getElementById('statTurns');
+    const statDuration = document.getElementById('statDuration');
+    const statEloChange = document.getElementById('statEloChange');
+
+    const isWhiteWin = winner === 'white';
+    if (badge) {
+      badge.className = `victory-banner-badge ${isWhiteWin ? 'white-win' : 'black-win'}`;
+      badge.textContent = `${winner.toUpperCase()} ARMY VICTORIOUS`;
+    }
+    if (title) {
+      title.textContent = isWhiteWin ? 'CHECKMATE — GLORY TO WHITE' : 'CHECKMATE — BLACK SUPREMACY';
+    }
+    if (sub) {
+      sub.textContent = `The enemy King was shattered in turn ${payload.turns}. Match settled on the Grandmaster ladder.`;
+    }
+    if (statTurns) statTurns.textContent = payload.turns;
+    if (statDuration) statDuration.textContent = `${payload.duration_sec}s`;
+    if (statEloChange) {
+      if (settlement) {
+        const delta = isWhiteWin ? settlement.white_delta : settlement.black_delta;
+        statEloChange.textContent = delta >= 0 ? `+${delta} ELO` : `${delta} ELO`;
+      } else {
+        statEloChange.textContent = isWhiteWin ? '+32 ELO' : '-16 ELO';
+      }
+    }
+
+    setTimeout(() => {
+      modal.classList.add('active');
+    }, 1200);
+  }
+
   resetBoard() {
     this.init32Pieces();
     this.particles = [];
@@ -287,6 +497,13 @@ class ArchessArena {
     this.selectedPiece = null;
     this.whiteDamage = 0;
     this.blackDamage = 0;
+    this.turns = 0;
+    this.matchStartTime = Date.now();
+    this.isGameOver = false;
+    this.winner = null;
+    this.simulationSettling = false;
+    clearTimeout(this.botTimeout);
+    this.botThinking = false;
     this.updateHUD();
     this.logTelemetry('RESET', 'Board reset to standard 32-piece tournament arrangement.');
   }
@@ -348,6 +565,8 @@ class ArchessArena {
     };
 
     const handlePointerDown = (e) => {
+      if (this.isGameOver) return;
+      if (this.gameMode === 'bot' && this.currentTurn === 'black') return;
       this.audio.init();
       const pos = getBoardPos(e);
 
@@ -411,6 +630,8 @@ class ArchessArena {
   }
 
   handleKeyboardControl(e) {
+    if (this.isGameOver) return;
+    if (this.gameMode === 'bot' && this.currentTurn === 'black') return;
     const livingActivePieces = this.pieces.filter(p => !p.dead && p.team === this.currentTurn);
     if (livingActivePieces.length === 0) return;
 
@@ -544,24 +765,43 @@ class ArchessArena {
           });
         }
 
-        // Arena Wall Collisions
+        // Arena Wall Collisions (with Bishop Prism Surge)
+        const isBishop = p.type === 'bishop';
+        const bounceCoeff = isBishop ? Math.min(1.15, p.bounce * 1.15) : p.bounce;
+
         if (p.x - p.radius < margin) {
           p.x = margin + p.radius;
-          p.vx = -p.vx * p.bounce;
+          p.vx = -p.vx * bounceCoeff;
+          if (isBishop) {
+            this.spawnImpactParticles(p.x, p.y, 8, false);
+            this.logTelemetry('PRISM_SURGE', 'Bishop gained +15% Prism Surge on wall reflection!');
+          }
           this.audio.playBounce();
         } else if (p.x + p.radius > this.width - margin) {
           p.x = this.width - margin - p.radius;
-          p.vx = -p.vx * p.bounce;
+          p.vx = -p.vx * bounceCoeff;
+          if (isBishop) {
+            this.spawnImpactParticles(p.x, p.y, 8, false);
+            this.logTelemetry('PRISM_SURGE', 'Bishop gained +15% Prism Surge on wall reflection!');
+          }
           this.audio.playBounce();
         }
 
         if (p.y - p.radius < margin) {
           p.y = margin + p.radius;
-          p.vy = -p.vy * p.bounce;
+          p.vy = -p.vy * bounceCoeff;
+          if (isBishop) {
+            this.spawnImpactParticles(p.x, p.y, 8, false);
+            this.logTelemetry('PRISM_SURGE', 'Bishop gained +15% Prism Surge on wall reflection!');
+          }
           this.audio.playBounce();
         } else if (p.y + p.radius > this.height - margin) {
           p.y = this.height - margin - p.radius;
-          p.vy = -p.vy * p.bounce;
+          p.vy = -p.vy * bounceCoeff;
+          if (isBishop) {
+            this.spawnImpactParticles(p.x, p.y, 8, false);
+            this.logTelemetry('PRISM_SURGE', 'Bishop gained +15% Prism Surge on wall reflection!');
+          }
           this.audio.playBounce();
         }
       } else {
@@ -611,11 +851,70 @@ class ArchessArena {
 
             const relativeSpeed = Math.hypot(rvx, rvy);
             if (relativeSpeed > 1.2) {
-              const isCritical = relativeSpeed > 9;
-              const damage = Math.round(relativeSpeed * 2.8 * Math.max(p1.mass, p2.mass));
-
               // Damage opposing team
               if (p1.team !== p2.team) {
+                // Rook Siege Breaker: 2.5x damage against lighter pieces
+                let damageMulti = 1.0;
+                if (p1.type === 'rook' && p2.mass < p1.mass) {
+                  damageMulti = 2.5;
+                  p1.vx *= 0.15;
+                  p1.vy *= 0.15;
+                } else if (p2.type === 'rook' && p1.mass < p2.mass) {
+                  damageMulti = 2.5;
+                  p2.vx *= 0.15;
+                  p2.vy *= 0.15;
+                }
+
+                let damage = Math.round(relativeSpeed * 2.8 * Math.max(p1.mass, p2.mass) * damageMulti);
+
+                // Queen Supernova Discharge on high velocity
+                if ((p1.type === 'queen' || p2.type === 'queen') && relativeSpeed > 6.5) {
+                  damage += 35;
+                  this.screenShake = 12;
+                  this.spawnImpactParticles((p1.x + p2.x) / 2, (p1.y + p2.y) / 2, 35, true);
+                  this.logTelemetry('SUPERNOVA', 'Queen discharged Supernova blast on high-velocity strike!');
+                }
+
+                // King Bastion Aura: friendly pawns near King take 35% less damage
+                [p1, p2].forEach(p => {
+                  if (p.type === 'pawn') {
+                    const friendlyKing = this.pieces.find(k => !k.dead && k.team === p.team && k.type === 'king');
+                    if (friendlyKing && Math.hypot(friendlyKing.x - p.x, friendlyKing.y - p.y) < 85) {
+                      damage = Math.round(damage * 0.65);
+                      this.logTelemetry('BASTION_AURA', `${p.team.toUpperCase()} Pawn protected by King's Bastion Aura (-35% dmg)!`);
+                    }
+                  }
+                });
+
+                // Knight Shockwave
+                if (p1.type === 'knight' || p2.type === 'knight') {
+                  const knight = p1.type === 'knight' ? p1 : p2;
+                  const other = p1.type === 'knight' ? p2 : p1;
+                  const cx = (p1.x + p2.x) / 2;
+                  const cy = (p1.y + p2.y) / 2;
+                  let knockbackCount = 0;
+
+                  this.pieces.forEach(target => {
+                    if (!target.dead && target.team === other.team && target !== other) {
+                      const tdx = target.x - cx;
+                      const tdy = target.y - cy;
+                      const dist = Math.hypot(tdx, tdy);
+                      if (dist < 95 && dist > 1) {
+                        const impulse = ((95 - dist) / 95) * 4.5;
+                        target.vx += (tdx / dist) * impulse;
+                        target.vy += (tdy / dist) * impulse;
+                        knockbackCount++;
+                      }
+                    }
+                  });
+
+                  if (knockbackCount > 0) {
+                    this.logTelemetry('SHOCKWAVE', `Knight triggered Shockwave! Knocks back ${knockbackCount} enemy units.`);
+                    this.spawnImpactParticles(cx, cy, 18, false);
+                  }
+                }
+
+                const isCritical = relativeSpeed > 8.5 || damageMulti > 1.5;
                 p1.hp -= damage;
                 p2.hp -= damage;
                 p1.hitFlash = 1;
@@ -637,10 +936,10 @@ class ArchessArena {
                     p.dead = true;
                     p.hp = 0;
                     this.spawnImpactParticles(p.x, p.y, 35, true);
+                    this.audio.playShatter();
                     this.logTelemetry('ELIMINATION', `[!] ${p.team.toUpperCase()} ${p.type.toUpperCase()} shattered and removed from board.`);
                     if (p.type === 'king') {
-                      this.audio.playVictory();
-                      this.logTelemetry('VICTORY', `CHECKMATE! ${p.team === 'white' ? 'BLACK' : 'WHITE'} WINS THE MATCH!`);
+                      this.handleKingElimination(p);
                     }
                   }
                 });
@@ -654,9 +953,14 @@ class ArchessArena {
     // Settlement & Turn Transition
     if (this.simulationSettling && !anyInMotion) {
       this.simulationSettling = false;
+      this.turns++;
       this.currentTurn = this.currentTurn === 'white' ? 'black' : 'white';
       this.updateHUD();
-      this.logTelemetry('SETTLEMENT', `Board settled at rest. Turn passed to ${this.currentTurn.toUpperCase()}.`);
+      this.logTelemetry('SETTLEMENT', `Board settled at rest. Turn ${this.turns}: passed to ${this.currentTurn.toUpperCase()}.`);
+
+      if (!this.isGameOver && this.currentTurn === 'black' && this.gameMode === 'bot') {
+        this.triggerBotTurn();
+      }
     } else if (anyInMotion) {
       this.simulationSettling = true;
     }

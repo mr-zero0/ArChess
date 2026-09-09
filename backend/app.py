@@ -184,8 +184,8 @@ def api_record_match():
     turns = data.get("turns", 0)
     duration = data.get("duration_sec", 0)
 
-    record_match_result(white, black, winner, white_dmg, black_dmg, turns, duration)
-    return jsonify({"success": True, "message": "Match recorded and ELO updated"}), 200
+    settlement = record_match_result(white, black, winner, white_dmg, black_dmg, turns, duration)
+    return jsonify({"success": True, "settlement": settlement, "message": "Match recorded and ELO updated"}), 200
 
 # -------------------------------------------------------------
 # API Endpoints: Telemetry Persistence

@@ -111,7 +111,7 @@ def test_auth_registration_and_login(client):
     assert me_res_after.get_json()["authenticated"] is False
 
 def test_matches_record_and_elo(client):
-    """Test match settlement and ELO calculation."""
+    """Test match settlement and ELO calculation with FIDE formula."""
     res = client.post("/api/matches/record", json={
         "white_username": "Magnus_Kinetic",
         "black_username": "Hikaru_Impulse",
@@ -124,6 +124,26 @@ def test_matches_record_and_elo(client):
     assert res.status_code == 200
     data = res.get_json()
     assert data["success"] is True
+    assert "settlement" in data
+    assert data["settlement"]["winner"] == "white"
+    assert "white_delta" in data["settlement"]
+    assert "black_delta" in data["settlement"]
+
+def test_matches_record_draw(client):
+    """Test match settlement with draw."""
+    res = client.post("/api/matches/record", json={
+        "white_username": "Basalt_Wall",
+        "black_username": "Prism_Sniper",
+        "winner": "draw",
+        "white_damage": 200,
+        "black_damage": 200,
+        "turns": 25,
+        "duration_sec": 180
+    })
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data["success"] is True
+    assert data["settlement"]["winner"] == "draw"
 
 def test_telemetry_event(client):
     """Test telemetry logging endpoint."""

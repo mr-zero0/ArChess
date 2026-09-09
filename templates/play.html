@@ -25,14 +25,14 @@
       </div>
 
       <ul class="drawer-nav-list">
-        <li><a href="play.html"><span>Tactical Arena</span> <span class="nav-num">01</span></a></li>
+        <li><a href="/play"><span>Tactical Arena</span> <span class="nav-num">01</span></a></li>
         <li><a href="/#themesSection"><span>Chess Themes</span> <span class="nav-num">02</span></a></li>
-        <li><a href="arsenal.html"><span>Piece Codex</span> <span class="nav-num">03</span></a></li>
-        <li><a href="leaderboard.html"><span>Rankings & Ladder</span> <span class="nav-num">04</span></a></li>
+        <li><a href="/arsenal"><span>Piece Codex</span> <span class="nav-num">03</span></a></li>
+        <li><a href="/leaderboard"><span>Rankings & Ladder</span> <span class="nav-num">04</span></a></li>
       </ul>
 
       <div class="drawer-footer-actions">
-        <a href="play.html" class="btn-gold" style="width: 100%; justify-content: center;">
+        <a href="/play" class="btn-gold" style="width: 100%; justify-content: center;">
           <span>Launch Arena</span>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         </a>
@@ -55,10 +55,10 @@
 
       <ul class="nav-links">
         <li><a href="/">Home</a></li>
-        <li><a href="play.html" class="active">Play Arena</a></li>
+        <li><a href="/play" class="active">Play Arena</a></li>
         <li><a href="/#themesSection">Themes</a></li>
-        <li><a href="arsenal.html">Piece Codex</a></li>
-        <li><a href="leaderboard.html">Leaderboard</a></li>
+        <li><a href="/arsenal">Piece Codex</a></li>
+        <li><a href="/leaderboard">Leaderboard</a></li>
       </ul>
 
       <div class="nav-actions">
@@ -88,6 +88,15 @@
     <!-- Arena Control Toolbar -->
     <div class="play-arena-toolbar">
       
+      <!-- Match Mode: vs Bot AI vs Pass & Play -->
+      <div class="arena-toolbar-group">
+        <span style="font-size: 0.8rem; font-weight: 700; color: var(--gold-light); text-transform: uppercase;">Match:</span>
+        <div class="theme-picker-group">
+          <button class="theme-pill-btn game-mode-btn active" id="modeVsBotBtn" data-mode="bot">vs Bot AI</button>
+          <button class="theme-pill-btn game-mode-btn" id="modePvpBtn" data-mode="pvp">Pass &amp; Play</button>
+        </div>
+      </div>
+
       <!-- 2D vs 3D Perspective Mode -->
       <div class="arena-toolbar-group">
         <span style="font-size: 0.8rem; font-weight: 700; color: var(--gold-light); text-transform: uppercase;">View:</span>
@@ -200,6 +209,40 @@
       <div style="color: var(--gold-light);">Aim &bull; Launch &bull; Collide &bull; Conquer</div>
     </div>
   </footer>
+
+  <!-- Victory / Game Over Modal -->
+  <div class="modal-backdrop" id="victoryModal" role="dialog" aria-modal="true">
+    <div class="modal-dialog victory-modal-dialog">
+      <div class="victory-banner-badge white-win" id="victoryBadge">MATCH SETTLED</div>
+      <h2 class="victory-title" id="victoryTitle">CHECKMATE!</h2>
+      <p class="victory-sub" id="victorySub">The enemy King has been shattered from the board.</p>
+
+      <div class="match-stats-grid">
+        <div class="stat-box">
+          <div class="num" id="statTurns">0</div>
+          <div class="lbl">Turns</div>
+        </div>
+        <div class="stat-box">
+          <div class="num" id="statDuration">0s</div>
+          <div class="lbl">Duration</div>
+        </div>
+        <div class="stat-box">
+          <div class="num" id="statEloChange">+16</div>
+          <div class="lbl">Rating Change</div>
+        </div>
+      </div>
+
+      <div class="victory-modal-actions">
+        <button class="btn-gold" id="btnPlayAgain">
+          <span>Play Again</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+        </button>
+        <a href="/leaderboard" class="btn-ghost">
+          <span>Leaderboard</span>
+        </a>
+      </div>
+    </div>
+  </div>
 
   <!-- Scripts -->
   <script src="/static/js/game.js"></script>

@@ -14,11 +14,19 @@ from datetime import datetime
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOGS_ROOT_DIR = os.path.join(BASE_DIR, "Logs")
 
-def get_run_directory(base_logs_dir=LOGS_ROOT_DIR):
+_ACTIVE_RUN_DIR = None
+_ACTIVE_LOGGER = None
+
+def get_run_directory(base_logs_dir=LOGS_ROOT_DIR, force_new=False):
     """
     Creates and returns the next RunXX folder under:
     Logs/YYYY/MMM/DD_Logs/RunXX/
+    Reuses existing run directory for current process unless force_new=True.
     """
+    global _ACTIVE_RUN_DIR
+    if _ACTIVE_RUN_DIR and not force_new:
+        return _ACTIVE_RUN_DIR
+
     now = datetime.now()
     year = now.strftime("%Y")
     month = now.strftime("%b")
@@ -40,6 +48,7 @@ def get_run_directory(base_logs_dir=LOGS_ROOT_DIR):
     run_dir_name = f"Run{next_index:02d}"
     full_run_dir = os.path.join(date_dir, run_dir_name)
     os.makedirs(full_run_dir, exist_ok=True)
+    _ACTIVE_RUN_DIR = full_run_dir
     return full_run_dir
 
 class TrackerJsonFormatter(logging.Formatter):
@@ -49,10 +58,7 @@ class TrackerJsonFormatter(logging.Formatter):
     """
     def format(self, record):
         import json
-        timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%S%z")
-        if not timestamp.endswith("+") and not timestamp.endswith("-"):
-            # Add basic offset
-            timestamp += "+0530"
+        timestamp = datetime.now().astimezone().isoformat()
         msg = record.getMessage().strip()
         if (msg.startswith("{") and msg.endswith("}")) or (msg.startswith("[") and msg.endswith("]")):
             msg_json = msg
@@ -60,8 +66,12 @@ class TrackerJsonFormatter(logging.Formatter):
             msg_json = json.dumps(msg)
         return f'{{"timestamp":"{timestamp}", "level":"{record.levelname}", "logger":"{record.name}", "message":{msg_json}}}'
 
-def setup_logging(app_name="ArChess"):
-    run_dir = get_run_directory()
+def setup_logging(app_name="ArChess", force_new=False):
+    global _ACTIVE_LOGGER
+    if _ACTIVE_LOGGER and not force_new:
+        return _ACTIVE_LOGGER, _ACTIVE_RUN_DIR
+
+    run_dir = get_run_directory(force_new=force_new)
     log_file_path = os.path.join(run_dir, "app.log")
 
     logger = logging.getLogger(app_name)
@@ -85,4 +95,5 @@ def setup_logging(app_name="ArChess"):
         logger.addHandler(console_handler)
 
     logger.info(f'{{"event":"run_initialized", "run_dir":"{run_dir.replace(os.sep, "/")}"}}')
+    _ACTIVE_LOGGER = logger
     return logger, run_dir

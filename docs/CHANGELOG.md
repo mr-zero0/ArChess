@@ -4,6 +4,36 @@ All notable changes, architectural pivots, bugfixes, and refactorings across **A
 
 ---
 
+## [2.1.0] - 2026-09-09
+
+### 🎨 Complete Design System Coverage
+- **Subpage CSS Coverage**: Added full styling suites to `static/css/style.css` for `templates/play.html` (toolbar, 2D/3D toggle, match strips, telemetry panel, responsive grid), `templates/arsenal.html` (piece tabs, stat tracks, ability boxes), and `templates/leaderboard.html` (table card, rank badges, division tiers).
+- **Canonical Route Normalization**: Replaced relative `.html` links with canonical Flask routes (`/`, `/play`, `/arsenal`, `/leaderboard`).
+
+### 🤖 Autonomous Bot AI & Single-Player Mode
+- **Vector-Aiming AI**: Built autonomous Bot AI into `static/js/game.js` that evaluates target pieces by strategic value (King > Queen > Rook/Bishop/Knight > Pawn), computes impulse angles, introduces natural aim dispersion, and displays a visual aim preview before firing.
+- **Match Mode Toggle**: Added "vs Bot AI" and "Pass & Play (2P)" mode switcher in the Tactical Arena toolbar.
+
+### 🏆 Match Settlement & Victory Loop
+- **Game Over Freeze & Victory Modal**: Halts physics simulation upon King elimination, displays animated match settlement modal with turns, duration, damage metrics, and Elo change.
+- **FIDE Elo Calculation**: Upgraded `backend/database.py` from static $\pm16$ points to the standard FIDE Elo rating formula with $K=32$ and appropriate draw settlement.
+- **Persistent Match Logging**: Client now automatically calls `POST /api/matches/record` and `POST /api/telemetry` to persist games and live stats into SQLite.
+
+### ⚛️ Signature Piece Codex Abilities in Physics Solver
+- **Knight (*Kinetic Shockwave*)**: Radial concussive knockback on nearby enemy pieces upon collision.
+- **Rook (*Fortified Siege Breaker*)**: Deals 2.5x momentum-scaled damage to lighter pieces and resists reverse knockback.
+- **Bishop (*Prism Velocity Surge*)**: Rebounds off perimeter cushions with a +15% velocity boost (capped at max speed).
+- **Queen (*Supernova Discharge*)**: Extra explosive splash damage and gold particle blast on high-velocity collisions ($v > 6.5$).
+- **King (*Bastion Aura*)**: Grants 35% damage mitigation to adjacent friendly pawns within 85px.
+- **Pawn (*Coordinated Deflection*)**: Enhanced phalanx stability when grouped.
+
+### 🔊 Audio & Persistence Enhancements
+- **Procedural Shatter FX**: Added `playShatter()` Web Audio synthesis for piece eliminations.
+- **LocalStorage Preferences**: Client persists game mode, board theme, piece theme, and audio mute settings across browser sessions.
+- **Logger Deduplication**: Process-cached `RunXX` discovery in `backend/logger.py` to prevent redundant run folder proliferation during test runs, with dynamic ISO-8601 timestamps.
+
+---
+
 ## [2.0.0] - 2026-09-09
 
 ### 🏛️ Professional Codebase Restructuring

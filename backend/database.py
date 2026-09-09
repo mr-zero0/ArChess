@@ -165,6 +165,15 @@ def get_leaderboard(limit=50):
     conn.close()
     return [dict(r) for r in rows]
 
+def calculate_elo_change(rating_a, rating_b, score_a, k=32):
+    """
+    Standard FIDE Elo calculation.
+    score_a: 1.0 for win, 0.5 for draw, 0.0 for loss
+    """
+    expected_a = 1.0 / (1.0 + 10.0 ** ((rating_b - rating_a) / 400.0))
+    change_a = round(k * (score_a - expected_a))
+    return change_a
+
 def record_match_result(white_username, black_username, winner, white_damage=0, black_damage=0, turns=0, duration_sec=0):
     conn = get_connection()
     cursor = conn.cursor()
@@ -173,16 +182,52 @@ def record_match_result(white_username, black_username, winner, white_damage=0, 
     VALUES (?, ?, ?, ?, ?, ?, ?)
     """, (white_username, black_username, winner, white_damage, black_damage, turns, duration_sec))
 
-    # Update ELO for Winner/Loser if winner is not Draw
-    if winner in ("white", "black"):
-        w_user = white_username if winner == "white" else black_username
-        l_user = black_username if winner == "white" else white_username
-        cursor.execute("UPDATE users SET elo_rating = elo_rating + 16, wins = wins + 1, matches_played = matches_played + 1 WHERE username = ?", (w_user,))
-        cursor.execute("UPDATE users SET elo_rating = MAX(100, elo_rating - 16), losses = losses + 1, matches_played = matches_played + 1 WHERE username = ?", (l_user,))
+    # Fetch existing player ratings
+    cursor.execute("SELECT username, elo_rating FROM users WHERE username IN (?, ?)", (white_username, black_username))
+    user_map = {row["username"]: row["elo_rating"] for row in cursor.fetchall()}
+
+    white_rating = user_map.get(white_username, 1200)
+    black_rating = user_map.get(black_username, 1200)
+
+    if winner == "white":
+        score_w, score_b = 1.0, 0.0
+    elif winner == "black":
+        score_w, score_b = 0.0, 1.0
+    else:  # draw
+        score_w, score_b = 0.5, 0.5
+
+    delta_w = calculate_elo_change(white_rating, black_rating, score_w)
+    delta_b = calculate_elo_change(black_rating, white_rating, score_b)
+
+    # Update White player if exists in database
+    if white_username in user_map:
+        new_w_elo = max(100, white_rating + delta_w)
+        w_wins = 1 if winner == "white" else 0
+        w_losses = 1 if winner == "black" else 0
+        cursor.execute("""
+        UPDATE users 
+        SET elo_rating = ?, matches_played = matches_played + 1, wins = wins + ?, losses = losses + ?
+        WHERE username = ?
+        """, (new_w_elo, w_wins, w_losses, white_username))
+
+    # Update Black player if exists in database
+    if black_username in user_map:
+        new_b_elo = max(100, black_rating + delta_b)
+        b_wins = 1 if winner == "black" else 0
+        b_losses = 1 if winner == "white" else 0
+        cursor.execute("""
+        UPDATE users 
+        SET elo_rating = ?, matches_played = matches_played + 1, wins = wins + ?, losses = losses + ?
+        WHERE username = ?
+        """, (new_b_elo, b_wins, b_losses, black_username))
 
     conn.commit()
     conn.close()
-    return True
+    return {
+        "white_delta": delta_w,
+        "black_delta": delta_b,
+        "winner": winner
+    }
 
 def log_telemetry_event(correlation_id, event_type, payload):
     conn = get_connection()

@@ -153,6 +153,31 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Game Mode Switcher (vs Bot AI, Pass & Play)
+  const modeBtns = document.querySelectorAll('.game-mode-btn');
+  function applyGameMode(mode) {
+    modeBtns.forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-mode') === mode);
+    });
+    if (arena) {
+      arena.setGameMode(mode);
+    }
+    localStorage.setItem('archess_game_mode', mode);
+  }
+
+  modeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mode = btn.getAttribute('data-mode');
+      applyGameMode(mode);
+      showToast(mode === 'bot' ? 'Match Mode: Solo vs Bot AI' : 'Match Mode: Local Pass & Play (2P)');
+    });
+  });
+
+  const savedMode = localStorage.getItem('archess_game_mode') || 'bot';
+  if (modeBtns.length > 0) {
+    applyGameMode(savedMode);
+  }
+
   // Board Theme Switcher (Midnight, Woodland, Ivory)
   const boardThemeBtns = document.querySelectorAll('.theme-board-btn');
   function applyBoardTheme(theme) {
@@ -166,6 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (arena) {
       arena.setBoardTheme(theme);
     }
+    localStorage.setItem('archess_board_theme', theme);
   }
 
   boardThemeBtns.forEach(btn => {
@@ -176,25 +202,37 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Check URL query param for theme: ?theme=woodland
+  // Check URL query param for theme: ?theme=woodland or localStorage
   const urlTheme = new URLSearchParams(window.location.search).get('theme');
-  if (urlTheme && ['midnight', 'woodland', 'ivory'].includes(urlTheme.toLowerCase())) {
-    applyBoardTheme(urlTheme.toLowerCase());
+  const savedTheme = urlTheme || localStorage.getItem('archess_board_theme') || 'midnight';
+  if (boardThemeBtns.length > 0 && ['midnight', 'woodland', 'ivory'].includes(savedTheme.toLowerCase())) {
+    applyBoardTheme(savedTheme.toLowerCase());
   }
 
   // Piece Presentation Switcher (Classic, Outline, Mono)
   const pieceThemeBtns = document.querySelectorAll('.theme-piece-btn');
+  function applyPieceTheme(ptheme) {
+    pieceThemeBtns.forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-piece-theme') === ptheme);
+    });
+    if (arena) {
+      arena.setPieceTheme(ptheme);
+    }
+    localStorage.setItem('archess_piece_theme', ptheme);
+  }
+
   pieceThemeBtns.forEach(btn => {
     btn.addEventListener('click', () => {
-      pieceThemeBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
       const ptheme = btn.getAttribute('data-piece-theme');
-      if (arena) {
-        arena.setPieceTheme(ptheme);
-        showToast(`Piece Style: ${ptheme.toUpperCase()}`);
-      }
+      applyPieceTheme(ptheme);
+      showToast(`Piece Style: ${ptheme.toUpperCase()}`);
     });
   });
+
+  const savedPieceTheme = localStorage.getItem('archess_piece_theme') || 'classic';
+  if (pieceThemeBtns.length > 0 && ['classic', 'outline', 'mono'].includes(savedPieceTheme.toLowerCase())) {
+    applyPieceTheme(savedPieceTheme.toLowerCase());
+  }
 
   // Reset Arena Button
   const resetBtn = document.getElementById('arenaResetBtn');
@@ -205,20 +243,43 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Audio Toggle
+  // Audio Toggle with LocalStorage Persistence
   const audioBtn = document.getElementById('audioToggleBtn');
-  let isMuted = false;
+  let isMuted = localStorage.getItem('archess_audio_muted') === 'true';
+
+  if (isMuted) {
+    if (arena && arena.audio) {
+      arena.audio.muted = true;
+    }
+    if (audioBtn) {
+      audioBtn.classList.add('muted');
+      audioBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`;
+    }
+  }
+
   if (audioBtn) {
     audioBtn.addEventListener('click', () => {
       isMuted = !isMuted;
       if (arena && arena.audio) {
         arena.audio.muted = isMuted;
       }
+      localStorage.setItem('archess_audio_muted', isMuted ? 'true' : 'false');
       audioBtn.classList.toggle('muted', isMuted);
       audioBtn.innerHTML = isMuted 
         ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`
         : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>`;
       showToast(isMuted ? 'Game Audio Muted' : 'Game Audio Active');
+    });
+  }
+
+  // Play Again Button inside Victory Modal
+  const playAgainBtn = document.getElementById('btnPlayAgain');
+  const victoryModal = document.getElementById('victoryModal');
+  if (playAgainBtn && victoryModal) {
+    playAgainBtn.addEventListener('click', () => {
+      victoryModal.classList.remove('active');
+      if (arena) arena.resetBoard();
+      showToast('Board Re-racked — Ready for Rematch');
     });
   }
 
