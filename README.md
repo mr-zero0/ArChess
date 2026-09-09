@@ -43,7 +43,8 @@ c:\Users\mohda\Python Codes\ARCHESS\
 │   │   ├── auth.js        # Session authentication & user profile state
 │   │   └── game.js        # 32-piece physics engine, collisions, Web Audio
 │   └── media/             # Visual assets & cinematic video
-│       ├── logo.jpg
+│       ├── logo.png       # Transparent vector-grade knight crest
+│       ├── logo.jpg       # Master composite emblem
 │       ├── hero-banner.jpg
 │       ├── hero-video.mp4
 │       └── Chess_pieces_colliding_on_boad.mp4

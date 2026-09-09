@@ -46,6 +46,18 @@ def test_legacy_asset_fallbacks(client):
         assert res.status_code == 200, f"Legacy route {path} failed"
         assert len(res.data) > 0
 
+def test_logo_assets(client):
+    """Verify both transparent logo.png and master logo.jpg are served correctly."""
+    res_png = client.get("/static/media/logo.png")
+    assert res_png.status_code == 200
+    assert res_png.mimetype == "image/png"
+    assert len(res_png.data) > 0
+
+    res_jpg = client.get("/static/media/logo.jpg")
+    assert res_jpg.status_code == 200
+    assert res_jpg.mimetype in ["image/jpeg", "image/jpg"]
+    assert len(res_jpg.data) > 0
+
 def test_health_api(client):
     """Verify health endpoint structure."""
     res = client.get("/api/health")
