@@ -4,10 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ARCHESS | Global Ranked Leaderboard & Grandmasters</title>
+  <script>
+    (function() {
+      var mode = localStorage.getItem('archess_theme_mode');
+      if (mode === 'light' || (!mode && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches)) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
   <link rel="icon" type="image/png" href="/static/media/logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/style.css?v=2.4.0">
 </head>
 <body>
 
@@ -62,6 +72,28 @@
       </ul>
 
       <div class="nav-actions">
+        <!-- UIverse Theme Mode Toggle (Dark / Light) -->
+        <button class="btn-theme-mode-toggle" id="themeModeToggleBtn" title="Toggle Light / Dark Mode" aria-label="Toggle Light / Dark Mode">
+          <span class="theme-toggle-icon icon-sun" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+          </span>
+          <span class="theme-toggle-icon icon-moon" aria-hidden="true">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </span>
+        </button>
+
         <button class="btn-audio-toggle" id="audioToggleBtn" title="Toggle Sound FX">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
@@ -94,22 +126,28 @@
     </div>
 
     <div class="leaderboard-table-card" style="max-width: 980px; margin: 0 auto;">
-      <div class="table-card-header">
+      <div class="table-card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
         <div>
           <h3>Season 1: Kinetic Supremacy</h3>
           <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px;">Live ratings updated dynamically from match settlements</p>
         </div>
-        <a href="/play" class="btn-gold" style="padding: 8px 18px; font-size: 0.85rem;">
-          <span>Play Match</span>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        </a>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="position: relative;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted-foreground); pointer-events: none;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="text" id="leaderboardSearchInput" placeholder="Search players..." style="height: 34px; padding: 0 12px 0 32px; background: var(--muted); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--foreground); font-size: 0.82rem; outline: none; transition: all var(--duration-fast) var(--ease-spring); width: 170px;">
+          </div>
+          <a href="/play" class="btn btn-default btn-sm">
+            <span>Play Match</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </a>
+        </div>
       </div>
 
       <table class="leaderboard-table">
         <thead>
           <tr>
             <th style="width: 80px;">Rank</th>
-            <th>Player & Avatar</th>
+            <th>Player &amp; Avatar</th>
             <th>Division / Tier</th>
             <th>ELO Rating</th>
             <th>Matches</th>
@@ -129,7 +167,7 @@
 
   <footer class="site-footer">
     <div class="container footer-bottom">
-      <div>&copy; 2026 ARCHESS &bull; mr-zero0/ArChess. Free & Open-Source.</div>
+      <div>&copy; 2026 ARCHESS &bull; mr-zero0/ArChess. Free &amp; Open-Source.</div>
       <div style="color: var(--gold-light);">Aim &bull; Launch &bull; Collide &bull; Conquer</div>
     </div>
   </footer>
@@ -142,31 +180,56 @@
         const res = await fetch('/api/leaderboard?limit=50');
         const data = await res.json();
         const tbody = document.getElementById('fullLeaderboardBody');
-        if (tbody && data.leaderboard) {
-          tbody.innerHTML = data.leaderboard.map((p, idx) => {
+        const searchInput = document.getElementById('leaderboardSearchInput');
+        let players = data.leaderboard || [];
+
+        function renderRows(list) {
+          if (!tbody) return;
+          if (list.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">No players match your search query.</td></tr>';
+            return;
+          }
+          tbody.innerHTML = list.map((p, idx) => {
             const total = p.wins + p.losses;
             const winRate = total > 0 ? Math.round((p.wins / total) * 100) : 0;
             const rankClass = idx === 0 ? 'rank-1' : (idx === 1 ? 'rank-2' : (idx === 2 ? 'rank-3' : ''));
             const tier = p.elo_rating >= 2700 ? 'Grandmaster' : (p.elo_rating >= 2400 ? 'Master' : 'Contender');
-            const tierColor = p.elo_rating >= 2700 ? '#ffd700' : (p.elo_rating >= 2400 ? '#00e1d9' : '#a8b3cf');
+            const tierClass = p.elo_rating >= 2700 ? 'grandmaster' : (p.elo_rating >= 2400 ? 'master' : 'contender');
             
             return `
               <tr>
                 <td><span class="rank-badge ${rankClass}">#${idx + 1}</span></td>
                 <td>
-                  <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="width: 28px; height: 28px; border-radius: 50%; background: rgba(212,175,55,0.15); display: flex; align-items: center; justify-content: center; font-size: 0.9rem; color: var(--gold-light);">♞</span>
-                    <strong style="color: #fff;">${p.username}</strong>
+                  <div class="player-avatar-chip">
+                    <div class="player-avatar-disc">♞</div>
+                    <span class="player-avatar-name">${p.username}</span>
                   </div>
                 </td>
-                <td><span style="color: ${tierColor}; font-weight: 700; font-size: 0.82rem; text-transform: uppercase;">${tier}</span></td>
-                <td><span style="color: var(--gold-bright); font-weight: 800; font-size: 1.05rem;">${p.elo_rating}</span></td>
-                <td>${p.matches_played}</td>
-                <td>${p.wins}W / ${p.losses}L</td>
-                <td><span style="color: #00ff88; font-weight: 700;">${winRate}%</span></td>
+                <td><span class="division-pill ${tierClass}">${tier}</span></td>
+                <td><span class="rating-num tabular-nums">${p.elo_rating}</span></td>
+                <td class="tabular-nums">${p.matches_played}</td>
+                <td class="tabular-nums">${p.wins}W / ${p.losses}L</td>
+                <td>
+                  <div class="winrate-cell">
+                    <div class="winrate-progress-track">
+                      <div class="winrate-progress-fill" style="width: ${winRate}%;"></div>
+                    </div>
+                    <span class="winrate-text tabular-nums">${winRate}%</span>
+                  </div>
+                </td>
               </tr>
             `;
           }).join('');
+        }
+
+        renderRows(players);
+
+        if (searchInput) {
+          searchInput.addEventListener('input', (e) => {
+            const q = e.target.value.toLowerCase().trim();
+            const filtered = players.filter(p => p.username.toLowerCase().includes(q));
+            renderRows(filtered);
+          });
         }
       } catch (e) {
         console.error(e);

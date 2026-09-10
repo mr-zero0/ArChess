@@ -4,10 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ARCHESS | Play Tactical Chess Arena — 32-Piece Physics</title>
+  <script>
+    (function() {
+      var mode = localStorage.getItem('archess_theme_mode');
+      if (mode === 'light' || (!mode && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches)) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
   <link rel="icon" type="image/png" href="/static/media/logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="/static/css/style.css?v=2.2.0">
+  <link rel="stylesheet" href="/static/css/style.css?v=2.4.0">
 </head>
 <body>
 
@@ -62,6 +72,28 @@
       </ul>
 
       <div class="nav-actions">
+        <!-- UIverse Theme Mode Toggle (Dark / Light) -->
+        <button class="btn-theme-mode-toggle" id="themeModeToggleBtn" title="Toggle Light / Dark Mode" aria-label="Toggle Light / Dark Mode">
+          <span class="theme-toggle-icon icon-sun" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+          </span>
+          <span class="theme-toggle-icon icon-moon" aria-hidden="true">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </span>
+        </button>
+
         <button class="btn-audio-toggle" id="audioToggleBtn" title="Toggle Sound FX">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
@@ -90,7 +122,7 @@
       
       <!-- Match Mode: vs Bot AI vs Pass & Play -->
       <div class="arena-toolbar-group">
-        <span style="font-size: 0.8rem; font-weight: 700; color: var(--gold-light); text-transform: uppercase;">Match:</span>
+        <span>Match:</span>
         <div class="theme-picker-group">
           <button class="theme-pill-btn game-mode-btn active" id="modeVsBotBtn" data-mode="bot">vs Bot AI</button>
           <button class="theme-pill-btn game-mode-btn" id="modePvpBtn" data-mode="pvp">Pass &amp; Play</button>
@@ -99,7 +131,7 @@
 
       <!-- View Mode: 3D Arena (Physics), 2D Arena (Physics), 2D Classic (FIDE) -->
       <div class="arena-toolbar-group">
-        <span style="font-size: 0.8rem; font-weight: 700; color: var(--gold-light); text-transform: uppercase;">View:</span>
+        <span>View:</span>
         <div class="view-mode-toggle">
           <button class="view-btn active" id="viewMode3DArena" data-view="3d-arena">3D Arena</button>
           <button class="view-btn" id="viewMode2DArena" data-view="2d-arena">⚔️ 2D Arena</button>
@@ -109,7 +141,7 @@
 
       <!-- Board Theme Selector -->
       <div class="arena-toolbar-group">
-        <span style="font-size: 0.8rem; font-weight: 700; color: var(--gold-light); text-transform: uppercase;">Board:</span>
+        <span>Board:</span>
         <div class="theme-picker-group">
           <button class="theme-pill-btn theme-board-btn active" data-theme="midnight">Midnight</button>
           <button class="theme-pill-btn theme-board-btn" data-theme="woodland">Woodland</button>
@@ -119,8 +151,8 @@
 
       <!-- Re-rack Button -->
       <div class="arena-toolbar-group">
-        <button class="btn-icon-small" id="arenaResetBtn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+        <button class="btn btn-outline btn-sm" id="arenaResetBtn" title="Reset board to opening arrangement">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
           <span>Reset Board</span>
         </button>
       </div>
@@ -131,8 +163,8 @@
     <div class="turn-indicator-bar">
       <div class="turn-badge">
         <div class="turn-circle" id="arenaTurnCircle"></div>
-        <div class="turn-label" id="arenaTurnLabel">WHITE'S TURN — AIM & LAUNCH</div>
-        <div id="arenaPieceCounts" style="font-size: 0.82rem; color: var(--text-secondary); margin-left: 12px;"></div>
+        <div class="turn-label" id="arenaTurnLabel">WHITE'S TURN — AIM &amp; LAUNCH</div>
+        <div id="arenaPieceCounts" class="tabular-nums" style="font-size: 0.82rem; color: var(--muted-foreground); margin-left: 12px;"></div>
       </div>
 
       <div class="keyboard-hints-badge" id="arenaControlHints">
@@ -141,6 +173,7 @@
         <span class="kbd-key">Tab</span> Cycle
         <span class="kbd-key">WASD</span> Aim
         <span class="kbd-key">Space</span> Fire
+        <span style="font-size: 0.72rem; color: var(--muted-foreground); margin-left: 6px;">(King: Immovable Citadel &bull; 🛡️ Wall Protected)</span>
       </div>
     </div>
 
@@ -162,16 +195,16 @@
             <div class="player-strip-unit">
               <div class="player-strip-disc white-disc">♔</div>
               <div>
-                <strong id="whitePlayerName" style="color: #fff; font-size: 0.9rem;">Player 1</strong>
-                <div style="font-size: 0.75rem; color: var(--gold-light);">White Army &bull; 1200 ELO</div>
+                <strong id="whitePlayerName" style="color: var(--foreground); font-size: 0.88rem;">Player 1</strong>
+                <div style="font-size: 0.73rem; color: var(--muted-foreground);">White Army &bull; 1200 ELO</div>
               </div>
             </div>
-            <div style="font-size: 0.85rem; font-weight: 800; color: var(--text-muted);">VS</div>
+            <div style="font-size: 0.82rem; font-weight: 700; color: var(--muted-foreground); letter-spacing: 0.06em;">VS</div>
             <div class="player-strip-unit" style="text-align: right; flex-direction: row-reverse;">
               <div class="player-strip-disc black-disc">♚</div>
               <div>
-                <strong style="color: #fff; font-size: 0.9rem;">ArChess Bot / P2</strong>
-                <div style="font-size: 0.75rem; color: var(--accent-crimson);">Black Army &bull; 1200 ELO</div>
+                <strong style="color: var(--foreground); font-size: 0.88rem;">ArChess Bot / P2</strong>
+                <div style="font-size: 0.73rem; color: var(--accent-crimson);">Black Army &bull; 1200 ELO</div>
               </div>
             </div>
           </div>
@@ -211,8 +244,8 @@
         </div>
 
         <!-- Match Mode Context Note -->
-        <div style="font-size: 0.76rem; color: var(--text-muted); text-align: center; padding: 6px 10px; border-top: 1px solid var(--border-subtle); margin-top: 2px;">
-          Physics Combat (3D &amp; 2D Arena) &bull; Standard FIDE (2D Classic) &bull; <a href="/arsenal" style="color: var(--gold-light); text-decoration: none;">View Codex &rarr;</a>
+        <div class="sidebar-context-note">
+          Physics Combat (3D &amp; 2D Arena) &bull; Standard FIDE (2D Classic) &bull; <a href="/arsenal" class="sidebar-context-link">View Codex &rarr;</a>
         </div>
       </div>
 

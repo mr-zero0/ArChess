@@ -220,7 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
       if (kbdHints) {
-        kbdHints.innerHTML = '<span>Controls:</span> <span class="kbd-key">Drag &amp; Launch</span> <span class="kbd-key">Slingshot Aim</span> <span class="kbd-key">Kinetic Impulse</span>';
+        kbdHints.innerHTML = '<span>Controls:</span> <span class="kbd-key">Drag &amp; Launch</span> <span class="kbd-key">Slingshot Aim</span> <span style="color: var(--gold-light); font-size: 0.72rem; margin-left: 6px;">(King: Immovable Citadel &bull; 🛡️ Wall Protected)</span>';
       }
       showToast('View: 2D Arena (Drag & Launch Kinetic Combat)');
     } else {
@@ -234,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
       if (kbdHints) {
-        kbdHints.innerHTML = '<span>Controls:</span> <span class="kbd-key">Drag &amp; Launch</span> <span class="kbd-key">Tab</span> Cycle <span class="kbd-key">WASD</span> Aim <span class="kbd-key">Space</span> Fire';
+        kbdHints.innerHTML = '<span>Controls:</span> <span class="kbd-key">Drag &amp; Launch</span> <span class="kbd-key">Tab</span> Cycle <span class="kbd-key">WASD</span> Aim <span class="kbd-key">Space</span> Fire <span style="color: var(--gold-light); font-size: 0.72rem; margin-left: 6px;">(King: Immovable Citadel &bull; 🛡️ Wall Protected)</span>';
       }
       showToast('View: 3D Arena (Isometric Slingshot Combat)');
     }
@@ -353,6 +353,42 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Theme Mode (Dark / Light) Toggle
+  const themeToggleBtn = document.getElementById('themeModeToggleBtn');
+  const drawerThemeToggleBtn = document.getElementById('drawerThemeModeToggleBtn');
+
+  function applyThemeMode(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('archess_theme_mode', theme);
+    const titleText = theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode';
+    if (themeToggleBtn) {
+      themeToggleBtn.setAttribute('title', titleText);
+      themeToggleBtn.setAttribute('aria-label', titleText);
+    }
+    if (drawerThemeToggleBtn) {
+      drawerThemeToggleBtn.setAttribute('title', titleText);
+      drawerThemeToggleBtn.setAttribute('aria-label', titleText);
+    }
+  }
+
+  // Ensure current theme matches stored/detected setting
+  const initialTheme = document.documentElement.getAttribute('data-theme') || localStorage.getItem('archess_theme_mode') || 'dark';
+  applyThemeMode(initialTheme);
+
+  function toggleThemeMode() {
+    const currentTheme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    applyThemeMode(newTheme);
+    showToast(newTheme === 'light' ? 'Ivory Light Mode Activated' : 'Obsidian Dark Mode Activated');
+  }
+
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', toggleThemeMode);
+  }
+  if (drawerThemeToggleBtn) {
+    drawerThemeToggleBtn.addEventListener('click', toggleThemeMode);
+  }
+
   // Play Again Button inside Victory Modal
   const playAgainBtn = document.getElementById('btnPlayAgain');
   const victoryModal = document.getElementById('victoryModal');
@@ -414,13 +450,13 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     king: {
       name: 'The King',
-      role: 'Royal Commander & Bastion',
-      classBadge: 'Commander Class',
+      role: 'Stationary Citadel & Bastion Core',
+      classBadge: 'Fortress Citadel Class',
       glyph: '♚',
-      lore: 'The center of gravity on every board. Protected by an energy mantle, the King requires relentless, coordinated kinetic strikes to shatter and eliminate.',
-      stats: { speed: 45, mass: 96, impact: 70, ricochet: 52 },
-      abilityName: 'Bastion Aura',
-      abilityDesc: 'Grants kinetic dampening armor to all adjacent guarding pawns, mitigating direct impact damage.'
+      lore: 'The immovable anchor of the royal line. Enclosed within a reinforced Square Fortress Wall (500 HP) precision-fitted to the chessboard tile that absorbs and deflects kinetic assaults until breached. Backed by 600 base HP and super-dense monolithic mass (6.0), the King cannot be displaced. Ramming the King or its fortress walls inflicts devastating Newtonian recoil self-damage back upon attackers.',
+      stats: { speed: 0, mass: 100, impact: 98, ricochet: 38 },
+      abilityName: 'Square Fortress Wall & Recoil Aegis',
+      abilityDesc: 'Enclosed by a 500 HP perimeter wall fitting the chess square that must be shattered before the King can take direct damage. Attackers ramming the wall suffer 25% recoil self-damage. The King possesses 600 base HP (1,100 total durability).'
     },
     pawn: {
       name: 'The Pawn',
@@ -559,19 +595,21 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Toast Helper
+  // Toast Helper (shadcn/ui Floating Toast Notification)
   function showToast(message) {
-    let toast = document.querySelector('.toast-notice');
-    if (!toast) {
-      toast = document.createElement('div');
-      toast.className = 'toast-notice';
-      document.body.appendChild(toast);
+    let container = document.querySelector('.shadcn-toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.className = 'shadcn-toast-container';
+      document.body.appendChild(container);
     }
-    toast.innerHTML = `<span style="color:var(--gold-bright);">✦</span> ${message}`;
-    toast.classList.add('show');
-    clearTimeout(toast._timeout);
-    toast._timeout = setTimeout(() => {
-      toast.classList.remove('show');
+    const toast = document.createElement('div');
+    toast.className = 'shadcn-toast';
+    toast.innerHTML = `<span style="color:var(--gold-bright); font-size: 1rem; line-height: 1;">✦</span> <span>${message}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.classList.add('toast-fade-out');
+      setTimeout(() => toast.remove(), 250);
     }, 2800);
   }
 

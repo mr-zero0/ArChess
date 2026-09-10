@@ -180,9 +180,9 @@ class ArchessArena {
     this.botThinking = false;
     this.botTimeout = null;
 
-    // Physics constants
-    this.friction = 0.985;
-    this.elasticity = 0.78;
+    // Physics constants (Calibrated for weighty rolling resistance with responsive slingshot momentum)
+    this.friction = 0.975;
+    this.elasticity = 0.72;
     this.maxPullDistance = 150;
 
     // Game state
@@ -298,12 +298,12 @@ class ArchessArena {
     };
 
     const pieceArchetypes = {
-      pawn:   { mass: 1.0, speed: 1.1,  bounce: 0.72, hp: 45,  radius: Math.round(sqSize * 0.32) },
-      knight: { mass: 1.3, speed: 1.38, bounce: 0.90, hp: 75,  radius: Math.round(sqSize * 0.36) },
-      bishop: { mass: 1.0, speed: 1.48, bounce: 0.95, hp: 65,  radius: Math.round(sqSize * 0.35) },
-      rook:   { mass: 2.3, speed: 0.92, bounce: 0.55, hp: 95,  radius: Math.round(sqSize * 0.37) },
-      queen:  { mass: 1.7, speed: 1.42, bounce: 0.82, hp: 120, radius: Math.round(sqSize * 0.40) },
-      king:   { mass: 2.6, speed: 0.78, bounce: 0.65, hp: 160, radius: Math.round(sqSize * 0.42) }
+      pawn:   { mass: 1.0, speed: 0.72, bounce: 0.65, hp: 50,  radius: Math.round(sqSize * 0.32) },
+      knight: { mass: 1.4, speed: 0.86, bounce: 0.85, hp: 80,  radius: Math.round(sqSize * 0.36) },
+      bishop: { mass: 1.1, speed: 0.88, bounce: 0.88, hp: 70,  radius: Math.round(sqSize * 0.35) },
+      rook:   { mass: 2.8, speed: 0.65, bounce: 0.48, hp: 110, radius: Math.round(sqSize * 0.37) },
+      queen:  { mass: 1.9, speed: 0.94, bounce: 0.75, hp: 130, radius: Math.round(sqSize * 0.40) },
+      king:   { mass: 6.0, speed: 0.0,  bounce: 0.38, hp: 600, radius: Math.round(sqSize * 0.40) }
     };
 
     // Helper to spawn a piece
@@ -311,6 +311,7 @@ class ArchessArena {
       const arch = pieceArchetypes[type];
       const x = layout.gridOriginX + col * sqSize + sqSize / 2;
       const y = layout.gridOriginY + row * sqSize + sqSize / 2;
+      const isKing = type === 'king';
 
       this.pieces.push({
         id: id,
@@ -330,7 +331,15 @@ class ArchessArena {
         hp: arch.hp,
         maxHp: arch.hp,
         dead: false,
-        hitFlash: 0
+        hitFlash: 0,
+        immovable: isKing,
+        // King Fortress Square Wall properties (Fits chess square)
+        wallActive: isKing,
+        wallHp: isKing ? 500 : 0,
+        maxWallHp: isKing ? 500 : 0,
+        wallHalf: isKing ? Math.round(sqSize * 0.47) : 0,
+        wallRadius: isKing ? Math.round(sqSize * 0.47) : 0,
+        wallHitFlash: 0
       });
     };
 
@@ -393,7 +402,7 @@ class ArchessArena {
     this.botThinking = false;
     if (this.currentTurn !== 'black' || this.isGameOver) return;
 
-    const blackPieces = this.pieces.filter(p => !p.dead && p.team === 'black');
+    const blackPieces = this.pieces.filter(p => !p.dead && p.team === 'black' && p.type !== 'king');
     const whitePieces = this.pieces.filter(p => !p.dead && p.team === 'white');
 
     if (blackPieces.length === 0 || whitePieces.length === 0) return;
@@ -627,8 +636,22 @@ class ArchessArena {
 
       const screenPos = getPointerScreenPos(e);
 
-      // Check if clicking an eligible piece on current turn (hit-tested in visible screen space)
-      const eligiblePieces = this.pieces.filter(p => !p.dead && p.team === this.currentTurn);
+      // Check if clicking King of current turn: show stationary citadel feedback
+      const currentKing = this.pieces.find(p => !p.dead && p.team === this.currentTurn && p.type === 'king');
+      if (currentKing) {
+        const kElevation = (this.renderMode === '3d') ? 14 : 0;
+        const kScreen = this.toScreen(currentKing.x, currentKing.y, kElevation);
+        const kHitCenterY = this.renderMode === '3d' ? (kScreen.y - currentKing.radius * 0.3) : kScreen.y;
+        const kDist = Math.hypot(screenPos.x - kScreen.x, screenPos.y - kHitCenterY);
+        const kHitRadius = currentKing.radius * (this.renderMode === '3d' ? 2.2 : 1.8);
+        if (kDist <= kHitRadius) {
+          this.logTelemetry('CITADEL_STATIONARY', `The King is the Stationary Citadel and cannot be launched! Sling vanguard pieces.`);
+          this.addDamageNumber(currentKing.x, currentKing.y - currentKing.radius * 1.5, 0, false, '#ffd700', 'IMMOBILE CITADEL');
+        }
+      }
+
+      // Check if clicking an eligible piece on current turn (King cannot move)
+      const eligiblePieces = this.pieces.filter(p => !p.dead && p.team === this.currentTurn && p.type !== 'king');
       let target = null;
       let bestDist = Infinity;
 
@@ -715,7 +738,7 @@ class ArchessArena {
   handleKeyboardControl(e) {
     if (this.isGameOver) return;
     if (this.gameMode === 'bot' && this.currentTurn === 'black') return;
-    const livingActivePieces = this.pieces.filter(p => !p.dead && p.team === this.currentTurn);
+    const livingActivePieces = this.pieces.filter(p => !p.dead && p.team === this.currentTurn && p.type !== 'king');
     if (livingActivePieces.length === 0) return;
 
     if (e.code === 'Tab') {
@@ -749,25 +772,35 @@ class ArchessArena {
   }
 
   launchPiece(piece, pullX, pullY, pullDist) {
+    if (piece.immovable || piece.type === 'king') return;
     const clampedDist = Math.min(pullDist, this.maxPullDistance);
     const powerRatio = clampedDist / this.maxPullDistance;
-    const impulse = clampedDist * 0.25 * piece.speedMulti;
+    // Calibrated launch impulse: 0.11 for responsive, weighted physical slingshot feel
+    const impulse = clampedDist * 0.11 * piece.speedMulti;
     const angle = Math.atan2(pullY, pullX);
 
     piece.vx = Math.cos(angle) * impulse;
     piece.vy = Math.sin(angle) * impulse;
+
+    // Cap maximum speed to 9.5 so pieces move decisively while remaining trackable
+    const speed = Math.hypot(piece.vx, piece.vy);
+    const maxSpeed = 9.5;
+    if (speed > maxSpeed) {
+      piece.vx = (piece.vx / speed) * maxSpeed;
+      piece.vy = (piece.vy / speed) * maxSpeed;
+    }
     piece.inMotion = true;
 
     this.audio.playLaunch(powerRatio);
     this.spawnLaunchSparks(piece.x, piece.y, angle);
 
-    this.logTelemetry('LAUNCH', `Piece: ${piece.team.toUpperCase()}_${piece.type.toUpperCase()} | Power: ${Math.round(powerRatio * 100)}% | Angle: ${(angle * 180 / Math.PI).toFixed(1)}°`);
+    this.logTelemetry('LAUNCH', `Piece: ${piece.team.toUpperCase()}_${piece.type.toUpperCase()} | Power: ${Math.round(powerRatio * 100)}% | Speed: ${Math.hypot(piece.vx, piece.vy).toFixed(1)}`);
   }
 
   spawnLaunchSparks(x, y, angle) {
     for (let i = 0; i < 24; i++) {
       const spread = (Math.random() - 0.5) * 1.3;
-      const speed = Math.random() * 6 + 2;
+      const speed = Math.random() * 5 + 1.8;
       this.particles.push({
         x: x,
         y: y,
@@ -781,14 +814,14 @@ class ArchessArena {
     }
   }
 
-  spawnImpactParticles(x, y, count = 20, isCritical = false) {
-    const colors = isCritical 
+  spawnImpactParticles(x, y, count = 20, isCritical = false, customColors = null) {
+    const colors = customColors || (isCritical 
       ? ['#ff3344', '#ffaa00', '#ffffff', '#ffd700'] 
-      : ['#ffd700', '#f5df88', '#ff9900', '#ffffff'];
+      : ['#ffd700', '#f5df88', '#ff9900', '#ffffff']);
 
     for (let i = 0; i < count; i++) {
       const pAngle = Math.random() * Math.PI * 2;
-      const pSpeed = Math.random() * (isCritical ? 9 : 6) + 2;
+      const pSpeed = Math.random() * (isCritical ? 7.5 : 4.8) + 1.5;
       this.particles.push({
         x: x,
         y: y,
@@ -802,15 +835,20 @@ class ArchessArena {
     }
   }
 
-  addDamageNumber(x, y, amount, isCritical = false) {
+  addDamageNumber(x, y, amount, isCritical = false, customColor = null, customText = null) {
+    let text = isCritical ? `CRIT -${amount}!` : `-${amount}`;
+    if (customText) text = customText;
+    let color = isCritical ? '#ff3b4e' : '#ffd700';
+    if (customColor) color = customColor;
+
     this.damageNumbers.push({
       x: x + (Math.random() - 0.5) * 15,
       y: y - 18,
-      text: isCritical ? `CRIT -${amount}!` : `-${amount}`,
-      color: isCritical ? '#ff3b4e' : '#ffd700',
-      size: isCritical ? 22 : 16,
+      text: text,
+      color: color,
+      size: isCritical ? 22 : (customText ? 15 : 16),
       alpha: 1,
-      vy: -1.6
+      vy: -1.4
     });
   }
 
@@ -829,74 +867,194 @@ class ArchessArena {
     this.pieces.forEach((p) => {
       if (p.dead) return;
 
-      const speed = Math.hypot(p.vx, p.vy);
-      if (speed > 0.15) {
-        anyInMotion = true;
-        p.x += p.vx;
-        p.y += p.vy;
-
-        p.vx *= this.friction;
-        p.vy *= this.friction;
-
-        // Particle trail
-        if (speed > 3 && Math.random() < 0.4) {
-          this.particles.push({
-            x: p.x,
-            y: p.y,
-            vx: (Math.random() - 0.5) * 0.5,
-            vy: (Math.random() - 0.5) * 0.5,
-            radius: Math.random() * 2 + 1,
-            color: p.team === 'white' ? '#ffd700' : '#ff4655',
-            alpha: 0.5,
-            life: 0.35
-          });
-        }
-
-        // Arena Wall Collisions (with Bishop Prism Surge)
-        const isBishop = p.type === 'bishop';
-        const bounceCoeff = isBishop ? Math.min(1.15, p.bounce * 1.15) : p.bounce;
-
-        if (p.x - p.radius < minX) {
-          p.x = minX + p.radius;
-          p.vx = -p.vx * bounceCoeff;
-          if (isBishop) {
-            this.spawnImpactParticles(p.x, p.y, 8, false);
-            this.logTelemetry('PRISM_SURGE', 'Bishop gained +15% Prism Surge on wall reflection!');
-          }
-          this.audio.playBounce();
-        } else if (p.x + p.radius > maxX) {
-          p.x = maxX - p.radius;
-          p.vx = -p.vx * bounceCoeff;
-          if (isBishop) {
-            this.spawnImpactParticles(p.x, p.y, 8, false);
-            this.logTelemetry('PRISM_SURGE', 'Bishop gained +15% Prism Surge on wall reflection!');
-          }
-          this.audio.playBounce();
-        }
-
-        if (p.y - p.radius < minY) {
-          p.y = minY + p.radius;
-          p.vy = -p.vy * bounceCoeff;
-          if (isBishop) {
-            this.spawnImpactParticles(p.x, p.y, 8, false);
-            this.logTelemetry('PRISM_SURGE', 'Bishop gained +15% Prism Surge on wall reflection!');
-          }
-          this.audio.playBounce();
-        } else if (p.y + p.radius > maxY) {
-          p.y = maxY - p.radius;
-          p.vy = -p.vy * bounceCoeff;
-          if (isBishop) {
-            this.spawnImpactParticles(p.x, p.y, 8, false);
-            this.logTelemetry('PRISM_SURGE', 'Bishop gained +15% Prism Surge on wall reflection!');
-          }
-          this.audio.playBounce();
-        }
-      } else {
+      if (p.immovable) {
         p.vx = 0;
         p.vy = 0;
+        p.x = p.originX;
+        p.y = p.originY;
+      } else {
+        const speed = Math.hypot(p.vx, p.vy);
+        if (speed > 0.15) {
+          anyInMotion = true;
+          p.x += p.vx;
+          p.y += p.vy;
+
+          p.vx *= this.friction;
+          p.vy *= this.friction;
+
+          // Particle trail
+          if (speed > 3 && Math.random() < 0.4) {
+            this.particles.push({
+              x: p.x,
+              y: p.y,
+              vx: (Math.random() - 0.5) * 0.5,
+              vy: (Math.random() - 0.5) * 0.5,
+              radius: Math.random() * 2 + 1,
+              color: p.team === 'white' ? '#ffd700' : '#ff4655',
+              alpha: 0.5,
+              life: 0.35
+            });
+          }
+
+          // Arena Wall Collisions (with Bishop Prism Surge)
+          const isBishop = p.type === 'bishop';
+          const bounceCoeff = isBishop ? Math.min(1.15, p.bounce * 1.15) : p.bounce;
+
+          if (p.x - p.radius < minX) {
+            p.x = minX + p.radius;
+            p.vx = -p.vx * bounceCoeff;
+            if (isBishop) {
+              this.spawnImpactParticles(p.x, p.y, 8, false);
+              this.logTelemetry('PRISM_SURGE', 'Bishop gained +15% Prism Surge on wall reflection!');
+            }
+            this.audio.playBounce();
+          } else if (p.x + p.radius > maxX) {
+            p.x = maxX - p.radius;
+            p.vx = -p.vx * bounceCoeff;
+            if (isBishop) {
+              this.spawnImpactParticles(p.x, p.y, 8, false);
+              this.logTelemetry('PRISM_SURGE', 'Bishop gained +15% Prism Surge on wall reflection!');
+            }
+            this.audio.playBounce();
+          }
+
+          if (p.y - p.radius < minY) {
+            p.y = minY + p.radius;
+            p.vy = -p.vy * bounceCoeff;
+            if (isBishop) {
+              this.spawnImpactParticles(p.x, p.y, 8, false);
+              this.logTelemetry('PRISM_SURGE', 'Bishop gained +15% Prism Surge on wall reflection!');
+            }
+            this.audio.playBounce();
+          } else if (p.y + p.radius > maxY) {
+            p.y = maxY - p.radius;
+            p.vy = -p.vy * bounceCoeff;
+            if (isBishop) {
+              this.spawnImpactParticles(p.x, p.y, 8, false);
+              this.logTelemetry('PRISM_SURGE', 'Bishop gained +15% Prism Surge on wall reflection!');
+            }
+            this.audio.playBounce();
+          }
+        } else {
+          p.vx = 0;
+          p.vy = 0;
+        }
       }
 
       if (p.hitFlash > 0) p.hitFlash -= dt * 3;
+      if (p.wallHitFlash > 0) p.wallHitFlash -= dt * 3;
+    });
+
+    // King Fortress Square Wall Collisions (Fits exact chessboard square, absorbs damage, and inflicts recoil on attacker)
+    this.pieces.forEach((attacker) => {
+      if (attacker.dead || attacker.type === 'king') return;
+      const speed = Math.hypot(attacker.vx, attacker.vy);
+      if (speed <= 0.15) return;
+
+      this.pieces.forEach((king) => {
+        if (king.dead || king.type !== 'king') return;
+
+        // If King's Fortress Wall is active (fits exact chessboard square tile)
+        if (king.wallActive && king.wallHp > 0) {
+          const half = king.wallHalf || Math.round(layout.sqSize * 0.47);
+          const minBoxX = king.x - half;
+          const maxBoxX = king.x + half;
+          const minBoxY = king.y - half;
+          const maxBoxY = king.y + half;
+
+          const closestX = Math.max(minBoxX, Math.min(attacker.x, maxBoxX));
+          const closestY = Math.max(minBoxY, Math.min(attacker.y, maxBoxY));
+          const cdx = attacker.x - closestX;
+          const cdy = attacker.y - closestY;
+          const dist = Math.hypot(cdx, cdy);
+
+          if (dist < attacker.radius) {
+            let nx = 0, ny = 0;
+            if (dist > 0.001) {
+              nx = cdx / dist;
+              ny = cdy / dist;
+            } else {
+              const dLeft = Math.abs(attacker.x - minBoxX);
+              const dRight = Math.abs(maxBoxX - attacker.x);
+              const dTop = Math.abs(attacker.y - minBoxY);
+              const dBtm = Math.abs(maxBoxY - attacker.y);
+              const minD = Math.min(dLeft, dRight, dTop, dBtm);
+              if (minD === dLeft) { nx = -1; ny = 0; }
+              else if (minD === dRight) { nx = 1; ny = 0; }
+              else if (minD === dTop) { nx = 0; ny = -1; }
+              else { nx = 0; ny = 1; }
+            }
+
+            // Reposition attacker outside square wall perimeter
+            attacker.x = closestX + nx * attacker.radius;
+            attacker.y = closestY + ny * attacker.radius;
+
+            // Enemy impact against King's wall
+            if (attacker.team !== king.team) {
+              const rvx = attacker.vx;
+              const rvy = attacker.vy;
+              const velAlongNormal = rvx * nx + rvy * ny;
+
+              if (velAlongNormal < 0) {
+                const hitSpeed = Math.hypot(rvx, rvy);
+                const bounce = Math.max(0.68, attacker.bounce);
+                attacker.vx = -nx * hitSpeed * bounce;
+                attacker.vy = -ny * hitSpeed * bounce;
+
+                // Wall takes blunt kinetic damage
+                const wallDamage = Math.max(18, Math.round(hitSpeed * 4.2 * attacker.mass));
+                king.wallHp -= wallDamage;
+                king.wallHitFlash = 1.0;
+                this.screenShake = 7;
+                this.totalImpacts++;
+
+                // Attacker takes logical recoil self-damage from ramming into reinforced stone/energy fortress
+                const recoilDmg = Math.max(6, Math.round(wallDamage * 0.25 + hitSpeed * 1.6));
+                attacker.hp -= recoilDmg;
+                attacker.hitFlash = 1.0;
+
+                this.audio.playImpact(hitSpeed / 4.5);
+                this.spawnImpactParticles(attacker.x, attacker.y, 18, false, ['#00e1d9', '#67e8f9', '#ffd700', '#ffffff']);
+                this.addDamageNumber(king.x, king.y - half, wallDamage, false, '#00e1d9', `WALL -${wallDamage}`);
+                this.addDamageNumber(attacker.x, attacker.y, recoilDmg, false, '#f87171', `RECOIL -${recoilDmg}`);
+
+                this.logTelemetry('FORTRESS_WALL_HIT', `${attacker.team.toUpperCase()} ${attacker.type.toUpperCase()} struck ${king.team.toUpperCase()} King's Fortress Wall! -${wallDamage} HP [${Math.max(0, Math.round(king.wallHp))}/${king.maxWallHp}] | Attacker Recoil: -${recoilDmg} HP`);
+
+                // Check if attacker dies from recoil
+                if (attacker.hp <= 0 && !attacker.dead) {
+                  attacker.dead = true;
+                  attacker.hp = 0;
+                  this.audio.playShatter();
+                  this.spawnImpactParticles(attacker.x, attacker.y, 28, true);
+                  this.addDamageNumber(attacker.x, attacker.y, 0, true, '#ff3b4e', 'SHATTERED!');
+                  if (!this.capturedPieces) this.capturedPieces = { white: [], black: [] };
+                  this.capturedPieces[attacker.team].push(attacker.type);
+                  if (this.onPieceCaptured) this.onPieceCaptured(attacker.team, attacker.type, this.getMaterialDiff());
+                  this.logTelemetry('ELIMINATION', `[!] ${attacker.team.toUpperCase()} ${attacker.type.toUpperCase()} shattered from recoil impact against the King's Fortress Wall!`);
+                }
+
+                // Check if King's wall collapses
+                if (king.wallHp <= 0) {
+                  king.wallActive = false;
+                  king.wallHp = 0;
+                  this.audio.playShatter();
+                  this.spawnImpactParticles(king.x, king.y, 55, true, ['#00e1d9', '#ffd700', '#ff3b4e', '#ffffff']);
+                  this.screenShake = 16;
+                  this.addDamageNumber(king.x, king.y - king.radius * 1.5, 0, true, '#ff3b4e', 'WALL BREACHED!');
+                  this.logTelemetry('FORTRESS_BREACH', `[CRITICAL BREACH] ${king.team.toUpperCase()} King's Fortress Wall has collapsed! Citadel is now vulnerable!`);
+                }
+              }
+            } else {
+              // Friendly piece soft cushion bounce off wall
+              const velAlongNormal = attacker.vx * nx + attacker.vy * ny;
+              if (velAlongNormal < 0) {
+                attacker.vx -= velAlongNormal * nx * 1.2;
+                attacker.vy -= velAlongNormal * ny * 1.2;
+              }
+            }
+          }
+        }
+      });
     });
 
     // Pairwise Piece-to-Piece Collisions
@@ -905,6 +1063,11 @@ class ArchessArena {
         const p1 = this.pieces[i];
         const p2 = this.pieces[j];
         if (p1.dead || p2.dead) continue;
+
+        // While a King's wall is active, piece collisions with that King are handled by the wall perimeter solver above
+        if ((p1.type === 'king' && p1.wallActive && p1.wallHp > 0) || (p2.type === 'king' && p2.wallActive && p2.wallHp > 0)) {
+          continue;
+        }
 
         const dx = p2.x - p1.x;
         const dy = p2.y - p1.y;
@@ -916,11 +1079,19 @@ class ArchessArena {
           const nx = dx / dist;
           const ny = dy / dist;
 
-          // Separation
-          p1.x -= nx * overlap * 0.5;
-          p1.y -= ny * overlap * 0.5;
-          p2.x += nx * overlap * 0.5;
-          p2.y += ny * overlap * 0.5;
+          // Separation (respecting immovable Citadel King anchors)
+          if (p1.immovable) {
+            p2.x += nx * overlap;
+            p2.y += ny * overlap;
+          } else if (p2.immovable) {
+            p1.x -= nx * overlap;
+            p1.y -= ny * overlap;
+          } else {
+            p1.x -= nx * overlap * 0.5;
+            p1.y -= ny * overlap * 0.5;
+            p2.x += nx * overlap * 0.5;
+            p2.y += ny * overlap * 0.5;
+          }
 
           // Impulse transfer
           const rvx = p2.vx - p1.vx;
@@ -931,13 +1102,25 @@ class ArchessArena {
             const restitution = Math.min(p1.bounce, p2.bounce);
             const impulseScalar = -(1 + restitution) * velAlongNormal / (1 / p1.mass + 1 / p2.mass);
 
-            p1.vx -= (impulseScalar / p1.mass) * nx;
-            p1.vy -= (impulseScalar / p1.mass) * ny;
-            p2.vx += (impulseScalar / p2.mass) * nx;
-            p2.vy += (impulseScalar / p2.mass) * ny;
+            if (p1.immovable) {
+              p1.vx = 0;
+              p1.vy = 0;
+              p2.vx += (impulseScalar / p2.mass) * nx;
+              p2.vy += (impulseScalar / p2.mass) * ny;
+            } else if (p2.immovable) {
+              p2.vx = 0;
+              p2.vy = 0;
+              p1.vx -= (impulseScalar / p1.mass) * nx;
+              p1.vy -= (impulseScalar / p1.mass) * ny;
+            } else {
+              p1.vx -= (impulseScalar / p1.mass) * nx;
+              p1.vy -= (impulseScalar / p1.mass) * ny;
+              p2.vx += (impulseScalar / p2.mass) * nx;
+              p2.vy += (impulseScalar / p2.mass) * ny;
+            }
 
             const relativeSpeed = Math.hypot(rvx, rvy);
-            if (relativeSpeed > 1.2) {
+            if (relativeSpeed > 0.8) {
               // Damage opposing team
               if (p1.team !== p2.team) {
                 // Rook Siege Breaker: 2.5x damage against lighter pieces
@@ -952,26 +1135,45 @@ class ArchessArena {
                   p2.vy *= 0.15;
                 }
 
-                let damage = Math.round(relativeSpeed * 2.8 * Math.max(p1.mass, p2.mass) * damageMulti);
+                // Determine primary striker vs defender based on incoming velocity
+                const speed1 = Math.hypot(p1.vx, p1.vy);
+                const speed2 = Math.hypot(p2.vx, p2.vy);
+
+                let striker = p1;
+                let defender = p2;
+                if (speed2 > speed1) {
+                  striker = p2;
+                  defender = p1;
+                }
+
+                // Logical primary impact damage dealt to defender
+                let primaryDamage = Math.max(10, Math.round(relativeSpeed * 3.6 * striker.mass * damageMulti));
+
+                // Logical recoil self-damage taken by striker from the physical collision
+                let recoilDamage = Math.max(4, Math.round(relativeSpeed * 1.1 * defender.mass));
 
                 // Queen Supernova Discharge on high velocity
-                if ((p1.type === 'queen' || p2.type === 'queen') && relativeSpeed > 6.5) {
-                  damage += 35;
+                if ((p1.type === 'queen' || p2.type === 'queen') && relativeSpeed > 5.5) {
+                  primaryDamage += 35;
                   this.screenShake = 12;
                   this.spawnImpactParticles((p1.x + p2.x) / 2, (p1.y + p2.y) / 2, 35, true);
                   this.logTelemetry('SUPERNOVA', 'Queen discharged Supernova blast on high-velocity strike!');
                 }
 
                 // King Bastion Aura: friendly pawns near King take 35% less damage
-                [p1, p2].forEach(p => {
-                  if (p.type === 'pawn') {
-                    const friendlyKing = this.pieces.find(k => !k.dead && k.team === p.team && k.type === 'king');
-                    if (friendlyKing && Math.hypot(friendlyKing.x - p.x, friendlyKing.y - p.y) < 85) {
-                      damage = Math.round(damage * 0.65);
-                      this.logTelemetry('BASTION_AURA', `${p.team.toUpperCase()} Pawn protected by King's Bastion Aura (-35% dmg)!`);
-                    }
+                if (defender.type === 'pawn') {
+                  const friendlyKing = this.pieces.find(k => !k.dead && k.team === defender.team && k.type === 'king');
+                  if (friendlyKing && Math.hypot(friendlyKing.x - defender.x, friendlyKing.y - defender.y) < 85) {
+                    primaryDamage = Math.round(primaryDamage * 0.65);
+                    this.logTelemetry('BASTION_AURA', `${defender.team.toUpperCase()} Pawn protected by King's Bastion Aura (-35% dmg)!`);
                   }
-                });
+                }
+                if (striker.type === 'pawn') {
+                  const friendlyKing = this.pieces.find(k => !k.dead && k.team === striker.team && k.type === 'king');
+                  if (friendlyKing && Math.hypot(friendlyKing.x - striker.x, friendlyKing.y - striker.y) < 85) {
+                    recoilDamage = Math.round(recoilDamage * 0.65);
+                  }
+                }
 
                 // Knight Shockwave
                 if (p1.type === 'knight' || p2.type === 'knight') {
@@ -987,7 +1189,7 @@ class ArchessArena {
                       const tdy = target.y - cy;
                       const dist = Math.hypot(tdx, tdy);
                       if (dist < 95 && dist > 1) {
-                        const impulse = ((95 - dist) / 95) * 4.5;
+                        const impulse = ((95 - dist) / 95) * 3.5;
                         target.vx += (tdx / dist) * impulse;
                         target.vy += (tdy / dist) * impulse;
                         knockbackCount++;
@@ -1001,21 +1203,23 @@ class ArchessArena {
                   }
                 }
 
-                const isCritical = relativeSpeed > 8.5 || damageMulti > 1.5;
-                p1.hp -= damage;
-                p2.hp -= damage;
-                p1.hitFlash = 1;
-                p2.hitFlash = 1;
+                const isCritical = relativeSpeed > 6.0 || damageMulti > 1.5;
+                defender.hp -= primaryDamage;
+                striker.hp -= recoilDamage;
+                defender.hitFlash = 1;
+                striker.hitFlash = 1;
 
-                if (p1.team === 'white') this.whiteDamage += damage;
-                else this.blackDamage += damage;
+                if (defender.team === 'white') this.whiteDamage += primaryDamage;
+                else this.blackDamage += primaryDamage;
 
-                this.addDamageNumber(p2.x, p2.y, damage, isCritical);
-                this.screenShake = isCritical ? 8 : 4;
+                this.addDamageNumber(defender.x, defender.y, primaryDamage, isCritical);
+                this.addDamageNumber(striker.x, striker.y, recoilDamage, false, '#f87171', `RECOIL -${recoilDamage}`);
+
+                this.screenShake = isCritical ? 7 : 3;
                 this.totalImpacts++;
-                this.audio.playImpact(relativeSpeed / 8);
+                this.audio.playImpact(relativeSpeed / 6);
 
-                this.logTelemetry('COLLISION', `${p1.team}_${p1.type} <-> ${p2.team}_${p2.type} | Dmg: -${damage} HP | Speed: ${relativeSpeed.toFixed(1)}`);
+                this.logTelemetry('COLLISION', `${striker.team}_${striker.type} struck ${defender.team}_${defender.type} | Dmg: -${primaryDamage} HP | Recoil: -${recoilDamage} HP | RelSpeed: ${relativeSpeed.toFixed(1)}`);
 
                 // Death checks
                 [p1, p2].forEach(p => {
@@ -1035,6 +1239,20 @@ class ArchessArena {
                     }
                   }
                 });
+
+                // Anchor immovable Citadel pieces firmly at origin
+                if (p1.immovable) {
+                  p1.vx = 0;
+                  p1.vy = 0;
+                  p1.x = p1.originX;
+                  p1.y = p1.originY;
+                }
+                if (p2.immovable) {
+                  p2.vx = 0;
+                  p2.vy = 0;
+                  p2.x = p2.originX;
+                  p2.y = p2.originY;
+                }
               }
             }
           }
@@ -1795,6 +2013,153 @@ class ArchessArena {
       ctx.fill();
     }
 
+    // King Fortress Square Wall (Fits the exact Chessboard Tile in 2D and 3D)
+    if (p.type === 'king') {
+      const isWhiteKing = p.team === 'white';
+      const wallColor = isWhiteKing ? '#ffd700' : '#ff4757';
+      const wallAura = isWhiteKing ? 'rgba(212, 175, 55, 0.22)' : 'rgba(255, 71, 87, 0.22)';
+      const half = p.wallHalf || Math.round(layout.sqSize * 0.47);
+
+      const c1 = this.toScreen(p.x - half, p.y - half, 0);
+      const c2 = this.toScreen(p.x + half, p.y - half, 0);
+      const c3 = this.toScreen(p.x + half, p.y + half, 0);
+      const c4 = this.toScreen(p.x - half, p.y + half, 0);
+
+      const wallHeight = this.renderMode === '3d' ? 14 : 0;
+      const t1 = this.toScreen(p.x - half, p.y - half, wallHeight);
+      const t2 = this.toScreen(p.x + half, p.y - half, wallHeight);
+      const t3 = this.toScreen(p.x + half, p.y + half, wallHeight);
+      const t4 = this.toScreen(p.x - half, p.y + half, wallHeight);
+
+      if (p.wallActive && p.wallHp > 0) {
+        const wallRatio = Math.max(0, Math.min(1, p.wallHp / p.maxWallHp));
+        ctx.save();
+
+        // 1. Interior Citadel Energy Floor (fills the square tile)
+        ctx.beginPath();
+        ctx.moveTo(c1.x, c1.y);
+        ctx.lineTo(c2.x, c2.y);
+        ctx.lineTo(c3.x, c3.y);
+        ctx.lineTo(c4.x, c4.y);
+        ctx.closePath();
+        if (p.wallHitFlash > 0) {
+          ctx.fillStyle = isWhiteKing ? 'rgba(255, 255, 255, 0.65)' : 'rgba(255, 120, 120, 0.65)';
+        } else {
+          ctx.fillStyle = wallAura;
+        }
+        ctx.fill();
+
+        // 2. 3D Wall Lateral Faces (Only in 3D mode)
+        if (this.renderMode === '3d') {
+          // Front Wall Face (c4 -> c3 -> t3 -> t4)
+          ctx.beginPath();
+          ctx.moveTo(c4.x, c4.y);
+          ctx.lineTo(c3.x, c3.y);
+          ctx.lineTo(t3.x, t3.y);
+          ctx.lineTo(t4.x, t4.y);
+          ctx.closePath();
+          ctx.fillStyle = isWhiteKing ? 'rgba(212, 175, 55, 0.35)' : 'rgba(255, 71, 87, 0.35)';
+          ctx.fill();
+          ctx.strokeStyle = p.wallHitFlash > 0 ? '#ffffff' : wallColor;
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          // Left Wall Face (c1 -> c4 -> t4 -> t1)
+          ctx.beginPath();
+          ctx.moveTo(c1.x, c1.y);
+          ctx.lineTo(c4.x, c4.y);
+          ctx.lineTo(t4.x, t4.y);
+          ctx.lineTo(t1.x, t1.y);
+          ctx.closePath();
+          ctx.fillStyle = isWhiteKing ? 'rgba(212, 175, 55, 0.25)' : 'rgba(255, 71, 87, 0.25)';
+          ctx.fill();
+          ctx.stroke();
+
+          // Right Wall Face (c2 -> c3 -> t3 -> t2)
+          ctx.beginPath();
+          ctx.moveTo(c2.x, c2.y);
+          ctx.lineTo(c3.x, c3.y);
+          ctx.lineTo(t3.x, t3.y);
+          ctx.lineTo(t2.x, t2.y);
+          ctx.closePath();
+          ctx.fillStyle = isWhiteKing ? 'rgba(212, 175, 55, 0.28)' : 'rgba(255, 71, 87, 0.28)';
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        // 3. Fortress Perimeter Top Rim (Primary barrier stroke fitting the square)
+        const rimCorners = this.renderMode === '3d' ? [t1, t2, t3, t4] : [c1, c2, c3, c4];
+        ctx.beginPath();
+        ctx.moveTo(rimCorners[0].x, rimCorners[0].y);
+        ctx.lineTo(rimCorners[1].x, rimCorners[1].y);
+        ctx.lineTo(rimCorners[2].x, rimCorners[2].y);
+        ctx.lineTo(rimCorners[3].x, rimCorners[3].y);
+        ctx.closePath();
+        ctx.strokeStyle = p.wallHitFlash > 0 ? '#ffffff' : wallColor;
+        ctx.lineWidth = Math.max(2.4, 4.2 * wallRatio);
+        ctx.shadowColor = wallColor;
+        ctx.shadowBlur = p.wallHitFlash > 0 ? 24 : 14;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // 4. 4 Corner Bastion Nodes / Towers (at each corner of the chess square)
+        rimCorners.forEach((pt, idx) => {
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 4.5, 0, Math.PI * 2);
+          ctx.fillStyle = p.wallHitFlash > 0 ? '#ffffff' : wallColor;
+          ctx.shadowColor = wallColor;
+          ctx.shadowBlur = 8;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+
+          // In 3D, draw vertical corner pylon posts
+          if (this.renderMode === '3d') {
+            const basePt = [c1, c2, c3, c4][idx];
+            ctx.beginPath();
+            ctx.moveTo(basePt.x, basePt.y);
+            ctx.lineTo(pt.x, pt.y);
+            ctx.strokeStyle = wallColor;
+            ctx.lineWidth = 2.0;
+            ctx.stroke();
+          }
+        });
+
+        // 5. High-Tech Corner Brackets on the perimeter in 2D
+        if (this.renderMode === '2d') {
+          const bLen = Math.round(half * 0.26);
+          ctx.strokeStyle = p.wallHitFlash > 0 ? '#ffffff' : (isWhiteKing ? '#ffffff' : '#ff7675');
+          ctx.lineWidth = 2.0;
+          // TL
+          ctx.beginPath();
+          ctx.moveTo(c1.x + bLen, c1.y); ctx.lineTo(c1.x, c1.y); ctx.lineTo(c1.x, c1.y + bLen);
+          // TR
+          ctx.moveTo(c2.x - bLen, c2.y); ctx.lineTo(c2.x, c2.y); ctx.lineTo(c2.x, c2.y + bLen);
+          // BR
+          ctx.moveTo(c3.x - bLen, c3.y); ctx.lineTo(c3.x, c3.y); ctx.lineTo(c3.x, c3.y - bLen);
+          // BL
+          ctx.moveTo(c4.x + bLen, c4.y); ctx.lineTo(c4.x, c4.y); ctx.lineTo(c4.x, c4.y - bLen);
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      } else {
+        // Wall is Broken: Draw fractured dashed perimeter indicator fitting the square
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(c1.x, c1.y);
+        ctx.lineTo(c2.x, c2.y);
+        ctx.lineTo(c3.x, c3.y);
+        ctx.lineTo(c4.x, c4.y);
+        ctx.closePath();
+        ctx.strokeStyle = 'rgba(255, 71, 87, 0.45)';
+        ctx.lineWidth = 1.6;
+        ctx.setLineDash([5, 5]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+    }
+
     ctx.translate(screenPos.x, screenPos.y);
     if (depthScale !== 1) {
       ctx.scale(depthScale, depthScale);
@@ -1820,8 +2185,73 @@ class ArchessArena {
       ctx.fill();
     }
 
+    // Immovable Citadel Base Cornerstone Indicator
+    if (p.type === 'king') {
+      const isWhiteKing = p.team === 'white';
+      ctx.save();
+      ctx.strokeStyle = isWhiteKing ? 'rgba(212, 175, 55, 0.45)' : 'rgba(255, 71, 87, 0.45)';
+      ctx.lineWidth = 1.6;
+      ctx.setLineDash([4, 3]);
+      const baseRy = this.renderMode === '3d' ? p.radius * 0.36 : p.radius * 0.82;
+      ctx.beginPath();
+      ctx.ellipse(0, this.renderMode === '3d' ? p.radius * 0.52 : 0, p.radius * 0.86, baseRy, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+
     // Draw the Master Staunton Vector Silhouette
     this.drawStauntonPiece(ctx, p.type, p.team, p.radius, this.pieceTheme);
+
+    // King Fortress Wall Durability Bar & Status Badge
+    if (p.type === 'king') {
+      const isWhiteKing = p.team === 'white';
+      if (p.wallActive && p.wallHp > 0) {
+        const wallRatio = Math.max(0, p.wallHp / p.maxWallHp);
+        const wallBarW = p.radius * 2.2;
+        const wallBarH = 5;
+        const wallBarY = -p.radius * 1.58;
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.88)';
+        ctx.fillRect(-wallBarW / 2, wallBarY, wallBarW, wallBarH);
+
+        const wallGrad = ctx.createLinearGradient(-wallBarW / 2, 0, wallBarW / 2, 0);
+        if (isWhiteKing) {
+          wallGrad.addColorStop(0, '#ffd700');
+          wallGrad.addColorStop(1, '#00e1d9');
+        } else {
+          wallGrad.addColorStop(0, '#ff4757');
+          wallGrad.addColorStop(1, '#ff7675');
+        }
+        ctx.fillStyle = wallGrad;
+        ctx.fillRect(-wallBarW / 2, wallBarY, wallBarW * wallRatio, wallBarH);
+        ctx.strokeStyle = isWhiteKing ? 'rgba(255, 215, 0, 0.8)' : 'rgba(255, 71, 87, 0.8)';
+        ctx.lineWidth = 0.8;
+        ctx.strokeRect(-wallBarW / 2, wallBarY, wallBarW, wallBarH);
+
+        // Wall Text Badge
+        ctx.save();
+        ctx.font = `800 ${Math.max(9, Math.round(p.radius * 0.38))}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillStyle = isWhiteKing ? '#ffd700' : '#ff7675';
+        ctx.shadowColor = '#000';
+        ctx.shadowBlur = 4;
+        ctx.fillText(`🛡️ FORTRESS WALL ${Math.round(p.wallHp)}/${p.maxWallHp}`, 0, wallBarY - 2);
+        ctx.restore();
+      } else {
+        // Wall is Broken: Show Alert Pill
+        ctx.save();
+        ctx.font = `800 ${Math.max(9, Math.round(p.radius * 0.36))}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillStyle = '#ff4757';
+        ctx.shadowColor = '#000';
+        ctx.shadowBlur = 5;
+        ctx.fillText(`⚠️ CITADEL EXPOSED`, 0, -p.radius * 1.55);
+        ctx.restore();
+      }
+    }
 
     // Mini Health Bar & Numeric Durability Badge (Always shown in Arena mode)
     const barW = p.radius * 1.8;

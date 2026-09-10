@@ -4,10 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ARCHESS | Tactical Piece Codex — Mass, Velocity & Abilities</title>
+  <script>
+    (function() {
+      var mode = localStorage.getItem('archess_theme_mode');
+      if (mode === 'light' || (!mode && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches)) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
   <link rel="icon" type="image/png" href="/static/media/logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/style.css?v=2.4.0">
 </head>
 <body>
 
@@ -62,6 +72,28 @@
       </ul>
 
       <div class="nav-actions">
+        <!-- UIverse Theme Mode Toggle (Dark / Light) -->
+        <button class="btn-theme-mode-toggle" id="themeModeToggleBtn" title="Toggle Light / Dark Mode" aria-label="Toggle Light / Dark Mode">
+          <span class="theme-toggle-icon icon-sun" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+          </span>
+          <span class="theme-toggle-icon icon-moon" aria-hidden="true">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </span>
+        </button>
+
         <button class="btn-audio-toggle" id="audioToggleBtn" title="Toggle Sound FX">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
@@ -146,10 +178,10 @@
             <div class="piece-glyph">♚</div>
             <div class="piece-title-wrap">
               <h4>The King</h4>
-              <span>Bastion Core</span>
+              <span>Stationary Citadel</span>
             </div>
           </div>
-          <span class="piece-tag">Commander</span>
+          <span class="piece-tag">Citadel</span>
         </div>
 
         <div class="piece-tab-item" data-piece-key="pawn">
@@ -165,12 +197,12 @@
       </div>
 
       <!-- Detailed Selected Piece Card -->
-      <div class="piece-detail-card" id="pieceDetailCard">
-        <div class="detail-header">
+      <div class="piece-detail-card card" id="pieceDetailCard">
+        <div class="detail-header" style="margin-bottom: 20px;">
           <div>
-            <span class="detail-class-badge" id="detailClassBadge">Specialist Class</span>
-            <h2 class="detail-name" id="detailPieceName" style="font-size: 2.2rem;">The Knight</h2>
-            <div class="detail-role" id="detailPieceRole">Shockwave Leaper & Flanker</div>
+            <span class="badge badge-default" id="detailClassBadge" style="margin-bottom: 8px;">Specialist Class</span>
+            <h2 class="detail-name card-title" id="detailPieceName" style="font-size: 2.2rem;">The Knight</h2>
+            <div class="detail-role card-description" id="detailPieceRole">Shockwave Leaper &amp; Flanker</div>
           </div>
           <div class="detail-icon-large" id="detailPieceGlyph">♞</div>
         </div>
@@ -184,7 +216,7 @@
           <div class="stat-bar-group">
             <div class="stat-bar-header">
               <span>Launch Velocity</span>
-              <span id="valSpeed">92/100</span>
+              <span id="valSpeed" class="tabular-nums">92/100</span>
             </div>
             <div class="stat-bar-track">
               <div class="stat-bar-fill" id="statSpeedFill" style="width: 92%;"></div>
@@ -194,7 +226,7 @@
           <div class="stat-bar-group">
             <div class="stat-bar-header">
               <span>Piece Mass / Knockback</span>
-              <span id="valMass">62/100</span>
+              <span id="valMass" class="tabular-nums">62/100</span>
             </div>
             <div class="stat-bar-track">
               <div class="stat-bar-fill" id="statMassFill" style="width: 62%;"></div>
@@ -204,7 +236,7 @@
           <div class="stat-bar-group">
             <div class="stat-bar-header">
               <span>Kinetic Damage Multiplier</span>
-              <span id="valImpact">86/100</span>
+              <span id="valImpact" class="tabular-nums">86/100</span>
             </div>
             <div class="stat-bar-track">
               <div class="stat-bar-fill" id="statImpactFill" style="width: 86%;"></div>
@@ -214,7 +246,7 @@
           <div class="stat-bar-group">
             <div class="stat-bar-header">
               <span>Ricochet Elasticity</span>
-              <span id="valRicochet">90/100</span>
+              <span id="valRicochet" class="tabular-nums">90/100</span>
             </div>
             <div class="stat-bar-track">
               <div class="stat-bar-fill" id="statRicochetFill" style="width: 90%;"></div>
@@ -235,7 +267,7 @@
         </div>
 
         <div style="margin-top: 28px;">
-          <a href="/play" class="btn-gold">
+          <a href="/play" class="btn btn-default btn-md">
             <span>Launch in Play Arena</span>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </a>
