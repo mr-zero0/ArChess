@@ -181,7 +181,7 @@ class ArchessArena {
     this.botTimeout = null;
 
     // Physics constants (Calibrated for weighty rolling resistance with responsive slingshot momentum)
-    this.friction = 0.979;
+    this.friction = 0.982;
     this.elasticity = 0.72;
     this.maxPullDistance = 150;
 
@@ -775,16 +775,16 @@ class ArchessArena {
     if (piece.immovable || piece.type === 'king') return;
     const clampedDist = Math.min(pullDist, this.maxPullDistance);
     const powerRatio = clampedDist / this.maxPullDistance;
-    // Calibrated launch impulse: 0.132 for responsive, weighted physical slingshot feel
-    const impulse = clampedDist * 0.132 * piece.speedMulti;
+    // Calibrated launch impulse: 0.15 for snappy, weighted physical slingshot feel
+    const impulse = clampedDist * 0.15 * piece.speedMulti;
     const angle = Math.atan2(pullY, pullX);
 
     piece.vx = Math.cos(angle) * impulse;
     piece.vy = Math.sin(angle) * impulse;
 
-    // Cap maximum speed to 11.4 so pieces move decisively while remaining trackable
+    // Cap maximum speed to 13 for fast, decisive movement
     const speed = Math.hypot(piece.vx, piece.vy);
-    const maxSpeed = 11.4;
+    const maxSpeed = 13;
     if (speed > maxSpeed) {
       piece.vx = (piece.vx / speed) * maxSpeed;
       piece.vy = (piece.vy / speed) * maxSpeed;
