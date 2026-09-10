@@ -1936,8 +1936,8 @@ button {
 /* Main Grid & Stage */
 .play-arena-main-grid {
   display: grid;
-  grid-template-columns: 1fr 340px;
-  gap: 24px;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
   align-items: start;
 }
 
@@ -1949,13 +1949,68 @@ button {
   position: relative;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), inset 0 0 80px rgba(0, 0, 0, 0.7);
   aspect-ratio: 1 / 1;
-  max-width: 720px;
+  max-width: min(720px, calc(100vh - 260px));
   width: 100%;
   margin: 0 auto;
-  min-height: 520px;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: max-width 0.3s var(--ease-spring);
+}
+
+/* Board Resize Control */
+.board-resize-strip {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 0 4px;
+}
+
+.board-resize-strip .resize-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-right: auto;
+}
+
+.board-resize-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
+  font-size: 1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  line-height: 1;
+}
+
+.board-resize-btn:hover {
+  border-color: var(--border-hover);
+  background: var(--muted);
+}
+
+.board-resize-btn:active {
+  transform: scale(0.92);
+}
+
+.board-size-indicator {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  min-width: 32px;
+  text-align: center;
 }
 
 .arena-canvas-stage canvas {

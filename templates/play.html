@@ -177,11 +177,19 @@
       </div>
     </div>
 
+    <!-- Board Size Control -->
+    <div class="board-resize-strip">
+      <span class="resize-label">Board Size</span>
+      <button class="board-resize-btn" id="boardShrinkBtn" title="Shrink board">−</button>
+      <span class="board-size-indicator" id="boardSizeLabel">100%</span>
+      <button class="board-resize-btn" id="boardGrowBtn" title="Enlarge board">+</button>
+    </div>
+
     <!-- Main Game Board & Sidebar Grid -->
     <div class="play-arena-main-grid">
       
       <!-- Canvas Board & 2D React Chessboard Container -->
-      <div class="arena-canvas-stage">
+      <div class="arena-canvas-stage" id="arenaCanvasStage">
         <canvas id="archessCanvas"></canvas>
         <div id="reactChessboardRoot" class="react-chessboard-stage" style="display: none;"></div>
       </div>
@@ -300,14 +308,47 @@
   <script src="/static/js/main.js?v=2.2.0"></script>
   <script src="/static/js/auth.js?v=2.2.0"></script>
   <script>
-    // Sync current logged in user name with White player card
     document.addEventListener('DOMContentLoaded', () => {
+      // Sync current logged in user name with White player card
       setTimeout(() => {
         if (window.ArchessAuth && window.ArchessAuth.currentUser) {
           const wName = document.getElementById('whitePlayerName');
           if (wName) wName.textContent = window.ArchessAuth.currentUser.username;
         }
       }, 500);
+
+      // Board Resize Controls
+      const stage = document.getElementById('arenaCanvasStage');
+      const label = document.getElementById('boardSizeLabel');
+      const shrinkBtn = document.getElementById('boardShrinkBtn');
+      const growBtn = document.getElementById('boardGrowBtn');
+
+      const STEP = 10;
+      const MIN = 60;
+      const MAX = 120;
+      let currentScale = parseInt(localStorage.getItem('archess_board_scale') || '100', 10);
+      currentScale = Math.max(MIN, Math.min(MAX, currentScale));
+
+      function applyBoardScale(scale) {
+        currentScale = Math.max(MIN, Math.min(MAX, scale));
+        const maxPx = Math.round(720 * (currentScale / 100));
+        stage.style.maxWidth = maxPx + 'px';
+        label.textContent = currentScale + '%';
+        localStorage.setItem('archess_board_scale', currentScale);
+        // Re-init canvas to match new size
+        setTimeout(() => {
+          if (window.archessGame && window.archessGame.initCanvasSize) {
+            window.archessGame.initCanvasSize();
+            window.archessGame.resetBoard();
+          }
+        }, 350);
+      }
+
+      shrinkBtn.addEventListener('click', () => applyBoardScale(currentScale - STEP));
+      growBtn.addEventListener('click', () => applyBoardScale(currentScale + STEP));
+
+      // Apply saved scale on load
+      if (currentScale !== 100) applyBoardScale(currentScale);
     });
   </script>
 </body>
