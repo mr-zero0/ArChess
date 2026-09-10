@@ -7,7 +7,7 @@
   <link rel="icon" type="image/png" href="/static/media/logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/style.css?v=2.2.0">
 </head>
 <body>
 
@@ -97,12 +97,13 @@
         </div>
       </div>
 
-      <!-- 2D vs 3D Perspective Mode -->
+      <!-- View Mode: 3D Arena (Physics), 2D Arena (Physics), 2D Classic (FIDE) -->
       <div class="arena-toolbar-group">
         <span style="font-size: 0.8rem; font-weight: 700; color: var(--gold-light); text-transform: uppercase;">View:</span>
         <div class="view-mode-toggle">
-          <button class="view-btn" id="viewMode2D">2D Tactical</button>
-          <button class="view-btn active" id="viewMode3D">3D Isometric</button>
+          <button class="view-btn active" id="viewMode3DArena" data-view="3d-arena">3D Arena</button>
+          <button class="view-btn" id="viewMode2DArena" data-view="2d-arena">⚔️ 2D Arena</button>
+          <button class="view-btn" id="viewMode2DClassic" data-view="2d-classic">♟️ 2D Classic</button>
         </div>
       </div>
 
@@ -116,21 +117,11 @@
         </div>
       </div>
 
-      <!-- Piece Presentation Selector -->
-      <div class="arena-toolbar-group">
-        <span style="font-size: 0.8rem; font-weight: 700; color: var(--gold-light); text-transform: uppercase;">Pieces:</span>
-        <div class="theme-picker-group">
-          <button class="theme-pill-btn theme-piece-btn active" data-piece-theme="classic">Classic</button>
-          <button class="theme-pill-btn theme-piece-btn" data-piece-theme="outline">Outline</button>
-          <button class="theme-pill-btn theme-piece-btn" data-piece-theme="mono">Mono</button>
-        </div>
-      </div>
-
       <!-- Re-rack Button -->
       <div class="arena-toolbar-group">
         <button class="btn-icon-small" id="arenaResetBtn">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-          <span>Reset 32 Pieces</span>
+          <span>Reset Board</span>
         </button>
       </div>
 
@@ -144,7 +135,7 @@
         <div id="arenaPieceCounts" style="font-size: 0.82rem; color: var(--text-secondary); margin-left: 12px;"></div>
       </div>
 
-      <div class="keyboard-hints-badge">
+      <div class="keyboard-hints-badge" id="arenaControlHints">
         <span>Controls:</span>
         <span class="kbd-key">Drag / Mouse</span>
         <span class="kbd-key">Tab</span> Cycle
@@ -156,9 +147,10 @@
     <!-- Main Game Board & Sidebar Grid -->
     <div class="play-arena-main-grid">
       
-      <!-- Canvas Board -->
+      <!-- Canvas Board & 2D React Chessboard Container -->
       <div class="arena-canvas-stage">
         <canvas id="archessCanvas"></canvas>
+        <div id="reactChessboardRoot" class="react-chessboard-stage" style="display: none;"></div>
       </div>
 
       <!-- Match Sidebar -->
@@ -185,18 +177,43 @@
           </div>
         </div>
 
-        <!-- Telemetry Panel -->
-        <div class="telemetry-panel" style="height: 480px;">
-          <div class="telemetry-header">
+        <!-- Captured Casualties & Material Advantage Card -->
+        <div class="sidebar-casualties-card">
+          <div class="casualties-header">
             <h4>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-              <span>Live Telemetry Feed</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg>
+              <span>Battle Casualties</span>
             </h4>
-            <span class="tag-badge" style="padding: 2px 8px; font-size: 0.68rem;">STREAMING</span>
+            <span class="advantage-badge" id="materialAdvantageBadge">Balanced</span>
           </div>
-          <div class="telemetry-stream" id="telemetryStream"></div>
+
+          <div class="casualties-body">
+            <div class="army-casualty-row">
+              <div class="army-label">
+                <span class="army-dot white-dot"></span>
+                <span>White Fallen</span>
+              </div>
+              <div class="casualty-rack" id="whiteCasualtyRack">
+                <span class="no-casualties">No casualties yet</span>
+              </div>
+            </div>
+
+            <div class="army-casualty-row">
+              <div class="army-label">
+                <span class="army-dot black-dot"></span>
+                <span>Black Fallen</span>
+              </div>
+              <div class="casualty-rack" id="blackCasualtyRack">
+                <span class="no-casualties">No casualties yet</span>
+              </div>
+            </div>
+          </div>
         </div>
 
+        <!-- Match Mode Context Note -->
+        <div style="font-size: 0.76rem; color: var(--text-muted); text-align: center; padding: 6px 10px; border-top: 1px solid var(--border-subtle); margin-top: 2px;">
+          Physics Combat (3D &amp; 2D Arena) &bull; Standard FIDE (2D Classic) &bull; <a href="/arsenal" style="color: var(--gold-light); text-decoration: none;">View Codex &rarr;</a>
+        </div>
       </div>
 
     </div>
@@ -245,9 +262,10 @@
   </div>
 
   <!-- Scripts -->
-  <script src="/static/js/game.js"></script>
-  <script src="/static/js/main.js"></script>
-  <script src="/static/js/auth.js"></script>
+  <script src="/static/js/react-chessboard-bundle.js?v=2.2.0"></script>
+  <script src="/static/js/game.js?v=2.2.0"></script>
+  <script src="/static/js/main.js?v=2.2.0"></script>
+  <script src="/static/js/auth.js?v=2.2.0"></script>
   <script>
     // Sync current logged in user name with White player card
     document.addEventListener('DOMContentLoaded', () => {

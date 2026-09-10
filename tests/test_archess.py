@@ -23,7 +23,7 @@ from backend.database import (
     log_telemetry_event,
     get_connection
 )
-from backend.logger import TrackerJsonFormatter
+from backend.logger import TrackerJsonFormatter, cleanup_old_logs
 import logging
 
 @pytest.fixture
@@ -183,3 +183,43 @@ def test_logger_json_format():
     parsed2 = json.loads(out2)
     assert parsed2["level"] == "WARNING"
     assert parsed2["message"] == "Simple plain warning message"
+
+def test_cleanup_old_logs_retention(tmp_path):
+    """Verify cleanup_old_logs prunes expired runs and caps daily runs while preserving active run."""
+    import shutil
+    
+    mock_logs = tmp_path / "Logs"
+    # Create old run (2020)
+    old_run = mock_logs / "2020" / "Jan" / "01_Logs" / "Run01"
+    old_run.mkdir(parents=True)
+    (old_run / "app.log").write_text("old test log line\n", encoding="utf-8")
+    
+    # Create multiple runs for today
+    today_dir = mock_logs / "2026" / "Sep" / "10_Logs"
+    run1 = today_dir / "Run01"
+    run2 = today_dir / "Run02"
+    run3 = today_dir / "Run03"
+    for r in [run1, run2, run3]:
+        r.mkdir(parents=True)
+        (r / "app.log").write_text("today run\n", encoding="utf-8")
+        
+    # Run cleanup with retention_days=7, max_runs_per_day=2, protecting run3
+    stats = cleanup_old_logs(
+        base_logs_dir=str(mock_logs),
+        retention_days=7,
+        max_runs_per_day=2,
+        current_run_dir=str(run3)
+    )
+    
+    assert stats["deleted_runs"] >= 2
+    # Old 2020 run must be deleted
+    assert not old_run.exists()
+    # 2020 parent folder should be pruned
+    assert not (mock_logs / "2020").exists()
+    # run3 must be preserved as it is active
+    assert run3.exists()
+    # Only 2 runs should remain in today_dir (Run03 and Run02)
+    remaining_today = [p.name for p in today_dir.iterdir() if p.is_dir()]
+    assert len(remaining_today) <= 2
+    assert "Run03" in remaining_today
+    assert "Run01" not in remaining_today

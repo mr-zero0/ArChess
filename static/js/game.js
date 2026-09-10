@@ -197,6 +197,8 @@ class ArchessArena {
     this.isDragging = false;
     this.dragStart = { x: 0, y: 0 };
     this.dragCurrent = { x: 0, y: 0 };
+    this.dragScreenAnchor = { x: 0, y: 0 };
+    this.dragScreenCurrent = { x: 0, y: 0 };
 
     this.particles = [];
     this.damageNumbers = [];
@@ -222,11 +224,52 @@ class ArchessArena {
   initCanvasSize() {
     const rect = this.canvas.parentElement.getBoundingClientRect();
     this.width = rect.width;
-    this.height = rect.height || 600;
+    this.height = rect.height || rect.width || 600;
     this.dpr = window.devicePixelRatio || 1;
     this.canvas.width = this.width * this.dpr;
     this.canvas.height = this.height * this.dpr;
+    if (this.ctx.resetTransform) {
+      this.ctx.resetTransform();
+    } else {
+      this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    }
     this.ctx.scale(this.dpr, this.dpr);
+  }
+
+  getBoardLayout() {
+    const minDim = Math.min(this.width, this.height);
+    const boardSize = Math.max(300, minDim - 36);
+    const originX = (this.width - boardSize) / 2;
+    const originY = (this.height - boardSize) / 2;
+    const borderSize = Math.max(24, Math.round(boardSize * 0.052));
+    const gridOriginX = originX + borderSize;
+    const gridOriginY = originY + borderSize;
+    const gridSize = boardSize - borderSize * 2;
+    const sqSize = gridSize / 8;
+
+    return {
+      boardSize,
+      originX,
+      originY,
+      borderSize,
+      gridOriginX,
+      gridOriginY,
+      gridSize,
+      sqSize
+    };
+  }
+
+  getMaterialDiff() {
+    const values = { pawn: 1, knight: 3, bishop: 3, rook: 5, queen: 9, king: 0 };
+    let whiteMat = 0;
+    let blackMat = 0;
+    this.pieces.forEach(p => {
+      if (!p.dead) {
+        if (p.team === 'white') whiteMat += (values[p.type] || 0);
+        else blackMat += (values[p.type] || 0);
+      }
+    });
+    return whiteMat - blackMat;
   }
 
   logTelemetry(type, message) {
@@ -244,10 +287,9 @@ class ArchessArena {
    */
   init32Pieces() {
     this.pieces = [];
-    const sqW = (this.width - 80) / 8;
-    const sqH = (this.height - 80) / 8;
-    const marginX = 40;
-    const marginY = 40;
+    this.capturedPieces = { white: [], black: [] };
+    const layout = this.getBoardLayout();
+    const sqSize = layout.sqSize;
 
     const backRankOrder = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook'];
     const glyphs = {
@@ -256,19 +298,19 @@ class ArchessArena {
     };
 
     const pieceArchetypes = {
-      pawn:   { mass: 1.0, speed: 1.1, bounce: 0.72, hp: 45,  radius: 17 },
-      knight: { mass: 1.3, speed: 1.38, bounce: 0.9, hp: 75,  radius: 20 },
-      bishop: { mass: 1.0, speed: 1.48, bounce: 0.95, hp: 65, radius: 19 },
-      rook:   { mass: 2.3, speed: 0.92, bounce: 0.55, hp: 95, radius: 22 },
-      queen:  { mass: 1.7, speed: 1.42, bounce: 0.82, hp: 120, radius: 24 },
-      king:   { mass: 2.6, speed: 0.78, bounce: 0.65, hp: 160, radius: 25 }
+      pawn:   { mass: 1.0, speed: 1.1,  bounce: 0.72, hp: 45,  radius: Math.round(sqSize * 0.32) },
+      knight: { mass: 1.3, speed: 1.38, bounce: 0.90, hp: 75,  radius: Math.round(sqSize * 0.36) },
+      bishop: { mass: 1.0, speed: 1.48, bounce: 0.95, hp: 65,  radius: Math.round(sqSize * 0.35) },
+      rook:   { mass: 2.3, speed: 0.92, bounce: 0.55, hp: 95,  radius: Math.round(sqSize * 0.37) },
+      queen:  { mass: 1.7, speed: 1.42, bounce: 0.82, hp: 120, radius: Math.round(sqSize * 0.40) },
+      king:   { mass: 2.6, speed: 0.78, bounce: 0.65, hp: 160, radius: Math.round(sqSize * 0.42) }
     };
 
     // Helper to spawn a piece
     const spawnPiece = (team, type, col, row, id) => {
       const arch = pieceArchetypes[type];
-      const x = marginX + col * sqW + sqW / 2;
-      const y = marginY + row * sqH + sqH / 2;
+      const x = layout.gridOriginX + col * sqSize + sqSize / 2;
+      const y = layout.gridOriginY + row * sqSize + sqSize / 2;
 
       this.pieces.push({
         id: id,
@@ -313,6 +355,7 @@ class ArchessArena {
 
   setRenderMode(mode) {
     this.renderMode = mode;
+    this.initCanvasSize();
     this.logTelemetry('MODE_CHANGE', `Renderer set to ${mode.toUpperCase()} view.`);
   }
 
@@ -491,6 +534,7 @@ class ArchessArena {
 
   resetBoard() {
     this.init32Pieces();
+    this.capturedPieces = { white: [], black: [] };
     this.particles = [];
     this.damageNumbers = [];
     this.currentTurn = 'white';
@@ -505,6 +549,9 @@ class ArchessArena {
     clearTimeout(this.botTimeout);
     this.botThinking = false;
     this.updateHUD();
+    if (this.onResetArena) {
+      this.onResetArena();
+    }
     this.logTelemetry('RESET', 'Board reset to standard 32-piece tournament arrangement.');
   }
 
@@ -516,15 +563,19 @@ class ArchessArena {
       return { x: x, y: y - elevation };
     }
 
-    // 3D Isometric perspective transform
+    const layout = this.getBoardLayout();
     const centerX = this.width / 2;
     const centerY = this.height / 2;
-    const nx = (x - centerX) / (this.width / 2);
-    const ny = (y - centerY) / (this.height / 2);
 
-    const pitch = 0.58; // Vertical perspective compression
-    const sx = centerX + nx * (this.width * 0.44);
-    const sy = centerY + ny * (this.height * 0.38) * pitch + 25 - elevation;
+    const nx = (x - centerX) / (layout.boardSize / 2);
+    const ny = (y - centerY) / (layout.boardSize / 2);
+
+    const pitch = 0.68;
+    const scale = 0.86;
+    const depth = 1 + ny * 0.18;
+
+    const sx = centerX + nx * (layout.boardSize / 2) * scale * depth;
+    const sy = centerY + ny * (layout.boardSize / 2) * scale * pitch + 16 - elevation * depth;
 
     return { x: sx, y: sy };
   }
@@ -534,16 +585,18 @@ class ArchessArena {
       return { x: sx, y: sy };
     }
 
-    // Inverse of 3D projection
+    const layout = this.getBoardLayout();
     const centerX = this.width / 2;
     const centerY = this.height / 2;
-    const pitch = 0.58;
+    const pitch = 0.68;
+    const scale = 0.86;
 
-    const nx = (sx - centerX) / (this.width * 0.44);
-    const ny = (sy - centerY - 25) / ((this.height * 0.38) * pitch);
+    const ny = (sy - 16 - centerY) / ((layout.boardSize / 2) * scale * pitch);
+    const depth = 1 + ny * 0.18;
+    const nx = (sx - centerX) / ((layout.boardSize / 2) * scale * (depth || 1));
 
-    const bx = centerX + nx * (this.width / 2);
-    const by = centerY + ny * (this.height / 2);
+    const bx = centerX + nx * (layout.boardSize / 2);
+    const by = centerY + ny * (layout.boardSize / 2);
     return { x: bx, y: by };
   }
 
@@ -555,46 +608,61 @@ class ArchessArena {
       this.initCanvasSize();
     });
 
-    const getBoardPos = (e) => {
+    const getPointerScreenPos = (e) => {
       const rect = this.canvas.getBoundingClientRect();
-      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-      const sx = clientX - rect.left;
-      const sy = clientY - rect.top;
-      return this.fromScreen(sx, sy);
+      const clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches && e.touches.length > 0 ? e.touches[0].clientY : e.clientY;
+      const scaleX = this.width / (rect.width || 1);
+      const scaleY = this.height / (rect.height || 1);
+      return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
+      };
     };
 
     const handlePointerDown = (e) => {
       if (this.isGameOver) return;
       if (this.gameMode === 'bot' && this.currentTurn === 'black') return;
       this.audio.init();
-      const pos = getBoardPos(e);
 
-      // Check if clicking an eligible piece on current turn
+      const screenPos = getPointerScreenPos(e);
+
+      // Check if clicking an eligible piece on current turn (hit-tested in visible screen space)
       const eligiblePieces = this.pieces.filter(p => !p.dead && p.team === this.currentTurn);
       let target = null;
+      let bestDist = Infinity;
+
       for (const p of eligiblePieces) {
-        const dist = Math.hypot(pos.x - p.x, pos.y - p.y);
-        if (dist < p.radius * 1.5) {
+        const pElevation = (this.renderMode === '3d') ? 14 : 0;
+        const pScreen = this.toScreen(p.x, p.y, pElevation);
+        const hitCenterY = this.renderMode === '3d' ? (pScreen.y - p.radius * 0.3) : pScreen.y;
+        const dist = Math.hypot(screenPos.x - pScreen.x, screenPos.y - hitCenterY);
+        const hitRadius = p.radius * (this.renderMode === '3d' ? 1.85 : 1.5);
+
+        if (dist <= hitRadius && dist < bestDist) {
+          bestDist = dist;
           target = p;
-          break;
         }
       }
 
       if (target) {
         this.selectedPiece = target;
         this.isDragging = true;
+        const pElevation = (this.renderMode === '3d') ? 26 : 0;
+        const pScreen = this.toScreen(target.x, target.y, pElevation);
+        this.dragScreenAnchor = { x: pScreen.x, y: pScreen.y };
+        this.dragScreenCurrent = { x: screenPos.x, y: screenPos.y };
         this.dragStart = { x: target.x, y: target.y };
-        this.dragCurrent = { x: pos.x, y: pos.y };
+        this.dragCurrent = { x: target.x, y: target.y };
         this.logTelemetry('PIECE_SELECTED', `Selected ${target.team.toUpperCase()} ${target.type.toUpperCase()} at [${Math.round(target.x)}, ${Math.round(target.y)}]`);
         if (e.cancelable) e.preventDefault();
       }
     };
 
     const handlePointerMove = (e) => {
-      const pos = getBoardPos(e);
       if (this.isDragging && this.selectedPiece) {
-        this.dragCurrent = pos;
+        const screenPos = getPointerScreenPos(e);
+        this.dragScreenCurrent = screenPos;
         if (e.cancelable) e.preventDefault();
       }
     };
@@ -603,12 +671,27 @@ class ArchessArena {
       if (!this.isDragging || !this.selectedPiece) return;
       this.isDragging = false;
 
-      const pullX = this.dragStart.x - this.dragCurrent.x;
-      const pullY = this.dragStart.y - this.dragCurrent.y;
-      const pullDist = Math.hypot(pullX, pullY);
+      const pullScreenX = this.dragScreenAnchor.x - this.dragScreenCurrent.x;
+      const pullScreenY = this.dragScreenAnchor.y - this.dragScreenCurrent.y;
+      const screenDist = Math.hypot(pullScreenX, pullScreenY);
 
-      if (pullDist > 15) {
-        this.launchPiece(this.selectedPiece, pullX, pullY, pullDist);
+      if (screenDist > 14) {
+        const clampedDist = Math.min(screenDist, this.maxPullDistance);
+        if (this.renderMode === '2d') {
+          this.launchPiece(this.selectedPiece, pullScreenX, pullScreenY, clampedDist);
+        } else {
+          // In 3D: Convert screen pull vector into board space isotropically
+          const layout = this.getBoardLayout();
+          const centerY = this.height / 2;
+          const ny = (this.selectedPiece.y - centerY) / (layout.boardSize / 2);
+          const depth = 1 + ny * 0.20;
+          const pitch = 0.58;
+          const scale = 0.86;
+
+          const pullBoardX = (pullScreenX / screenDist) / (scale * depth) * clampedDist;
+          const pullBoardY = (pullScreenY / screenDist) / (scale * pitch) * clampedDist;
+          this.launchPiece(this.selectedPiece, pullBoardX, pullBoardY, clampedDist);
+        }
       }
       this.selectedPiece = null;
     };
@@ -735,7 +818,11 @@ class ArchessArena {
      Physics Update & Collision Solver
   ------------------------------------------------------------- */
   updatePhysics(dt) {
-    const margin = 35;
+    const layout = this.getBoardLayout();
+    const minX = layout.gridOriginX;
+    const maxX = layout.gridOriginX + layout.gridSize;
+    const minY = layout.gridOriginY;
+    const maxY = layout.gridOriginY + layout.gridSize;
     let anyInMotion = false;
 
     // Movement & Wall bouncing
@@ -769,16 +856,16 @@ class ArchessArena {
         const isBishop = p.type === 'bishop';
         const bounceCoeff = isBishop ? Math.min(1.15, p.bounce * 1.15) : p.bounce;
 
-        if (p.x - p.radius < margin) {
-          p.x = margin + p.radius;
+        if (p.x - p.radius < minX) {
+          p.x = minX + p.radius;
           p.vx = -p.vx * bounceCoeff;
           if (isBishop) {
             this.spawnImpactParticles(p.x, p.y, 8, false);
             this.logTelemetry('PRISM_SURGE', 'Bishop gained +15% Prism Surge on wall reflection!');
           }
           this.audio.playBounce();
-        } else if (p.x + p.radius > this.width - margin) {
-          p.x = this.width - margin - p.radius;
+        } else if (p.x + p.radius > maxX) {
+          p.x = maxX - p.radius;
           p.vx = -p.vx * bounceCoeff;
           if (isBishop) {
             this.spawnImpactParticles(p.x, p.y, 8, false);
@@ -787,16 +874,16 @@ class ArchessArena {
           this.audio.playBounce();
         }
 
-        if (p.y - p.radius < margin) {
-          p.y = margin + p.radius;
+        if (p.y - p.radius < minY) {
+          p.y = minY + p.radius;
           p.vy = -p.vy * bounceCoeff;
           if (isBishop) {
             this.spawnImpactParticles(p.x, p.y, 8, false);
             this.logTelemetry('PRISM_SURGE', 'Bishop gained +15% Prism Surge on wall reflection!');
           }
           this.audio.playBounce();
-        } else if (p.y + p.radius > this.height - margin) {
-          p.y = this.height - margin - p.radius;
+        } else if (p.y + p.radius > maxY) {
+          p.y = maxY - p.radius;
           p.vy = -p.vy * bounceCoeff;
           if (isBishop) {
             this.spawnImpactParticles(p.x, p.y, 8, false);
@@ -937,6 +1024,11 @@ class ArchessArena {
                     p.hp = 0;
                     this.spawnImpactParticles(p.x, p.y, 35, true);
                     this.audio.playShatter();
+                    if (!this.capturedPieces) this.capturedPieces = { white: [], black: [] };
+                    this.capturedPieces[p.team].push(p.type);
+                    if (this.onPieceCaptured) {
+                      this.onPieceCaptured(p.team, p.type, this.getMaterialDiff());
+                    }
                     this.logTelemetry('ELIMINATION', `[!] ${p.team.toUpperCase()} ${p.type.toUpperCase()} shattered and removed from board.`);
                     if (p.type === 'king') {
                       this.handleKingElimination(p);
@@ -1007,62 +1099,185 @@ class ArchessArena {
   }
 
   /* -------------------------------------------------------------
-     Rendering (Board, Squares, Pieces, 3D Elevation, Trajectory)
+     Rendering (Board, Squares, Staunton Vector Pieces, 3D Slab)
   ------------------------------------------------------------- */
   renderBoard() {
     const ctx = this.ctx;
-    const margin = 35;
-    const boardW = this.width - margin * 2;
-    const boardH = this.height - margin * 2;
+    const layout = this.getBoardLayout();
+    const { boardSize, originX, originY, borderSize, gridOriginX, gridOriginY, gridSize, sqSize } = layout;
 
-    // Theme Palettes
+    // Theme Palettes (Unified with React Chessboard theme)
     const palettes = {
       midnight: {
-        darkSq: 'rgba(15, 19, 29, 0.85)',
-        lightSq: 'rgba(28, 35, 52, 0.55)',
-        border: 'rgba(212, 175, 55, 0.45)',
-        grid: 'rgba(212, 175, 55, 0.08)'
+        darkSq: '#1e2632',
+        lightSq: '#364353',
+        borderBg: '#0f141c',
+        borderColor: '#d4af37',
+        inlayColor: 'rgba(212, 175, 55, 0.35)',
+        gridLine: 'rgba(212, 175, 55, 0.10)',
+        coordText: '#f5e29f',
+        slabSide: '#080c14'
       },
       woodland: {
-        darkSq: 'rgba(65, 42, 25, 0.9)',
-        lightSq: 'rgba(195, 155, 110, 0.85)',
-        border: 'rgba(218, 165, 32, 0.55)',
-        grid: 'rgba(0, 0, 0, 0.15)'
+        darkSq: '#8b5a2b',
+        lightSq: '#e0c9a6',
+        borderBg: '#3d2514',
+        borderColor: '#c68a4c',
+        inlayColor: 'rgba(218, 165, 32, 0.40)',
+        gridLine: 'rgba(0, 0, 0, 0.15)',
+        coordText: '#f5dfb8',
+        slabSide: '#201209'
       },
       ivory: {
-        darkSq: 'rgba(24, 28, 36, 0.92)',
-        lightSq: 'rgba(235, 230, 218, 0.9)',
-        border: 'rgba(200, 205, 215, 0.5)',
-        grid: 'rgba(0, 0, 0, 0.1)'
+        darkSq: '#4f5d75',
+        lightSq: '#e8edf3',
+        borderBg: '#1e2229',
+        borderColor: '#98a6bd',
+        inlayColor: 'rgba(200, 210, 225, 0.35)',
+        gridLine: 'rgba(0, 0, 0, 0.12)',
+        coordText: '#d8dee9',
+        slabSide: '#11141a'
       }
     };
     const pal = palettes[this.boardTheme] || palettes.midnight;
 
-    // Base background
-    ctx.fillStyle = '#06070a';
+    // 1. Stage background clear
+    ctx.fillStyle = '#050608';
     ctx.fillRect(0, 0, this.width, this.height);
 
-    // 8x8 squares
-    const sqW = boardW / 8;
-    const sqH = boardH / 8;
+    // 2. In 3D mode: Draw Physical 3D Extruded Board Slab (thickness & bevels)
+    if (this.renderMode === '3d') {
+      const slabDepth = 20;
+      // Bottom 4 corners of slab
+      const b1 = this.toScreen(originX, originY, -slabDepth);
+      const b2 = this.toScreen(originX + boardSize, originY, -slabDepth);
+      const b3 = this.toScreen(originX + boardSize, originY + boardSize, -slabDepth);
+      const b4 = this.toScreen(originX, originY + boardSize, -slabDepth);
 
+      // Top 4 corners of slab
+      const t1 = this.toScreen(originX, originY, 0);
+      const t2 = this.toScreen(originX + boardSize, originY, 0);
+      const t3 = this.toScreen(originX + boardSize, originY + boardSize, 0);
+      const t4 = this.toScreen(originX, originY + boardSize, 0);
+
+      // Deep ground contact shadow underneath slab
+      ctx.beginPath();
+      ctx.moveTo(b1.x - 14, b1.y + 8);
+      ctx.lineTo(b2.x + 14, b2.y + 8);
+      ctx.lineTo(b3.x + 20, b3.y + 12);
+      ctx.lineTo(b4.x - 20, b4.y + 12);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+      ctx.fill();
+
+      // Left Bevel Face (t1 -> t4 -> b4 -> b1)
+      ctx.beginPath();
+      ctx.moveTo(t1.x, t1.y);
+      ctx.lineTo(t4.x, t4.y);
+      ctx.lineTo(b4.x, b4.y);
+      ctx.lineTo(b1.x, b1.y);
+      ctx.closePath();
+      const leftGrad = ctx.createLinearGradient(t1.x, 0, t4.x, 0);
+      leftGrad.addColorStop(0, pal.slabSide);
+      leftGrad.addColorStop(1, pal.borderBg);
+      ctx.fillStyle = leftGrad;
+      ctx.fill();
+      ctx.strokeStyle = pal.borderColor;
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      // Right Bevel Face (t2 -> t3 -> b3 -> b2)
+      ctx.beginPath();
+      ctx.moveTo(t2.x, t2.y);
+      ctx.lineTo(t3.x, t3.y);
+      ctx.lineTo(b3.x, b3.y);
+      ctx.lineTo(b2.x, b2.y);
+      ctx.closePath();
+      const rightGrad = ctx.createLinearGradient(t2.x, 0, t3.x, 0);
+      rightGrad.addColorStop(0, pal.slabSide);
+      rightGrad.addColorStop(1, pal.borderBg);
+      ctx.fillStyle = rightGrad;
+      ctx.fill();
+      ctx.strokeStyle = pal.borderColor;
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      // Front Bevel Face (t4 -> t3 -> b3 -> b4)
+      ctx.beginPath();
+      ctx.moveTo(t4.x, t4.y);
+      ctx.lineTo(t3.x, t3.y);
+      ctx.lineTo(b3.x, b3.y);
+      ctx.lineTo(b4.x, b4.y);
+      ctx.closePath();
+      const frontGrad = ctx.createLinearGradient(0, t4.y, 0, b4.y);
+      frontGrad.addColorStop(0, pal.borderBg);
+      frontGrad.addColorStop(1, pal.slabSide);
+      ctx.fillStyle = frontGrad;
+      ctx.fill();
+      ctx.strokeStyle = pal.borderColor;
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+    }
+
+    // 3. Outer Frame (Wood/Obsidian Bevel)
+    if (this.renderMode === '2d') {
+      // Outer shadow
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+      ctx.shadowBlur = 25;
+      ctx.fillStyle = pal.borderBg;
+      ctx.fillRect(originX, originY, boardSize, boardSize);
+      ctx.shadowBlur = 0;
+
+      // Outer bezel stroke
+      ctx.strokeStyle = pal.borderColor;
+      ctx.lineWidth = 2.5;
+      ctx.strokeRect(originX, originY, boardSize, boardSize);
+
+      // Inlay stringing
+      ctx.strokeStyle = pal.inlayColor;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(originX + 5, originY + 5, boardSize - 10, boardSize - 10);
+      ctx.strokeRect(gridOriginX - 3, gridOriginY - 3, gridSize + 6, gridSize + 6);
+    } else {
+      // 3D Top Frame Quad
+      const t1 = this.toScreen(originX, originY);
+      const t2 = this.toScreen(originX + boardSize, originY);
+      const t3 = this.toScreen(originX + boardSize, originY + boardSize);
+      const t4 = this.toScreen(originX, originY + boardSize);
+
+      ctx.beginPath();
+      ctx.moveTo(t1.x, t1.y);
+      ctx.lineTo(t2.x, t2.y);
+      ctx.lineTo(t3.x, t3.y);
+      ctx.lineTo(t4.x, t4.y);
+      ctx.closePath();
+      ctx.fillStyle = pal.borderBg;
+      ctx.fill();
+      ctx.strokeStyle = pal.borderColor;
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+    }
+
+    // 4. 8x8 Board Squares
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
         const isDark = (r + c) % 2 === 1;
         const color = isDark ? pal.darkSq : pal.lightSq;
+        const sqX = gridOriginX + c * sqSize;
+        const sqY = gridOriginY + r * sqSize;
 
         if (this.renderMode === '2d') {
           ctx.fillStyle = color;
-          ctx.fillRect(margin + c * sqW, margin + r * sqH, sqW, sqH);
-          ctx.strokeStyle = pal.grid;
-          ctx.lineWidth = 1;
-          ctx.strokeRect(margin + c * sqW, margin + r * sqH, sqW, sqH);
+          ctx.fillRect(sqX, sqY, sqSize, sqSize);
+          ctx.strokeStyle = pal.gridLine;
+          ctx.lineWidth = 0.8;
+          ctx.strokeRect(sqX, sqY, sqSize, sqSize);
         } else {
-          // 3D Quad Projection for each square
-          const p1 = this.toScreen(margin + c * sqW, margin + r * sqH);
-          const p2 = this.toScreen(margin + (c + 1) * sqW, margin + r * sqH);
-          const p3 = this.toScreen(margin + (c + 1) * sqW, margin + (r + 1) * sqH);
-          const p4 = this.toScreen(margin + c * sqW, margin + (r + 1) * sqH);
+          // 3D Quad Projection
+          const p1 = this.toScreen(sqX, sqY);
+          const p2 = this.toScreen(sqX + sqSize, sqY);
+          const p3 = this.toScreen(sqX + sqSize, sqY + sqSize);
+          const p4 = this.toScreen(sqX, sqY + sqSize);
 
           ctx.beginPath();
           ctx.moveTo(p1.x, p1.y);
@@ -1070,92 +1285,479 @@ class ArchessArena {
           ctx.lineTo(p3.x, p3.y);
           ctx.lineTo(p4.x, p4.y);
           ctx.closePath();
-
           ctx.fillStyle = color;
           ctx.fill();
-          ctx.strokeStyle = pal.grid;
-          ctx.lineWidth = 1;
+          ctx.strokeStyle = pal.gridLine;
+          ctx.lineWidth = 0.8;
           ctx.stroke();
         }
       }
     }
 
-    // Outer Perimeter Cushion Border
+    // 5. Cushion Perimeter Border
     if (this.renderMode === '2d') {
-      ctx.strokeStyle = pal.border;
-      ctx.lineWidth = 3;
-      ctx.strokeRect(margin, margin, boardW, boardH);
+      ctx.strokeStyle = pal.borderColor;
+      ctx.lineWidth = 2.2;
+      ctx.strokeRect(gridOriginX, gridOriginY, gridSize, gridSize);
     } else {
-      const b1 = this.toScreen(margin, margin);
-      const b2 = this.toScreen(this.width - margin, margin);
-      const b3 = this.toScreen(this.width - margin, this.height - margin);
-      const b4 = this.toScreen(margin, this.height - margin);
+      const g1 = this.toScreen(gridOriginX, gridOriginY);
+      const g2 = this.toScreen(gridOriginX + gridSize, gridOriginY);
+      const g3 = this.toScreen(gridOriginX + gridSize, gridOriginY + gridSize);
+      const g4 = this.toScreen(gridOriginX, gridOriginY + gridSize);
 
       ctx.beginPath();
-      ctx.moveTo(b1.x, b1.y);
-      ctx.lineTo(b2.x, b2.y);
-      ctx.lineTo(b3.x, b3.y);
-      ctx.lineTo(b4.x, b4.y);
+      ctx.moveTo(g1.x, g1.y);
+      ctx.lineTo(g2.x, g2.y);
+      ctx.lineTo(g3.x, g3.y);
+      ctx.lineTo(g4.x, g4.y);
       ctx.closePath();
-      ctx.strokeStyle = pal.border;
-      ctx.lineWidth = 3;
+      ctx.strokeStyle = pal.borderColor;
+      ctx.lineWidth = 2.2;
       ctx.stroke();
+    }
+
+    // 6. Alphanumeric Rank & File Coordinates (Standard Bottom a-h and Left 1-8 only)
+    const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+    const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
+    const coordFontSize = Math.max(10, Math.round(sqSize * (this.renderMode === '3d' ? 0.20 : 0.22)));
+    ctx.font = `700 ${coordFontSize}px Outfit, sans-serif`;
+    ctx.fillStyle = pal.coordText;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const borderOffset = borderSize * 0.44;
+
+    // File labels (standard bottom border only)
+    for (let c = 0; c < 8; c++) {
+      const fx = gridOriginX + c * sqSize + sqSize / 2;
+      const btmPos = this.toScreen(fx, originY + boardSize - borderOffset);
+      ctx.fillText(files[c], btmPos.x, btmPos.y);
+    }
+
+    // Rank labels (standard left border only)
+    for (let r = 0; r < 8; r++) {
+      const fy = gridOriginY + r * sqSize + sqSize / 2;
+      const leftPos = this.toScreen(originX + borderOffset, fy);
+      ctx.fillText(ranks[r], leftPos.x, leftPos.y);
     }
   }
 
   renderTrajectory() {
-    let sourcePiece = this.selectedPiece;
-    let pullX = 0;
-    let pullY = 0;
-    let dist = 0;
+    const sourcePiece = this.selectedPiece;
+    if (!sourcePiece) return;
 
-    if (this.isDragging && sourcePiece) {
-      pullX = this.dragStart.x - this.dragCurrent.x;
-      pullY = this.dragStart.y - this.dragCurrent.y;
-      dist = Math.hypot(pullX, pullY);
-    } else if (this.keyboardAiming && sourcePiece) {
-      dist = this.keyboardAimPower * this.maxPullDistance;
-      pullX = Math.cos(this.keyboardAimAngle) * dist;
-      pullY = Math.sin(this.keyboardAimAngle) * dist;
-    } else {
-      return;
+    let dirScreenX = 0;
+    let dirScreenY = 0;
+    let powerRatio = 0;
+    let active = false;
+
+    if (this.isDragging) {
+      const pullScreenX = this.dragScreenAnchor.x - this.dragScreenCurrent.x;
+      const pullScreenY = this.dragScreenAnchor.y - this.dragScreenCurrent.y;
+      const screenDist = Math.hypot(pullScreenX, pullScreenY);
+      if (screenDist >= 10) {
+        active = true;
+        const clampedDist = Math.min(screenDist, this.maxPullDistance);
+        powerRatio = clampedDist / this.maxPullDistance;
+        dirScreenX = pullScreenX / screenDist;
+        dirScreenY = pullScreenY / screenDist;
+      }
+    } else if (this.keyboardAiming) {
+      active = true;
+      powerRatio = this.keyboardAimPower;
+      const boardDirX = Math.cos(this.keyboardAimAngle);
+      const boardDirY = Math.sin(this.keyboardAimAngle);
+      if (this.renderMode === '2d') {
+        dirScreenX = boardDirX;
+        dirScreenY = boardDirY;
+      } else {
+        const layout = this.getBoardLayout();
+        const centerY = this.height / 2;
+        const ny = (sourcePiece.y - centerY) / (layout.boardSize / 2);
+        const depth = 1 + ny * 0.18;
+        const pitch = 0.68;
+        const scale = 0.86;
+        const sx = boardDirX * scale * depth;
+        const sy = boardDirY * scale * pitch;
+        const sHypot = Math.hypot(sx, sy) || 1;
+        dirScreenX = sx / sHypot;
+        dirScreenY = sy / sHypot;
+      }
     }
 
-    if (dist < 8) return;
-
-    const clampedDist = Math.min(dist, this.maxPullDistance);
-    const powerRatio = clampedDist / this.maxPullDistance;
-    const angle = Math.atan2(pullY, pullX);
-    const aimLen = 140 + powerRatio * 160;
-
-    const start = this.toScreen(sourcePiece.x, sourcePiece.y, this.renderMode === '3d' ? 12 : 0);
-    const end = this.toScreen(
-      sourcePiece.x + Math.cos(angle) * aimLen,
-      sourcePiece.y + Math.sin(angle) * aimLen,
-      this.renderMode === '3d' ? 12 : 0
-    );
+    if (!active) return;
 
     const ctx = this.ctx;
     ctx.save();
 
-    // Dotted Aim Vector
+    const elevation = this.renderMode === '3d' ? (this.isDragging ? 26 : 14) : 0;
+    const start = this.toScreen(sourcePiece.x, sourcePiece.y, elevation);
+    const aimLen = 120 + powerRatio * 170;
+    const end = {
+      x: start.x + dirScreenX * aimLen,
+      y: start.y + dirScreenY * aimLen
+    };
+
+    const isMaxPower = powerRatio > 0.85;
+    const themeColor = isMaxPower ? '#ff3b4e' : '#ffd700';
+
+    // 1. Dotted Aim Vector
     ctx.beginPath();
-    ctx.setLineDash([5, 7]);
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = powerRatio > 0.85 ? '#ff3b4e' : '#ffd700';
+    ctx.setLineDash([6, 8]);
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = themeColor;
+    ctx.shadowColor = themeColor;
+    ctx.shadowBlur = 10;
     ctx.moveTo(start.x, start.y);
     ctx.lineTo(end.x, end.y);
     ctx.stroke();
     ctx.setLineDash([]);
+    ctx.shadowBlur = 0;
 
-    // Power Ring around piece
+    // 2. Trajectory Arrowhead
+    const arrowAngle = Math.atan2(dirScreenY, dirScreenX);
+    const arrowLen = 14;
     ctx.beginPath();
-    ctx.arc(start.x, start.y, sourcePiece.radius + 10, 0, Math.PI * 2 * powerRatio);
-    ctx.strokeStyle = powerRatio > 0.85 ? '#ff3b4e' : '#f5df88';
+    ctx.fillStyle = themeColor;
+    ctx.moveTo(end.x, end.y);
+    ctx.lineTo(
+      end.x - arrowLen * Math.cos(arrowAngle - Math.PI / 6),
+      end.y - arrowLen * Math.sin(arrowAngle - Math.PI / 6)
+    );
+    ctx.lineTo(
+      end.x - arrowLen * Math.cos(arrowAngle + Math.PI / 6),
+      end.y - arrowLen * Math.sin(arrowAngle + Math.PI / 6)
+    );
+    ctx.closePath();
+    ctx.fill();
+
+    // 3. Power Reticle around piece
+    const layout = this.getBoardLayout();
+    const centerY = this.height / 2;
+    const ny = (sourcePiece.y - centerY) / (layout.boardSize / 2);
+    const depth = this.renderMode === '3d' ? (1 + ny * 0.18) : 1;
+    const pitch = this.renderMode === '3d' ? 0.68 : 1;
+
+    ctx.beginPath();
+    const ringRadius = (sourcePiece.radius + 12) * depth;
+    ctx.ellipse(start.x, start.y, ringRadius, ringRadius * pitch, 0, 0, Math.PI * 2 * powerRatio);
+    ctx.strokeStyle = isMaxPower ? '#ff3b4e' : '#f5df88';
     ctx.lineWidth = 3;
+    ctx.shadowColor = themeColor;
+    ctx.shadowBlur = 8;
     ctx.stroke();
+    ctx.shadowBlur = 0;
 
     ctx.restore();
+  }
+
+  /* -------------------------------------------------------------
+     Authentic Staunton Vector Piece Renderer
+  ------------------------------------------------------------- */
+  drawStauntonPiece(ctx, type, team, radius, theme) {
+    const isWhite = team === 'white';
+    const R = radius;
+
+    let bodyGrad, strokeColor, detailColor, highlightColor;
+
+    if (theme === 'classic') {
+      if (isWhite) {
+        // Luxury warm ivory & polished gold
+        bodyGrad = ctx.createLinearGradient(-R * 0.4, -R, R * 0.4, R);
+        bodyGrad.addColorStop(0, '#ffffff');
+        bodyGrad.addColorStop(0.35, '#faf6ea');
+        bodyGrad.addColorStop(0.75, '#edd9a3');
+        bodyGrad.addColorStop(1, '#bfa048');
+
+        strokeColor = '#5c4815';
+        detailColor = 'rgba(92, 72, 21, 0.45)';
+        highlightColor = 'rgba(255, 255, 255, 0.75)';
+      } else {
+        // Polished obsidian onyx & anthracite with crimson rim
+        bodyGrad = ctx.createLinearGradient(-R * 0.4, -R, R * 0.4, R);
+        bodyGrad.addColorStop(0, '#363e52');
+        bodyGrad.addColorStop(0.35, '#1e2330');
+        bodyGrad.addColorStop(0.8, '#10131c');
+        bodyGrad.addColorStop(1, '#07090e');
+
+        strokeColor = '#ff4757';
+        detailColor = 'rgba(255, 71, 87, 0.55)';
+        highlightColor = 'rgba(255, 255, 255, 0.4)';
+      }
+    } else if (theme === 'outline') {
+      const neonColor = isWhite ? '#ffd700' : '#ff4655';
+      bodyGrad = isWhite ? 'rgba(255, 215, 0, 0.12)' : 'rgba(255, 70, 85, 0.12)';
+      strokeColor = neonColor;
+      detailColor = neonColor;
+      highlightColor = 'transparent';
+      ctx.shadowColor = neonColor;
+      ctx.shadowBlur = 8;
+    } else { // mono
+      bodyGrad = isWhite ? '#ffffff' : '#10131c';
+      strokeColor = isWhite ? '#080a10' : '#ffffff';
+      detailColor = strokeColor;
+      highlightColor = 'transparent';
+    }
+
+    ctx.fillStyle = bodyGrad;
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = Math.max(1.5, R * 0.08);
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    // 1. Multi-Tiered Pedestal Base
+    ctx.beginPath();
+    ctx.ellipse(0, R * 0.54, R * 0.70, R * 0.20, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.ellipse(0, R * 0.40, R * 0.54, R * 0.14, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // 2. Specific Piece Body Geometry
+    switch (type) {
+      case 'pawn': {
+        // Tapered body
+        ctx.beginPath();
+        ctx.moveTo(-R * 0.42, R * 0.40);
+        ctx.quadraticCurveTo(-R * 0.14, R * 0.10, -R * 0.20, -R * 0.10);
+        ctx.lineTo(R * 0.20, -R * 0.10);
+        ctx.quadraticCurveTo(R * 0.14, R * 0.10, R * 0.42, R * 0.40);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Neck collar ring
+        ctx.beginPath();
+        ctx.ellipse(0, -R * 0.10, R * 0.26, R * 0.08, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Spherical head
+        ctx.beginPath();
+        ctx.arc(0, -R * 0.46, R * 0.32, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Specular gleam on head
+        if (theme === 'classic') {
+          ctx.beginPath();
+          ctx.ellipse(-R * 0.10, -R * 0.56, R * 0.12, R * 0.07, -0.4, 0, Math.PI * 2);
+          ctx.fillStyle = highlightColor;
+          ctx.fill();
+        }
+        break;
+      }
+
+      case 'rook': {
+        // Fortified tower body
+        ctx.beginPath();
+        ctx.moveTo(-R * 0.46, R * 0.40);
+        ctx.lineTo(-R * 0.34, -R * 0.22);
+        ctx.lineTo(R * 0.34, -R * 0.22);
+        ctx.lineTo(R * 0.46, R * 0.40);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Cornice ledge
+        ctx.beginPath();
+        ctx.rect(-R * 0.44, -R * 0.30, R * 0.88, R * 0.08);
+        ctx.fill();
+        ctx.stroke();
+
+        // Crenellated battlements (4 merlons, 3 embrasures)
+        ctx.beginPath();
+        ctx.moveTo(-R * 0.44, -R * 0.30);
+        ctx.lineTo(-R * 0.44, -R * 0.64);
+        ctx.lineTo(-R * 0.24, -R * 0.64);
+        ctx.lineTo(-R * 0.24, -R * 0.48);
+        ctx.lineTo(-R * 0.10, -R * 0.48);
+        ctx.lineTo(-R * 0.10, -R * 0.64);
+        ctx.lineTo(R * 0.10, -R * 0.64);
+        ctx.lineTo(R * 0.10, -R * 0.48);
+        ctx.lineTo(R * 0.24, -R * 0.48);
+        ctx.lineTo(R * 0.24, -R * 0.64);
+        ctx.lineTo(R * 0.44, -R * 0.64);
+        ctx.lineTo(R * 0.44, -R * 0.30);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Tower arrow-slit window
+        ctx.beginPath();
+        ctx.rect(-R * 0.06, -R * 0.08, R * 0.12, R * 0.26);
+        ctx.fillStyle = detailColor;
+        ctx.fill();
+        break;
+      }
+
+      case 'knight': {
+        // Sculpted Staunton equine silhouette
+        ctx.beginPath();
+        ctx.moveTo(-R * 0.42, R * 0.40);
+        ctx.quadraticCurveTo(-R * 0.52, R * 0.05, -R * 0.40, -R * 0.30);
+        ctx.lineTo(-R * 0.32, -R * 0.66);
+        ctx.lineTo(-R * 0.18, -R * 0.48);
+        ctx.quadraticCurveTo(-R * 0.02, -R * 0.62, R * 0.22, -R * 0.40);
+        ctx.quadraticCurveTo(R * 0.48, -R * 0.22, R * 0.44, -R * 0.06);
+        ctx.lineTo(R * 0.26, -R * 0.02);
+        ctx.quadraticCurveTo(R * 0.34, R * 0.12, R * 0.14, R * 0.18);
+        ctx.quadraticCurveTo(R * 0.04, R * 0.28, R * 0.38, R * 0.40);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Eye detailing
+        ctx.beginPath();
+        ctx.arc(R * 0.08, -R * 0.30, R * 0.06, 0, Math.PI * 2);
+        ctx.fillStyle = detailColor;
+        ctx.fill();
+
+        // Mane notch lines
+        ctx.beginPath();
+        ctx.moveTo(-R * 0.38, -R * 0.18);
+        ctx.lineTo(-R * 0.20, -R * 0.14);
+        ctx.moveTo(-R * 0.42, 0);
+        ctx.lineTo(-R * 0.24, 0.04);
+        ctx.strokeStyle = detailColor;
+        ctx.stroke();
+        break;
+      }
+
+      case 'bishop': {
+        // Flared body
+        ctx.beginPath();
+        ctx.moveTo(-R * 0.44, R * 0.40);
+        ctx.quadraticCurveTo(-R * 0.14, R * 0.12, -R * 0.22, -R * 0.08);
+        ctx.lineTo(R * 0.22, -R * 0.08);
+        ctx.quadraticCurveTo(R * 0.14, R * 0.12, R * 0.44, R * 0.40);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Neck collar ring
+        ctx.beginPath();
+        ctx.ellipse(0, -R * 0.08, R * 0.28, R * 0.08, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Mitre cap
+        ctx.beginPath();
+        ctx.ellipse(0, -R * 0.44, R * 0.30, R * 0.34, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Mitre diagonal cross-cut notch
+        ctx.beginPath();
+        ctx.moveTo(R * 0.04, -R * 0.58);
+        ctx.lineTo(R * 0.26, -R * 0.36);
+        ctx.lineWidth = Math.max(1.8, R * 0.09);
+        ctx.strokeStyle = detailColor;
+        ctx.stroke();
+
+        // Finial orb at apex
+        ctx.beginPath();
+        ctx.arc(0, -R * 0.82, R * 0.09, 0, Math.PI * 2);
+        ctx.fillStyle = isWhite ? '#ffd700' : '#ff4757';
+        ctx.fill();
+        ctx.stroke();
+        break;
+      }
+
+      case 'queen': {
+        // Elegant hourglass gown
+        ctx.beginPath();
+        ctx.moveTo(-R * 0.46, R * 0.40);
+        ctx.quadraticCurveTo(-R * 0.14, R * 0.12, -R * 0.24, -R * 0.10);
+        ctx.lineTo(R * 0.24, -R * 0.10);
+        ctx.quadraticCurveTo(R * 0.14, R * 0.12, R * 0.46, R * 0.40);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Regal waist band
+        ctx.beginPath();
+        ctx.ellipse(0, -R * 0.10, R * 0.30, R * 0.08, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // 5-Point Sovereign Coronet
+        ctx.beginPath();
+        ctx.moveTo(-R * 0.40, -R * 0.10);
+        ctx.lineTo(-R * 0.46, -R * 0.54);
+        ctx.lineTo(-R * 0.24, -R * 0.30);
+        ctx.lineTo(-R * 0.16, -R * 0.64);
+        ctx.lineTo(0, -R * 0.32);
+        ctx.lineTo(0, -R * 0.72);
+        ctx.lineTo(0, -R * 0.32);
+        ctx.lineTo(R * 0.16, -R * 0.64);
+        ctx.lineTo(R * 0.24, -R * 0.30);
+        ctx.lineTo(R * 0.46, -R * 0.54);
+        ctx.lineTo(R * 0.40, -R * 0.10);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Jewels on coronet points
+        const pearls = [
+          [-R * 0.46, -R * 0.54],
+          [-R * 0.16, -R * 0.64],
+          [0, -R * 0.72],
+          [R * 0.16, -R * 0.64],
+          [R * 0.46, -R * 0.54]
+        ];
+        pearls.forEach(([px, py]) => {
+          ctx.beginPath();
+          ctx.arc(px, py, R * 0.065, 0, Math.PI * 2);
+          ctx.fillStyle = isWhite ? '#ffd700' : '#ff4757';
+          ctx.fill();
+          ctx.stroke();
+        });
+        break;
+      }
+
+      case 'king': {
+        // Grand stately mantle
+        ctx.beginPath();
+        ctx.moveTo(-R * 0.50, R * 0.40);
+        ctx.quadraticCurveTo(-R * 0.18, R * 0.12, -R * 0.28, -R * 0.10);
+        ctx.lineTo(R * 0.28, -R * 0.10);
+        ctx.quadraticCurveTo(R * 0.18, R * 0.12, R * 0.50, R * 0.40);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Regal collar
+        ctx.beginPath();
+        ctx.ellipse(0, -R * 0.10, R * 0.34, R * 0.08, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Crown dome
+        ctx.beginPath();
+        ctx.ellipse(0, -R * 0.38, R * 0.32, R * 0.24, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Crown arch rib lines
+        ctx.beginPath();
+        ctx.moveTo(-R * 0.22, -R * 0.38);
+        ctx.quadraticCurveTo(0, -R * 0.58, R * 0.22, -R * 0.38);
+        ctx.strokeStyle = detailColor;
+        ctx.stroke();
+
+        // Cross Pattée Finial
+        ctx.fillStyle = isWhite ? '#ffd700' : '#ff4757';
+        ctx.fillRect(-R * 0.05, -R * 0.88, R * 0.10, R * 0.26);
+        ctx.fillRect(-R * 0.15, -R * 0.80, R * 0.30, R * 0.09);
+        break;
+      }
+    }
+
+    ctx.shadowBlur = 0;
   }
 
   renderPiece(p) {
@@ -1164,112 +1766,93 @@ class ArchessArena {
     const isWhite = p.team === 'white';
     const isSelected = p === this.selectedPiece;
 
-    // 3D elevation height
-    const elevation = this.renderMode === '3d' ? 10 : 0;
+    // 3D elevation height: Lift piece higher when dragged for tactile feedback
+    const elevation = this.renderMode === '3d' ? (isSelected && this.isDragging ? 26 : 14) : 0;
     const basePos = this.toScreen(p.x, p.y, 0);
     const screenPos = this.toScreen(p.x, p.y, elevation);
 
+    // Perspective depth scaling in 3D
+    const layout = this.getBoardLayout();
+    const centerY = this.height / 2;
+    const ny = (p.y - centerY) / (layout.boardSize / 2);
+    const depthScale = this.renderMode === '3d' ? (1 + ny * 0.18) : 1;
+
     ctx.save();
 
-    // 3D Cast Shadow on board
+    // 3D Cast Shadow on board ground surface
     if (this.renderMode === '3d') {
       ctx.beginPath();
-      ctx.ellipse(basePos.x, basePos.y + 2, p.radius * 1.1, p.radius * 0.55, 0, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+      const shadowRadiusX = p.radius * (isSelected && this.isDragging ? 1.25 : 1.05) * depthScale;
+      const shadowRadiusY = p.radius * (isSelected && this.isDragging ? 0.55 : 0.44) * depthScale;
+      ctx.ellipse(basePos.x + 1, basePos.y + 3, shadowRadiusX, shadowRadiusY, 0, 0, Math.PI * 2);
+      ctx.fillStyle = isSelected && this.isDragging ? 'rgba(0, 0, 0, 0.40)' : 'rgba(0, 0, 0, 0.62)';
+      ctx.fill();
+    } else {
+      // 2D subtle ambient contact shadow
+      ctx.beginPath();
+      ctx.ellipse(screenPos.x, screenPos.y + p.radius * 0.45, p.radius * 0.85, p.radius * 0.28, 0, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
       ctx.fill();
     }
 
     ctx.translate(screenPos.x, screenPos.y);
+    if (depthScale !== 1) {
+      ctx.scale(depthScale, depthScale);
+    }
 
-    // Selection Halo
+    // Selection Halo (Smooth Golden Pulse)
     if (isSelected) {
       ctx.beginPath();
-      ctx.arc(0, 0, p.radius + 8, 0, Math.PI * 2);
+      ctx.ellipse(0, p.radius * 0.48, p.radius * 1.05, p.radius * 0.35, 0, 0, Math.PI * 2);
       ctx.strokeStyle = '#ffd700';
-      ctx.lineWidth = 2.5;
-      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 2.8;
+      ctx.shadowColor = '#ffd700';
+      ctx.shadowBlur = 14;
       ctx.stroke();
-      ctx.setLineDash([]);
+      ctx.shadowBlur = 0;
     }
 
     // Hit Flash
     if (p.hitFlash > 0) {
       ctx.beginPath();
       ctx.arc(0, 0, p.radius + 6, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255, 50, 50, ${p.hitFlash * 0.5})`;
+      ctx.fillStyle = `rgba(255, 60, 60, ${p.hitFlash * 0.5})`;
       ctx.fill();
     }
 
-    // Piece Presentation Themes
-    if (this.pieceTheme === 'classic') {
-      // Shaded 3D Disc
-      ctx.beginPath();
-      ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
-      const grad = ctx.createRadialGradient(-p.radius * 0.3, -p.radius * 0.3, 2, 0, 0, p.radius);
-      if (isWhite) {
-        grad.addColorStop(0, '#ffffff');
-        grad.addColorStop(0.6, '#f3e1a0');
-        grad.addColorStop(1, '#9b7920');
-        ctx.fillStyle = grad;
-        ctx.shadowColor = 'rgba(212, 175, 55, 0.4)';
-        ctx.shadowBlur = 10;
-      } else {
-        grad.addColorStop(0, '#323746');
-        grad.addColorStop(0.6, '#131620');
-        grad.addColorStop(1, '#080a0e');
-        ctx.fillStyle = grad;
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
-        ctx.shadowBlur = 8;
-      }
-      ctx.fill();
-      ctx.strokeStyle = isWhite ? '#ffd700' : '#4e5a77';
-      ctx.lineWidth = 2;
-      ctx.stroke();
+    // Draw the Master Staunton Vector Silhouette
+    this.drawStauntonPiece(ctx, p.type, p.team, p.radius, this.pieceTheme);
 
-    } else if (this.pieceTheme === 'outline') {
-      // Glowing Neon Wireframe
-      ctx.beginPath();
-      ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
-      ctx.fillStyle = isWhite ? 'rgba(255, 215, 0, 0.08)' : 'rgba(255, 70, 85, 0.08)';
-      ctx.fill();
-      ctx.strokeStyle = isWhite ? '#ffd700' : '#ff4655';
-      ctx.lineWidth = 2.5;
-      ctx.shadowColor = isWhite ? '#ffd700' : '#ff4655';
-      ctx.shadowBlur = 12;
-      ctx.stroke();
+    // Mini Health Bar & Numeric Durability Badge (Always shown in Arena mode)
+    const barW = p.radius * 1.8;
+    const barH = 4;
+    const barY = -p.radius * 1.25;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+    ctx.fillRect(-barW / 2, barY, barW, barH);
+    const hpRatio = Math.max(0, Math.min(1, p.hp / p.maxHp));
+    ctx.fillStyle = hpRatio > 0.6 ? '#10b981' : (hpRatio > 0.25 ? '#f59e0b' : '#ff3b4e');
+    ctx.fillRect(-barW / 2, barY, barW * hpRatio, barH);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.lineWidth = 0.8;
+    ctx.strokeRect(-barW / 2, barY, barW, barH);
 
-    } else { // 'mono'
-      ctx.beginPath();
-      ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
-      ctx.fillStyle = isWhite ? '#ffffff' : '#11141c';
-      ctx.fill();
-      ctx.strokeStyle = isWhite ? '#000000' : '#ffffff';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }
-
-    // Piece Glyph
-    ctx.shadowBlur = 0;
-    ctx.font = `bold ${Math.round(p.radius * 1.25)}px Outfit, sans-serif`;
-    ctx.fillStyle = isWhite ? '#0a0c12' : '#f0f3fa';
-    if (this.pieceTheme === 'outline') {
-      ctx.fillStyle = isWhite ? '#ffd700' : '#ff4655';
-    }
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(p.glyph, 0, 1);
-
-    // Mini Health Bar
-    if (p.hp < p.maxHp) {
-      const barW = p.radius * 2;
-      const barH = 4;
-      const barY = -p.radius - 8;
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-      ctx.fillRect(-barW / 2, barY, barW, barH);
-      const hpRatio = Math.max(0, p.hp / p.maxHp);
-      ctx.fillStyle = isWhite ? '#ffd700' : '#ff3b4e';
-      ctx.fillRect(-barW / 2, barY, barW * hpRatio, barH);
-    }
+    // HP Numeric Pill at top-right of piece
+    ctx.save();
+    ctx.font = `800 ${Math.max(9, Math.round(p.radius * 0.42))}px monospace`;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    const hpText = `${Math.round(p.hp)}`;
+    const textW = ctx.measureText(hpText).width;
+    const pillX = p.radius * 0.95;
+    const pillY = -p.radius * 1.15;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+    ctx.fillRect(pillX - textW - 4, pillY, textW + 4, 11);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.lineWidth = 0.6;
+    ctx.strokeRect(pillX - textW - 4, pillY, textW + 4, 11);
+    ctx.fillStyle = hpRatio > 0.6 ? '#6ee7b7' : (hpRatio > 0.25 ? '#fcd34d' : '#fca5a5');
+    ctx.fillText(hpText, pillX - 2, pillY + 1);
+    ctx.restore();
 
     ctx.restore();
   }
@@ -1318,8 +1901,12 @@ class ArchessArena {
     this.renderBoard();
     this.renderTrajectory();
 
-    // Sort pieces by Y for proper 3D depth layering
-    const sortedPieces = [...this.pieces].sort((a, b) => a.y - b.y);
+    // Sort pieces by Y for proper 3D depth layering (dragged piece on top)
+    const sortedPieces = [...this.pieces].sort((a, b) => {
+      if (a === this.selectedPiece && this.isDragging) return 1;
+      if (b === this.selectedPiece && this.isDragging) return -1;
+      return a.y - b.y;
+    });
     sortedPieces.forEach(p => this.renderPiece(p));
 
     this.renderVFX();

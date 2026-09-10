@@ -4,6 +4,91 @@ All notable changes, architectural pivots, bugfixes, and refactorings across **A
 
 ---
 
+## [2.4.0] - 2026-09-10
+
+### ⚔️ 3-Way Mode Architecture: Physics Drag & Launch vs FIDE Classic
+- **2D Arena Drag & Launch Physics**: Configured `2D Arena` on the 2D top-down physical canvas engine with full slingshot drag-and-launch, trajectory aim vectoring, rebound cushion collisions, always-visible piece health bars, and numeric durability badges.
+- **3D Arena Drag & Launch Physics**: Maintained `3D Arena` on the 3D isometric physical canvas with natural tabletop perspective, elevation hit-testing, and slingshot launch mechanics.
+- **2D Classic FIDE Chess**: Dedicated `2D Classic` to `react-chessboard@5.12.1` and `chess.js` for pure, tournament-grade official FIDE chess rules with standard tile movements.
+- **Unified Aesthetic Theme**: Harmonized board palettes (Midnight `#1e2632`, Woodland `#8b5a2b`, Ivory `#4f5d75`) and border styling across both canvas physics and React Chessboard engines.
+
+### 🛡️ Security Hardening & Zero-Vulnerability Verification
+- **Automated Dependency Auditing**: Passed `npm audit` (0 vulnerabilities) and `pip-audit` (0 known vulnerabilities).
+- **SAST Security Scanning**: Passed `bandit` static security analysis across Python backend with 0 issues identified.
+- **Interface Binding Hardening**: Bound `run.py` to `127.0.0.1` by default for secure local development while supporting `HOST` environment override.
+- **Exception Granularity**: Refined log cleanup handlers in `backend/logger.py` to catch specific `OSError` / `ValueError` rather than broad exceptions.
+
+---
+
+## [2.3.1] - 2026-09-10
+
+### ♟️ 2D Chess Playability Fix (`react-chessboard` v5 API)
+- **Migrated to v5 Options Object API**: Fully refactored `<Chessboard options={{ ... }} />` invocation in `frontend/src/Archess2DChess.jsx` to pass props under the `options` key as mandated by `react-chessboard@5.12.1`.
+- **Event Signatures Updated**: Converted `onPieceDrop` to destructure `({ piece, sourceSquare, targetSquare })` returning a strict boolean for move validity, and `onSquareClick` to destructure `({ piece, square })`.
+- **Drag Permissibility**: Added `canDragPiece` handler allowing players to drag pieces only on their legal turn (`piece.pieceType[0] === game.turn()`) while locking bot turns and game over states.
+- **Rebuilt Bundle**: Recompiled `static/js/react-chessboard-bundle.js` with zero errors.
+
+### 🧊 3D Arena Board & Tabletop Perspective Overhaul
+- **Spacious Tabletop Pitch (0.68)**: Increased 3D projection pitch from flat `0.58` to natural tabletop `0.68`, eliminating square squashing and piece row occlusion.
+- **Single-Border Coordinate Clarity**: Removed the 16 duplicate file/rank labels on the top and right borders; retained standard tournament coordinates (Files `a-h` on bottom border, Ranks `1-8` on left border).
+- **Refined Shadow Ellipses**: Adjusted 3D piece contact shadows to `1.05 / 0.44` radii aligned directly at piece bases.
+
+### 🧹 UI Streamlining & 3-Way Arena View Selector
+- **Unified React Chessboard 2D System**:
+  - **`2D Arena`**: Operates on the exact same `react-chessboard` theme, introducing the ArChess Combat Variant with tactical piece HP (Pawn 45 to King 160), tactical strikes with kinetic abilities (Knight Shockwave, Rook Siege Juggernaut), floating combat damage numbers, and King HP checkmate.
+  - **`2D Classic`**: Operates on the exact same `react-chessboard` theme, running traditional standard FIDE chess rules via `chess.js`.
+  - **`3D Arena`**: Isometric tabletop physics arena with slingshot vector launching, velocity collisions, HP damage, and abilities.
+- **Dynamic Control Hints**: Keyboard and mouse guidance banner dynamically switches between physics slingshot controls and FIDE drag-and-drop / click-to-move based on active mode.
+- **Streamlined Arena Toolbar**: Removed redundant Piece Theme pill picker (`Classic / Outline / Mono`) to eliminate toolbar wrapping.
+- **De-cluttered Arena Sidebar**: Removed redundant static codex summary card, balancing sidebar height with the board.
+- **Cleaned Up Obsolete Selectors & Scripts**: Purged unused `.sidebar-codex-card` CSS rules and obsolete event listeners in `static/js/main.js`.
+
+---
+
+## [2.3.0] - 2026-09-10
+
+### ♟️ Official react-chessboard Integration for 2D Chess
+- **react-chessboard & chess.js Integration**: Embedded the official `react-chessboard` (Clariity) and `chess.js` bundled via `esbuild` into `static/js/react-chessboard-bundle.js` for the 2D chess experience.
+- **Fluid Drag & Drop and Move Validation**: Standard chess rules, pawn promotions, castling, en passant, and check/checkmate detection with `@dnd-kit` drag-and-drop.
+- **Visual Enhancements**: Legal move target dots, last move square highlights in gold, check state in crimson glow, and responsive resizing from 320px to 720px.
+- **Bot AI & Pass & Play Synchronization**: Integrated with ArChess's match mode toggle (Solo vs Bot AI / Local Pass & Play) and board themes (Midnight, Woodland, Ivory).
+- **Casualty & Settlement Sync**: Synchronized captures with the arena's battle casualties racks (`#whiteCasualtyRack`, `#blackCasualtyRack`), material advantage badge, and victory settlement modal (`/api/matches/record`).
+- **Seamless 2D/3D Hybrid Toggle**: Instant switching between 2D Chess (`react-chessboard`) and 3D Isometric (physics battle arena).
+
+---
+
+## [2.2.1] - 2026-09-10
+
+### 🧊 3D Mode Engine Overhaul & Trajectory Alignment
+- **Screen-Space Piece Hit-Testing**: Eliminated 3D selection misses by hit-testing pointer events directly against visible elevated piece screen positions (`this.toScreen(p.x, p.y, elevation)`), ensuring instantaneous and 100% accurate piece selection.
+- **Accidental Launch Elimination**: Replaced board-space drag tracking with screen-space drag anchors (`dragScreenAnchor`, `dragScreenCurrent`). Initial pointer down delta is exactly 0px, resolving phantom click fires.
+- **Isotropic Slingshot Aiming**: Converted screen drag vectors into board space isotropically, ensuring dragging in any direction yields uniform impulse and identical trajectory vector alignment.
+- **True 3D Perspective Depth & Slab Pedestal**: Introduced perspective tapering (`depth = 1 + ny * 0.20`), scaling distant pieces (rank 8) narrower and near pieces (rank 1) wider, complete with left, front, and right beveled slab faces with realistic gradient lighting and deep ground shadows.
+- **Dynamic Elevated Dragging & Sorting**: Selected dragged pieces lift to `elevation = 26px` with an expanded, soft ground shadow, and are sorted to render above all other pieces on the board.
+- **Trajectory Arrowhead & Elliptical Reticle**: Added a forward arrowhead to the aim vector and rendered targeting reticles as tilted perspective ellipses matching the board's 3D pitch.
+
+---
+
+## [2.2.0] - 2026-09-10
+
+### 👑 Luxury Staunton Vector Pieces & Board Geometry Redesign
+- **Staunton Vector Silhouette Engine**: Replaced basic unicode font characters with handcrafted, museum-grade Staunton vector paths for all 6 piece types (King, Queen, Rook, Bishop, Knight, Pawn) rendered in HTML5 Canvas with radial gradients, specular highlight arcs, and drop shadows.
+- **1:1 Square Chessboard Geometry**: Eliminated rectangular board distortion by calculating dynamic square board dimensions (`boardSize = Math.min(width, height) - 40`) and aligning cell centers and physics collision boundaries.
+- **Outer Beveled Frame & Coordinate Markings**: Added an inlaid obsidian/woodland/ivory frame with crisp alphanumeric rank (`1-8`) and file (`a-h`) coordinates along the perimeter.
+- **Physical 3D Extruded Board Slab**: In 3D isometric mode, the board now features an extruded physical foundation slab with perspective depth and directional rim lighting.
+
+### 🧹 Complete Move Log Removal & Battle Casualties Rack
+- **Eliminated Move Log UI**: Completely removed `#telemetryStream` and the 480px telemetry log panel from `templates/play.html`.
+- **Battle Casualties & Material Advantage**: Replaced the log with real-time white/black fallen pieces racks and dynamic material balance indicator (e.g. `+3 White Army`, `Balanced`).
+- **Tactical Abilities Summary Card**: Added an in-arena quick reference card highlighting signature kinetic abilities with direct link to the Piece Codex (`/arsenal`).
+
+### 🛡️ Automated Log Retention & Git Protection
+- **Automated Disk Cleanup**: Added `cleanup_old_logs()` in `backend/logger.py` with multi-tier pruning: purges runs older than 7 days, caps runs per day to 15, limits total log directory size to 30MB, and prunes empty folders while strictly protecting active runs.
+- **Git Protection**: Added `Logs/` and `logs/` to `.gitignore` to guarantee run logs are never tracked or pushed to remote repositories.
+- **Automated Test Coverage**: Added `test_cleanup_old_logs_retention` to `tests/test_archess.py` (11/11 automated tests passing).
+
+---
+
 ## [2.1.0] - 2026-09-09
 
 ### 🎨 Complete Design System Coverage

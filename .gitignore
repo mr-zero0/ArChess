@@ -17,9 +17,17 @@ desktop.ini
 
 # Logs & temporary run traces
 *.log
+Logs/
+logs/
 
 # IDE & Editor files
 .vscode/
 .idea/
 *.swp
 *.swo
+
+# Node / Frontend build artifacts
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

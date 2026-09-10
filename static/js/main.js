@@ -118,40 +118,135 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* -------------------------------------------------------------
-     3. Live Telemetry & Observability Feed
+     3. Battle Casualties & Material Advantage Listener
   ------------------------------------------------------------- */
-  const telemetryStream = document.getElementById('telemetryStream');
-  if (arena && telemetryStream) {
-    arena.onTelemetry = (evt) => {
-      const entry = document.createElement('div');
-      entry.className = `telemetry-entry event-${evt.type.toLowerCase()}`;
-      entry.innerHTML = `<span class="ts">[${evt.time}]</span> <strong>[${evt.type}]</strong> ${evt.message}`;
-      telemetryStream.appendChild(entry);
-      telemetryStream.scrollTop = telemetryStream.scrollHeight;
+  const whiteRack = document.getElementById('whiteCasualtyRack');
+  const blackRack = document.getElementById('blackCasualtyRack');
+  const advBadge = document.getElementById('materialAdvantageBadge');
+
+  const pieceGlyphs = {
+    king: '♚', queen: '♛', rook: '♜', bishop: '♝', knight: '♞', pawn: '♟'
+  };
+
+  if (arena) {
+    arena.onPieceCaptured = (team, type, materialDiff) => {
+      const rack = team === 'white' ? whiteRack : blackRack;
+      if (rack) {
+        const noCas = rack.querySelector('.no-casualties');
+        if (noCas) noCas.remove();
+
+        const badge = document.createElement('span');
+        badge.className = `casualty-badge ${team}-piece`;
+        badge.textContent = pieceGlyphs[type] || '♟';
+        badge.title = `${team.toUpperCase()} ${type.toUpperCase()}`;
+        rack.appendChild(badge);
+      }
+
+      if (advBadge) {
+        if (materialDiff > 0) {
+          advBadge.textContent = `+${materialDiff} White`;
+          advBadge.style.color = 'var(--gold-bright)';
+        } else if (materialDiff < 0) {
+          advBadge.textContent = `+${Math.abs(materialDiff)} Black`;
+          advBadge.style.color = 'var(--accent-crimson)';
+        } else {
+          advBadge.textContent = 'Balanced';
+          advBadge.style.color = 'var(--gold-light)';
+        }
+      }
+    };
+
+    arena.onResetArena = () => {
+      if (whiteRack) whiteRack.innerHTML = '<span class="no-casualties">No casualties yet</span>';
+      if (blackRack) blackRack.innerHTML = '<span class="no-casualties">No casualties yet</span>';
+      if (advBadge) {
+        advBadge.textContent = 'Balanced';
+        advBadge.style.color = 'var(--gold-light)';
+      }
     };
   }
 
+  // Cross-engine casualty hook (shared between 2D react-chessboard and 3D arena)
+  window.ArchessCapturedHandler = (team, type, materialDiff) => {
+    if (arena && arena.onPieceCaptured) {
+      arena.onPieceCaptured(team, type, materialDiff);
+    }
+  };
+
   /* -------------------------------------------------------------
-     4. 2D vs 3D Perspective Controls & Themes
+     4. View Mode Controls (3D Arena, 2D Arena, 2D Classic)
   ------------------------------------------------------------- */
-  const view2dBtn = document.getElementById('viewMode2D');
-  const view3dBtn = document.getElementById('viewMode3D');
+  const view3DArenaBtn = document.getElementById('viewMode3DArena');
+  const view2DArenaBtn = document.getElementById('viewMode2DArena');
+  const view2DClassicBtn = document.getElementById('viewMode2DClassic');
+  const archessCanvas = document.getElementById('archessCanvas');
+  const reactChessRoot = document.getElementById('reactChessboardRoot');
+  const kbdHints = document.getElementById('arenaControlHints');
 
-  if (view2dBtn && view3dBtn && arena) {
-    view2dBtn.addEventListener('click', () => {
-      view2dBtn.classList.add('active');
-      view3dBtn.classList.remove('active');
-      arena.setRenderMode('2d');
-      showToast('Switched to 2D Top-Down Tactical View');
+  let activeViewMode = '3d-arena';
+
+  function applyViewMode(mode) {
+    activeViewMode = mode;
+    [view3DArenaBtn, view2DArenaBtn, view2DClassicBtn].forEach(btn => {
+      if (btn) btn.classList.toggle('active', btn.getAttribute('data-view') === mode);
     });
 
-    view3dBtn.addEventListener('click', () => {
-      view3dBtn.classList.add('active');
-      view2dBtn.classList.remove('active');
-      arena.setRenderMode('3d');
-      showToast('Switched to 3D Isometric View');
-    });
+    if (mode === '2d-classic') {
+      // 2D Classic: Mount react-chessboard for standard FIDE chess
+      if (archessCanvas) archessCanvas.style.display = 'none';
+      if (reactChessRoot) {
+        reactChessRoot.style.display = 'flex';
+        const currentTheme = localStorage.getItem('archess_board_theme') || 'midnight';
+        const currentMode = localStorage.getItem('archess_game_mode') || 'bot';
+        if (window.mountArchess2D) {
+          window.mountArchess2D('reactChessboardRoot', { theme: currentTheme, mode: currentMode, variant: 'classic' });
+        }
+        if (window.Archess2DChess && window.Archess2DChess.setVariant) {
+          window.Archess2DChess.setVariant('classic');
+        }
+      }
+      if (kbdHints) {
+        kbdHints.innerHTML = '<span>Controls:</span> <span class="kbd-key">Drag &amp; Drop</span> <span class="kbd-key">Click to Move (Standard FIDE)</span>';
+      }
+      showToast('View: 2D Classic (Standard FIDE Chess)');
+    } else if (mode === '2d-arena') {
+      // 2D Arena: Top-down physical canvas with Drag & Launch Slingshot Impulse!
+      if (reactChessRoot) reactChessRoot.style.display = 'none';
+      if (archessCanvas) {
+        archessCanvas.style.display = 'block';
+        if (arena) {
+          arena.setRenderMode('2d');
+          arena.initCanvasSize();
+        }
+      }
+      if (kbdHints) {
+        kbdHints.innerHTML = '<span>Controls:</span> <span class="kbd-key">Drag &amp; Launch</span> <span class="kbd-key">Slingshot Aim</span> <span class="kbd-key">Kinetic Impulse</span>';
+      }
+      showToast('View: 2D Arena (Drag & Launch Kinetic Combat)');
+    } else {
+      // 3D Arena: Isometric tabletop physics combat on canvas with Drag & Launch!
+      if (reactChessRoot) reactChessRoot.style.display = 'none';
+      if (archessCanvas) {
+        archessCanvas.style.display = 'block';
+        if (arena) {
+          arena.setRenderMode('3d');
+          arena.initCanvasSize();
+        }
+      }
+      if (kbdHints) {
+        kbdHints.innerHTML = '<span>Controls:</span> <span class="kbd-key">Drag &amp; Launch</span> <span class="kbd-key">Tab</span> Cycle <span class="kbd-key">WASD</span> Aim <span class="kbd-key">Space</span> Fire';
+      }
+      showToast('View: 3D Arena (Isometric Slingshot Combat)');
+    }
+    localStorage.setItem('archess_view_mode', mode);
   }
+
+  if (view3DArenaBtn) view3DArenaBtn.addEventListener('click', () => applyViewMode('3d-arena'));
+  if (view2DArenaBtn) view2DArenaBtn.addEventListener('click', () => applyViewMode('2d-arena'));
+  if (view2DClassicBtn) view2DClassicBtn.addEventListener('click', () => applyViewMode('2d-classic'));
+
+  const savedViewMode = localStorage.getItem('archess_view_mode') || '3d-arena';
+  applyViewMode(savedViewMode);
 
   // Game Mode Switcher (vs Bot AI, Pass & Play)
   const modeBtns = document.querySelectorAll('.game-mode-btn');
@@ -161,6 +256,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     if (arena) {
       arena.setGameMode(mode);
+    }
+    if (window.Archess2DChess && window.Archess2DChess.setMode) {
+      window.Archess2DChess.setMode(mode);
     }
     localStorage.setItem('archess_game_mode', mode);
   }
@@ -191,6 +289,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (arena) {
       arena.setBoardTheme(theme);
     }
+    if (window.Archess2DChess && window.Archess2DChess.setTheme) {
+      window.Archess2DChess.setTheme(theme);
+    }
     localStorage.setItem('archess_board_theme', theme);
   }
 
@@ -209,37 +310,17 @@ document.addEventListener('DOMContentLoaded', () => {
     applyBoardTheme(savedTheme.toLowerCase());
   }
 
-  // Piece Presentation Switcher (Classic, Outline, Mono)
-  const pieceThemeBtns = document.querySelectorAll('.theme-piece-btn');
-  function applyPieceTheme(ptheme) {
-    pieceThemeBtns.forEach(b => {
-      b.classList.toggle('active', b.getAttribute('data-piece-theme') === ptheme);
-    });
-    if (arena) {
-      arena.setPieceTheme(ptheme);
-    }
-    localStorage.setItem('archess_piece_theme', ptheme);
-  }
-
-  pieceThemeBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const ptheme = btn.getAttribute('data-piece-theme');
-      applyPieceTheme(ptheme);
-      showToast(`Piece Style: ${ptheme.toUpperCase()}`);
-    });
-  });
-
-  const savedPieceTheme = localStorage.getItem('archess_piece_theme') || 'classic';
-  if (pieceThemeBtns.length > 0 && ['classic', 'outline', 'mono'].includes(savedPieceTheme.toLowerCase())) {
-    applyPieceTheme(savedPieceTheme.toLowerCase());
-  }
-
-  // Reset Arena Button
+  // Reset Arena Button (handles both 2D react-chessboard and physical arena)
   const resetBtn = document.getElementById('arenaResetBtn');
-  if (resetBtn && arena) {
+  if (resetBtn) {
     resetBtn.addEventListener('click', () => {
-      arena.resetBoard();
-      showToast('Board Re-racked to Standard 32-Piece Setup');
+      if ((activeViewMode === '2d-classic' || activeViewMode === '2d-arena') && window.Archess2DChess && window.Archess2DChess.reset) {
+        window.Archess2DChess.reset();
+        showToast(activeViewMode === '2d-arena' ? '2D Arena Combat Board Reset' : '2D Classic Chessboard Reset');
+      } else if (arena) {
+        arena.resetBoard();
+        showToast('Board Re-racked to Standard 32-Piece Setup');
+      }
     });
   }
 
@@ -278,7 +359,11 @@ document.addEventListener('DOMContentLoaded', () => {
   if (playAgainBtn && victoryModal) {
     playAgainBtn.addEventListener('click', () => {
       victoryModal.classList.remove('active');
-      if (arena) arena.resetBoard();
+      if (activeViewMode === '2d' && window.Archess2DChess && window.Archess2DChess.reset) {
+        window.Archess2DChess.reset();
+      } else if (arena) {
+        arena.resetBoard();
+      }
       showToast('Board Re-racked — Ready for Rematch');
     });
   }

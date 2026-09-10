@@ -48,8 +48,9 @@ This document outlines the architectural patterns, component responsibilities, d
 | **`data/`** | Persistent file storage for the SQLite database. | `archess.db` |
 | **`docs/`** | Authoritative documentation suite, product trackers, architectural blueprints, and changelogs. | `TRACKER.md`, `ARCHITECTURE.md`, `CHANGELOG.md` |
 | **`templates/`** | Server-rendered HTML multi-page templates. | `index.html`, `play.html`, `arsenal.html`, `leaderboard.html` |
+| **`frontend/`** | React 19 source code, dependencies (`react-chessboard`, `chess.js`), and `esbuild` build pipeline. | `package.json`, `src/Archess2DChess.jsx` |
 | **`static/css/`** | Styling, typography, luxury dark design system tokens, animations, and responsive media queries. | `style.css` |
-| **`static/js/`** | Interactive client scripts: auth state manager, background canvas motion, side drawer, and 32-piece physics engine. | `main.js`, `auth.js`, `game.js` |
+| **`static/js/`** | Interactive client scripts: auth state manager, background canvas motion, side drawer, 32-piece physics engine, and bundled React 2D chessboard. | `main.js`, `auth.js`, `game.js`, `react-chessboard-bundle.js` |
 | **`static/media/`**| High-resolution visual assets, emblems, and cinematic MP4 gameplay videos. | `Chess_pieces_colliding_on_boad.mp4`, `hero-banner.jpg`, `logo.png`, `logo.jpg` |
 | **`Logs/`** | Generated structured execution logs categorized by date and auto-incrementing process runs. | `YYYY/MMM/DD_Logs/RunXX/app.log` |
 
@@ -153,9 +154,24 @@ $$\vec{v}_2' = \frac{2m_1}{m_1 + m_2}\vec{v}_1 + \frac{m_2 - m_1}{m_1 + m_2}\vec
 
 Damage dealt is proportional to momentum transfer $\Delta p = m \cdot \Delta v$.
 
+### 4. 3D Isometric & Perspective Projection Engine
+In 3D view mode, pieces and board vertices are projected using a natural perspective depth model:
+$$x_{\text{screen}} = x_{\text{center}} + n_x \cdot \frac{W_{\text{board}}}{2} \cdot s \cdot (1 + 0.20 \cdot n_y)$$
+$$y_{\text{screen}} = y_{\text{center}} + n_y \cdot \frac{W_{\text{board}}}{2} \cdot s \cdot p + 24 - \text{elevation} \cdot (1 + 0.20 \cdot n_y)$$
+where $s = 0.86$ is the zoom scale, $p = 0.58$ is the vertical pitch tilt, and $n_y \in [-1, 1]$ represents normalized board depth.
+- **Screen-Space Hit Testing**: Direct distance calculation against elevated screen positions ensures 100% accurate piece selection on all devices.
+- **Isotropic Slingshot Vectoring**: Inverse projection factors map screen drag vectors uniformly into board coordinates, ensuring aim trajectories and physical piece momentum align perfectly with user input across all angles.
+
+### 5. 2D Chess Engine (`react-chessboard` & `chess.js`)
+When switched to 2D Chess view, ArChess mounts the official `react-chessboard` component:
+- **Core Package**: `react-chessboard@5.12.1` by Clariity with `@dnd-kit/core` drag-and-drop.
+- **Rule Engine**: `chess.js@1.4.0` for FEN position serialization, legal move validation, castling, promotion, and checkmate/draw settlement.
+- **Bot AI**: Autonomous tactical heuristic evaluator selecting high-value legal moves with natural 650ms thinking dispersion.
+- **State Synchronization**: Captures, turn changes, and match settlements automatically broadcast to the arena's battle casualties racks, material advantage badge, and victory modal.
+
 ---
 
-## 📊 6. Tracker Logging Standard
+## 📊 6. Tracker Logging Standard & Automated Retention
 
 All process runs auto-discover the current date and append an auto-incrementing `RunXX` directory:
 `Logs/YYYY/MMM/DD_Logs/RunXX/app.log`
@@ -165,3 +181,15 @@ Log entries are emitted as structured JSON lines:
 {"timestamp":"2026-09-09T14:00:18+0530", "level":"INFO", "logger":"ArChess", "message":{"req_id":"3a0066fc-0bd8", "method":"GET", "path":"/style.css", "status":200, "latency_ms":0.58}}
 ```
 Every incoming HTTP request receives an injected `X-Request-ID` and `X-Correlation-ID` for cross-system traceability.
+
+### Automated Log Pruning & Retention Engine
+To prevent unbounded log accumulation on disk:
+- `backend.logger.cleanup_old_logs()` automatically executes on application boot.
+- Runs older than 7 days are automatically pruned.
+- Runs per day are capped at 15 (oldest runs pruned first).
+- Total log directory storage is capped at 30MB.
+- The currently active run directory is strictly protected from deletion.
+- Empty date subdirectories (`DD_Logs`, `MMM`, `YYYY`) are automatically cleaned up.
+
+### Git & Version Control Exclusion
+All log runs are strictly ignored via `.gitignore` (`Logs/`, `logs/`, `*.log`), guaranteeing no runtime logs or diagnostic traces are pushed to GitHub.
