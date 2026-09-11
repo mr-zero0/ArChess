@@ -2,6 +2,41 @@
 
 All notable changes, architectural pivots, bugfixes, and refactorings across **ArChess** are documented in this file.
 
+## [2.6.2] - 2026-09-11
+
+### 🛡️ 3D & 2D Arena Canvas Rendering Loop Resilience & SVG Fix
+- **Fixed SVG className Exception**: Resolved a critical modern browser issue where assigning `ring.className = ...` on the SVG `<circle id="turnTimerRing">` element threw `TypeError: Cannot set property className of #<SVGElement> which has only a getter`. Replaced with standard `ring.setAttribute('class', ...)` in both `loop()` and `resetBoard()`.
+- **Render Loop Exception Resilience**: Wrapped the canvas drawing and physics loop in `try / catch` with safe `dt` guard (`if (!this.lastTime) this.lastTime = timestamp;`) ensuring transient rendering errors never permanently halt the `requestAnimationFrame` loop.
+- **Cache-Busting Assets**: Bumped script query parameters in `templates/play.html` to `?v=2.6.2` to ensure client browsers immediately pull updated JavaScript bundles.
+- **Verified Full Visual Parity**: Confirmed via Chrome headless CDP inspection and screenshots that **3D Arena** (isometric tabletop), **2D Arena** (kinetic combat top-down), and **2D Classic** (official FIDE rules) render all 32 pieces, boards, and UI elements with 100% fidelity.
+
+---
+
+## [2.6.0] - 2026-09-11
+
+### 👑 AAA Commercial-Grade Design System & Typography Suite
+- **Cinzel & Space Grotesk Font Suite**: Integrated Google Fonts (`Cinzel`, `Space Grotesk`, `Outfit`, `JetBrains Mono`) across all views (`index.html`, `play.html`, `arsenal.html`, `leaderboard.html`), elevating ArChess from a portfolio prototype to a commercial gaming portal.
+- **Surface Elevation Hierarchy**: Added CSS tokens `--surface-0`, `--surface-1`, `--surface-2`, `--surface-3` with specular edge lighting (`--specular-edge`) and luxury metallic gradients (`--gold-metallic`, `--crimson-metallic`, `--silver-metallic`).
+- **Glassmorphic Micro-Scrollbars**: Replaced standard browser scrollbars with custom 6px sleek translucent gold tracks and pill thumbs.
+
+### 🎯 Tactical Arena Ergonomics & HUD
+- **Animated Marching-Dash Trajectory**: Upgraded slingshot aiming with dynamic `lineDashOffset` marching animation and a pulsating kinetic beacon on high-power aim vectors.
+- **Floating Tactical Inspection HUD**: Implemented `#tacticalPieceHoverHUD` rendering live archetype cards with animated durability health bars (color-coded green/amber/red), unit roles, and ability descriptions.
+- **Radial Turn Pressure Timer**: Added `#turnTimerRing` SVG countdown circle in `.turn-indicator-bar`, dynamically depleting with warning and critical pulsation.
+- **Grouped Casualty Chips**: Overhauled casualty racks to group fallen pieces into sleek chips (`♟ ×4`, `♞ ×2`) with gold/crimson specular borders.
+
+### 🏆 Post-Match Analytics Debrief & Victory Experience
+- **Match MVP Spotlight**: Implemented `getMatchMVP(winner)` attributing tactical score based on combat damage dealt and eliminations, featuring custom archetype lore and star badges.
+- **Kinetic Force Output Split Bar**: Visual White vs. Black damage distribution chart with percentage breakdown and damage totals.
+- **Rolling Animated ELO Odometer**: Dynamic ticker rolling from `+0 ELO` to match settlement delta.
+- **One-Click Tournament Match Debrief Copy**: `#btnCopyMatchReport` copies structured ASCII match intelligence report to clipboard.
+
+### 🔔 Game Juice, Procedural Audio & Global Toast System
+- **Global Sonner-Style Toast System**: Created `window.ArchessToast` with frosted glass cards, type accents (gold/success/error), icon wrappers, and auto-draining progress bars, replacing raw `alert()` popups.
+- **Organic Pitch Modulation**: Synthesized randomized pitch modulations (`±6%`) in Web Audio procedural sound effects (`playImpact()`, `playBounce()`, `playLaunch()`) and added an contemplative E minor 7 chord for stalemates.
+- **Directional Screen Shake**: Added momentum-scaled camera shakes upon high-velocity strikes and Queen Supernova discharges.
+- **Skeleton Shimmer Loading States**: Embedded shimmering placeholder rows on `/leaderboard` during live database fetches.
+
 ---
 
 ## [2.5.0] - 2026-09-11

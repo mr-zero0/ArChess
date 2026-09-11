@@ -138,9 +138,9 @@ window.ArchessAuth = {
       this.currentUser = data.user;
       this.renderUserBadge();
       this.closeModal();
-      this.showToast(`Welcome back, ${data.user.username}! (ELO: ${data.user.elo_rating})`);
+      this.showToast(`Welcome back, ${data.user.username}! (ELO: ${data.user.elo_rating})`, 'success');
     } catch (err) {
-      alert(err.message);
+      this.showToast(err.message || 'Authentication failed', 'error');
     }
   },
 
@@ -158,9 +158,9 @@ window.ArchessAuth = {
       this.currentUser = data.user;
       this.renderUserBadge();
       this.closeModal();
-      this.showToast(`Account created! Welcome Grandmaster ${data.user.username}!`);
+      this.showToast(`Account created! Welcome Grandmaster ${data.user.username}!`, 'success');
     } catch (err) {
-      alert(err.message);
+      this.showToast(err.message || 'Registration failed', 'error');
     }
   },
 
@@ -279,7 +279,11 @@ window.ArchessAuth = {
     }
   },
 
-  showToast(message) {
+  showToast(message, type = 'info') {
+    if (window.ArchessToast && typeof window.ArchessToast.show === 'function') {
+      window.ArchessToast.show(message, type);
+      return;
+    }
     let toast = document.querySelector('.toast-notice');
     if (!toast) {
       toast = document.createElement('div');

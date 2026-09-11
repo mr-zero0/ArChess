@@ -35,6 +35,13 @@
   --bg-card: rgba(12, 13, 18, 0.78);
   --bg-card-hover: rgba(24, 24, 27, 0.92);
   
+  /* Multi-Tier Spatial Surface Tokens */
+  --surface-0: #06080e;
+  --surface-1: rgba(13, 17, 26, 0.82);
+  --surface-2: rgba(20, 26, 38, 0.88);
+  --surface-3: rgba(28, 36, 52, 0.95);
+  --specular-edge: inset 0 1px 0 rgba(255, 255, 255, 0.10);
+  
   --gold-primary: #d4af37;
   --gold-light: #f5e29f;
   --gold-bright: #ffd700;
@@ -43,6 +50,9 @@
   --gold-border: rgba(212, 175, 55, 0.24);
   --gold-border-bright: rgba(245, 223, 136, 0.75);
   --gold-gradient: linear-gradient(135deg, #f5e4a8 0%, #d4af37 60%, #a88627 100%);
+  --gold-metallic: linear-gradient(135deg, #fff2b2 0%, #e0b042 45%, #b58022 100%);
+  --crimson-metallic: linear-gradient(135deg, #ff8c98 0%, #d82b40 50%, #8c101e 100%);
+  --silver-metallic: linear-gradient(135deg, #f8fafc 0%, #cbd5e1 50%, #94a3b8 100%);
   
   --accent-crimson: #ff4757;
   --accent-cyan: #00d2d3;
@@ -1953,8 +1963,8 @@ button {
   position: relative;
   box-shadow: 0 24px 65px rgba(0, 0, 0, 0.85), inset 0 0 80px rgba(0, 0, 0, 0.7);
   aspect-ratio: 1 / 1;
-  max-width: min(960px, calc(100vh - 210px));
-  min-height: 520px;
+  max-width: min(960px, calc(100vh - 160px));
+  min-height: 380px;
   width: 100%;
   margin: 0 auto;
   display: flex;
@@ -1965,7 +1975,7 @@ button {
 
 @media (min-width: 1440px) {
   .arena-canvas-stage {
-    max-width: min(1040px, calc(100vh - 200px));
+    max-width: min(1040px, calc(100vh - 150px));
   }
 }
 
@@ -3546,4 +3556,508 @@ button {
 
 [data-theme="light"] #statEloChange {
   color: var(--primary);
+}
+
+/* ==========================================================================
+   INDUSTRY-GRADE POLISH: Spatial Depth, HUD Ergonomics & Analytics Debrief
+   ========================================================================== */
+
+/* 1. Sleek Glass Micro-Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.22);
+  border-radius: 9999px;
+  transition: background var(--transition-fast);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 175, 55, 0.65);
+}
+
+/* 2. Turn Momentum Pressure Timer Ring */
+.turn-timer-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+}
+.turn-timer-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 32px;
+  height: 32px;
+  transform: rotate(-90deg);
+  pointer-events: none;
+}
+.turn-timer-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 2.5;
+}
+.turn-timer-circle {
+  fill: none;
+  stroke: var(--gold-bright);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 97.4;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 0.8s linear, stroke 0.3s ease;
+}
+.turn-timer-circle.warning {
+  stroke: #f59e0b;
+  filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.6));
+}
+.turn-timer-circle.critical {
+  stroke: var(--accent-crimson);
+  filter: drop-shadow(0 0 6px rgba(255, 71, 87, 0.8));
+  animation: pulseCritical 0.6s infinite alternate;
+}
+@keyframes pulseCritical {
+  from { stroke-width: 2.5; opacity: 1; }
+  to { stroke-width: 3.5; opacity: 0.7; }
+}
+
+/* 3. Floating Tactical Piece Inspection HUD */
+.tactical-piece-hud {
+  position: absolute;
+  z-index: 90;
+  width: 270px;
+  padding: 14px 16px;
+  background: var(--surface-3);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), var(--specular-edge);
+  pointer-events: none;
+  transition: opacity 0.15s var(--ease-spring), transform 0.15s var(--ease-spring);
+  transform: translate(14px, 14px);
+}
+.tactical-piece-hud.hud-white {
+  border-color: rgba(212, 175, 55, 0.45);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 20px rgba(212, 175, 55, 0.15), var(--specular-edge);
+}
+.tactical-piece-hud.hud-black {
+  border-color: rgba(255, 71, 87, 0.45);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 20px rgba(255, 71, 87, 0.15), var(--specular-edge);
+}
+.hud-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.hud-disc {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 1.25rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.hud-title-col {
+  flex: 1;
+  min-width: 0;
+}
+.hud-name {
+  font-family: var(--font-tech);
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--foreground);
+  letter-spacing: 0.02em;
+}
+.hud-role {
+  font-size: 0.72rem;
+  color: var(--muted-foreground);
+}
+.hud-class-badge {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 9999px;
+  background: rgba(212, 175, 55, 0.12);
+  color: var(--gold-light);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  white-space: nowrap;
+}
+.hud-stat-grid {
+  margin-bottom: 10px;
+}
+.hud-durability-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.73rem;
+  margin-bottom: 4px;
+}
+.hud-lbl {
+  color: var(--muted-foreground);
+  font-weight: 500;
+}
+.hud-val {
+  color: var(--gold-bright);
+  font-weight: 700;
+}
+.hud-hp-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+.hud-hp-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+  border-radius: 9999px;
+  transition: width 0.2s ease;
+}
+.hud-hp-bar.mid {
+  background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+}
+.hud-hp-bar.low {
+  background: linear-gradient(90deg, #ef4444 0%, #f87171 100%);
+}
+.hud-ability-box {
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.hud-ability-tag {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--gold-light);
+  margin-bottom: 2px;
+}
+.hud-ability-desc {
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: #d1d5db;
+}
+
+/* 4. Grouped Casualties Chips */
+.casualty-stack-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: var(--radius-full);
+  transition: transform var(--transition-fast), background var(--transition-fast);
+}
+.casualty-stack-chip:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.10);
+}
+.casualty-stack-chip.white-piece {
+  border-color: rgba(212, 175, 55, 0.35);
+}
+.casualty-stack-chip.black-piece {
+  border-color: rgba(255, 71, 87, 0.35);
+}
+.casualty-glyph {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+.white-piece .casualty-glyph {
+  color: #fff;
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
+}
+.black-piece .casualty-glyph {
+  color: #ff6b7d;
+  text-shadow: 0 0 6px rgba(255, 71, 87, 0.4);
+}
+.casualty-multiplier {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted-foreground);
+}
+
+/* 5. Post-Match Analytics Debrief & MVP Card */
+.victory-mvp-card {
+  margin: 16px 0 12px 0;
+  padding: 14px 16px;
+  background: linear-gradient(145deg, rgba(28, 34, 48, 0.85) 0%, rgba(14, 18, 28, 0.92) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), var(--specular-edge);
+  text-align: left;
+}
+.mvp-header-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.mvp-star-tag {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.10em;
+  color: var(--gold-bright);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.mvp-team-tag {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+.mvp-body {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.mvp-disc {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  font-size: 1.7rem;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.25) 0%, rgba(212, 175, 55, 0.08) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  box-shadow: 0 0 16px rgba(212, 175, 55, 0.3);
+  color: var(--gold-bright);
+  flex-shrink: 0;
+}
+.mvp-info {
+  flex: 1;
+}
+.mvp-name {
+  font-family: var(--font-tech);
+  font-size: 1.02rem;
+  font-weight: 800;
+  color: var(--foreground);
+  margin-bottom: 2px;
+}
+.mvp-stats-row {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--gold-light);
+  margin-bottom: 3px;
+}
+.mvp-desc {
+  font-size: 0.74rem;
+  color: var(--muted-foreground);
+  line-height: 1.35;
+}
+
+/* Kinetic Force Output Split Bar */
+.victory-damage-section {
+  margin: 12px 0 18px 0;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  text-align: left;
+}
+.damage-chart-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  margin-bottom: 8px;
+}
+.damage-split-track {
+  display: flex;
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 9999px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.damage-fill {
+  height: 100%;
+  transition: width 0.8s var(--ease-spring);
+}
+.damage-fill.white-fill {
+  background: var(--gold-metallic);
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.5);
+}
+.damage-fill.black-fill {
+  background: var(--crimson-metallic);
+  box-shadow: 0 0 8px rgba(255, 71, 87, 0.5);
+}
+.damage-chart-legend {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+.legend-unit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.legend-unit .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.white-unit .dot {
+  background: var(--gold-bright);
+}
+.white-unit {
+  color: var(--gold-light);
+}
+.black-unit .dot {
+  background: var(--accent-crimson);
+}
+.black-unit {
+  color: #ff8c98;
+}
+
+/* 6. Global Industry-Grade Toast Notification System */
+.archess-toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 10px;
+  pointer-events: none;
+  max-width: 400px;
+  width: calc(100vw - 48px);
+}
+.archess-toast {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--surface-3);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), var(--specular-edge);
+  pointer-events: auto;
+  animation: toastSlideUp 0.35s var(--ease-spring) forwards;
+  transition: transform 0.25s var(--ease-spring), opacity 0.25s var(--ease-spring);
+}
+.archess-toast.toast-hiding {
+  animation: toastSlideDown 0.25s var(--ease-out) forwards;
+}
+@keyframes toastSlideUp {
+  from { opacity: 0; transform: translateY(20px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes toastSlideDown {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(14px) scale(0.94); }
+}
+.archess-toast.toast-success {
+  border-color: rgba(16, 185, 129, 0.45);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), 0 0 16px rgba(16, 185, 129, 0.15);
+}
+.archess-toast.toast-error {
+  border-color: rgba(239, 68, 68, 0.45);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), 0 0 16px rgba(239, 68, 68, 0.15);
+}
+.archess-toast.toast-gold {
+  border-color: rgba(212, 175, 55, 0.45);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), 0 0 16px rgba(212, 175, 55, 0.15);
+}
+.toast-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  font-size: 0.9rem;
+  background: rgba(255, 255, 255, 0.08);
+}
+.toast-success .toast-icon-wrap {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+.toast-error .toast-icon-wrap {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+.toast-gold .toast-icon-wrap {
+  background: rgba(212, 175, 55, 0.15);
+  color: var(--gold-bright);
+}
+.toast-content-col {
+  flex: 1;
+  min-width: 0;
+}
+.toast-title-text {
+  font-family: var(--font-tech);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--foreground);
+  margin-bottom: 2px;
+}
+.toast-message-body {
+  font-size: 0.78rem;
+  color: var(--muted-foreground);
+  line-height: 1.4;
+}
+.toast-progress-drain {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2.5px;
+  width: 100%;
+  background: rgba(212, 175, 55, 0.45);
+  transform-origin: left;
+  animation: toastDrain var(--toast-duration, 3.2s) linear forwards;
+}
+.toast-success .toast-progress-drain {
+  background: #10b981;
+}
+.toast-error .toast-progress-drain {
+  background: #ef4444;
+}
+@keyframes toastDrain {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+/* 7. Skeleton Shimmer Loading States */
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.skeleton-cell {
+  height: 18px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.04) 25%, rgba(255, 255, 255, 0.10) 50%, rgba(255, 255, 255, 0.04) 75%);
+  background-size: 200% 100%;
+  border-radius: var(--radius-sm);
+  animation: skeletonShimmer 1.5s infinite;
+}
+@keyframes skeletonShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }

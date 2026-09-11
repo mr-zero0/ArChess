@@ -31,3 +31,9 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Test artifacts & scratch tools
+scratch/
+test_*.png
+test_snap.png
+

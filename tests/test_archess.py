@@ -223,3 +223,38 @@ def test_cleanup_old_logs_retention(tmp_path):
     assert len(remaining_today) <= 2
     assert "Run03" in remaining_today
     assert "Run01" not in remaining_today
+
+def test_industry_ui_elements(client):
+    """Verify presence of industry-grade HUD, fonts, debrief, and skeleton states."""
+    # 1. Play Arena UI structure
+    play_res = client.get("/play")
+    assert play_res.status_code == 200
+    play_html = play_res.data.decode("utf-8")
+    assert 'id="turnTimerRing"' in play_html
+    assert 'id="tacticalPieceHoverHUD"' in play_html
+    assert 'id="victoryMvpCard"' in play_html
+    assert 'id="victoryDamageSection"' in play_html
+    assert 'id="btnCopyMatchReport"' in play_html
+    assert 'Cinzel' in play_html and 'Space+Grotesk' in play_html
+
+    # 2. Leaderboard shimmer skeleton structure
+    lead_res = client.get("/leaderboard")
+    assert lead_res.status_code == 200
+    lead_html = lead_res.data.decode("utf-8")
+    assert 'class="skeleton-tr"' in lead_html
+    assert 'class="skeleton-cell"' in lead_html
+    assert 'Cinzel' in lead_html
+
+    # 3. CSS tokens and design system classes
+    css_res = client.get("/static/css/style.css")
+    assert css_res.status_code == 200
+    css = css_res.data.decode("utf-8")
+    assert "--surface-0" in css
+    assert "--surface-1" in css
+    assert "--specular-edge" in css
+    assert "--gold-metallic" in css
+    assert ".archess-toast-container" in css
+    assert ".tactical-piece-hud" in css
+    assert ".casualty-stack-chip" in css
+    assert ".turn-timer-circle" in css
+

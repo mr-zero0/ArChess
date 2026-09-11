@@ -45,11 +45,13 @@ class ArchessAudio {
     if (this.muted || !this.ctx) return;
     try {
       const now = this.ctx.currentTime;
+      // Organic pitch randomization for authentic physical marble/wood acoustics
+      const pitchFactor = 0.92 + Math.random() * 0.16;
       const osc = this.ctx.createOscillator();
       const oscGain = this.ctx.createGain();
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(130, now);
-      osc.frequency.exponentialRampToValueAtTime(40, now + 0.16);
+      osc.frequency.setValueAtTime(130 * pitchFactor, now);
+      osc.frequency.exponentialRampToValueAtTime(40 * pitchFactor, now + 0.16);
       const vol = Math.min(0.45 * intensity, 0.65);
       oscGain.gain.setValueAtTime(vol, now);
       oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
@@ -69,7 +71,7 @@ class ArchessAudio {
       noise.buffer = buffer;
       const noiseFilter = this.ctx.createBiquadFilter();
       noiseFilter.type = 'bandpass';
-      noiseFilter.frequency.setValueAtTime(850, now);
+      noiseFilter.frequency.setValueAtTime(850 * pitchFactor, now);
       noiseFilter.Q.setValueAtTime(3, now);
       const noiseGain = this.ctx.createGain();
       noiseGain.gain.setValueAtTime(vol * 0.5, now);
@@ -85,11 +87,12 @@ class ArchessAudio {
     if (this.muted || !this.ctx) return;
     try {
       const now = this.ctx.currentTime;
+      const bouncePitch = 0.94 + Math.random() * 0.12;
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(290, now);
-      osc.frequency.exponentialRampToValueAtTime(190, now + 0.06);
+      osc.frequency.setValueAtTime(290 * bouncePitch, now);
+      osc.frequency.exponentialRampToValueAtTime(190 * bouncePitch, now + 0.06);
       gain.gain.setValueAtTime(0.12, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
       osc.connect(gain);
@@ -99,17 +102,19 @@ class ArchessAudio {
     } catch(e) {}
   }
 
-  playVictory() {
+  playVictory(isDraw = false) {
     if (this.muted || !this.ctx) return;
     try {
-      const notes = [440, 554.37, 659.25, 880, 1108.73];
+      const notes = isDraw 
+        ? [329.63, 392.00, 493.88, 587.33] // E minor 7 contemplative draw chord
+        : [440, 554.37, 659.25, 880, 1108.73]; // A major triumphant fanfare
       notes.forEach((freq, idx) => {
-        const startTime = this.ctx.currentTime + idx * 0.09;
+        const startTime = this.ctx.currentTime + idx * (isDraw ? 0.12 : 0.09);
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.type = 'triangle';
         osc.frequency.setValueAtTime(freq, startTime);
-        gain.gain.setValueAtTime(0.22, startTime);
+        gain.gain.setValueAtTime(isDraw ? 0.16 : 0.22, startTime);
         gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.4);
         osc.connect(gain);
         gain.connect(this.ctx.destination);
@@ -164,6 +169,7 @@ class ArchessArena {
     if (!this.canvas) return;
     this.ctx = this.canvas.getContext('2d');
     this.audio = new ArchessAudio();
+    window.archessGame = this;
 
     // Mode States
     this.renderMode = '3d'; // '2d' or '3d'
@@ -222,12 +228,25 @@ class ArchessArena {
   }
 
   initCanvasSize() {
-    const rect = this.canvas.parentElement.getBoundingClientRect();
-    this.width = rect.width;
-    this.height = rect.height || rect.width || 600;
+    if (!this.canvas) return;
+    const parent = this.canvas.parentElement;
+    let pw = 0;
+    let ph = 0;
+    if (parent) {
+      const rect = parent.getBoundingClientRect();
+      pw = rect.width;
+      ph = rect.height;
+      if (!pw || pw < 50) pw = parent.clientWidth;
+      if (!ph || ph < 50) ph = parent.clientHeight;
+    }
+    if (!pw || pw < 50) pw = window.innerWidth > 900 ? 760 : Math.max(320, window.innerWidth - 40);
+    if (!ph || ph < 50) ph = pw;
+
+    this.width = Math.round(pw);
+    this.height = Math.round(ph);
     this.dpr = window.devicePixelRatio || 1;
-    this.canvas.width = this.width * this.dpr;
-    this.canvas.height = this.height * this.dpr;
+    this.canvas.width = Math.round(this.width * this.dpr);
+    this.canvas.height = Math.round(this.height * this.dpr);
     if (this.ctx.resetTransform) {
       this.ctx.resetTransform();
     } else {
@@ -549,6 +568,44 @@ class ArchessArena {
     }).catch(() => {});
   }
 
+  getMatchMVP(winningTeam) {
+    const candidatePieces = this.pieces.filter(p => winningTeam === 'draw' || p.team === winningTeam);
+    let bestPiece = candidatePieces[0] || this.pieces[0];
+    let bestScore = -1;
+
+    candidatePieces.forEach(p => {
+      const pKey = p.id || `${p.team}_${p.type}`;
+      const dmg = (this.pieceDamageDealt && this.pieceDamageDealt[pKey]) || 0;
+      const kills = (this.pieceKills && this.pieceKills[pKey]) || 0;
+      const score = dmg + kills * 75;
+      if (score > bestScore) {
+        bestScore = score;
+        bestPiece = p;
+      }
+    });
+
+    const archetypes = {
+      queen: { name: 'The Queen', desc: 'Dominated the kinetic field and shattered enemy lines with high-velocity shockwaves.' },
+      rook: { name: 'The Rook', desc: 'Bulldozed defensive phalanxes as an unstoppable fortified colossus.' },
+      bishop: { name: 'The Bishop', desc: 'Executed lethal diagonal rebounds, sniping critical targets across the perimeter.' },
+      knight: { name: 'The Knight', desc: 'Emitted concussive kinetic shockwaves, destabilizing enemy formations.' },
+      pawn: { name: 'The Pawn', desc: 'Bravely held the front rank phalanx and absorbed heavy recoil force.' },
+      king: { name: 'The King Citadel', desc: 'Endured the hostile siege and defended the realm from total collapse.' }
+    };
+
+    const info = (bestPiece && archetypes[bestPiece.type]) || archetypes.queen;
+    const bKey = bestPiece ? (bestPiece.id || `${bestPiece.team}_${bestPiece.type}`) : '';
+    return {
+      type: bestPiece ? bestPiece.type : 'queen',
+      team: bestPiece ? bestPiece.team : (winningTeam === 'draw' ? 'white' : winningTeam),
+      glyph: bestPiece ? bestPiece.glyph : '♛',
+      name: `${bestPiece && bestPiece.team === 'white' ? 'White' : 'Black'} ${info.name}`,
+      damage: (this.pieceDamageDealt && this.pieceDamageDealt[bKey]) || (bestScore > 0 ? bestScore : 180),
+      kills: (this.pieceKills && this.pieceKills[bKey]) || 1,
+      desc: info.desc
+    };
+  }
+
   showVictoryModal(winner, payload, settlement) {
     const modal = document.getElementById('victoryModal');
     if (!modal) return;
@@ -578,12 +635,59 @@ class ArchessArena {
     }
     if (statTurns) statTurns.textContent = payload.turns;
     if (statDuration) statDuration.textContent = `${payload.duration_sec}s`;
+
+    // 1. Post-Match MVP Spotlight Card
+    const mvp = this.getMatchMVP(winner);
+    const mvpTeamTag = document.getElementById('mvpTeamTag');
+    const mvpDisc = document.getElementById('mvpDisc');
+    const mvpName = document.getElementById('mvpName');
+    const mvpDamage = document.getElementById('mvpDamage');
+    const mvpKills = document.getElementById('mvpKills');
+    const mvpDesc = document.getElementById('mvpDesc');
+
+    if (mvpTeamTag) mvpTeamTag.textContent = `${mvp.team.toUpperCase()} ARMY`;
+    if (mvpDisc) mvpDisc.textContent = mvp.glyph;
+    if (mvpName) mvpName.textContent = mvp.name;
+    if (mvpDamage) mvpDamage.textContent = `${mvp.damage} Kinetic Damage`;
+    if (mvpKills) mvpKills.textContent = `${mvp.kills} Eliminations`;
+    if (mvpDesc) mvpDesc.textContent = mvp.desc;
+
+    // 2. Kinetic Battle Force Output (White vs Black)
+    const totalDmg = (payload.white_damage || 0) + (payload.black_damage || 0);
+    const whiteRatio = totalDmg > 0 ? Math.round(((payload.white_damage || 0) / totalDmg) * 100) : 50;
+    const blackRatio = 100 - whiteRatio;
+
+    const damageRatioLabel = document.getElementById('damageRatioLabel');
+    const damageWhiteBar = document.getElementById('damageWhiteBar');
+    const damageBlackBar = document.getElementById('damageBlackBar');
+    const whiteTotalLabel = document.getElementById('whiteTotalDamageLabel');
+    const blackTotalLabel = document.getElementById('blackTotalDamageLabel');
+
+    if (damageRatioLabel) damageRatioLabel.textContent = `White ${whiteRatio}% vs ${blackRatio}% Black`;
+    if (damageWhiteBar) damageWhiteBar.style.width = `${whiteRatio}%`;
+    if (damageBlackBar) damageBlackBar.style.width = `${blackRatio}%`;
+    if (whiteTotalLabel) whiteTotalLabel.textContent = `White: ${payload.white_damage || 0} DMG`;
+    if (blackTotalLabel) blackTotalLabel.textContent = `Black: ${payload.black_damage || 0} DMG`;
+
+    // 3. Rolling Animated ELO Odometer Counter
     if (statEloChange) {
-      if (settlement) {
-        const delta = isDraw ? 0 : (isWhiteWin ? settlement.white_delta : settlement.black_delta);
-        statEloChange.textContent = delta > 0 ? `+${delta} ELO` : `${delta} ELO`;
+      const targetDelta = settlement 
+        ? (isDraw ? 0 : (isWhiteWin ? settlement.white_delta : settlement.black_delta))
+        : (isDraw ? 0 : (isWhiteWin ? 18 : -18));
+      
+      let currentVal = 0;
+      const step = targetDelta > 0 ? 1 : -1;
+      statEloChange.textContent = '+0 ELO';
+      if (targetDelta === 0) {
+        statEloChange.textContent = '+0 ELO';
       } else {
-        statEloChange.textContent = isDraw ? '+0 ELO' : (isWhiteWin ? '+32 ELO' : '-16 ELO');
+        const timer = setInterval(() => {
+          currentVal += step;
+          statEloChange.textContent = currentVal >= 0 ? `+${currentVal} ELO` : `${currentVal} ELO`;
+          if (currentVal === targetDelta) {
+            clearInterval(timer);
+          }
+        }, 25);
       }
     }
 
@@ -606,6 +710,14 @@ class ArchessArena {
     this.isGameOver = false;
     this.winner = null;
     this.simulationSettling = false;
+    this.turnStartTime = performance.now();
+    this.pieceDamageDealt = {};
+    this.pieceKills = {};
+    const timerRing = document.getElementById('turnTimerRing');
+    if (timerRing) {
+      timerRing.style.strokeDashoffset = '0px';
+      timerRing.setAttribute('class', 'turn-timer-circle');
+    }
     clearTimeout(this.botTimeout);
     this.botThinking = false;
     this.updateHUD();
@@ -668,6 +780,15 @@ class ArchessArena {
       this.initCanvasSize();
     });
 
+    if (window.ResizeObserver && this.canvas && this.canvas.parentElement) {
+      try {
+        this.resizeObserver = new ResizeObserver(() => {
+          this.initCanvasSize();
+        });
+        this.resizeObserver.observe(this.canvas.parentElement);
+      } catch (e) {}
+    }
+
     const getPointerScreenPos = (e) => {
       const rect = this.canvas.getBoundingClientRect();
       const clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
@@ -722,6 +843,7 @@ class ArchessArena {
       if (target) {
         this.selectedPiece = target;
         this.isDragging = true;
+        if (this.hudElement) this.hudElement.style.display = 'none';
         const pElevation = (this.renderMode === '3d') ? 26 : 0;
         const pScreen = this.toScreen(target.x, target.y, pElevation);
         this.dragScreenAnchor = { x: pScreen.x, y: pScreen.y };
@@ -737,7 +859,26 @@ class ArchessArena {
       if (this.isDragging && this.selectedPiece) {
         const screenPos = getPointerScreenPos(e);
         this.dragScreenCurrent = screenPos;
+        if (this.hudElement) this.hudElement.style.display = 'none';
         if (e.cancelable) e.preventDefault();
+      } else if (!this.isDragging && !this.isGameOver) {
+        const screenPos = getPointerScreenPos(e);
+        const livingPieces = this.pieces.filter(p => !p.dead);
+        let foundPiece = null;
+        let bestDist = Infinity;
+
+        for (const p of livingPieces) {
+          const elevation = (this.renderMode === '3d') ? 14 : 0;
+          const pScreen = this.toScreen(p.x, p.y, elevation);
+          const hitCenterY = this.renderMode === '3d' ? (pScreen.y - p.radius * 0.3) : pScreen.y;
+          const dist = Math.hypot(screenPos.x - pScreen.x, screenPos.y - hitCenterY);
+          const hitRadius = p.radius * (this.renderMode === '3d' ? 1.7 : 1.4);
+          if (dist <= hitRadius && dist < bestDist) {
+            bestDist = dist;
+            foundPiece = p;
+          }
+        }
+        this.updateTacticalHUD(foundPiece, e);
       }
     };
 
@@ -777,6 +918,9 @@ class ArchessArena {
     this.canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
     window.addEventListener('touchmove', handlePointerMove, { passive: false });
     window.addEventListener('touchend', handlePointerUp);
+    this.canvas.addEventListener('mouseleave', () => {
+      if (this.hudElement) this.hudElement.style.display = 'none';
+    });
 
     // Keyboard Gameplay Listeners (Tracker Parity)
     window.addEventListener('keydown', (e) => {
@@ -784,6 +928,70 @@ class ArchessArena {
         this.handleKeyboardControl(e);
       }
     });
+  }
+
+  updateTacticalHUD(piece, e) {
+    if (!this.hudElement) {
+      this.hudElement = document.getElementById('tacticalPieceHoverHUD');
+    }
+    if (!this.hudElement) return;
+
+    if (!piece) {
+      this.hudElement.style.display = 'none';
+      return;
+    }
+
+    const rect = this.canvas.getBoundingClientRect();
+    const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : rect.left + 50);
+    const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : rect.top + 50);
+
+    const hudWidth = 270;
+    const hudHeight = 170;
+    let posX = clientX - rect.left + 16;
+    let posY = clientY - rect.top + 16;
+
+    if (posX + hudWidth > rect.width) posX = posX - hudWidth - 28;
+    if (posY + hudHeight > rect.height) posY = posY - hudHeight - 20;
+
+    this.hudElement.style.left = Math.max(8, posX) + 'px';
+    this.hudElement.style.top = Math.max(8, posY) + 'px';
+    this.hudElement.style.display = 'block';
+    this.hudElement.className = `tactical-piece-hud hud-${piece.team}`;
+
+    const disc = document.getElementById('hudDisc');
+    const name = document.getElementById('hudName');
+    const role = document.getElementById('hudRole');
+    const badge = document.getElementById('hudClassBadge');
+    const hpVal = document.getElementById('hudHpVal');
+    const hpBar = document.getElementById('hudHpBar');
+    const abilityTag = document.getElementById('hudAbilityTag');
+    const abilityDesc = document.getElementById('hudAbilityDesc');
+
+    const archetypes = {
+      king: { name: 'The King Citadel', role: 'Stationary Sovereign', class: 'Citadel', ability: 'FORTRESS CITADEL', desc: 'Immovable tactical center. Protected by high-durability perimeter square wall.' },
+      queen: { name: 'The Queen', role: 'Apex Kinetic Sovereign', class: 'Apex Class', ability: 'SUPERNOVA BURST', desc: 'High-velocity kinetic juggernaut. Retains momentum across multi-target ricochets.' },
+      rook: { name: 'The Rook', role: 'Heavy Siege Juggernaut', class: 'Colossus', ability: 'SIEGE BREAKER', desc: 'Crushing mass. Deals momentum-scaled damage and ignores knockback from lighter units.' },
+      bishop: { name: 'The Bishop', role: 'Precision Diagonal Sniper', class: 'Assassin', ability: 'PRISM VELOCITY SURGE', desc: 'Ballistic prism sniper. Accelerates after each consecutive wall bounce.' },
+      knight: { name: 'The Knight', role: 'Shockwave Leaper & Flanker', class: 'Specialist', ability: 'KINETIC SHOCKWAVE', desc: 'Emits concussive radial shockwave knocking adjacent enemy units backward.' },
+      pawn: { name: 'The Pawn', role: 'Defensive Phalanx Infantry', class: 'Vanguard', ability: 'BASTION PHALANX', desc: 'Absorbs initial frontal collisions and cushions impact force near friendly King.' }
+    };
+
+    const arch = archetypes[piece.type] || archetypes.pawn;
+    if (disc) disc.textContent = piece.glyph || '♟';
+    if (name) name.textContent = `${arch.name} (${piece.team === 'white' ? 'White' : 'Black'})`;
+    if (role) role.textContent = arch.role;
+    if (badge) badge.textContent = arch.class;
+
+    const maxHp = piece.maxHp || 100;
+    const currentHp = Math.max(0, Math.round(piece.hp));
+    const hpPercent = Math.max(0, Math.min(100, Math.round((currentHp / maxHp) * 100)));
+    if (hpVal) hpVal.textContent = `${currentHp} / ${maxHp} HP`;
+    if (hpBar) {
+      hpBar.style.width = `${hpPercent}%`;
+      hpBar.className = `hud-hp-bar ${hpPercent > 50 ? '' : (hpPercent > 25 ? 'mid' : 'low')}`;
+    }
+    if (abilityTag) abilityTag.textContent = arch.ability;
+    if (abilityDesc) abilityDesc.textContent = arch.desc;
   }
 
   handleKeyboardControl(e) {
@@ -1260,8 +1468,13 @@ class ArchessArena {
                 defender.hitFlash = 1;
                 striker.hitFlash = 1;
 
-                if (defender.team === 'white') this.whiteDamage += primaryDamage;
+                if (striker.team === 'white') this.whiteDamage += primaryDamage;
                 else this.blackDamage += primaryDamage;
+
+                if (!this.pieceDamageDealt) this.pieceDamageDealt = {};
+                if (!this.pieceKills) this.pieceKills = {};
+                const strikerKey = striker.id || `${striker.team}_${striker.type}`;
+                this.pieceDamageDealt[strikerKey] = (this.pieceDamageDealt[strikerKey] || 0) + primaryDamage;
 
                 this.addDamageNumber(defender.x, defender.y, primaryDamage, isCritical);
                 this.addDamageNumber(striker.x, striker.y, recoilDamage, false, '#f87171', `RECOIL -${recoilDamage}`);
@@ -1277,6 +1490,10 @@ class ArchessArena {
                   if (p.hp <= 0 && !p.dead) {
                     p.dead = true;
                     p.hp = 0;
+                    if (p === defender) {
+                      const sKey = striker.id || `${striker.team}_${striker.type}`;
+                      this.pieceKills[sKey] = (this.pieceKills[sKey] || 0) + 1;
+                    }
                     this.spawnImpactParticles(p.x, p.y, 35, true);
                     this.audio.playShatter();
                     if (!this.capturedPieces) this.capturedPieces = { white: [], black: [] };
@@ -1316,6 +1533,7 @@ class ArchessArena {
       this.simulationSettling = false;
       this.turns++;
       this.currentTurn = this.currentTurn === 'white' ? 'black' : 'white';
+      this.turnStartTime = performance.now();
       this.updateHUD();
       this.logTelemetry('SETTLEMENT', `Board settled at rest. Turn ${this.turns}: passed to ${this.currentTurn.toUpperCase()}.`);
 
@@ -1701,13 +1919,15 @@ class ArchessArena {
     const isMaxPower = powerRatio > 0.85;
     const themeColor = isMaxPower ? '#ff3b4e' : '#ffd700';
 
-    // 1. Dotted Aim Vector
+    // 1. Animated Marching-Dash Aim Vector
+    const dashOffset = -(performance.now() * 0.04) % 18;
     ctx.beginPath();
-    ctx.setLineDash([6, 8]);
-    ctx.lineWidth = 3.5;
+    ctx.setLineDash([8, 10]);
+    ctx.lineDashOffset = dashOffset;
+    ctx.lineWidth = 3.5 + powerRatio * 2.0;
     ctx.strokeStyle = themeColor;
     ctx.shadowColor = themeColor;
-    ctx.shadowBlur = 10;
+    ctx.shadowBlur = 12 + powerRatio * 8;
     ctx.moveTo(start.x, start.y);
     ctx.lineTo(end.x, end.y);
     ctx.stroke();
@@ -1716,7 +1936,7 @@ class ArchessArena {
 
     // 2. Trajectory Arrowhead
     const arrowAngle = Math.atan2(dirScreenY, dirScreenX);
-    const arrowLen = 14;
+    const arrowLen = 14 + powerRatio * 4;
     ctx.beginPath();
     ctx.fillStyle = themeColor;
     ctx.moveTo(end.x, end.y);
@@ -1730,6 +1950,15 @@ class ArchessArena {
     );
     ctx.closePath();
     ctx.fill();
+
+    // High-power kinetic pulse beacon
+    if (isMaxPower) {
+      const pulseSize = 6 + Math.sin(performance.now() * 0.015) * 3;
+      ctx.beginPath();
+      ctx.arc(end.x, end.y, pulseSize, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 71, 87, 0.45)';
+      ctx.fill();
+    }
 
     // 3. Power Reticle around piece
     const layout = this.getBoardLayout();
@@ -2399,30 +2628,55 @@ class ArchessArena {
   }
 
   loop(timestamp) {
+    if (!this.lastTime) this.lastTime = timestamp;
     const dt = Math.min((timestamp - this.lastTime) / 1000, 0.1);
     this.lastTime = timestamp;
 
-    this.ctx.save();
-    if (this.screenShake > 0) {
-      const sx = (Math.random() - 0.5) * this.screenShake;
-      const sy = (Math.random() - 0.5) * this.screenShake;
-      this.ctx.translate(sx, sy);
+    try {
+      // Update Turn Timer Ring
+      if (!this.isGameOver) {
+        const ring = document.getElementById('turnTimerRing');
+        if (ring) {
+          if (!this.turnStartTime) this.turnStartTime = timestamp;
+          const elapsed = (timestamp - this.turnStartTime) / 1000;
+          const budget = this.turnBudget || 45;
+          const remaining = Math.max(0, budget - elapsed);
+          const frac = remaining / budget;
+          ring.style.strokeDashoffset = (97.4 * (1 - frac)) + 'px';
+          if (remaining <= 5) {
+            ring.setAttribute('class', 'turn-timer-circle critical');
+          } else if (remaining <= 12) {
+            ring.setAttribute('class', 'turn-timer-circle warning');
+          } else {
+            ring.setAttribute('class', 'turn-timer-circle');
+          }
+        }
+      }
+
+      this.ctx.save();
+      if (this.screenShake > 0) {
+        const sx = (Math.random() - 0.5) * this.screenShake;
+        const sy = (Math.random() - 0.5) * this.screenShake;
+        this.ctx.translate(sx, sy);
+      }
+
+      this.updatePhysics(dt);
+      this.renderBoard();
+      this.renderTrajectory();
+
+      // Sort pieces by Y for proper 3D depth layering (dragged piece on top)
+      const sortedPieces = [...this.pieces].sort((a, b) => {
+        if (a === this.selectedPiece && this.isDragging) return 1;
+        if (b === this.selectedPiece && this.isDragging) return -1;
+        return a.y - b.y;
+      });
+      sortedPieces.forEach(p => this.renderPiece(p));
+
+      this.renderVFX();
+      this.ctx.restore();
+    } catch (err) {
+      console.error('Arena render loop error:', err);
     }
-
-    this.updatePhysics(dt);
-    this.renderBoard();
-    this.renderTrajectory();
-
-    // Sort pieces by Y for proper 3D depth layering (dragged piece on top)
-    const sortedPieces = [...this.pieces].sort((a, b) => {
-      if (a === this.selectedPiece && this.isDragging) return 1;
-      if (b === this.selectedPiece && this.isDragging) return -1;
-      return a.y - b.y;
-    });
-    sortedPieces.forEach(p => this.renderPiece(p));
-
-    this.renderVFX();
-    this.ctx.restore();
 
     requestAnimationFrame(this.loop.bind(this));
   }

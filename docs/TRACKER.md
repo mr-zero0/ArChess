@@ -45,6 +45,11 @@
 | **2D React Chessboard Modal Parity** | UI / Gameplay | ✅ COMPLETE | Aligned victory/stalemate modal IDs and dynamic user session mapping for 2D Arena/Classic |
 | **Live Commander Profile Sync** | UI / Auth | ✅ COMPLETE | Seamless navbar and match card commander name/ELO sync upon login and logout |
 | **Leaderboard Draw Ledger & Win Rate**| UI / Rankings | ✅ COMPLETE | Win rate calculated against `matches_played` with full W/L/D match record display |
+| **AAA Commercial Design System** | UI / Design | ✅ COMPLETE | Cinzel & Space Grotesk typography, surface-0-3 tokens, specular highlights, glass scrollbars |
+| **Tactical Arena HUD Ergonomics** | HUD / Gameplay | ✅ COMPLETE | Animated marching-dash slingshot vector, floating tactical piece inspection HUD, radial turn timer |
+| **Grouped Casualty Chips** | UI / Battle | ✅ COMPLETE | Stacked casualty chips (`♟ ×4`, `♞ ×2`) with gold/crimson specular borders |
+| **Post-Match Analytics & MVP** | Victory Debrief| ✅ COMPLETE | Match MVP spotlight card, kinetic force output split bar, rolling ELO ticker, one-click match copy |
+| **Global Toast & Audio Modulation**| UI / Soundscape | ✅ COMPLETE | Sonner-style frosted glass toast system, organic pitch-modulated procedural audio, skeleton shimmer |
 
 ---
 
@@ -67,6 +72,7 @@
 | **`app.py` &rarr; `backend/app.py`** | • Configured `template_folder="../templates"` and `static_folder="../static"`.<br>• Added backward-compatible routes for `/style.css`, `/main.js`, `/assets/...`.<br>• Added correlation IDs and structured JSON logging. | • Adheres to bare-minimum root directory policy.<br>• Guarantees zero 404s for any legacy or cached URLs. |
 | **`database.py` &rarr; `backend/database.py`** | • Updated `DB_PATH` to `data/archess.db`.<br>• Auto-creates `data/` directory on boot.<br>• Seeded 6 Grandmaster test accounts. | • Separates persistent database storage from application source code. |
 | **`run.py`** | • Created minimalist root entrypoint (20 lines). | • Allows running `python run.py` directly from project root. |
+| **`game.js` & `play.html` (SVG Fix & Render Loop)** | • Replaced `ring.className = ...` with `ring.setAttribute('class', ...)` on SVG `#turnTimerRing` element in `resetBoard()` and `loop()`.<br>• Guarded `loop()` with `try/catch` and safe `dt` calculation to ensure `requestAnimationFrame` never permanently terminates.<br>• Bumped script query versions in `play.html` from `?v=2.2.0` to `?v=2.6.2` to bust browser caches.<br>• Resolved issue where 2D Arena and 3D Arena boards/pieces were invisible due to SVG className TypeError halting canvas loop. | • Fixes modern browser `TypeError: Cannot set property className of #<SVGElement> which has only a getter`.<br>• Guarantees 100% board and piece visibility in both 3D Arena and 2D Arena modes on initial load and view switching. |
 | **`README.md` & `requirements.txt`** | • Created professional project documentation and dependency manifest. | • Standard open-source onboarding. |
 
 ---

@@ -17,7 +17,8 @@
   <link rel="icon" type="image/png" href="/static/media/logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="/static/css/style.css?v=2.4.0">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="/static/css/style.css?v=2.5.0">
 </head>
 <body>
 
@@ -156,8 +157,51 @@
           </tr>
         </thead>
         <tbody id="fullLeaderboardBody">
-          <tr>
-            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">Loading global rankings from database...</td>
+          <!-- Shimmer Skeleton Loading State -->
+          <tr class="skeleton-tr">
+            <td><div class="skeleton-cell" style="width: 32px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 140px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 90px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 60px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 45px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 75px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 110px;"></div></td>
+          </tr>
+          <tr class="skeleton-tr">
+            <td><div class="skeleton-cell" style="width: 32px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 160px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 80px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 55px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 45px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 70px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 110px;"></div></td>
+          </tr>
+          <tr class="skeleton-tr">
+            <td><div class="skeleton-cell" style="width: 32px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 130px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 85px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 60px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 45px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 80px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 110px;"></div></td>
+          </tr>
+          <tr class="skeleton-tr">
+            <td><div class="skeleton-cell" style="width: 32px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 150px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 75px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 50px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 45px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 70px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 110px;"></div></td>
+          </tr>
+          <tr class="skeleton-tr">
+            <td><div class="skeleton-cell" style="width: 32px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 135px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 90px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 58px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 45px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 75px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 110px;"></div></td>
           </tr>
         </tbody>
       </table>

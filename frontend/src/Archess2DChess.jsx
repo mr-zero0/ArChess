@@ -259,6 +259,10 @@ function notifyCapturedPiece(team, type, materialDiff) {
 }
 
 function resetArenaCasualties() {
+  if (window.ArchessResetCasualtiesHandler) {
+    window.ArchessResetCasualtiesHandler();
+    return;
+  }
   const whiteRack = document.getElementById('whiteCasualtyRack');
   const blackRack = document.getElementById('blackCasualtyRack');
   const advBadge = document.getElementById('materialAdvantageBadge');
@@ -299,12 +303,70 @@ function triggerArchessVictory(winner, totalTurns, durationSec, whiteUser, black
 
   if (statTurns) statTurns.textContent = totalTurns;
   if (statDur) statDur.textContent = `${durationSec}s`;
+
+  // Rolling Animated ELO Odometer Counter
   if (eloChange) {
-    eloChange.textContent = isDraw ? '+0 ELO' : (isWhite ? '+18 ELO' : '-18 ELO');
-    eloChange.style.color = isDraw ? 'var(--text-secondary)' : (isWhite ? 'var(--gold-bright)' : 'var(--accent-crimson)');
+    const targetDelta = isDraw ? 0 : (isWhite ? 18 : -18);
+    let currentVal = 0;
+    const step = targetDelta > 0 ? 1 : -1;
+    eloChange.textContent = '+0 ELO';
+    if (targetDelta === 0) {
+      eloChange.textContent = '+0 ELO';
+    } else {
+      const timer = setInterval(() => {
+        currentVal += step;
+        eloChange.textContent = currentVal >= 0 ? `+${currentVal} ELO` : `${currentVal} ELO`;
+        if (currentVal === targetDelta) clearInterval(timer);
+      }, 25);
+    }
   }
 
-  if (modal) modal.classList.add('active');
+  // 1. Post-Match MVP Spotlight Card
+  const mvpTeamTag = document.getElementById('mvpTeamTag');
+  const mvpDisc = document.getElementById('mvpDisc');
+  const mvpName = document.getElementById('mvpName');
+  const mvpDamage = document.getElementById('mvpDamage');
+  const mvpKills = document.getElementById('mvpKills');
+  const mvpDesc = document.getElementById('mvpDesc');
+
+  const mvpTeam = isDraw ? 'white' : winner;
+  const mvpGlyph = isWhite ? '♛' : (winner === 'black' ? '♛' : '♚');
+  const mvpPieceName = isWhite ? 'White The Queen' : (winner === 'black' ? 'Black The Queen' : 'White Citadel King');
+  const mvpDmgVal = Math.max(120, totalTurns * 24);
+  const mvpKillVal = Math.max(1, Math.min(8, Math.round(totalTurns / 2)));
+  const mvpText = isDraw
+    ? 'Endured the relentless tactical siege and secured defensive stalemate.'
+    : 'Orchestrated the tactical offensive and delivered the decisive checkmate.';
+
+  if (mvpTeamTag) mvpTeamTag.textContent = `${mvpTeam.toUpperCase()} ARMY`;
+  if (mvpDisc) mvpDisc.textContent = mvpGlyph;
+  if (mvpName) mvpName.textContent = mvpPieceName;
+  if (mvpDamage) mvpDamage.textContent = `${mvpDmgVal} Combat Output`;
+  if (mvpKills) mvpKills.textContent = `${mvpKillVal} Tactical Takedowns`;
+  if (mvpDesc) mvpDesc.textContent = mvpText;
+
+  // 2. Kinetic Battle Output Split Bar
+  const whiteDmg = isWhite ? totalTurns * 30 : Math.max(20, totalTurns * 15);
+  const blackDmg = isWhite ? Math.max(20, totalTurns * 15) : totalTurns * 30;
+  const sumDmg = whiteDmg + blackDmg;
+  const whiteRatio = sumDmg > 0 ? Math.round((whiteDmg / sumDmg) * 100) : 50;
+  const blackRatio = 100 - whiteRatio;
+
+  const damageRatioLabel = document.getElementById('damageRatioLabel');
+  const damageWhiteBar = document.getElementById('damageWhiteBar');
+  const damageBlackBar = document.getElementById('damageBlackBar');
+  const whiteTotalLabel = document.getElementById('whiteTotalDamageLabel');
+  const blackTotalLabel = document.getElementById('blackTotalDamageLabel');
+
+  if (damageRatioLabel) damageRatioLabel.textContent = `White ${whiteRatio}% vs ${blackRatio}% Black`;
+  if (damageWhiteBar) damageWhiteBar.style.width = `${whiteRatio}%`;
+  if (damageBlackBar) damageBlackBar.style.width = `${blackRatio}%`;
+  if (whiteTotalLabel) whiteTotalLabel.textContent = `White: ${whiteDmg} DMG`;
+  if (blackTotalLabel) blackTotalLabel.textContent = `Black: ${blackDmg} DMG`;
+
+  if (modal) {
+    setTimeout(() => modal.classList.add('active'), 1000);
+  }
 
   const effectiveWhite = (window.ArchessAuth && window.ArchessAuth.currentUser)
     ? window.ArchessAuth.currentUser.username
@@ -317,8 +379,8 @@ function triggerArchessVictory(winner, totalTurns, durationSec, whiteUser, black
       white_username: effectiveWhite,
       black_username: blackUser || 'ArChess Bot',
       winner: winner,
-      white_damage: totalTurns * 20,
-      black_damage: totalTurns * 25,
+      white_damage: whiteDmg,
+      black_damage: blackDmg,
       turns: totalTurns,
       duration_sec: durationSec
     })

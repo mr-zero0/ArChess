@@ -4,11 +4,67 @@
  * 2D/3D Mode Controls, Themes, Telemetry Stream, and UI Modals.
  */
 
+/* -------------------------------------------------------------
+   Global Industry-Grade Sonner/shadcn Toast Notification System
+------------------------------------------------------------- */
+window.ArchessToast = {
+  show(message, type = 'info', duration = 3200, title = '') {
+    let container = document.querySelector('.archess-toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.className = 'archess-toast-container';
+      document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    const toastClass = type === 'success' ? 'toast-success' : (type === 'error' ? 'toast-error' : 'toast-gold');
+    toast.className = `archess-toast ${toastClass}`;
+    toast.style.setProperty('--toast-duration', `${duration}ms`);
+
+    let iconChar = '✦';
+    if (type === 'success') iconChar = '✓';
+    else if (type === 'error') iconChar = '✕';
+
+    const displayTitle = title || (type === 'success' ? 'SUCCESS' : (type === 'error' ? 'ALERT' : 'INTEL'));
+
+    toast.innerHTML = `
+      <div class="toast-icon-wrap">${iconChar}</div>
+      <div class="toast-content-col">
+        <div class="toast-title-text">${displayTitle}</div>
+        <div class="toast-message-body">${message}</div>
+      </div>
+      <div class="toast-progress-drain"></div>
+    `;
+
+    container.appendChild(toast);
+
+    let timer = setTimeout(() => dismiss(toast), duration);
+
+    toast.addEventListener('click', () => {
+      clearTimeout(timer);
+      dismiss(toast);
+    });
+
+    function dismiss(el) {
+      if (el.classList.contains('toast-hiding')) return;
+      el.classList.add('toast-hiding');
+      setTimeout(() => el.remove(), 260);
+    }
+  }
+};
+
+function showToast(message, type = 'info') {
+  if (window.ArchessToast && typeof window.ArchessToast.show === 'function') {
+    window.ArchessToast.show(message, type);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize Arena Canvas
   let arena = null;
   if (window.ArchessArena) {
     arena = new window.ArchessArena('archessCanvas');
+    window.archessGame = arena;
   }
 
   /* -------------------------------------------------------------
@@ -118,7 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* -------------------------------------------------------------
-     3. Battle Casualties & Material Advantage Listener
+     3. Battle Casualties & Material Advantage Listener (Grouped Stack)
   ------------------------------------------------------------- */
   const whiteRack = document.getElementById('whiteCasualtyRack');
   const blackRack = document.getElementById('blackCasualtyRack');
@@ -128,50 +184,78 @@ document.addEventListener('DOMContentLoaded', () => {
     king: '♚', queen: '♛', rook: '♜', bishop: '♝', knight: '♞', pawn: '♟'
   };
 
-  if (arena) {
-    arena.onPieceCaptured = (team, type, materialDiff) => {
-      const rack = team === 'white' ? whiteRack : blackRack;
-      if (rack) {
-        const noCas = rack.querySelector('.no-casualties');
-        if (noCas) noCas.remove();
+  const pieceOrder = ['queen', 'rook', 'bishop', 'knight', 'pawn', 'king'];
 
-        const badge = document.createElement('span');
-        badge.className = `casualty-badge ${team}-piece`;
-        badge.textContent = pieceGlyphs[type] || '♟';
-        badge.title = `${team.toUpperCase()} ${type.toUpperCase()}`;
-        rack.appendChild(badge);
+  const casualtyCounts = {
+    white: { queen: 0, rook: 0, bishop: 0, knight: 0, pawn: 0, king: 0 },
+    black: { queen: 0, rook: 0, bishop: 0, knight: 0, pawn: 0, king: 0 }
+  };
+
+  function renderCasualtyRack(team) {
+    const rack = team === 'white' ? whiteRack : blackRack;
+    if (!rack) return;
+    const counts = casualtyCounts[team];
+    const hasAny = pieceOrder.some(t => counts[t] > 0);
+    if (!hasAny) {
+      rack.innerHTML = '<span class="no-casualties">No casualties yet</span>';
+      return;
+    }
+    rack.innerHTML = '';
+    pieceOrder.forEach(type => {
+      const count = counts[type] || 0;
+      if (count > 0) {
+        const chip = document.createElement('span');
+        chip.className = `casualty-stack-chip ${team}-piece`;
+        chip.title = `${count}x ${team.toUpperCase()} ${type.toUpperCase()}`;
+        chip.innerHTML = `
+          <span class="casualty-glyph">${pieceGlyphs[type] || '♟'}</span>
+          ${count > 1 ? `<span class="casualty-multiplier">×${count}</span>` : ''}
+        `;
+        rack.appendChild(chip);
       }
+    });
+  }
 
-      if (advBadge) {
-        if (materialDiff > 0) {
-          advBadge.textContent = `+${materialDiff} White`;
-          advBadge.style.color = 'var(--gold-bright)';
-        } else if (materialDiff < 0) {
-          advBadge.textContent = `+${Math.abs(materialDiff)} Black`;
-          advBadge.style.color = 'var(--accent-crimson)';
-        } else {
-          advBadge.textContent = 'Balanced';
-          advBadge.style.color = 'var(--gold-light)';
-        }
-      }
-    };
+  function handlePieceCaptured(team, type, materialDiff) {
+    const normType = (type || 'pawn').toLowerCase();
+    if (casualtyCounts[team] && casualtyCounts[team][normType] !== undefined) {
+      casualtyCounts[team][normType]++;
+    }
+    renderCasualtyRack(team);
 
-    arena.onResetArena = () => {
-      if (whiteRack) whiteRack.innerHTML = '<span class="no-casualties">No casualties yet</span>';
-      if (blackRack) blackRack.innerHTML = '<span class="no-casualties">No casualties yet</span>';
-      if (advBadge) {
+    if (advBadge) {
+      if (materialDiff > 0) {
+        advBadge.textContent = `+${materialDiff} White`;
+        advBadge.style.color = 'var(--gold-bright)';
+      } else if (materialDiff < 0) {
+        advBadge.textContent = `+${Math.abs(materialDiff)} Black`;
+        advBadge.style.color = 'var(--accent-crimson)';
+      } else {
         advBadge.textContent = 'Balanced';
         advBadge.style.color = 'var(--gold-light)';
       }
-    };
+    }
+  }
+
+  function resetCasualties() {
+    casualtyCounts.white = { queen: 0, rook: 0, bishop: 0, knight: 0, pawn: 0, king: 0 };
+    casualtyCounts.black = { queen: 0, rook: 0, bishop: 0, knight: 0, pawn: 0, king: 0 };
+    renderCasualtyRack('white');
+    renderCasualtyRack('black');
+    if (advBadge) {
+      advBadge.textContent = 'Balanced';
+      advBadge.style.color = 'var(--gold-light)';
+    }
+  }
+
+  if (arena) {
+    arena.onPieceCaptured = handlePieceCaptured;
+    arena.onResetArena = resetCasualties;
   }
 
   // Cross-engine casualty hook (shared between 2D react-chessboard and 3D arena)
-  window.ArchessCapturedHandler = (team, type, materialDiff) => {
-    if (arena && arena.onPieceCaptured) {
-      arena.onPieceCaptured(team, type, materialDiff);
-    }
-  };
+  window.ArchessCapturedHandler = handlePieceCaptured;
+  window.ArchessResetCasualtiesHandler = resetCasualties;
 
   /* -------------------------------------------------------------
      4. View Mode Controls (3D Arena, 2D Arena, 2D Classic)
@@ -185,7 +269,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let activeViewMode = '3d-arena';
 
-  function applyViewMode(mode) {
+  function applyViewMode(rawMode, userTriggered = false) {
+    let mode = rawMode || '3d-arena';
+    if (mode === '3d' || mode === '3d-arena') mode = '3d-arena';
+    else if (mode === '2d' || mode === '2d-arena') mode = '2d-arena';
+    else if (mode === 'classic' || mode === '2d-classic') mode = '2d-classic';
+    else mode = '3d-arena';
+
     activeViewMode = mode;
     [view3DArenaBtn, view2DArenaBtn, view2DClassicBtn].forEach(btn => {
       if (btn) btn.classList.toggle('active', btn.getAttribute('data-view') === mode);
@@ -208,7 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (kbdHints) {
         kbdHints.innerHTML = '<span>Controls:</span> <span class="kbd-key">Drag &amp; Drop</span> <span class="kbd-key">Click to Move (Standard FIDE)</span>';
       }
-      showToast('View: 2D Classic (Standard FIDE Chess)');
+      if (userTriggered) showToast('View: 2D Classic (Standard FIDE Chess)');
     } else if (mode === '2d-arena') {
       // 2D Arena: Top-down physical canvas with Drag & Launch Slingshot Impulse!
       if (reactChessRoot) reactChessRoot.style.display = 'none';
@@ -222,7 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (kbdHints) {
         kbdHints.innerHTML = '<span>Controls:</span> <span class="kbd-key">Drag &amp; Launch</span> <span class="kbd-key">Slingshot Aim</span> <span style="color: var(--gold-light); font-size: 0.72rem; margin-left: 6px;">(King: Immovable Citadel &bull; 🛡️ Wall Protected)</span>';
       }
-      showToast('View: 2D Arena (Drag & Launch Kinetic Combat)');
+      if (userTriggered) showToast('View: 2D Arena (Drag & Launch Kinetic Combat)');
     } else {
       // 3D Arena: Isometric tabletop physics combat on canvas with Drag & Launch!
       if (reactChessRoot) reactChessRoot.style.display = 'none';
@@ -236,17 +326,17 @@ document.addEventListener('DOMContentLoaded', () => {
       if (kbdHints) {
         kbdHints.innerHTML = '<span>Controls:</span> <span class="kbd-key">Drag &amp; Launch</span> <span class="kbd-key">Tab</span> Cycle <span class="kbd-key">WASD</span> Aim <span class="kbd-key">Space</span> Fire <span style="color: var(--gold-light); font-size: 0.72rem; margin-left: 6px;">(King: Immovable Citadel &bull; 🛡️ Wall Protected)</span>';
       }
-      showToast('View: 3D Arena (Isometric Slingshot Combat)');
+      if (userTriggered) showToast('View: 3D Arena (Isometric Slingshot Combat)');
     }
     localStorage.setItem('archess_view_mode', mode);
   }
 
-  if (view3DArenaBtn) view3DArenaBtn.addEventListener('click', () => applyViewMode('3d-arena'));
-  if (view2DArenaBtn) view2DArenaBtn.addEventListener('click', () => applyViewMode('2d-arena'));
-  if (view2DClassicBtn) view2DClassicBtn.addEventListener('click', () => applyViewMode('2d-classic'));
+  if (view3DArenaBtn) view3DArenaBtn.addEventListener('click', () => applyViewMode('3d-arena', true));
+  if (view2DArenaBtn) view2DArenaBtn.addEventListener('click', () => applyViewMode('2d-arena', true));
+  if (view2DClassicBtn) view2DClassicBtn.addEventListener('click', () => applyViewMode('2d-classic', true));
 
   const savedViewMode = localStorage.getItem('archess_view_mode') || '3d-arena';
-  applyViewMode(savedViewMode);
+  applyViewMode(savedViewMode, false);
 
   // Game Mode Switcher (vs Bot AI, Pass & Play)
   const modeBtns = document.querySelectorAll('.game-mode-btn');
@@ -406,6 +496,63 @@ document.addEventListener('DOMContentLoaded', () => {
         arena.resetBoard();
       }
       showToast('Board Re-racked — Ready for Rematch');
+    });
+  }
+
+  // Copy Match Report Button inside Victory Modal
+  const copyMatchBtn = document.getElementById('btnCopyMatchReport');
+  if (copyMatchBtn) {
+    copyMatchBtn.addEventListener('click', () => {
+      const title = document.getElementById('victoryTitle')?.textContent?.trim() || 'MATCH REPORT';
+      const sub = document.getElementById('victorySub')?.textContent?.trim() || '';
+      const turns = document.getElementById('statTurns')?.textContent?.trim() || '0';
+      const duration = document.getElementById('statDuration')?.textContent?.trim() || '0s';
+      const elo = document.getElementById('statEloChange')?.textContent?.trim() || '+0 ELO';
+      const mvpName = document.getElementById('mvpName')?.textContent?.trim() || 'None';
+      const mvpDmg = document.getElementById('mvpDamage')?.textContent?.trim() || '0 DMG';
+      const mvpKills = document.getElementById('mvpKills')?.textContent?.trim() || '0 Kills';
+      const mvpDesc = document.getElementById('mvpDesc')?.textContent?.trim() || '';
+      const dmgRatio = document.getElementById('damageRatioLabel')?.textContent?.trim() || 'Balanced';
+      const whiteDmg = document.getElementById('whiteTotalDamageLabel')?.textContent?.trim() || 'White: 0 DMG';
+      const blackDmg = document.getElementById('blackTotalDamageLabel')?.textContent?.trim() || 'Black: 0 DMG';
+
+      const reportText = [
+        '╔═══════════════════════════════════════════════════════╗',
+        '║            ARCHESS TACTICAL DEBRIEF REPORT            ║',
+        '╚═══════════════════════════════════════════════════════╝',
+        `• Status: ${title}`,
+        `• Summary: ${sub}`,
+        `• Total Turns: ${turns} | Match Duration: ${duration}`,
+        `• Competitive Settlement: ${elo}`,
+        '',
+        '── MATCH MVP ──',
+        `• Unit: ${mvpName}`,
+        `• Combat Output: ${mvpDmg} | ${mvpKills}`,
+        `• Citation: ${mvpDesc}`,
+        '',
+        '── FORCE DISTRIBUTION ──',
+        `• Ratio: ${dmgRatio}`,
+        `• Breakdown: ${whiteDmg} vs ${blackDmg}`,
+        '',
+        'Verified on ArChess Grandmaster Ledger (https://archess.net)'
+      ].join('\n');
+
+      navigator.clipboard.writeText(reportText).then(() => {
+        const originalHtml = copyMatchBtn.innerHTML;
+        copyMatchBtn.textContent = 'COPIED!';
+        if (window.ArchessToast) {
+          window.ArchessToast.show('Tournament debrief copied to clipboard!', 'success', 3200, 'MATCH INTEL');
+        } else {
+          showToast('Tournament match report copied to clipboard!');
+        }
+        setTimeout(() => {
+          copyMatchBtn.innerHTML = originalHtml;
+        }, 2200);
+      }).catch(() => {
+        if (window.ArchessToast) {
+          window.ArchessToast.show('Could not access clipboard. Please copy manually.', 'error', 3200, 'CLIPBOARD ERROR');
+        }
+      });
     });
   }
 
@@ -600,23 +747,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Toast Helper (shadcn/ui Floating Toast Notification)
-  function showToast(message) {
-    let container = document.querySelector('.shadcn-toast-container');
-    if (!container) {
-      container = document.createElement('div');
-      container.className = 'shadcn-toast-container';
-      document.body.appendChild(container);
-    }
-    const toast = document.createElement('div');
-    toast.className = 'shadcn-toast';
-    toast.innerHTML = `<span style="color:var(--gold-bright); font-size: 1rem; line-height: 1;">✦</span> <span>${message}</span>`;
-    container.appendChild(toast);
-    setTimeout(() => {
-      toast.classList.add('toast-fade-out');
-      setTimeout(() => toast.remove(), 250);
-    }, 2800);
-  }
+  // Toast Helper already defined at top of file
 
   // 3D Tilt on Cards (Desktop)
   if (window.innerWidth > 900) {

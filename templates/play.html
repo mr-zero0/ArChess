@@ -17,7 +17,8 @@
   <link rel="icon" type="image/png" href="/static/media/logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="/static/css/style.css?v=2.4.0">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="/static/css/style.css?v=2.5.0">
 </head>
 <body>
 
@@ -157,12 +158,16 @@
         </button>
       </div>
 
-    </div>
-
-    <!-- Turn Indicator & Guidance Banner -->
+        <!-- Turn Indicator & Guidance Banner -->
     <div class="turn-indicator-bar">
       <div class="turn-badge">
-        <div class="turn-circle" id="arenaTurnCircle"></div>
+        <div class="turn-timer-wrap" title="Turn Active">
+          <svg class="turn-timer-svg" width="30" height="30" viewBox="0 0 36 36">
+            <circle class="turn-timer-bg" cx="18" cy="18" r="15.5"></circle>
+            <circle class="turn-timer-circle" id="turnTimerRing" cx="18" cy="18" r="15.5"></circle>
+          </svg>
+          <div class="turn-circle" id="arenaTurnCircle"></div>
+        </div>
         <div class="turn-label" id="arenaTurnLabel">WHITE'S TURN — AIM &amp; LAUNCH</div>
         <div id="arenaPieceCounts" class="tabular-nums" style="font-size: 0.82rem; color: var(--muted-foreground); margin-left: 12px;"></div>
       </div>
@@ -192,6 +197,31 @@
       <div class="arena-canvas-stage" id="arenaCanvasStage">
         <canvas id="archessCanvas"></canvas>
         <div id="reactChessboardRoot" class="react-chessboard-stage" style="display: none;"></div>
+
+        <!-- Floating Tactical Piece Inspection HUD -->
+        <div class="tactical-piece-hud" id="tacticalPieceHoverHUD" style="display: none;" aria-hidden="true">
+          <div class="hud-header">
+            <div class="hud-disc" id="hudDisc">♞</div>
+            <div class="hud-title-col">
+              <div class="hud-name" id="hudName">The Knight</div>
+              <div class="hud-role" id="hudRole">Shockwave Leaper &amp; Flanker</div>
+            </div>
+            <span class="hud-class-badge" id="hudClassBadge">Specialist</span>
+          </div>
+          <div class="hud-stat-grid">
+            <div class="hud-durability-row">
+              <span class="hud-lbl">Durability</span>
+              <span class="hud-val tabular-nums" id="hudHpVal">110 / 110 HP</span>
+            </div>
+            <div class="hud-hp-track">
+              <div class="hud-hp-bar" id="hudHpBar" style="width: 100%;"></div>
+            </div>
+          </div>
+          <div class="hud-ability-box">
+            <div class="hud-ability-tag" id="hudAbilityTag">KINETIC SHOCKWAVE</div>
+            <div class="hud-ability-desc" id="hudAbilityDesc">Releases concussive radial blast knocking back adjacent enemies.</div>
+          </div>
+        </div>
       </div>
 
       <!-- Match Sidebar -->
@@ -263,30 +293,66 @@
 
   <footer class="site-footer">
     <div class="container footer-bottom">
-      <div>&copy; 2026 ARCHESS &bull; mr-zero0/ArChess. Free & Open-Source.</div>
+      <div>&copy; 2026 ARCHESS &bull; mr-zero0/ArChess. Free &amp; Open-Source.</div>
       <div style="color: var(--gold-light);">Aim &bull; Launch &bull; Collide &bull; Conquer</div>
     </div>
   </footer>
 
-  <!-- Victory / Game Over Modal -->
+  <!-- Victory / Game Over Post-Match Analytics Modal -->
   <div class="modal-backdrop" id="victoryModal" role="dialog" aria-modal="true">
     <div class="modal-dialog victory-modal-dialog">
       <div class="victory-banner-badge white-win" id="victoryBadge">MATCH SETTLED</div>
       <h2 class="victory-title" id="victoryTitle">CHECKMATE!</h2>
       <p class="victory-sub" id="victorySub">The enemy King has been shattered from the board.</p>
 
+      <!-- Match Core Stats -->
       <div class="match-stats-grid">
         <div class="stat-box">
-          <div class="num" id="statTurns">0</div>
+          <div class="num tabular-nums" id="statTurns">0</div>
           <div class="lbl">Turns</div>
         </div>
         <div class="stat-box">
-          <div class="num" id="statDuration">0s</div>
+          <div class="num tabular-nums" id="statDuration">0s</div>
           <div class="lbl">Duration</div>
         </div>
         <div class="stat-box">
-          <div class="num" id="statEloChange">+16</div>
-          <div class="lbl">Rating Change</div>
+          <div class="num tabular-nums" id="statEloChange">+18 ELO</div>
+          <div class="lbl">Rating Adjustment</div>
+        </div>
+      </div>
+
+      <!-- Post-Match MVP Spotlight Card -->
+      <div class="victory-mvp-card" id="victoryMvpCard">
+        <div class="mvp-header-strip">
+          <span class="mvp-star-tag">★ MATCH MVP</span>
+          <span class="mvp-team-tag" id="mvpTeamTag">White Vanguard</span>
+        </div>
+        <div class="mvp-body">
+          <div class="mvp-disc" id="mvpDisc">♛</div>
+          <div class="mvp-info">
+            <h4 class="mvp-name" id="mvpName">The Queen</h4>
+            <div class="mvp-stats-row">
+              <span id="mvpDamage">320 Kinetic Damage</span> &bull; 
+              <span id="mvpKills">3 Eliminations</span>
+            </div>
+            <div class="mvp-desc" id="mvpDesc">Dominated board center and delivered the decisive breakthrough.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Kinetic Battle Output Chart (White vs Black) -->
+      <div class="victory-damage-section" id="victoryDamageSection">
+        <div class="damage-chart-header">
+          <span>Kinetic Force Output</span>
+          <span id="damageRatioLabel">White 60% vs 40% Black</span>
+        </div>
+        <div class="damage-split-track">
+          <div class="damage-fill white-fill" id="damageWhiteBar" style="width: 60%;"></div>
+          <div class="damage-fill black-fill" id="damageBlackBar" style="width: 40%;"></div>
+        </div>
+        <div class="damage-chart-legend">
+          <span class="legend-unit white-unit"><span class="dot"></span> <span id="whiteTotalDamageLabel">White: 420 DMG</span></span>
+          <span class="legend-unit black-unit"><span class="dot"></span> <span id="blackTotalDamageLabel">Black: 280 DMG</span></span>
         </div>
       </div>
 
@@ -294,6 +360,10 @@
         <button class="btn-gold" id="btnPlayAgain">
           <span>Play Again</span>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+        </button>
+        <button class="btn-ghost" id="btnCopyMatchReport" title="Copy Tournament Match Report to Clipboard">
+          <span>Copy Match Report</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         </button>
         <a href="/leaderboard" class="btn-ghost">
           <span>Leaderboard</span>
@@ -303,10 +373,10 @@
   </div>
 
   <!-- Scripts -->
-  <script src="/static/js/react-chessboard-bundle.js?v=2.2.0"></script>
-  <script src="/static/js/game.js?v=2.2.0"></script>
-  <script src="/static/js/main.js?v=2.2.0"></script>
-  <script src="/static/js/auth.js?v=2.2.0"></script>
+  <script src="/static/js/react-chessboard-bundle.js?v=2.6.2"></script>
+  <script src="/static/js/game.js?v=2.6.2"></script>
+  <script src="/static/js/main.js?v=2.6.2"></script>
+  <script src="/static/js/auth.js?v=2.6.2"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       // Sync current logged in user name with White player card
