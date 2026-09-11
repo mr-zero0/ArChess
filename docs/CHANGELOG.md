@@ -2,6 +2,27 @@
 
 All notable changes, architectural pivots, bugfixes, and refactorings across **ArChess** are documented in this file.
 
+## [2.7.3] - 2026-09-11
+
+### 🎯 Physics Engine: Slingshot Impulse Vector & Forward Trajectory Alignment
+- **Fixed Inverted Launch Impulse**:
+  - Corrected `piece.vx` and `piece.vy` in `launchPiece()` in `static/js/game.js`:
+    ```javascript
+    // Restored forward impulse vector matching aim line
+    piece.vx = Math.cos(angle) * impulse;
+    piece.vy = Math.sin(angle) * impulse;
+    ```
+  - Previously, stray negative signs (`-Math.cos(angle)`, `-Math.sin(angle)`) inverted the 180° trajectory upon release, causing pieces to shoot backward into self pieces instead of launching forward toward the enemy.
+- **100% Vector Alignment in 2D & 3D**:
+  - Aligned physical launch impulse with visual aiming dotted line rendered in `drawTrajectory()`.
+  - In both 2D and 3D isometric perspectives, dragging backward now pulls the slingshot band and launches the piece forward across the board into enemy lines.
+- **Automated Physical Trajectory Verification**:
+  - Validated with Chrome headless CDP automated tests simulating user drag-and-release on pawn e2 in both 2D Arena and 3D Arena modes, confirming `vy < 0` (forward trajectory toward Black) and `movingTowardsEnemy: true`.
+- **Cache Busting**:
+  - Bumped client asset query string in `templates/play.html` to `?v=2.7.3`.
+
+---
+
 ## [2.7.2] - 2026-09-11
 
 ### 👑 The Sovereign Awakens: Dynamic King Mobility & Sudden Death Duels

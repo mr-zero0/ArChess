@@ -955,8 +955,8 @@ class ArchessArena {
     const impulse = clampedDist * 0.15 * piece.speedMulti;
     const angle = Math.atan2(pullY, pullX);
 
-    piece.vx = -Math.cos(angle) * impulse;
-    piece.vy = -Math.sin(angle) * impulse;
+    piece.vx = Math.cos(angle) * impulse;
+    piece.vy = Math.sin(angle) * impulse;
 
     if (piece.type === 'king' && piece.awakened) {
       this.spawnImpactParticles(piece.x, piece.y, 25, false, piece.team === 'white' ? ['#ffd700', '#00e1d9', '#ffffff'] : ['#ff4757', '#ff7675', '#ffffff']);
