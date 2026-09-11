@@ -352,10 +352,11 @@ class ArchessArena {
         dead: false,
         hitFlash: 0,
         immovable: isKing,
+        awakened: false,
         // King Fortress Square Wall properties (Fits chess square)
         wallActive: isKing,
-        wallHp: isKing ? 500 : 0,
-        maxWallHp: isKing ? 500 : 0,
+        wallHp: isKing ? 280 : 0,
+        maxWallHp: isKing ? 280 : 0,
         wallHalf: isKing ? Math.round(sqSize * 0.47) : 0,
         wallRadius: isKing ? Math.round(sqSize * 0.47) : 0,
         wallHitFlash: 0
@@ -423,15 +424,15 @@ class ArchessArena {
     this.botThinking = false;
     if (this.currentTurn !== 'black' || this.isGameOver) return;
 
-    const blackPieces = this.pieces.filter(p => !p.dead && p.team === 'black' && p.type !== 'king');
+    const blackPieces = this.pieces.filter(p => !p.dead && p.team === 'black' && (p.type !== 'king' || p.awakened));
     const whitePieces = this.pieces.filter(p => !p.dead && p.team === 'white');
 
     if (blackPieces.length === 0 || whitePieces.length === 0) return;
 
     const targetWeights = { king: 200, queen: 100, rook: 65, bishop: 55, knight: 50, pawn: 25 };
 
-    // Select candidate shooters (prioritize offensive backline or nearest)
-    const offensiveShooters = blackPieces.filter(p => ['queen', 'knight', 'bishop', 'rook'].includes(p.type));
+    // Select candidate shooters (prioritize offensive backline or Awakened King)
+    const offensiveShooters = blackPieces.filter(p => ['queen', 'knight', 'bishop', 'rook', 'king'].includes(p.type));
     const candidateShooters = offensiveShooters.length > 0 ? offensiveShooters : blackPieces;
 
     let candidatePairs = [];
@@ -713,6 +714,7 @@ class ArchessArena {
     this.winner = null;
     this.simulationSettling = false;
     this.turnStartTime = performance.now();
+    this.suddenDeathMode = false;
     this.pieceDamageDealt = {};
     this.pieceKills = {};
     const timerRing = document.getElementById('turnTimerRing');
@@ -810,22 +812,22 @@ class ArchessArena {
 
       const screenPos = getPointerScreenPos(e);
 
-      // Check if clicking King of current turn: show stationary citadel feedback
+      // Check if clicking King of current turn: show stationary citadel feedback ONLY if King is still anchored
       const currentKing = this.pieces.find(p => !p.dead && p.team === this.currentTurn && p.type === 'king');
-      if (currentKing) {
+      if (currentKing && !currentKing.awakened) {
         const kElevation = (this.renderMode === '3d') ? 14 : 0;
         const kScreen = this.toScreen(currentKing.x, currentKing.y, kElevation);
         const kHitCenterY = this.renderMode === '3d' ? (kScreen.y - currentKing.radius * 0.3) : kScreen.y;
         const kDist = Math.hypot(screenPos.x - kScreen.x, screenPos.y - kHitCenterY);
         const kHitRadius = currentKing.radius * (this.renderMode === '3d' ? 2.2 : 1.8);
         if (kDist <= kHitRadius) {
-          this.logTelemetry('CITADEL_STATIONARY', `The King is the Stationary Citadel and cannot be launched! Sling vanguard pieces.`);
-          this.addDamageNumber(currentKing.x, currentKing.y - currentKing.radius * 1.5, 0, false, '#ffd700', 'IMMOBILE CITADEL');
+          this.logTelemetry('CITADEL_STATIONARY', `The King is anchored as Citadel until vanguard falls. Sling vanguard pieces.`);
+          this.addDamageNumber(currentKing.x, currentKing.y - currentKing.radius * 1.5, 0, false, '#ffd700', 'ANCHORED CITADEL');
         }
       }
 
-      // Check if clicking an eligible piece on current turn (King cannot move)
-      const eligiblePieces = this.pieces.filter(p => !p.dead && p.team === this.currentTurn && p.type !== 'king');
+      // Check if clicking an eligible piece on current turn (Awakened King is eligible!)
+      const eligiblePieces = this.pieces.filter(p => !p.dead && p.team === this.currentTurn && (p.type !== 'king' || p.awakened));
       let target = null;
       let bestDist = Infinity;
 
@@ -912,7 +914,7 @@ class ArchessArena {
   handleKeyboardControl(e) {
     if (this.isGameOver) return;
     if (this.gameMode === 'bot' && this.currentTurn === 'black') return;
-    const livingActivePieces = this.pieces.filter(p => !p.dead && p.team === this.currentTurn && p.type !== 'king');
+    const livingActivePieces = this.pieces.filter(p => !p.dead && p.team === this.currentTurn && (p.type !== 'king' || p.awakened));
     if (livingActivePieces.length === 0) return;
 
     if (e.code === 'Tab') {
@@ -946,15 +948,24 @@ class ArchessArena {
   }
 
   launchPiece(piece, pullX, pullY, pullDist) {
-    if (piece.immovable || piece.type === 'king') return;
+    if (piece.immovable || (piece.type === 'king' && !piece.awakened)) return;
     const clampedDist = Math.min(pullDist, this.maxPullDistance);
     const powerRatio = clampedDist / this.maxPullDistance;
     // Calibrated launch impulse: 0.15 for snappy, weighted physical slingshot feel
     const impulse = clampedDist * 0.15 * piece.speedMulti;
     const angle = Math.atan2(pullY, pullX);
 
-    piece.vx = Math.cos(angle) * impulse;
-    piece.vy = Math.sin(angle) * impulse;
+    piece.vx = -Math.cos(angle) * impulse;
+    piece.vy = -Math.sin(angle) * impulse;
+
+    if (piece.type === 'king' && piece.awakened) {
+      this.spawnImpactParticles(piece.x, piece.y, 25, false, piece.team === 'white' ? ['#ffd700', '#00e1d9', '#ffffff'] : ['#ff4757', '#ff7675', '#ffffff']);
+      this.audio.playLaunch(1.4);
+      this.logTelemetry('SOVEREIGN_LAUNCH', `👑 ${piece.team.toUpperCase()} Awakened King launched with sovereign kinetic force!`);
+    } else {
+      this.audio.playLaunch(powerRatio);
+      this.logTelemetry('LAUNCH', `Launched ${piece.team}_${piece.type} at power ${(powerRatio * 100).toFixed(0)}%`);
+    }
 
     // Cap maximum speed to 13 for fast, decisive movement
     const speed = Math.hypot(piece.vx, piece.vy);
@@ -1182,8 +1193,8 @@ class ArchessArena {
                 this.screenShake = 7;
                 this.totalImpacts++;
 
-                // Attacker takes logical recoil self-damage from ramming into reinforced stone/energy fortress
-                const recoilDmg = Math.max(6, Math.round(wallDamage * 0.25 + hitSpeed * 1.6));
+                // Attacker takes balanced recoil self-damage from ramming into reinforced stone/energy fortress
+                const recoilDmg = Math.max(2, Math.round(wallDamage * 0.12 + hitSpeed * 0.5));
                 attacker.hp -= recoilDmg;
                 attacker.hitFlash = 1.0;
 
@@ -1205,6 +1216,7 @@ class ArchessArena {
                   this.capturedPieces[attacker.team].push(attacker.type);
                   if (this.onPieceCaptured) this.onPieceCaptured(attacker.team, attacker.type, this.getMaterialDiff());
                   this.logTelemetry('ELIMINATION', `[!] ${attacker.team.toUpperCase()} ${attacker.type.toUpperCase()} shattered from recoil impact against the King's Fortress Wall!`);
+                  this.checkSovereignAwakening();
                 }
 
                 // Check if King's wall collapses
@@ -1334,6 +1346,17 @@ class ArchessArena {
                   this.logTelemetry('SUPERNOVA', 'Queen discharged Supernova blast on high-velocity strike!');
                 }
 
+                // Awakened King Sovereign Strike: crushing momentum & concussive retribution wave
+                if ((p1.type === 'king' && p1.awakened) || (p2.type === 'king' && p2.awakened)) {
+                  const sovereign = (p1.type === 'king' && p1.awakened) ? p1 : p2;
+                  if (striker === sovereign) {
+                    primaryDamage = Math.max(35, Math.round(primaryDamage * 1.5));
+                    this.screenShake = 15;
+                    this.spawnImpactParticles((p1.x + p2.x) / 2, (p1.y + p2.y) / 2, 35, true, sovereign.team === 'white' ? ['#ffd700', '#00e1d9'] : ['#ff4757', '#ff7675']);
+                    this.logTelemetry('SOVEREIGN_STRIKE', `👑 ${sovereign.team.toUpperCase()} Awakened King landed crushing Sovereign Strike (-${primaryDamage} HP)!`);
+                  }
+                }
+
                 // King Bastion Aura: friendly pawns near King take 35% less damage
                 if (defender.type === 'pawn') {
                   const friendlyKing = this.pieces.find(k => !k.dead && k.team === defender.team && k.type === 'king');
@@ -1417,6 +1440,7 @@ class ArchessArena {
                       this.onPieceCaptured(p.team, p.type, this.getMaterialDiff());
                     }
                     this.logTelemetry('ELIMINATION', `[!] ${p.team.toUpperCase()} ${p.type.toUpperCase()} shattered and removed from board.`);
+                    this.checkSovereignAwakening();
                     if (p.type === 'king') {
                       this.handleKingElimination(p);
                     }
@@ -1452,20 +1476,15 @@ class ArchessArena {
       this.updateHUD();
       this.logTelemetry('SETTLEMENT', `Board settled at rest. Turn ${this.turns}: passed to ${this.currentTurn.toUpperCase()}.`);
 
-      // If all vanguard (non-King) pieces are destroyed on both sides, Kings cannot strike each other -> Insufficient Material Draw
-      const whiteMobile = this.pieces.filter(p => !p.dead && p.team === 'white' && p.type !== 'king').length;
-      const blackMobile = this.pieces.filter(p => !p.dead && p.team === 'black' && p.type !== 'king').length;
-      if (whiteMobile === 0 && blackMobile === 0 && !this.isGameOver) {
-        this.handleDraw('INSUFFICIENT_MATERIAL');
-        return;
-      }
+      // Check if either King (or both Kings) should awaken into mobile combat
+      this.checkSovereignAwakening();
 
       // If current turn player has 0 mobile pieces while opponent still has mobile pieces, auto-pass turn
-      const currentMobile = this.pieces.filter(p => !p.dead && p.team === this.currentTurn && p.type !== 'king').length;
+      const currentMobile = this.pieces.filter(p => !p.dead && p.team === this.currentTurn && (p.type !== 'king' || p.awakened)).length;
       const opponentTeam = this.currentTurn === 'white' ? 'black' : 'white';
-      const opponentMobile = this.pieces.filter(p => !p.dead && p.team === opponentTeam && p.type !== 'king').length;
+      const opponentMobile = this.pieces.filter(p => !p.dead && p.team === opponentTeam && (p.type !== 'king' || p.awakened)).length;
       if (currentMobile === 0 && opponentMobile > 0 && !this.isGameOver) {
-        this.logTelemetry('TURN_PASSED', `${this.currentTurn.toUpperCase()} has no vanguard pieces remaining! Turn passed to ${opponentTeam.toUpperCase()}.`);
+        this.logTelemetry('TURN_PASSED', `${this.currentTurn.toUpperCase()} has no mobile pieces remaining! Turn passed to ${opponentTeam.toUpperCase()}.`);
         this.currentTurn = opponentTeam;
         this.updateHUD();
       }
@@ -1487,16 +1506,60 @@ class ArchessArena {
     }
 
     for (let i = this.damageNumbers.length - 1; i >= 0; i--) {
-      const dn = this.damageNumbers[i];
-      dn.y += dn.vy;
-      dn.alpha -= dt * 0.9;
-      if (dn.alpha <= 0) this.damageNumbers.splice(i, 1);
+      const d = this.damageNumbers[i];
+      d.y += d.vy;
+      d.alpha -= dt / d.life;
+      if (d.alpha <= 0) this.damageNumbers.splice(i, 1);
     }
 
+    // Screen Shake decay
     if (this.screenShake > 0) {
       this.screenShake -= dt * 25;
       if (this.screenShake < 0) this.screenShake = 0;
     }
+  }
+
+  checkSovereignAwakening() {
+    const whiteVanguard = this.pieces.filter(p => !p.dead && p.team === 'white' && p.type !== 'king').length;
+    const blackVanguard = this.pieces.filter(p => !p.dead && p.team === 'black' && p.type !== 'king').length;
+    const whiteKing = this.pieces.find(p => !p.dead && p.team === 'white' && p.type === 'king');
+    const blackKing = this.pieces.find(p => !p.dead && p.team === 'black' && p.type === 'king');
+
+    if (whiteVanguard === 0 && whiteKing && !whiteKing.awakened) {
+      this.awakenKing(whiteKing);
+    }
+    if (blackVanguard === 0 && blackKing && !blackKing.awakened) {
+      this.awakenKing(blackKing);
+    }
+
+    if (whiteVanguard === 0 && blackVanguard === 0 && !this.isGameOver && !this.suddenDeathMode) {
+      this.suddenDeathMode = true;
+      this.logTelemetry('SUDDEN_DEATH', '👑 SOVEREIGN SHOWDOWN! Both armies depleted — Kings enter Sudden Death Duel!');
+      if (window.ArchessToast) {
+        window.ArchessToast.warning('👑 SOVEREIGN SHOWDOWN: SUDDEN DEATH! Both Kings mobile for the final duel!');
+      }
+    }
+  }
+
+  awakenKing(king) {
+    king.awakened = true;
+    king.immovable = false;
+    king.wallActive = false;
+    king.wallHp = 0;
+    king.speedMulti = 1.35;
+    king.mass = 2.6;
+    king.bounce = 0.85;
+
+    this.audio.playImpact(1.8);
+    this.screenShake = 14;
+    this.spawnImpactParticles(king.x, king.y, 45, true, king.team === 'white' ? ['#ffd700', '#00e1d9', '#ffffff'] : ['#ff4757', '#ff7675', '#ffffff']);
+    this.addDamageNumber(king.x, king.y - king.radius * 1.6, 0, true, king.team === 'white' ? '#ffd700' : '#ff4757', '👑 SOVEREIGN AWAKENED!');
+
+    if (window.ArchessToast) {
+      window.ArchessToast.success(`👑 The ${king.team === 'white' ? 'White' : 'Black'} King Awakens! Immovable anchor broken — Mobile Combat active!`);
+    }
+    this.logTelemetry('SOVEREIGN_AWAKENED', `${king.team.toUpperCase()} King has awakened into mobile combat!`);
+    this.updateHUD();
   }
 
   updateHUD() {
@@ -1513,8 +1576,15 @@ class ArchessArena {
         turnCircle.style.background = this.winner === 'draw' ? 'var(--gold-light)' : (this.winner === 'white' ? 'var(--gold-bright)' : 'var(--accent-crimson)');
       }
     } else {
+      const activeKing = this.pieces.find(p => !p.dead && p.team === this.currentTurn && p.type === 'king');
       if (turnLabel) {
-        turnLabel.textContent = `${this.currentTurn.toUpperCase()}'S TURN — AIM & LAUNCH`;
+        if (this.suddenDeathMode) {
+          turnLabel.textContent = `⚡ SUDDEN DEATH DUEL: ${this.currentTurn.toUpperCase()} KING — AIM & LAUNCH!`;
+        } else if (activeKing && activeKing.awakened) {
+          turnLabel.textContent = `👑 ${this.currentTurn.toUpperCase()}'S TURN — SOVEREIGN STRIKE! (King Mobile)`;
+        } else {
+          turnLabel.textContent = `${this.currentTurn.toUpperCase()}'S TURN — AIM & LAUNCH`;
+        }
       }
       if (turnCircle) {
         turnCircle.className = `turn-circle ${this.currentTurn === 'black' ? 'black-turn' : ''}`;
@@ -2499,8 +2569,8 @@ class ArchessArena {
       ctx.fill();
     }
 
-    // Immovable Citadel Base Cornerstone Indicator
-    if (p.type === 'king') {
+    // Immovable Citadel Base Cornerstone Indicator (or Sovereign Aura if Awakened)
+    if (p.type === 'king' && !p.awakened) {
       const isWhiteKing = p.team === 'white';
       ctx.save();
       ctx.strokeStyle = isWhiteKing ? 'rgba(212, 175, 55, 0.45)' : 'rgba(255, 71, 87, 0.45)';
@@ -2511,6 +2581,21 @@ class ArchessArena {
       ctx.ellipse(0, this.renderMode === '3d' ? p.radius * 0.52 : 0, p.radius * 0.86, baseRy, 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.setLineDash([]);
+      ctx.restore();
+    } else if (p.type === 'king' && p.awakened) {
+      // Dynamic Glowing Pulsating Aura for Awakened Sovereign
+      const isWhiteKing = p.team === 'white';
+      const auraTime = performance.now() / 320;
+      const pulse = Math.sin(auraTime) * 3;
+      ctx.save();
+      ctx.strokeStyle = isWhiteKing ? 'rgba(255, 215, 0, 0.9)' : 'rgba(255, 71, 87, 0.9)';
+      ctx.lineWidth = 2.4;
+      ctx.shadowColor = isWhiteKing ? '#ffd700' : '#ff4757';
+      ctx.shadowBlur = 14;
+      ctx.beginPath();
+      const baseRy = this.renderMode === '3d' ? (p.radius + 6 + pulse) * 0.42 : (p.radius + 6 + pulse);
+      ctx.ellipse(0, this.renderMode === '3d' ? p.radius * 0.48 : 0, p.radius + 6 + pulse, baseRy, 0, 0, Math.PI * 2);
+      ctx.stroke();
       ctx.restore();
     }
 
@@ -2552,6 +2637,17 @@ class ArchessArena {
         ctx.shadowColor = '#000';
         ctx.shadowBlur = 4;
         ctx.fillText(`🛡️ FORTRESS WALL ${Math.round(p.wallHp)}/${p.maxWallHp}`, 0, wallBarY - 2);
+        ctx.restore();
+      } else if (p.awakened) {
+        // King is Awakened: Show Majestic Radiant Sovereign Pill
+        ctx.save();
+        ctx.font = `800 ${Math.max(9, Math.round(p.radius * 0.38))}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillStyle = isWhiteKing ? '#ffd700' : '#ff7675';
+        ctx.shadowColor = isWhiteKing ? 'rgba(255, 215, 0, 0.8)' : 'rgba(255, 71, 87, 0.8)';
+        ctx.shadowBlur = 8;
+        ctx.fillText(`👑 SOVEREIGN AWAKENED`, 0, -p.radius * 1.55);
         ctx.restore();
       } else {
         // Wall is Broken: Show Alert Pill

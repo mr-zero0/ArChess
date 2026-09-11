@@ -2,6 +2,28 @@
 
 All notable changes, architectural pivots, bugfixes, and refactorings across **ArChess** are documented in this file.
 
+## [2.7.2] - 2026-09-11
+
+### 👑 The Sovereign Awakens: Dynamic King Mobility & Sudden Death Duels
+- **King Awakening Mechanic**:
+  - When all vanguard (non-King) pieces of a side are eliminated, that side's King immediately **AWAKENS** (`awakened = true`, `immovable = false`).
+  - The King's stationary anchor is released, and its Fortress Wall dissolves into pure combat energy.
+  - An Awakened King becomes fully mobile with enhanced agility (`speedMulti = 1.35`), heavy colossus mass (`mass = 2.6`), and a pulsating radiant aura ring (gold for White, crimson for Black).
+- **Sovereign Strike Combat Power**:
+  - Awakened Kings deal crushing physical collision damage (`Math.max(35, primaryDamage * 1.5)`) with momentum-scaled screen shake and concussive particle bursts, enabling solo Kings to fight back and clutch out comebacks against enemy remnants.
+- **Sudden Death Sovereign Showdown (Zero Stalemate Trap)**:
+  - Completely replaced the automatic `INSUFFICIENT_MATERIAL` stalemate trap with an epic **Sudden Death Duel** when both armies have 0 vanguard pieces remaining.
+  - Both Kings duel across the open arena with equal realistic chances, taking turns to aim, bank shots off cushions, and strike until one King triumphs.
+- **Fortress Wall & Recoil Rebalance**:
+  - Rebalanced King Fortress Wall HP from **500** down to **280** HP, allowing offensive pieces to breach the citadel in 2-3 solid strikes.
+  - Reduced attacker recoil self-damage formula from 25% + 1.6× to 12% + 0.5×, preventing attacking pieces from suiciding prematurely against stone walls.
+- **Bot AI & Control Hints Integration**:
+  - Upgraded Bot AI in `executeBotTurn()` to recognize and launch with its Awakened King.
+  - Updated arena HUD prompt to display `👑 SOVEREIGN STRIKE!` and `⚡ SUDDEN DEATH DUEL!`.
+  - Updated control badge in `templates/play.html` and `static/js/main.js` to `(King: Citadel • 👑 Awakens When Alone)`.
+
+---
+
 ## [2.7.1] - 2026-09-11
 
 ### 🧹 UI Ergonomics: Complete Removal of Floating Piece Hover HUD

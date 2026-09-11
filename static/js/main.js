@@ -310,7 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
       if (kbdHints) {
-        kbdHints.innerHTML = '<span>Controls:</span> <span class="kbd-key">Drag &amp; Launch</span> <span class="kbd-key">Slingshot Aim</span> <span style="color: var(--gold-light); font-size: 0.72rem; margin-left: 6px;">(King: Immovable Citadel &bull; 🛡️ Wall Protected)</span>';
+        kbdHints.innerHTML = '<span>Controls:</span> <span class="kbd-key">Drag &amp; Launch</span> <span class="kbd-key">Slingshot Aim</span> <span style="color: var(--gold-light); font-size: 0.72rem; margin-left: 6px;">(King: Citadel &bull; 👑 Awakens When Alone)</span>';
       }
       if (userTriggered) showToast('View: 2D Arena (Drag & Launch Kinetic Combat)');
     } else {
@@ -324,7 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
       if (kbdHints) {
-        kbdHints.innerHTML = '<span>Controls:</span> <span class="kbd-key">Drag &amp; Launch</span> <span class="kbd-key">Tab</span> Cycle <span class="kbd-key">WASD</span> Aim <span class="kbd-key">Space</span> Fire <span style="color: var(--gold-light); font-size: 0.72rem; margin-left: 6px;">(King: Immovable Citadel &bull; 🛡️ Wall Protected)</span>';
+        kbdHints.innerHTML = '<span>Controls:</span> <span class="kbd-key">Drag &amp; Launch</span> <span class="kbd-key">Tab</span> Cycle <span class="kbd-key">WASD</span> Aim <span class="kbd-key">Space</span> Fire <span style="color: var(--gold-light); font-size: 0.72rem; margin-left: 6px;">(King: Citadel &bull; 👑 Awakens When Alone)</span>';
       }
       if (userTriggered) showToast('View: 3D Arena (Isometric Slingshot Combat)');
     }
