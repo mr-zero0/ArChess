@@ -74,7 +74,8 @@
   --transition-fast: var(--duration-fast) var(--ease-spring);
   --transition-smooth: var(--duration-normal) var(--ease-spring);
   --transition-spring: var(--duration-slow) var(--ease-spring);
-  --container-max: 1180px;
+  --container-max: min(1540px, 94vw);
+  --container-wide: min(1680px, 96vw);
 
   /* shadcn/ui Multi-Layer Elevation Shadows */
   --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.25);
@@ -1141,7 +1142,7 @@ button {
   position: relative;
   z-index: 2;
   text-align: center;
-  max-width: 820px;
+  max-width: 980px;
   width: 100%;
   margin: 0 auto;
   display: flex;
@@ -1151,7 +1152,7 @@ button {
 
 .hero-title-minimal {
   font-family: var(--font-sans);
-  font-size: clamp(2.3rem, 4.8vw, 3.8rem);
+  font-size: clamp(2.6rem, 5.2vw, 4.4rem);
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.15;
@@ -1166,9 +1167,9 @@ button {
 }
 
 .hero-subhead-minimal {
-  font-size: clamp(1rem, 1.6vw, 1.18rem);
+  font-size: clamp(1.05rem, 1.8vw, 1.25rem);
   color: var(--text-secondary);
-  max-width: 580px;
+  max-width: 680px;
   margin: 18px auto 32px;
   line-height: 1.65;
 }
@@ -1177,7 +1178,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 14px;
+  gap: 16px;
   flex-wrap: wrap;
 }
 
@@ -1186,18 +1187,19 @@ button {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   width: 100%;
-  max-width: 680px;
-  margin: 44px auto 0;
-  background: rgba(14, 18, 26, 0.75);
+  max-width: 820px;
+  margin: 48px auto 0;
+  background: rgba(14, 18, 26, 0.78);
   border: 1px solid var(--border-card);
-  border-radius: var(--radius-md);
-  padding: 14px 20px;
-  backdrop-filter: blur(12px);
+  border-radius: var(--radius-lg);
+  padding: 18px 28px;
+  backdrop-filter: blur(14px);
+  box-shadow: var(--shadow-lg);
 }
 
 .metric-col {
   text-align: center;
-  padding: 4px 10px;
+  padding: 6px 14px;
 }
 
 .metric-col:not(:last-child) {
@@ -1205,18 +1207,19 @@ button {
 }
 
 .metric-col .metric-num {
-  font-size: 1.25rem;
+  font-size: 1.55rem;
   font-weight: 700;
   color: #fff;
   font-family: var(--font-mono);
+  letter-spacing: -0.01em;
 }
 
 .metric-col .metric-lbl {
-  font-size: 0.74rem;
+  font-size: 0.78rem;
   color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-top: 2px;
+  letter-spacing: 0.08em;
+  margin-top: 3px;
 }
 
 /* Video Control Pill Button */
@@ -1306,7 +1309,7 @@ button {
 
 .theme-preview-box {
   width: 100%;
-  height: 190px;
+  height: 220px;
   position: relative;
   display: flex;
   align-items: center;
@@ -1332,12 +1335,12 @@ button {
 
 .theme-grid-tiles {
   display: grid;
-  grid-template-columns: repeat(4, 34px);
-  grid-template-rows: repeat(4, 34px);
+  grid-template-columns: repeat(4, 42px);
+  grid-template-rows: repeat(4, 42px);
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7);
-  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.75);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
 }
 
 /* Midnight Tiles */
@@ -1701,8 +1704,9 @@ button {
    Tactical Arena Styles (play.html) — shadcn/ui Card Architecture
    ========================================================================== */
 .play-page-container {
-  padding-top: 90px;
-  padding-bottom: 60px;
+  padding-top: 96px;
+  padding-bottom: 70px;
+  max-width: var(--container-max);
 }
 
 .play-arena-toolbar {
@@ -1714,8 +1718,8 @@ button {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 10px 20px;
-  margin-bottom: 14px;
+  padding: 12px 22px;
+  margin-bottom: 16px;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.06);
@@ -1734,8 +1738,8 @@ button {
 }
 
 .arena-toolbar-group > span {
-  font-size: 0.74rem;
-  font-weight: 600;
+  font-size: 0.76rem;
+  font-weight: 700;
   color: var(--muted-foreground);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -1751,7 +1755,7 @@ button {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 3px;
-  gap: 2px;
+  gap: 3px;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
@@ -1759,16 +1763,16 @@ button {
 .theme-pill-btn {
   background: transparent;
   color: var(--muted-foreground);
-  font-size: 0.78rem;
-  font-weight: 500;
-  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 7px 15px;
   border-radius: var(--radius-sm);
   transition: all var(--transition-smooth);
   position: relative;
   letter-spacing: 0.01em;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   border: none;
   cursor: pointer;
 }
@@ -1853,11 +1857,11 @@ button {
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 14px;
+  gap: 16px;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 10px 18px;
+  padding: 12px 22px;
   margin-bottom: 16px;
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
@@ -1868,27 +1872,27 @@ button {
 .turn-badge {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 .turn-circle {
   position: relative;
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   border-radius: var(--radius-full);
   background: var(--primary);
   border: 2px solid var(--gold-bright);
-  box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.55);
   transition: all var(--transition-smooth);
 }
 
 .turn-circle::after {
   content: '';
   position: absolute;
-  inset: -5px;
+  inset: -6px;
   border-radius: var(--radius-full);
   border: 1.5px solid var(--gold-bright);
-  opacity: 0.7;
+  opacity: 0.75;
   animation: radarRipple 2.2s infinite var(--ease-spring);
   pointer-events: none;
 }
@@ -1896,7 +1900,7 @@ button {
 .turn-circle.black-turn {
   background: var(--destructive);
   border-color: var(--accent-crimson);
-  box-shadow: 0 0 10px rgba(255, 71, 87, 0.5);
+  box-shadow: 0 0 12px rgba(255, 71, 87, 0.55);
 }
 
 .turn-circle.black-turn::after {
@@ -1905,8 +1909,8 @@ button {
 
 .turn-label {
   font-family: var(--font-mono);
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-size: 0.9rem;
+  font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--foreground);
 }
@@ -1914,8 +1918,8 @@ button {
 .keyboard-hints-badge {
   display: flex;
   align-items: center;
-  gap: 7px;
-  font-size: 0.74rem;
+  gap: 8px;
+  font-size: 0.78rem;
   color: var(--muted-foreground);
 }
 
@@ -1925,9 +1929,9 @@ button {
   border: 1px solid var(--border);
   box-shadow: 0 1px 0 var(--border), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   border-radius: var(--radius-sm);
-  padding: 2px 7px;
+  padding: 3px 8px;
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 600;
   color: var(--muted-foreground);
   letter-spacing: 0.02em;
@@ -1936,8 +1940,8 @@ button {
 /* Main Grid & Stage */
 .play-arena-main-grid {
   display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 26px;
   align-items: start;
 }
 
@@ -1947,9 +1951,10 @@ button {
   border-radius: var(--radius-lg);
   overflow: hidden;
   position: relative;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), inset 0 0 80px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 24px 65px rgba(0, 0, 0, 0.85), inset 0 0 80px rgba(0, 0, 0, 0.7);
   aspect-ratio: 1 / 1;
-  max-width: min(720px, calc(100vh - 260px));
+  max-width: min(960px, calc(100vh - 210px));
+  min-height: 520px;
   width: 100%;
   margin: 0 auto;
   display: flex;
@@ -1958,34 +1963,40 @@ button {
   transition: max-width 0.3s var(--ease-spring);
 }
 
+@media (min-width: 1440px) {
+  .arena-canvas-stage {
+    max-width: min(1040px, calc(100vh - 200px));
+  }
+}
+
 /* Board Resize Control */
 .board-resize-strip {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 10px;
+  margin-bottom: 12px;
   padding: 0 4px;
 }
 
 .board-resize-strip .resize-label {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 600;
+  font-size: 0.74rem;
+  font-weight: 700;
   color: var(--muted-foreground);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   margin-right: auto;
 }
 
 .board-resize-btn {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: var(--card);
   color: var(--foreground);
-  font-size: 1rem;
+  font-size: 1.1rem;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -1998,6 +2009,7 @@ button {
 .board-resize-btn:hover {
   border-color: var(--border-hover);
   background: var(--muted);
+  color: var(--gold-bright);
 }
 
 .board-resize-btn:active {
@@ -2006,10 +2018,10 @@ button {
 
 .board-size-indicator {
   font-family: var(--font-mono);
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--muted-foreground);
-  min-width: 32px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--foreground);
+  min-width: 40px;
   text-align: center;
 }
 
@@ -2107,17 +2119,17 @@ button {
 .player-strip-unit {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 .player-strip-disc {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
+  font-size: 1.35rem;
   font-weight: 800;
   position: relative;
   transition: transform var(--transition-smooth), box-shadow var(--transition-smooth);
@@ -2170,7 +2182,7 @@ button {
 }
 
 .casualties-header {
-  padding: 12px 18px;
+  padding: 14px 20px;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -2179,8 +2191,8 @@ button {
 }
 
 .casualties-header h4 {
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-size: 0.86rem;
+  font-weight: 700;
   color: var(--foreground);
   display: flex;
   align-items: center;
@@ -2191,20 +2203,20 @@ button {
 
 .advantage-badge {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
-  font-weight: 600;
-  padding: 2px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 12px;
   border-radius: var(--radius-full);
-  background: var(--muted);
+  background: var(--card);
   border: 1px solid var(--border);
-  color: var(--muted-foreground);
+  color: var(--foreground);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   transition: all var(--transition-smooth);
 }
 
 .casualties-body {
-  padding: 16px 18px;
+  padding: 18px 20px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -2220,7 +2232,7 @@ button {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   font-weight: 700;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -2228,8 +2240,8 @@ button {
 }
 
 .army-dot {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   display: inline-block;
 }
@@ -2245,16 +2257,17 @@ button {
 }
 
 .casualty-rack {
-  min-height: 32px;
+  min-height: 40px;
   background: var(--muted);
   border: 1px solid var(--border);
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.15);
   border-radius: var(--radius-md);
-  padding: 5px 10px;
+  padding: 6px 12px;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
+  font-size: 1.25rem;
   transition: background var(--transition-smooth);
 }
 
@@ -2311,22 +2324,22 @@ button {
    ========================================================================== */
 .arsenal-showcase {
   display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 24px;
+  grid-template-columns: 360px 1fr;
+  gap: 28px;
   align-items: start;
 }
 
 .arsenal-tabs-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .piece-tab-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 18px;
+  padding: 16px 20px;
   background: var(--bg-card);
   border: 1px solid var(--border-card);
   border-radius: var(--radius-md);
@@ -2352,12 +2365,12 @@ button {
 .piece-tab-left {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
 }
 
 .piece-glyph {
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: rgba(212, 175, 55, 0.12);
   border: 1px solid var(--gold-border);
@@ -2365,7 +2378,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.3rem;
+  font-size: 1.5rem;
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
@@ -2373,12 +2386,12 @@ button {
   background: radial-gradient(circle at 35% 35%, #fff5d6 0%, #d4af37 60%, #8a6f18 100%);
   color: #07080b;
   border-color: rgba(255, 255, 255, 0.4);
-  box-shadow: 0 0 12px rgba(212, 175, 55, 0.5);
-  transform: scale(1.05);
+  box-shadow: 0 0 14px rgba(212, 175, 55, 0.55);
+  transform: scale(1.06);
 }
 
 .piece-title-wrap h4 {
-  font-size: 0.98rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: #fff;
   letter-spacing: 0.01em;
@@ -2386,16 +2399,16 @@ button {
 }
 
 .piece-title-wrap span {
-  font-size: 0.76rem;
+  font-size: 0.8rem;
   color: var(--text-secondary);
 }
 
 .piece-tag {
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  padding: 3px 10px;
+  padding: 4px 12px;
   border-radius: var(--radius-full);
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -2413,7 +2426,7 @@ button {
   background: var(--uiverse-glass-card);
   border: 1px solid var(--border-card);
   border-radius: var(--radius-lg);
-  padding: 36px 32px;
+  padding: 40px 36px;
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   box-shadow: var(--shadow-xl);
@@ -2450,7 +2463,7 @@ button {
 
 .detail-name {
   font-family: var(--font-serif);
-  font-size: 2.3rem;
+  font-size: 2.6rem;
   font-weight: 800;
   color: #fff;
   margin: 4px 0 2px;
@@ -2458,13 +2471,13 @@ button {
 }
 
 .detail-role {
-  font-size: 0.94rem;
+  font-size: 1rem;
   color: var(--text-secondary);
 }
 
 .detail-icon-large {
-  width: 76px;
-  height: 76px;
+  width: 90px;
+  height: 90px;
   border-radius: 50%;
   background: radial-gradient(circle at 35% 35%, rgba(212, 175, 55, 0.25) 0%, rgba(12, 15, 22, 0.9) 100%);
   border: 1.5px solid var(--gold-border-bright);
@@ -2472,8 +2485,8 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2.6rem;
-  box-shadow: 0 0 30px rgba(212, 175, 55, 0.25), inset 0 1px 2px rgba(255, 255, 255, 0.2);
+  font-size: 3.2rem;
+  box-shadow: 0 0 32px rgba(212, 175, 55, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.2);
 }
 
 .detail-lore {
@@ -2621,8 +2634,8 @@ button {
 }
 
 .leaderboard-table th {
-  padding: 14px 22px;
-  font-size: 0.72rem;
+  padding: 16px 26px;
+  font-size: 0.76rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -2633,8 +2646,8 @@ button {
 }
 
 .leaderboard-table td {
-  padding: 16px 22px;
-  font-size: 0.88rem;
+  padding: 18px 26px;
+  font-size: 0.92rem;
   color: var(--text-secondary);
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   vertical-align: middle;
@@ -2653,11 +2666,11 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   font-family: var(--font-mono);
-  font-size: 0.8rem;
+  font-size: 0.84rem;
   font-weight: 800;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -2690,20 +2703,20 @@ button {
 .player-avatar-chip {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 .player-avatar-disc {
-  width: 32px;
-  height: 32px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   background: rgba(212, 175, 55, 0.12);
   border: 1px solid var(--gold-border);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
   color: var(--gold-light);
+  font-size: 1.15rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
@@ -2895,6 +2908,13 @@ button {
   border: 1px solid rgba(255, 71, 87, 0.35);
 }
 
+.victory-banner-badge.draw {
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--foreground);
+  border: 1px solid var(--border-hover);
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.1);
+}
+
 .victory-title {
   font-family: var(--font-serif);
   font-size: 2rem;
@@ -2973,7 +2993,7 @@ button {
 }
 
 /* Responsive */
-@media (max-width: 960px) {
+@media (max-width: 1080px) {
   .themes-grid-3,
   .principles-grid,
   .play-arena-main-grid,

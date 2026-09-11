@@ -254,6 +254,11 @@ document.addEventListener('DOMContentLoaded', () => {
     modeBtns.forEach(b => {
       b.classList.toggle('active', b.getAttribute('data-mode') === mode);
     });
+    const blackName = document.getElementById('blackPlayerName');
+    const blackSub = document.getElementById('blackPlayerSub');
+    if (blackName) blackName.textContent = mode === 'bot' ? 'ArChess Bot' : 'Player 2';
+    if (blackSub) blackSub.textContent = mode === 'bot' ? 'Black Army • Autonomous AI' : 'Black Army • Local Guest';
+
     if (arena) {
       arena.setGameMode(mode);
     }
@@ -395,7 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (playAgainBtn && victoryModal) {
     playAgainBtn.addEventListener('click', () => {
       victoryModal.classList.remove('active');
-      if (activeViewMode === '2d' && window.Archess2DChess && window.Archess2DChess.reset) {
+      if ((activeViewMode === '2d-arena' || activeViewMode === '2d-classic') && window.Archess2DChess && window.Archess2DChess.reset) {
         window.Archess2DChess.reset();
       } else if (arena) {
         arena.resetBoard();

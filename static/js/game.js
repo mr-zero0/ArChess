@@ -503,6 +503,52 @@ class ArchessArena {
     }).catch(() => {});
   }
 
+  handleDraw(reason = 'INSUFFICIENT_MATERIAL') {
+    if (this.isGameOver) return;
+    this.isGameOver = true;
+    this.winner = 'draw';
+
+    this.audio.playVictory();
+    this.logTelemetry('STALEMATE', `MATCH DRAWN — Insufficient kinetic material! Both Citadel Kings endure with no remaining vanguard pieces.`);
+
+    const durationSec = Math.max(1, Math.round((Date.now() - this.matchStartTime) / 1000));
+    const whiteUser = (window.ArchessAuth && window.ArchessAuth.currentUser) ? window.ArchessAuth.currentUser.username : 'Player1';
+    const blackUser = this.gameMode === 'bot' ? 'ArChess Bot' : 'Player2';
+
+    const payload = {
+      white_username: whiteUser,
+      black_username: blackUser,
+      winner: 'draw',
+      white_damage: this.whiteDamage,
+      black_damage: this.blackDamage,
+      turns: this.turns,
+      duration_sec: durationSec
+    };
+
+    fetch('/api/matches/record', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      credentials: 'include'
+    })
+    .then(res => res.json())
+    .then(data => {
+      this.showVictoryModal('draw', payload, data.settlement);
+    })
+    .catch(() => {
+      this.showVictoryModal('draw', payload, null);
+    });
+
+    fetch('/api/telemetry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event_type: 'MATCH_DRAWN',
+        payload: payload
+      })
+    }).catch(() => {});
+  }
+
   showVictoryModal(winner, payload, settlement) {
     const modal = document.getElementById('victoryModal');
     if (!modal) return;
@@ -514,25 +560,30 @@ class ArchessArena {
     const statDuration = document.getElementById('statDuration');
     const statEloChange = document.getElementById('statEloChange');
 
+    const isDraw = winner === 'draw';
     const isWhiteWin = winner === 'white';
     if (badge) {
-      badge.className = `victory-banner-badge ${isWhiteWin ? 'white-win' : 'black-win'}`;
-      badge.textContent = `${winner.toUpperCase()} ARMY VICTORIOUS`;
+      badge.className = `victory-banner-badge ${isDraw ? 'draw' : (isWhiteWin ? 'white-win' : 'black-win')}`;
+      badge.textContent = isDraw ? 'MATCH DRAWN — STALEMATE' : `${winner.toUpperCase()} ARMY VICTORIOUS`;
     }
     if (title) {
-      title.textContent = isWhiteWin ? 'CHECKMATE — GLORY TO WHITE' : 'CHECKMATE — BLACK SUPREMACY';
+      title.textContent = isDraw
+        ? 'STALEMATE — DEADLOCK OF CITADELS'
+        : (isWhiteWin ? 'CHECKMATE — GLORY TO WHITE' : 'CHECKMATE — BLACK SUPREMACY');
     }
     if (sub) {
-      sub.textContent = `The enemy King was shattered in turn ${payload.turns}. Match settled on the Grandmaster ladder.`;
+      sub.textContent = isDraw
+        ? `All vanguard pieces shattered. Both Kings stand impregnable in turn ${payload.turns}. Official draw recorded.`
+        : `The enemy King was shattered in turn ${payload.turns}. Match settled on the Grandmaster ladder.`;
     }
     if (statTurns) statTurns.textContent = payload.turns;
     if (statDuration) statDuration.textContent = `${payload.duration_sec}s`;
     if (statEloChange) {
       if (settlement) {
-        const delta = isWhiteWin ? settlement.white_delta : settlement.black_delta;
-        statEloChange.textContent = delta >= 0 ? `+${delta} ELO` : `${delta} ELO`;
+        const delta = isDraw ? 0 : (isWhiteWin ? settlement.white_delta : settlement.black_delta);
+        statEloChange.textContent = delta > 0 ? `+${delta} ELO` : `${delta} ELO`;
       } else {
-        statEloChange.textContent = isWhiteWin ? '+32 ELO' : '-16 ELO';
+        statEloChange.textContent = isDraw ? '+0 ELO' : (isWhiteWin ? '+32 ELO' : '-16 ELO');
       }
     }
 
@@ -1268,6 +1319,24 @@ class ArchessArena {
       this.updateHUD();
       this.logTelemetry('SETTLEMENT', `Board settled at rest. Turn ${this.turns}: passed to ${this.currentTurn.toUpperCase()}.`);
 
+      // If all vanguard (non-King) pieces are destroyed on both sides, Kings cannot strike each other -> Insufficient Material Draw
+      const whiteMobile = this.pieces.filter(p => !p.dead && p.team === 'white' && p.type !== 'king').length;
+      const blackMobile = this.pieces.filter(p => !p.dead && p.team === 'black' && p.type !== 'king').length;
+      if (whiteMobile === 0 && blackMobile === 0 && !this.isGameOver) {
+        this.handleDraw('INSUFFICIENT_MATERIAL');
+        return;
+      }
+
+      // If current turn player has 0 mobile pieces while opponent still has mobile pieces, auto-pass turn
+      const currentMobile = this.pieces.filter(p => !p.dead && p.team === this.currentTurn && p.type !== 'king').length;
+      const opponentTeam = this.currentTurn === 'white' ? 'black' : 'white';
+      const opponentMobile = this.pieces.filter(p => !p.dead && p.team === opponentTeam && p.type !== 'king').length;
+      if (currentMobile === 0 && opponentMobile > 0 && !this.isGameOver) {
+        this.logTelemetry('TURN_PASSED', `${this.currentTurn.toUpperCase()} has no vanguard pieces remaining! Turn passed to ${opponentTeam.toUpperCase()}.`);
+        this.currentTurn = opponentTeam;
+        this.updateHUD();
+      }
+
       if (!this.isGameOver && this.currentTurn === 'black' && this.gameMode === 'bot') {
         this.triggerBotTurn();
       }
@@ -1300,11 +1369,24 @@ class ArchessArena {
   updateHUD() {
     const turnLabel = document.getElementById('arenaTurnLabel');
     const turnCircle = document.getElementById('arenaTurnCircle');
-    if (turnLabel) {
-      turnLabel.textContent = `${this.currentTurn.toUpperCase()}'S TURN — AIM & LAUNCH`;
-    }
-    if (turnCircle) {
-      turnCircle.className = `turn-circle ${this.currentTurn === 'black' ? 'black-turn' : ''}`;
+    if (this.isGameOver) {
+      if (turnLabel) {
+        turnLabel.textContent = this.winner === 'draw'
+          ? 'MATCH DRAWN — STALEMATE / INSUFFICIENT MATERIAL'
+          : `VICTORY! ${this.winner.toUpperCase()} ARMY CONQUERED THE BOARD!`;
+      }
+      if (turnCircle) {
+        turnCircle.className = `turn-circle ${this.winner === 'black' ? 'black-turn' : ''}`;
+        turnCircle.style.background = this.winner === 'draw' ? 'var(--gold-light)' : (this.winner === 'white' ? 'var(--gold-bright)' : 'var(--accent-crimson)');
+      }
+    } else {
+      if (turnLabel) {
+        turnLabel.textContent = `${this.currentTurn.toUpperCase()}'S TURN — AIM & LAUNCH`;
+      }
+      if (turnCircle) {
+        turnCircle.className = `turn-circle ${this.currentTurn === 'black' ? 'black-turn' : ''}`;
+        turnCircle.style.background = '';
+      }
     }
 
     const whiteAlive = this.pieces.filter(p => !p.dead && p.team === 'white').length;

@@ -53,6 +53,16 @@ window.ArchessAuth = {
         this.logout();
       });
     }
+
+    // Synchronize commander card on play page if present
+    const whitePlayerName = document.getElementById('whitePlayerName');
+    const whitePlayerSub = document.getElementById('whitePlayerSub');
+    if (whitePlayerName && this.currentUser) {
+      whitePlayerName.textContent = this.currentUser.username;
+    }
+    if (whitePlayerSub && this.currentUser) {
+      whitePlayerSub.textContent = `White Army • ${this.currentUser.elo_rating} ELO`;
+    }
   },
 
   renderAuthButtons() {
@@ -66,6 +76,16 @@ window.ArchessAuth = {
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
       </button>
     `;
+
+    // Reset commander card on play page if logged out
+    const whitePlayerName = document.getElementById('whitePlayerName');
+    const whitePlayerSub = document.getElementById('whitePlayerSub');
+    if (whitePlayerName) {
+      whitePlayerName.textContent = 'Player 1';
+    }
+    if (whitePlayerSub) {
+      whitePlayerSub.textContent = 'White Army • 1200 ELO';
+    }
 
     document.querySelectorAll('.open-auth-btn').forEach(btn => {
       btn.addEventListener('click', () => {

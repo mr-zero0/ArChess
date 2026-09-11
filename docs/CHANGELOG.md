@@ -4,6 +4,31 @@ All notable changes, architectural pivots, bugfixes, and refactorings across **A
 
 ---
 
+## [2.5.0] - 2026-09-11
+
+### 📐 Global Widescreen UI & Cinema-Scale Arena Overhaul
+- **Widescreen Layout Expansion**: Expanded `--container-max` to `min(1540px, 94vw)` and `--container-wide` to `min(1680px, 96vw)`, utilizing modern high-resolution displays.
+- **Cinema-Scale Canvas Stage**: Increased `.arena-canvas-stage` from 720px to `min(960px, calc(100vh - 210px))` with support for 1040px on widescreen monitors.
+- **Dynamic Board Zoom Controls**: Added responsive zoom controls (70% - 130%) on `/play`, instantly dispatching resize synchronization to both 2D and 3D engines.
+- **Expanded Match Sidebar & Typography**: Scaled sidebar to 380px with larger player avatar discs (44px), casualties racks, preview boards, and responsive typography across landing, arsenal, and leaderboard pages.
+
+### ⚖️ Insufficient Material & Draw Engine (King Deadlock Resolution)
+- **Dual King Deadlock Resolution**: When all vanguard pieces are eliminated and only Kings remain, `handleDraw('INSUFFICIENT_MATERIAL')` is automatically triggered. Records an official draw via `/api/matches/record` with `+0 ELO`.
+- **Single-Sided Vanguard Depletion Auto-Pass**: In `settleTurn`, if the active turn player has 0 mobile pieces but the opponent has remaining pieces, the turn is automatically passed to the opponent so the siege against the Citadel King can conclude without freezing.
+- **Turn HUD Synchronization**: `updateHUD()` now reflects match draws and game over states rather than defaulting to active turn prompts.
+
+### ♟️ 2D React Chessboard Modal & Victory Settlement Fixes
+- **Modal ID Alignment**: Updated `triggerArchessVictory` in `frontend/src/Archess2DChess.jsx` to target correct victory modal element IDs (`victoryBadge`, `victoryTitle`, `victorySub`, `statTurns`, `statDuration`, `statEloChange`).
+- **Arena Strike Draw Determination**: Corrected `executeArenaStrike` game-over logic to distinguish between true checkmates and stalemates/insufficient material draws.
+- **Rematch View-Mode Support**: Fixed "Play Again" button in `static/js/main.js` to reset matches in `'2d-arena'` and `'2d-classic'` modes.
+- **Typo Fix & Production Build**: Fixed `"ARCHEES BOT"` → `"ARCHESS BOT"` in turn label and rebuilt `static/js/react-chessboard-bundle.js`.
+
+### 👤 Live Commander Profile & Leaderboard Accuracy
+- **Live Commander Card Sync**: `renderUserBadge()` and `renderAuthButtons()` in `static/js/auth.js` dynamically sync player name and ELO onto `/play` player cards upon login, registration, and logout without page refresh.
+- **Leaderboard Win Rate & Draw Ledger**: Updated win rate formula to divide against `matches_played` rather than `wins + losses`, and added draw tally display (`W / L / D`).
+
+---
+
 ## [2.4.0] - 2026-09-10
 
 ### ⚔️ 3-Way Mode Architecture: Physics Drag & Launch vs FIDE Classic

@@ -215,7 +215,7 @@ function updateArenaTurn(turnColor, isBotThinking = false, isGameOver = false, w
   } else {
     circle.style.background = 'var(--accent-crimson)';
     circle.style.boxShadow = '0 0 10px rgba(255, 59, 78, 0.6)';
-    label.textContent = isBotThinking ? "BLACK'S TURN — ARCHEES BOT CALCULATING STRIKE..." : "BLACK'S TURN — SELECT OR DRAG TO MOVE";
+    label.textContent = isBotThinking ? "BLACK'S TURN — ARCHESS BOT CALCULATING STRIKE..." : "BLACK'S TURN — SELECT OR DRAG TO MOVE";
   }
 }
 
@@ -272,37 +272,49 @@ function resetArenaCasualties() {
 
 function triggerArchessVictory(winner, totalTurns, durationSec, whiteUser, blackUser) {
   const modal = document.getElementById('victoryModal');
+  const badge = document.getElementById('victoryBadge');
   const title = document.getElementById('victoryTitle');
-  const subtitle = document.getElementById('victorySubtitle');
-  const banner = document.getElementById('victoryBanner');
+  const sub = document.getElementById('victorySub');
+  const statTurns = document.getElementById('statTurns');
+  const statDur = document.getElementById('statDuration');
+  const eloChange = document.getElementById('statEloChange');
 
-  if (title) title.textContent = winner === 'draw' ? 'MATCH DRAW' : `${winner.toUpperCase()} ARMY VICTORIOUS`;
-  if (subtitle) subtitle.textContent = winner === 'draw' ? 'Stalemate or insufficient material.' : `Checkmate achieved in ${totalTurns} tactical moves!`;
-  if (banner) {
-    banner.className = `victory-banner ${winner === 'draw' ? 'white' : winner}`;
-    banner.textContent = winner === 'draw' ? 'STALEMATE' : 'CHECKMATE';
+  const isDraw = winner === 'draw';
+  const isWhite = winner === 'white';
+
+  if (badge) {
+    badge.className = `victory-banner-badge ${isDraw ? 'draw' : (isWhite ? 'white-win' : 'black-win')}`;
+    badge.textContent = isDraw ? 'MATCH DRAWN — STALEMATE' : `${winner.toUpperCase()} ARMY VICTORIOUS`;
   }
-
-  const statTurns = document.getElementById('victoryTurns');
-  const statDur = document.getElementById('victoryDuration');
-  const statDamage = document.getElementById('victoryDamage');
-  const eloChange = document.getElementById('victoryEloChange');
+  if (title) {
+    title.textContent = isDraw
+      ? 'STALEMATE — DEADLOCK OF CITADELS'
+      : (isWhite ? 'CHECKMATE — GLORY TO WHITE' : 'CHECKMATE — BLACK SUPREMACY');
+  }
+  if (sub) {
+    sub.textContent = isDraw
+      ? `All combatants neutralized. Both Kings stand impregnable in turn ${totalTurns}. Official draw recorded.`
+      : `Checkmate achieved in ${totalTurns} tactical moves! Match settled on the Grandmaster ladder.`;
+  }
 
   if (statTurns) statTurns.textContent = totalTurns;
   if (statDur) statDur.textContent = `${durationSec}s`;
-  if (statDamage) statDamage.textContent = `${totalTurns * 35}`;
   if (eloChange) {
-    eloChange.textContent = winner === 'white' ? '+18 ELO' : (winner === 'black' ? '-18 ELO' : '+0 ELO');
-    eloChange.style.color = winner === 'white' ? 'var(--gold-bright)' : (winner === 'black' ? 'var(--accent-crimson)' : 'var(--text-secondary)');
+    eloChange.textContent = isDraw ? '+0 ELO' : (isWhite ? '+18 ELO' : '-18 ELO');
+    eloChange.style.color = isDraw ? 'var(--text-secondary)' : (isWhite ? 'var(--gold-bright)' : 'var(--accent-crimson)');
   }
 
   if (modal) modal.classList.add('active');
+
+  const effectiveWhite = (window.ArchessAuth && window.ArchessAuth.currentUser)
+    ? window.ArchessAuth.currentUser.username
+    : (whiteUser || 'Player1');
 
   fetch('/api/matches/record', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      white_username: whiteUser || 'Player1',
+      white_username: effectiveWhite,
       black_username: blackUser || 'ArChess Bot',
       winner: winner,
       white_damage: totalTurns * 20,
@@ -350,7 +362,7 @@ export function Archess2DChess({ boardTheme = 'midnight', gameMode = 'bot', vari
         const parent = containerRef.current.parentElement || containerRef.current;
         const rect = parent.getBoundingClientRect();
         const minDim = Math.min(rect.width || 600, rect.height || 600);
-        const targetWidth = Math.max(300, Math.min(720, minDim - 16));
+        const targetWidth = Math.max(300, Math.min(960, minDim - 16));
         setBoardWidth(targetWidth);
       }
     };
@@ -449,9 +461,15 @@ export function Archess2DChess({ boardTheme = 'midnight', gameMode = 'bot', vari
       if (defender.type === 'k' || nextGame.isGameOver()) {
         playChessSound('victory');
         const duration = Math.max(1, Math.round((Date.now() - matchStartRef.current) / 1000));
-        const winner = attacker.color === 'w' ? 'white' : 'black';
+        const isKingEliminated = defender.type === 'k';
+        const winner = isKingEliminated
+          ? (attacker.color === 'w' ? 'white' : 'black')
+          : (nextGame.isCheckmate() ? (nextGame.turn() === 'w' ? 'black' : 'white') : 'draw');
+        const effectiveWhite = (window.ArchessAuth && window.ArchessAuth.currentUser)
+          ? window.ArchessAuth.currentUser.username
+          : 'Player1';
         updateArenaTurn(nextGame.turn(), false, true, winner);
-        triggerArchessVictory(winner, Math.ceil((turnCount + 1) / 2), duration, 'Player1', activeMode === 'bot' ? 'ArChess Bot' : 'Player2');
+        triggerArchessVictory(winner, Math.ceil((turnCount + 1) / 2), duration, effectiveWhite, activeMode === 'bot' ? 'ArChess Bot' : 'Player2');
       } else {
         updateArenaTurn(nextGame.turn(), false);
       }
@@ -538,8 +556,11 @@ export function Archess2DChess({ boardTheme = 'midnight', gameMode = 'bot', vari
           playChessSound('victory');
           const duration = Math.max(1, Math.round((Date.now() - matchStartRef.current) / 1000));
           const winner = currentGame.isCheckmate() ? (currentGame.turn() === 'w' ? 'black' : 'white') : 'draw';
+          const effectiveWhite = (window.ArchessAuth && window.ArchessAuth.currentUser)
+            ? window.ArchessAuth.currentUser.username
+            : 'Player1';
           updateArenaTurn(currentGame.turn(), false, true, winner);
-          triggerArchessVictory(winner, Math.ceil((turnCount + 1) / 2), duration, 'Player1', activeMode === 'bot' ? 'ArChess Bot' : 'Player2');
+          triggerArchessVictory(winner, Math.ceil((turnCount + 1) / 2), duration, effectiveWhite, activeMode === 'bot' ? 'ArChess Bot' : 'Player2');
         } else {
           updateArenaTurn(currentGame.turn(), false);
         }

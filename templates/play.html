@@ -204,15 +204,15 @@
               <div class="player-strip-disc white-disc">♔</div>
               <div>
                 <strong id="whitePlayerName" style="color: var(--foreground); font-size: 0.88rem;">Player 1</strong>
-                <div style="font-size: 0.73rem; color: var(--muted-foreground);">White Army &bull; 1200 ELO</div>
+                <div id="whitePlayerSub" style="font-size: 0.73rem; color: var(--muted-foreground);">White Army &bull; 1200 ELO</div>
               </div>
             </div>
             <div style="font-size: 0.82rem; font-weight: 700; color: var(--muted-foreground); letter-spacing: 0.06em;">VS</div>
             <div class="player-strip-unit" style="text-align: right; flex-direction: row-reverse;">
               <div class="player-strip-disc black-disc">♚</div>
               <div>
-                <strong style="color: var(--foreground); font-size: 0.88rem;">ArChess Bot / P2</strong>
-                <div style="font-size: 0.73rem; color: var(--accent-crimson);">Black Army &bull; 1200 ELO</div>
+                <strong id="blackPlayerName" style="color: var(--foreground); font-size: 0.88rem;">ArChess Bot</strong>
+                <div id="blackPlayerSub" style="font-size: 0.73rem; color: var(--accent-crimson);">Black Army &bull; Autonomous AI</div>
               </div>
             </div>
           </div>
@@ -324,17 +324,20 @@
       const growBtn = document.getElementById('boardGrowBtn');
 
       const STEP = 10;
-      const MIN = 60;
-      const MAX = 120;
+      const MIN = 70;
+      const MAX = 130;
+      const BASE_STAGE_PX = 960;
       let currentScale = parseInt(localStorage.getItem('archess_board_scale') || '100', 10);
       currentScale = Math.max(MIN, Math.min(MAX, currentScale));
 
       function applyBoardScale(scale) {
         currentScale = Math.max(MIN, Math.min(MAX, scale));
-        const maxPx = Math.round(720 * (currentScale / 100));
+        const maxPx = Math.round(BASE_STAGE_PX * (currentScale / 100));
         stage.style.maxWidth = maxPx + 'px';
         label.textContent = currentScale + '%';
         localStorage.setItem('archess_board_scale', currentScale);
+        // Trigger window resize event for 2D React Chessboard and Canvas observer
+        window.dispatchEvent(new Event('resize'));
         // Re-init canvas to match new size
         setTimeout(() => {
           if (window.archessGame && window.archessGame.initCanvasSize) {
