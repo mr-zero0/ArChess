@@ -173,8 +173,8 @@ class ArchessArena {
 
     // Mode States
     this.renderMode = '3d'; // '2d' or '3d'
-    this.boardTheme = 'midnight'; // 'midnight', 'woodland', 'ivory'
-    this.pieceTheme = 'classic'; // 'classic', 'outline', 'mono'
+    this.boardTheme = localStorage.getItem('archess_board_theme') || 'midnight';
+    this.pieceTheme = localStorage.getItem('archess_piece_theme') || 'classic';
     this.gameMode = 'bot'; // 'bot' (vs AI) or 'pvp' (local pass & play)
     this.currentTurn = 'white'; // 'white' or 'black'
 
@@ -389,11 +389,13 @@ class ArchessArena {
 
   setBoardTheme(theme) {
     this.boardTheme = theme;
+    localStorage.setItem('archess_board_theme', theme);
     this.logTelemetry('THEME_CHANGE', `Board palette updated to ${theme.toUpperCase()}.`);
   }
 
   setPieceTheme(theme) {
     this.pieceTheme = theme;
+    localStorage.setItem('archess_piece_theme', theme);
     this.logTelemetry('THEME_CHANGE', `Piece style updated to ${theme.toUpperCase()}.`);
   }
 
@@ -1655,6 +1657,46 @@ class ArchessArena {
         gridLine: 'rgba(0, 0, 0, 0.12)',
         coordText: '#d8dee9',
         slabSide: '#11141a'
+      },
+      emerald: {
+        darkSq: '#2e6b47',
+        lightSq: '#e1d7b5',
+        borderBg: '#133520',
+        borderColor: '#73b088',
+        inlayColor: 'rgba(115, 176, 136, 0.40)',
+        gridLine: 'rgba(0, 0, 0, 0.12)',
+        coordText: '#e8f5ec',
+        slabSide: '#0b2013'
+      },
+      cyberpunk: {
+        darkSq: '#14092b',
+        lightSq: '#2f1559',
+        borderBg: '#090317',
+        borderColor: '#00f3ff',
+        inlayColor: 'rgba(0, 243, 255, 0.45)',
+        gridLine: 'rgba(255, 0, 128, 0.25)',
+        coordText: '#00f3ff',
+        slabSide: '#04010a'
+      },
+      bloodstone: {
+        darkSq: '#59111e',
+        lightSq: '#2a1a1f',
+        borderBg: '#1a0408',
+        borderColor: '#e84158',
+        inlayColor: 'rgba(232, 65, 88, 0.40)',
+        gridLine: 'rgba(255, 255, 255, 0.08)',
+        coordText: '#ffccd3',
+        slabSide: '#0d0205'
+      },
+      oceanic: {
+        darkSq: '#1b3f61',
+        lightSq: '#6896b8',
+        borderBg: '#0b1d30',
+        borderColor: '#38d9a9',
+        inlayColor: 'rgba(56, 217, 169, 0.38)',
+        gridLine: 'rgba(0, 0, 0, 0.14)',
+        coordText: '#c7fced',
+        slabSide: '#05101a'
       }
     };
     const pal = palettes[this.boardTheme] || palettes.midnight;
@@ -1989,7 +2031,7 @@ class ArchessArena {
 
     let bodyGrad, strokeColor, detailColor, highlightColor;
 
-    if (theme === 'classic') {
+    if (theme === 'classic' || theme === 'staunton') {
       if (isWhite) {
         // Luxury warm ivory & polished gold
         bodyGrad = ctx.createLinearGradient(-R * 0.4, -R, R * 0.4, R);
@@ -2013,17 +2055,65 @@ class ArchessArena {
         detailColor = 'rgba(255, 71, 87, 0.55)';
         highlightColor = 'rgba(255, 255, 255, 0.4)';
       }
-    } else if (theme === 'outline') {
-      const neonColor = isWhite ? '#ffd700' : '#ff4655';
-      bodyGrad = isWhite ? 'rgba(255, 215, 0, 0.12)' : 'rgba(255, 70, 85, 0.12)';
+    } else if (theme === 'neo') {
+      if (isWhite) {
+        // Neo Modernist: Clean titanium white with slate precision outline
+        bodyGrad = ctx.createLinearGradient(-R * 0.3, -R, R * 0.3, R);
+        bodyGrad.addColorStop(0, '#ffffff');
+        bodyGrad.addColorStop(0.5, '#f1f5f9');
+        bodyGrad.addColorStop(1, '#cbd5e1');
+
+        strokeColor = '#0f172a';
+        detailColor = 'rgba(15, 23, 42, 0.35)';
+        highlightColor = 'rgba(255, 255, 255, 0.9)';
+      } else {
+        // Neo Modernist: Matte dark carbon with gold edge
+        bodyGrad = ctx.createLinearGradient(-R * 0.3, -R, R * 0.3, R);
+        bodyGrad.addColorStop(0, '#334155');
+        bodyGrad.addColorStop(0.6, '#1e293b');
+        bodyGrad.addColorStop(1, '#0f172a');
+
+        strokeColor = '#f59e0b';
+        detailColor = 'rgba(245, 158, 11, 0.45)';
+        highlightColor = 'rgba(245, 158, 11, 0.3)';
+      }
+    } else if (theme === 'cyber' || theme === 'outline') {
+      const neonColor = isWhite ? '#00f3ff' : '#ff007f';
+      bodyGrad = isWhite ? 'rgba(0, 243, 255, 0.16)' : 'rgba(255, 0, 127, 0.16)';
       strokeColor = neonColor;
       detailColor = neonColor;
-      highlightColor = 'transparent';
+      highlightColor = neonColor;
       ctx.shadowColor = neonColor;
-      ctx.shadowBlur = 8;
+      ctx.shadowBlur = 10;
+    } else if (theme === 'crystal' || theme === 'glass') {
+      if (isWhite) {
+        // Frosted Crystal: Ethereal sapphire diamond glass
+        bodyGrad = ctx.createLinearGradient(-R * 0.5, -R, R * 0.5, R);
+        bodyGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+        bodyGrad.addColorStop(0.4, 'rgba(186, 230, 253, 0.75)');
+        bodyGrad.addColorStop(1, 'rgba(56, 189, 248, 0.60)');
+
+        strokeColor = '#38bdf8';
+        detailColor = 'rgba(14, 165, 233, 0.4)';
+        highlightColor = 'rgba(255, 255, 255, 0.95)';
+        ctx.shadowColor = '#38bdf8';
+        ctx.shadowBlur = 8;
+      } else {
+        // Dark Smoky Amethyst Quartz
+        bodyGrad = ctx.createLinearGradient(-R * 0.5, -R, R * 0.5, R);
+        bodyGrad.addColorStop(0, 'rgba(147, 51, 234, 0.85)');
+        bodyGrad.addColorStop(0.5, 'rgba(59, 7, 100, 0.80)');
+        bodyGrad.addColorStop(1, 'rgba(15, 2, 28, 0.90)');
+
+        strokeColor = '#c084fc';
+        detailColor = 'rgba(192, 132, 252, 0.45)';
+        highlightColor = 'rgba(255, 255, 255, 0.4)';
+        ctx.shadowColor = '#c084fc';
+        ctx.shadowBlur = 8;
+      }
     } else { // mono
-      bodyGrad = isWhite ? '#ffffff' : '#10131c';
-      strokeColor = isWhite ? '#080a10' : '#ffffff';
+      bodyGrad = isWhite ? '#ffffff' : '#111827';
+      strokeColor = isWhite ? '#000000' : '#ffffff';
       detailColor = strokeColor;
       highlightColor = 'transparent';
     }

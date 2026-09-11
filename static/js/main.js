@@ -371,39 +371,139 @@ document.addEventListener('DOMContentLoaded', () => {
     applyGameMode(savedMode);
   }
 
-  // Board Theme Switcher (Midnight, Woodland, Ivory)
+  // Board Theme & Piece Set Switcher (Grandmaster Atelier)
+  const THEME_NAMES = {
+    midnight: 'Midnight Obsidian',
+    woodland: 'Woodland Walnut',
+    ivory: 'Ivory & Platinum',
+    emerald: 'Tournament Emerald',
+    cyberpunk: 'Cyberpunk Neon',
+    bloodstone: 'Imperial Bloodstone',
+    oceanic: 'Oceanic Abyss'
+  };
+
+  const PIECE_NAMES = {
+    classic: 'Staunton Prestige',
+    neo: 'Neo Modern',
+    cyber: 'Cyberpunk Neon',
+    crystal: 'Frosted Crystal',
+    mono: 'Tournament Mono'
+  };
+
   const boardThemeBtns = document.querySelectorAll('.theme-board-btn');
-  function applyBoardTheme(theme) {
+  const boardThemeCards = document.querySelectorAll('.theme-card-item');
+  const pieceThemeCards = document.querySelectorAll('.piece-card-item');
+  const activeBoardLabel = document.getElementById('atelierBoardActiveName');
+  const activePieceLabel = document.getElementById('atelierPieceActiveName');
+
+  function applyBoardTheme(theme, showNotice = false) {
+    const themeKey = (theme || 'midnight').toLowerCase();
     boardThemeBtns.forEach(b => {
-      if (b.getAttribute('data-theme') === theme) {
-        b.classList.add('active');
-      } else {
-        b.classList.remove('active');
-      }
+      b.classList.toggle('active', b.getAttribute('data-theme') === themeKey);
     });
+    boardThemeCards.forEach(c => {
+      c.classList.toggle('active', c.getAttribute('data-board-theme') === themeKey);
+    });
+    if (activeBoardLabel) {
+      activeBoardLabel.textContent = THEME_NAMES[themeKey] || themeKey.toUpperCase();
+    }
     if (arena) {
-      arena.setBoardTheme(theme);
+      arena.setBoardTheme(themeKey);
     }
     if (window.Archess2DChess && window.Archess2DChess.setTheme) {
-      window.Archess2DChess.setTheme(theme);
+      window.Archess2DChess.setTheme(themeKey);
     }
-    localStorage.setItem('archess_board_theme', theme);
+    window.dispatchEvent(new CustomEvent('archess_appearance_change', {
+      detail: { boardTheme: themeKey }
+    }));
+    localStorage.setItem('archess_board_theme', themeKey);
+    if (showNotice) {
+      showToast(`Board Palette: ${THEME_NAMES[themeKey] || themeKey}`);
+    }
+  }
+
+  function applyPieceTheme(pieceTheme, showNotice = false) {
+    const pieceKey = (pieceTheme || 'classic').toLowerCase();
+    pieceThemeCards.forEach(c => {
+      c.classList.toggle('active', c.getAttribute('data-piece-theme') === pieceKey);
+    });
+    if (activePieceLabel) {
+      activePieceLabel.textContent = PIECE_NAMES[pieceKey] || pieceKey.toUpperCase();
+    }
+    if (arena) {
+      arena.setPieceTheme(pieceKey);
+    }
+    if (window.Archess2DChess && window.Archess2DChess.setPieceSet) {
+      window.Archess2DChess.setPieceSet(pieceKey);
+    }
+    window.dispatchEvent(new CustomEvent('archess_appearance_change', {
+      detail: { pieceTheme: pieceKey }
+    }));
+    localStorage.setItem('archess_piece_theme', pieceKey);
+    if (showNotice) {
+      showToast(`Piece Set: ${PIECE_NAMES[pieceKey] || pieceKey}`);
+    }
+  }
+
+  // Grandmaster Atelier Modal Controls
+  const appearanceModal = document.getElementById('appearanceModalBackdrop');
+  const btnOpenAppearance = document.getElementById('btnOpenAppearanceModal');
+  const btnCloseAppearance = document.getElementById('btnCloseAppearanceModal');
+  const btnDoneAppearance = document.getElementById('btnDoneAppearanceModal');
+
+  function openAppearanceModal() {
+    if (appearanceModal) {
+      appearanceModal.style.display = 'flex';
+      appearanceModal.classList.add('active');
+    }
+  }
+
+  function closeAppearanceModal() {
+    if (appearanceModal) {
+      appearanceModal.classList.remove('active');
+      appearanceModal.style.display = 'none';
+    }
+  }
+
+  if (btnOpenAppearance) {
+    btnOpenAppearance.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openAppearanceModal();
+    });
+  }
+  if (btnCloseAppearance) btnCloseAppearance.addEventListener('click', closeAppearanceModal);
+  if (btnDoneAppearance) btnDoneAppearance.addEventListener('click', closeAppearanceModal);
+  if (appearanceModal) {
+    appearanceModal.addEventListener('click', (e) => {
+      if (e.target === appearanceModal) closeAppearanceModal();
+    });
   }
 
   boardThemeBtns.forEach(btn => {
     btn.addEventListener('click', () => {
-      const theme = btn.getAttribute('data-theme');
-      applyBoardTheme(theme);
-      showToast(`Board Theme: ${theme.toUpperCase()}`);
+      applyBoardTheme(btn.getAttribute('data-theme'), true);
     });
   });
 
-  // Check URL query param for theme: ?theme=woodland or localStorage
+  boardThemeCards.forEach(card => {
+    card.addEventListener('click', () => {
+      applyBoardTheme(card.getAttribute('data-board-theme'), true);
+    });
+  });
+
+  pieceThemeCards.forEach(card => {
+    card.addEventListener('click', () => {
+      applyPieceTheme(card.getAttribute('data-piece-theme'), true);
+    });
+  });
+
+  // Check URL query param for theme: ?theme=emerald or localStorage
   const urlTheme = new URLSearchParams(window.location.search).get('theme');
   const savedTheme = urlTheme || localStorage.getItem('archess_board_theme') || 'midnight';
-  if (boardThemeBtns.length > 0 && ['midnight', 'woodland', 'ivory'].includes(savedTheme.toLowerCase())) {
-    applyBoardTheme(savedTheme.toLowerCase());
-  }
+  const savedPiece = localStorage.getItem('archess_piece_theme') || 'classic';
+  applyBoardTheme(savedTheme, false);
+  applyPieceTheme(savedPiece, false);
 
   // Reset Arena Button (handles both 2D react-chessboard and physical arena)
   const resetBtn = document.getElementById('arenaResetBtn');

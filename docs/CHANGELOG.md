@@ -2,6 +2,35 @@
 
 All notable changes, architectural pivots, bugfixes, and refactorings across **ArChess** are documented in this file.
 
+## [2.7.0] - 2026-09-11
+
+### 🎨 Grandmaster Atelier Customizer: 7 Board Themes & 5 Piece Sets
+- **7 Synchronized Board Themes**:
+  - `Midnight Obsidian`: Slate-indigo luxury with gold inlay (default).
+  - `Woodland Walnut`: Traditional polished walnut and warm maple grain.
+  - `Ivory & Steel`: Neoclassical platinum marble with cool titanium borders.
+  - `Tournament Emerald`: Official USCF/FIDE green & buff vinyl tournament standard.
+  - `Cyberpunk Neon`: Synthwave dark abyss with electric cyan & magenta laser grid.
+  - `Imperial Bloodstone`: Velvet crimson & garnet obsidian with burnished brass accents.
+  - `Oceanic Abyss`: Deep navy & seafoam pearl with bioluminescent aqua borders.
+- **5 Bespoke Piece Sets**:
+  - `Staunton Prestige`: Mastercrafted vector silhouettes with specular crowns (open-source Colin M.L. Burnett inspired).
+  - `Neo Modernist`: Minimalist high-contrast geometric silhouettes for maximum competitive clarity.
+  - `Cyberpunk Neon`: Dual-stroke illuminated energy wireframes with neon glow filters.
+  - `Frosted Crystal`: Translucent glass aesthetic with caustic highlights and rim lighting.
+  - `Tournament Mono`: Stark high-contrast monochrome silhouettes (Lichess/FIDE style).
+- **Grandmaster Atelier Customizer Modal**:
+  - Added `#appearanceModalBackdrop` with live mini-checker swatches and piece glyph cards.
+  - Added `btn-customizer-trigger` (`[+ More]`) to the tactical arena toolbar.
+  - Live cross-mode synchronization across **3D Arena**, **2D Arena**, and **2D Classic** (React Chessboard).
+  - Full persistence via `localStorage` keys `archess_board_theme` and `archess_piece_theme`.
+- **Landing Page Showcase**:
+  - Expanded `#themesSection` from 3 to 6 rich showcase cards featuring live mini-board previews with piece glyphs.
+- **Rebuilt React Chessboard Production Bundle**:
+  - Updated `Archess2DChess.jsx` with custom piece SVGs, new color palettes, and `archess_appearance_change` event bus listener; recompiled `static/js/react-chessboard-bundle.js`.
+
+---
+
 ## [2.6.2] - 2026-09-11
 
 ### 🛡️ 3D & 2D Arena Canvas Rendering Loop Resilience & SVG Fix

@@ -140,13 +140,17 @@
         </div>
       </div>
 
-      <!-- Board Theme Selector -->
+      <!-- Board Theme Selector & Grandmaster Customizer Trigger -->
       <div class="arena-toolbar-group">
         <span>Board:</span>
         <div class="theme-picker-group">
-          <button class="theme-pill-btn theme-board-btn active" data-theme="midnight">Midnight</button>
-          <button class="theme-pill-btn theme-board-btn" data-theme="woodland">Woodland</button>
-          <button class="theme-pill-btn theme-board-btn" data-theme="ivory">Ivory</button>
+          <button class="theme-pill-btn theme-board-btn active" data-theme="midnight" title="Midnight Obsidian">Midnight</button>
+          <button class="theme-pill-btn theme-board-btn" data-theme="woodland" title="Woodland Walnut">Woodland</button>
+          <button class="theme-pill-btn theme-board-btn" data-theme="emerald" title="Tournament Emerald">Emerald</button>
+          <button class="theme-pill-btn btn-customizer-trigger" id="btnOpenAppearanceModal" title="Open Board & Piece Sets Customizer">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24M14.83 14.83l4.24 4.24M14.83 9.17l4.24-4.24M4.93 19.07l4.24-4.24"/></svg>
+            <span>+ More</span>
+          </button>
         </div>
       </div>
 
@@ -372,11 +376,133 @@
     </div>
   </div>
 
+  <!-- Grandmaster Atelier Appearance Customizer Modal -->
+  <div class="modal-backdrop" id="appearanceModalBackdrop" style="display: none;">
+    <div class="appearance-modal-card" id="appearanceModalCard">
+      <div class="appearance-modal-head">
+        <div class="head-meta">
+          <span class="eyebrow">GRANDMASTER ATELIER</span>
+          <h2 class="title">Board & Piece Customizer</h2>
+          <p class="subtitle">Personalize chess palettes and piece sets across 3D Arena, 2D Arena, and 2D Classic.</p>
+        </div>
+        <button class="modal-close-icon" id="btnCloseAppearanceModal" aria-label="Close Customizer">✕</button>
+      </div>
+
+      <div class="appearance-modal-content">
+        <!-- Board Themes Section -->
+        <div class="atelier-section">
+          <div class="section-label-bar">
+            <h4>Chessboard Palettes</h4>
+            <span class="active-indicator" id="atelierBoardActiveName">Midnight Obsidian</span>
+          </div>
+          <div class="board-theme-grid" id="boardThemeGrid">
+            <!-- Midnight -->
+            <div class="theme-card-item active" data-board-theme="midnight">
+              <div class="mini-checker-swatch" style="--swatch-border: #d4af37;">
+                <div style="background: #364353;"></div><div style="background: #1e2632;"></div>
+                <div style="background: #1e2632;"></div><div style="background: #364353;"></div>
+              </div>
+              <span class="theme-card-name">Midnight Obsidian</span>
+            </div>
+            <!-- Woodland -->
+            <div class="theme-card-item" data-board-theme="woodland">
+              <div class="mini-checker-swatch" style="--swatch-border: #c68a4c;">
+                <div style="background: #e0c9a6;"></div><div style="background: #8b5a2b;"></div>
+                <div style="background: #8b5a2b;"></div><div style="background: #e0c9a6;"></div>
+              </div>
+              <span class="theme-card-name">Woodland Walnut</span>
+            </div>
+            <!-- Ivory -->
+            <div class="theme-card-item" data-board-theme="ivory">
+              <div class="mini-checker-swatch" style="--swatch-border: #98a6bd;">
+                <div style="background: #e8edf3;"></div><div style="background: #4f5d75;"></div>
+                <div style="background: #4f5d75;"></div><div style="background: #e8edf3;"></div>
+              </div>
+              <span class="theme-card-name">Ivory & Platinum</span>
+            </div>
+            <!-- Emerald -->
+            <div class="theme-card-item" data-board-theme="emerald">
+              <div class="mini-checker-swatch" style="--swatch-border: #73b088;">
+                <div style="background: #e1d7b5;"></div><div style="background: #2e6b47;"></div>
+                <div style="background: #2e6b47;"></div><div style="background: #e1d7b5;"></div>
+              </div>
+              <span class="theme-card-name">Tournament Emerald</span>
+            </div>
+            <!-- Cyberpunk -->
+            <div class="theme-card-item" data-board-theme="cyberpunk">
+              <div class="mini-checker-swatch" style="--swatch-border: #00f3ff;">
+                <div style="background: #2f1559;"></div><div style="background: #14092b;"></div>
+                <div style="background: #14092b;"></div><div style="background: #2f1559;"></div>
+              </div>
+              <span class="theme-card-name">Cyberpunk Neon</span>
+            </div>
+            <!-- Bloodstone -->
+            <div class="theme-card-item" data-board-theme="bloodstone">
+              <div class="mini-checker-swatch" style="--swatch-border: #e84158;">
+                <div style="background: #2a1a1f;"></div><div style="background: #59111e;"></div>
+                <div style="background: #59111e;"></div><div style="background: #2a1a1f;"></div>
+              </div>
+              <span class="theme-card-name">Imperial Bloodstone</span>
+            </div>
+            <!-- Oceanic -->
+            <div class="theme-card-item" data-board-theme="oceanic">
+              <div class="mini-checker-swatch" style="--swatch-border: #38d9a9;">
+                <div style="background: #6896b8;"></div><div style="background: #1b3f61;"></div>
+                <div style="background: #1b3f61;"></div><div style="background: #6896b8;"></div>
+              </div>
+              <span class="theme-card-name">Oceanic Abyss</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Piece Styles Section -->
+        <div class="atelier-section">
+          <div class="section-label-bar">
+            <h4>Piece Sets & Materials</h4>
+            <span class="active-indicator" id="atelierPieceActiveName">Staunton Prestige</span>
+          </div>
+          <div class="piece-theme-grid" id="pieceThemeGrid">
+            <!-- Staunton Prestige -->
+            <div class="piece-card-item active" data-piece-theme="classic">
+              <span class="piece-card-glyphs" style="color: #ffd700;">♚ ♞</span>
+              <span class="piece-card-name">Staunton Prestige</span>
+            </div>
+            <!-- Neo Modernist -->
+            <div class="piece-card-item" data-piece-theme="neo">
+              <span class="piece-card-glyphs" style="color: #f1f5f9;">♔ ♘</span>
+              <span class="piece-card-name">Neo Modern</span>
+            </div>
+            <!-- Cyberpunk Neon -->
+            <div class="piece-card-item" data-piece-theme="cyber">
+              <span class="piece-card-glyphs" style="color: #00f3ff; filter: drop-shadow(0 0 6px #00f3ff);">⚡ ♞</span>
+              <span class="piece-card-name">Cyberpunk Neon</span>
+            </div>
+            <!-- Frosted Crystal -->
+            <div class="piece-card-item" data-piece-theme="crystal">
+              <span class="piece-card-glyphs" style="color: #38bdf8; filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.7));">💎 ♛</span>
+              <span class="piece-card-name">Frosted Crystal</span>
+            </div>
+            <!-- Tournament Mono -->
+            <div class="piece-card-item" data-piece-theme="mono">
+              <span class="piece-card-glyphs" style="color: #ffffff;">♟ ♜</span>
+              <span class="piece-card-name">Tournament Mono</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="appearance-modal-foot">
+        <span class="sync-hint">✓ Real-time cross-mode synchronization active</span>
+        <button class="btn-gold" id="btnDoneAppearanceModal">Apply & Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts -->
-  <script src="/static/js/react-chessboard-bundle.js?v=2.6.2"></script>
-  <script src="/static/js/game.js?v=2.6.2"></script>
-  <script src="/static/js/main.js?v=2.6.2"></script>
-  <script src="/static/js/auth.js?v=2.6.2"></script>
+  <script src="/static/js/react-chessboard-bundle.js?v=2.7.0"></script>
+  <script src="/static/js/game.js?v=2.7.0"></script>
+  <script src="/static/js/main.js?v=2.7.0"></script>
+  <script src="/static/js/auth.js?v=2.7.0"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       // Sync current logged in user name with White player card

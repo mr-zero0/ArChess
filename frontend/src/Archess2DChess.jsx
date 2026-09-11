@@ -20,6 +20,81 @@ const ARCHETYPES = {
   k: { role: 'Royal Commander', ability: 'Rally Aura', bonus: '+15 HP to All', glyph: '♚' }
 };
 
+// SVG Path Geometry for Bespoke Piece Sets (viewBox 0 0 45 45)
+const PIECE_PATHS = {
+  p: "M 22.5 9 C 19.5 9 17.5 11 17.5 14 C 17.5 16 19 17.5 20.5 18.5 C 17 21 16 26 16 31 L 29 31 C 29 26 28 21 24.5 18.5 C 26 17.5 27.5 16 27.5 14 C 27.5 11 25.5 9 22.5 9 z M 13 33 L 32 33 L 32 36 L 13 36 z",
+  r: "M 11 10 L 11 16 L 14 16 L 14 12 L 19 12 L 19 16 L 26 16 L 26 12 L 31 12 L 31 16 L 34 16 L 34 10 z M 14 18 L 31 18 L 29 29 L 16 29 z M 11 31 L 34 31 L 34 35 L 11 35 z",
+  n: "M 22 10 C 22 10 16 12 14 16 C 12 20 12 26 15 28 C 16 29 18 28 18 28 C 17 31 14 32 11 32 L 11 35 L 34 35 C 34 32 33 28 31 24 C 28 18 26 14 26 10 z M 18 16 C 18 16 19 14 20 15 C 21 16 20 18 19 18 z",
+  b: "M 22.5 8 C 21.5 8 21 9 21 10 C 19 12 17 16 17 20 C 17 25 19 28 20.5 29 L 24.5 29 C 26 28 28 25 28 20 C 28 16 26 12 24 10 C 24 9 23.5 8 22.5 8 z M 14 31 L 31 31 L 31 35 L 14 35 z M 21.5 14 L 23.5 14 M 22.5 13 L 22.5 17",
+  q: "M 11 16 L 15 28 L 30 28 L 34 16 L 27 21 L 22.5 12 L 18 21 z M 12 30 L 33 30 L 33 34 L 12 34 z M 11 13 A 2 2 0 1 1 11 17 A 2 2 0 1 1 11 13 M 18 10 A 2 2 0 1 1 18 14 A 2 2 0 1 1 18 10 M 22.5 7 A 2 2 0 1 1 22.5 11 A 2 2 0 1 1 22.5 7 M 27 10 A 2 2 0 1 1 27 14 A 2 2 0 1 1 27 10 M 34 13 A 2 2 0 1 1 34 17 A 2 2 0 1 1 34 13",
+  k: "M 22.5 6 L 22.5 11 M 20 8.5 L 25 8.5 M 22.5 11 C 18 11 15 14 15 18 C 15 22 17 25 19 27 L 26 27 C 28 25 30 22 30 18 C 30 14 27 11 22.5 11 z M 13 29 L 32 29 L 32 33 L 13 33 z"
+};
+
+function getCustomPieces(style) {
+  if (style === 'classic' || style === 'staunton') return undefined;
+
+  const pieceTypes = ['p', 'r', 'n', 'b', 'q', 'k'];
+  const pieces = {};
+
+  ['w', 'b'].forEach(color => {
+    const isWhite = color === 'w';
+    pieceTypes.forEach(type => {
+      const pieceKey = `${color}${type.toUpperCase()}`;
+      const pathD = PIECE_PATHS[type];
+
+      pieces[pieceKey] = ({ squareWidth }) => {
+        let fill, stroke, filter;
+
+        if (style === 'neo') {
+          fill = isWhite ? '#ffffff' : '#1e293b';
+          stroke = isWhite ? '#0f172a' : '#f59e0b';
+          filter = isWhite ? 'drop-shadow(0 2px 4px rgba(0,0,0,0.35))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.6))';
+        } else if (style === 'cyber') {
+          fill = isWhite ? 'rgba(0, 243, 255, 0.22)' : 'rgba(255, 0, 127, 0.22)';
+          stroke = isWhite ? '#00f3ff' : '#ff007f';
+          filter = isWhite ? 'drop-shadow(0 0 6px #00f3ff)' : 'drop-shadow(0 0 6px #ff007f)';
+        } else if (style === 'crystal') {
+          fill = isWhite ? 'rgba(224, 242, 254, 0.85)' : 'rgba(88, 28, 135, 0.85)';
+          stroke = isWhite ? '#38bdf8' : '#c084fc';
+          filter = isWhite ? 'drop-shadow(0 0 5px rgba(56, 189, 248, 0.6))' : 'drop-shadow(0 0 5px rgba(192, 132, 252, 0.6))';
+        } else { // mono
+          fill = isWhite ? '#ffffff' : '#09090b';
+          stroke = isWhite ? '#000000' : '#ffffff';
+          filter = 'drop-shadow(0 1px 3px rgba(0,0,0,0.4))';
+        }
+
+        return (
+          <div style={{
+            width: squareWidth,
+            height: squareWidth,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <svg
+              width={squareWidth * 0.88}
+              height={squareWidth * 0.88}
+              viewBox="0 0 45 45"
+              style={{ filter, overflow: 'visible' }}
+            >
+              <path
+                d={pathD}
+                fill={fill}
+                stroke={stroke}
+                strokeWidth={style === 'neo' ? 2.5 : 2.0}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+        );
+      };
+    });
+  });
+
+  return pieces;
+}
+
 function initPieceHp(gameInstance) {
   const hpMap = {};
   const board = gameInstance.board();
@@ -395,11 +470,22 @@ export function Archess2DChess({ boardTheme = 'midnight', gameMode = 'bot', vari
   const [possibleMoves, setPossibleMoves] = useState([]);
   const [attackTargets, setAttackTargets] = useState([]);
   const [lastMove, setLastMove] = useState(null);
-  const [activeTheme, setActiveTheme] = useState(boardTheme);
+  const [activeTheme, setActiveTheme] = useState(() => localStorage.getItem('archess_board_theme') || boardTheme || 'midnight');
+  const [pieceSet, setPieceSet] = useState(() => localStorage.getItem('archess_piece_theme') || 'classic');
   const [activeMode, setActiveMode] = useState(gameMode);
   const [activeVariant, setActiveVariant] = useState(variantMode);
   const [botThinking, setBotThinking] = useState(false);
   const [turnCount, setTurnCount] = useState(0);
+
+  // Synchronize appearance changes from Customizer
+  useEffect(() => {
+    const handleAppearance = (e) => {
+      if (e.detail?.boardTheme) setActiveTheme(e.detail.boardTheme);
+      if (e.detail?.pieceTheme) setPieceSet(e.detail.pieceTheme);
+    };
+    window.addEventListener('archess_appearance_change', handleAppearance);
+    return () => window.removeEventListener('archess_appearance_change', handleAppearance);
+  }, []);
 
   const [pieceHp, setPieceHp] = useState(() => initPieceHp(game));
   const [activeBuffs, setActiveBuffs] = useState({});
@@ -885,6 +971,7 @@ export function Archess2DChess({ boardTheme = 'midnight', gameMode = 'bot', vari
     window.Archess2DChess = {
       reset: resetGame,
       setTheme: (t) => setActiveTheme(t),
+      setPieceSet: (ps) => setPieceSet(ps),
       setMode: (m) => setActiveMode(m),
       setVariant: (v) => {
         setActiveVariant(v);
@@ -922,8 +1009,42 @@ export function Archess2DChess({ boardTheme = 'midnight', gameMode = 'bot', vari
       borderColor: '#98a6bd',
       goldHighlight: 'rgba(100, 150, 255, 0.45)',
       targetDot: 'rgba(100, 150, 255, 0.65)'
+    },
+    emerald: {
+      dark: '#2e6b47',
+      light: '#e1d7b5',
+      boardBg: '#133520',
+      borderColor: '#73b088',
+      goldHighlight: 'rgba(115, 176, 136, 0.50)',
+      targetDot: 'rgba(115, 176, 136, 0.70)'
+    },
+    cyberpunk: {
+      dark: '#14092b',
+      light: '#2f1559',
+      boardBg: '#090317',
+      borderColor: '#00f3ff',
+      goldHighlight: 'rgba(0, 243, 255, 0.55)',
+      targetDot: 'rgba(255, 0, 128, 0.75)'
+    },
+    bloodstone: {
+      dark: '#59111e',
+      light: '#2a1a1f',
+      boardBg: '#1a0408',
+      borderColor: '#e84158',
+      goldHighlight: 'rgba(232, 65, 88, 0.55)',
+      targetDot: 'rgba(255, 200, 200, 0.75)'
+    },
+    oceanic: {
+      dark: '#1b3f61',
+      light: '#6896b8',
+      boardBg: '#0b1d30',
+      borderColor: '#38d9a9',
+      goldHighlight: 'rgba(56, 217, 169, 0.50)',
+      targetDot: 'rgba(56, 217, 169, 0.70)'
     }
   };
+
+  const customPieces = React.useMemo(() => getCustomPieces(pieceSet), [pieceSet]);
 
   const pal = palettes[activeTheme] || palettes.midnight;
 
@@ -1121,7 +1242,8 @@ export function Archess2DChess({ boardTheme = 'midnight', gameMode = 'bot', vari
               allowDragging: !botThinking && !game.isGameOver(),
               canDragPiece,
               onPieceDrop,
-              onSquareClick
+              onSquareClick,
+              ...(customPieces ? { customPieces } : {})
             }}
           />
 

@@ -50,6 +50,9 @@
 | **Grouped Casualty Chips** | UI / Battle | ✅ COMPLETE | Stacked casualty chips (`♟ ×4`, `♞ ×2`) with gold/crimson specular borders |
 | **Post-Match Analytics & MVP** | Victory Debrief| ✅ COMPLETE | Match MVP spotlight card, kinetic force output split bar, rolling ELO ticker, one-click match copy |
 | **Global Toast & Audio Modulation**| UI / Soundscape | ✅ COMPLETE | Sonner-style frosted glass toast system, organic pitch-modulated procedural audio, skeleton shimmer |
+| **7 Synchronized Board Themes** | Gameplay / Themes| ✅ COMPLETE | Midnight, Woodland, Ivory, Tournament Emerald, Cyberpunk Neon, Imperial Bloodstone, Oceanic Abyss |
+| **5 Bespoke Piece Sets** | Art / Gameplay | ✅ COMPLETE | Staunton Prestige, Neo Modernist, Cyberpunk Neon, Frosted Crystal, Tournament Mono |
+| **Grandmaster Atelier Customizer** | UI / Customization| ✅ COMPLETE | `#appearanceModalBackdrop` with mini-checker swatches, piece glyph cards, cross-mode event bus & storage |
 
 ---
 
@@ -73,6 +76,7 @@
 | **`database.py` &rarr; `backend/database.py`** | • Updated `DB_PATH` to `data/archess.db`.<br>• Auto-creates `data/` directory on boot.<br>• Seeded 6 Grandmaster test accounts. | • Separates persistent database storage from application source code. |
 | **`run.py`** | • Created minimalist root entrypoint (20 lines). | • Allows running `python run.py` directly from project root. |
 | **`game.js` & `play.html` (SVG Fix & Render Loop)** | • Replaced `ring.className = ...` with `ring.setAttribute('class', ...)` on SVG `#turnTimerRing` element in `resetBoard()` and `loop()`.<br>• Guarded `loop()` with `try/catch` and safe `dt` calculation to ensure `requestAnimationFrame` never permanently terminates.<br>• Bumped script query versions in `play.html` from `?v=2.2.0` to `?v=2.6.2` to bust browser caches.<br>• Resolved issue where 2D Arena and 3D Arena boards/pieces were invisible due to SVG className TypeError halting canvas loop. | • Fixes modern browser `TypeError: Cannot set property className of #<SVGElement> which has only a getter`.<br>• Guarantees 100% board and piece visibility in both 3D Arena and 2D Arena modes on initial load and view switching. |
+| **Grandmaster Atelier Customizer (`v2.7.0`)** | • Added 7 synchronized board themes (Midnight, Woodland, Ivory, Emerald, Cyberpunk, Bloodstone, Oceanic) to Canvas & React Chessboard.<br>• Added 5 piece sets (Staunton Prestige, Neo Modernist, Cyberpunk Neon, Frosted Crystal, Tournament Mono).<br>• Added `#appearanceModalBackdrop` with mini-checker swatches and piece cards.<br>• Built custom SVG piece renderers and recompiled React Chessboard bundle (`react-chessboard-bundle.js`).<br>• Linked live cross-mode synchronization via `archess_appearance_change` and `localStorage` persistence. | • Fulfills user request for better chess pieces, boards, and diverse themes with open-source options for varied player experiences.<br>• Guarantees seamless real-time visual parity across 3D Arena, 2D Arena, and 2D Classic modes. |
 | **`README.md` & `requirements.txt`** | • Created professional project documentation and dependency manifest. | • Standard open-source onboarding. |
 
 ---
