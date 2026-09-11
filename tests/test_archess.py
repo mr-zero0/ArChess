@@ -231,7 +231,7 @@ def test_industry_ui_elements(client):
     assert play_res.status_code == 200
     play_html = play_res.data.decode("utf-8")
     assert 'id="turnTimerRing"' in play_html
-    assert 'id="tacticalPieceHoverHUD"' in play_html
+    assert 'id="whiteCasualtyRack"' in play_html
     assert 'id="victoryMvpCard"' in play_html
     assert 'id="victoryDamageSection"' in play_html
     assert 'id="btnCopyMatchReport"' in play_html
@@ -254,7 +254,7 @@ def test_industry_ui_elements(client):
     assert "--specular-edge" in css
     assert "--gold-metallic" in css
     assert ".archess-toast-container" in css
-    assert ".tactical-piece-hud" in css
+    assert ".appearance-modal-card" in css
     assert ".casualty-stack-chip" in css
     assert ".turn-timer-circle" in css
 

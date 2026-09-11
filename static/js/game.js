@@ -845,7 +845,6 @@ class ArchessArena {
       if (target) {
         this.selectedPiece = target;
         this.isDragging = true;
-        if (this.hudElement) this.hudElement.style.display = 'none';
         const pElevation = (this.renderMode === '3d') ? 26 : 0;
         const pScreen = this.toScreen(target.x, target.y, pElevation);
         this.dragScreenAnchor = { x: pScreen.x, y: pScreen.y };
@@ -861,26 +860,7 @@ class ArchessArena {
       if (this.isDragging && this.selectedPiece) {
         const screenPos = getPointerScreenPos(e);
         this.dragScreenCurrent = screenPos;
-        if (this.hudElement) this.hudElement.style.display = 'none';
         if (e.cancelable) e.preventDefault();
-      } else if (!this.isDragging && !this.isGameOver) {
-        const screenPos = getPointerScreenPos(e);
-        const livingPieces = this.pieces.filter(p => !p.dead);
-        let foundPiece = null;
-        let bestDist = Infinity;
-
-        for (const p of livingPieces) {
-          const elevation = (this.renderMode === '3d') ? 14 : 0;
-          const pScreen = this.toScreen(p.x, p.y, elevation);
-          const hitCenterY = this.renderMode === '3d' ? (pScreen.y - p.radius * 0.3) : pScreen.y;
-          const dist = Math.hypot(screenPos.x - pScreen.x, screenPos.y - hitCenterY);
-          const hitRadius = p.radius * (this.renderMode === '3d' ? 1.7 : 1.4);
-          if (dist <= hitRadius && dist < bestDist) {
-            bestDist = dist;
-            foundPiece = p;
-          }
-        }
-        this.updateTacticalHUD(foundPiece, e);
       }
     };
 
@@ -920,9 +900,6 @@ class ArchessArena {
     this.canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
     window.addEventListener('touchmove', handlePointerMove, { passive: false });
     window.addEventListener('touchend', handlePointerUp);
-    this.canvas.addEventListener('mouseleave', () => {
-      if (this.hudElement) this.hudElement.style.display = 'none';
-    });
 
     // Keyboard Gameplay Listeners (Tracker Parity)
     window.addEventListener('keydown', (e) => {
@@ -930,70 +907,6 @@ class ArchessArena {
         this.handleKeyboardControl(e);
       }
     });
-  }
-
-  updateTacticalHUD(piece, e) {
-    if (!this.hudElement) {
-      this.hudElement = document.getElementById('tacticalPieceHoverHUD');
-    }
-    if (!this.hudElement) return;
-
-    if (!piece) {
-      this.hudElement.style.display = 'none';
-      return;
-    }
-
-    const rect = this.canvas.getBoundingClientRect();
-    const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : rect.left + 50);
-    const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : rect.top + 50);
-
-    const hudWidth = 270;
-    const hudHeight = 170;
-    let posX = clientX - rect.left + 16;
-    let posY = clientY - rect.top + 16;
-
-    if (posX + hudWidth > rect.width) posX = posX - hudWidth - 28;
-    if (posY + hudHeight > rect.height) posY = posY - hudHeight - 20;
-
-    this.hudElement.style.left = Math.max(8, posX) + 'px';
-    this.hudElement.style.top = Math.max(8, posY) + 'px';
-    this.hudElement.style.display = 'block';
-    this.hudElement.className = `tactical-piece-hud hud-${piece.team}`;
-
-    const disc = document.getElementById('hudDisc');
-    const name = document.getElementById('hudName');
-    const role = document.getElementById('hudRole');
-    const badge = document.getElementById('hudClassBadge');
-    const hpVal = document.getElementById('hudHpVal');
-    const hpBar = document.getElementById('hudHpBar');
-    const abilityTag = document.getElementById('hudAbilityTag');
-    const abilityDesc = document.getElementById('hudAbilityDesc');
-
-    const archetypes = {
-      king: { name: 'The King Citadel', role: 'Stationary Sovereign', class: 'Citadel', ability: 'FORTRESS CITADEL', desc: 'Immovable tactical center. Protected by high-durability perimeter square wall.' },
-      queen: { name: 'The Queen', role: 'Apex Kinetic Sovereign', class: 'Apex Class', ability: 'SUPERNOVA BURST', desc: 'High-velocity kinetic juggernaut. Retains momentum across multi-target ricochets.' },
-      rook: { name: 'The Rook', role: 'Heavy Siege Juggernaut', class: 'Colossus', ability: 'SIEGE BREAKER', desc: 'Crushing mass. Deals momentum-scaled damage and ignores knockback from lighter units.' },
-      bishop: { name: 'The Bishop', role: 'Precision Diagonal Sniper', class: 'Assassin', ability: 'PRISM VELOCITY SURGE', desc: 'Ballistic prism sniper. Accelerates after each consecutive wall bounce.' },
-      knight: { name: 'The Knight', role: 'Shockwave Leaper & Flanker', class: 'Specialist', ability: 'KINETIC SHOCKWAVE', desc: 'Emits concussive radial shockwave knocking adjacent enemy units backward.' },
-      pawn: { name: 'The Pawn', role: 'Defensive Phalanx Infantry', class: 'Vanguard', ability: 'BASTION PHALANX', desc: 'Absorbs initial frontal collisions and cushions impact force near friendly King.' }
-    };
-
-    const arch = archetypes[piece.type] || archetypes.pawn;
-    if (disc) disc.textContent = piece.glyph || '♟';
-    if (name) name.textContent = `${arch.name} (${piece.team === 'white' ? 'White' : 'Black'})`;
-    if (role) role.textContent = arch.role;
-    if (badge) badge.textContent = arch.class;
-
-    const maxHp = piece.maxHp || 100;
-    const currentHp = Math.max(0, Math.round(piece.hp));
-    const hpPercent = Math.max(0, Math.min(100, Math.round((currentHp / maxHp) * 100)));
-    if (hpVal) hpVal.textContent = `${currentHp} / ${maxHp} HP`;
-    if (hpBar) {
-      hpBar.style.width = `${hpPercent}%`;
-      hpBar.className = `hud-hp-bar ${hpPercent > 50 ? '' : (hpPercent > 25 ? 'mid' : 'low')}`;
-    }
-    if (abilityTag) abilityTag.textContent = arch.ability;
-    if (abilityDesc) abilityDesc.textContent = arch.desc;
   }
 
   handleKeyboardControl(e) {

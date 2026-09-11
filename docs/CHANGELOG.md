@@ -2,6 +2,16 @@
 
 All notable changes, architectural pivots, bugfixes, and refactorings across **ArChess** are documented in this file.
 
+## [2.7.1] - 2026-09-11
+
+### 🧹 UI Ergonomics: Complete Removal of Floating Piece Hover HUD
+- **Removed Hover Popup**: Completely removed `#tacticalPieceHoverHUD` and all mousemove hover inspection tracking across the canvas, preventing floating 270×170px tooltips from obstructing the chessboard and pieces.
+- **Enhanced Canvas Performance**: Eliminated frame-by-frame distance calculations across all 32 pieces during idle mouse movement, reducing CPU overhead during aiming.
+- **Cleaned Styles & Assets**: Purged `.tactical-piece-hud` styles and child selectors from `static/css/style.css`, and bumped script query strings in `templates/play.html` to `?v=2.7.1`.
+- **Verified Clean Board View**: Validated through headless Chrome CDP tests that hovering over rank 1-8 produces no DOM elements or visual popups, leaving the board 100% clean and unobstructed.
+
+---
+
 ## [2.7.0] - 2026-09-11
 
 ### 🎨 Grandmaster Atelier Customizer: 7 Board Themes & 5 Piece Sets
