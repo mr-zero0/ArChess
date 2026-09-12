@@ -257,4 +257,51 @@ def test_industry_ui_elements(client):
     assert ".appearance-modal-card" in css
     assert ".casualty-stack-chip" in css
     assert ".turn-timer-circle" in css
+    assert ".soundscape-volume-bar" in css
+    assert ".sound-card-item" in css
+
+def test_soundscape_ui_and_audio_elements(client):
+    """Verify presence of soundscape controls, profiles, and volume slider in play view."""
+    res = client.get("/play")
+    assert res.status_code == 200
+    html = res.data.decode("utf-8")
+    assert 'id="soundMasterVolumeSlider"' in html
+    assert 'id="soundProfileGrid"' in html
+    assert 'data-sound-profile="marble"' in html
+    assert 'data-sound-profile="cyber"' in html
+    assert 'data-sound-profile="classic"' in html
+    assert 'btn-sound-preview' in html
+
+def test_html_tag_balance():
+    """Verify all templates have zero unclosed or mismatched HTML tags."""
+    from html.parser import HTMLParser
+    import glob
+
+    class TagChecker(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.stack = []
+            self.errors = []
+        def handle_starttag(self, tag, attrs):
+            if tag not in ['img', 'input', 'br', 'hr', 'meta', 'link', 'circle', 'path', 'line', 'polygon', 'rect', 'wbr', 'source']:
+                attrs_dict = dict(attrs)
+                self.stack.append((tag, attrs_dict.get('class', ''), attrs_dict.get('id', '')))
+        def handle_endtag(self, tag):
+            if tag in ['img', 'input', 'br', 'hr', 'meta', 'link', 'circle', 'path', 'line', 'polygon', 'rect', 'wbr', 'source']:
+                return
+            if not self.stack:
+                self.errors.append(f"Extra end tag: {tag}")
+                return
+            last, cls, id_ = self.stack.pop()
+            if last != tag:
+                self.errors.append(f"Mismatched: expected {last} (class={cls}, id={id_}), got {tag}")
+
+    template_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'templates')
+    for filepath in glob.glob(os.path.join(template_dir, '*.html')):
+        checker = TagChecker()
+        with open(filepath, 'r', encoding='utf-8') as f:
+            checker.feed(f.read())
+        assert len(checker.errors) == 0, f"HTML tag errors in {filepath}: {checker.errors}"
+        assert len(checker.stack) == 0, f"Unclosed tags in {filepath}: {checker.stack}"
+
 

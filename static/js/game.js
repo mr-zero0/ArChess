@@ -8,7 +8,10 @@
 class ArchessAudio {
   constructor() {
     this.ctx = null;
-    this.muted = false;
+    this.masterGain = null;
+    this.muted = localStorage.getItem('archess_audio_muted') === 'true';
+    this.masterVolume = parseFloat(localStorage.getItem('archess_master_volume') || '0.8');
+    this.soundProfile = localStorage.getItem('archess_sound_profile') || 'marble';
   }
 
   init() {
@@ -16,6 +19,9 @@ class ArchessAudio {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       if (AudioContext) {
         this.ctx = new AudioContext();
+        this.masterGain = this.ctx.createGain();
+        this.updateMasterGain();
+        this.masterGain.connect(this.ctx.destination);
       }
     }
     if (this.ctx && this.ctx.state === 'suspended') {
@@ -23,91 +29,297 @@ class ArchessAudio {
     }
   }
 
+  updateMasterGain() {
+    if (!this.masterGain || !this.ctx) return;
+    const effectiveVol = this.muted ? 0 : Math.max(0, Math.min(1, this.masterVolume));
+    try {
+      this.masterGain.gain.setTargetAtTime(effectiveVol, this.ctx.currentTime, 0.02);
+    } catch(e) {
+      this.masterGain.gain.value = effectiveVol;
+    }
+  }
+
+  setVolume(volume) {
+    this.masterVolume = Math.max(0, Math.min(1, parseFloat(volume)));
+    localStorage.setItem('archess_master_volume', this.masterVolume.toString());
+    this.updateMasterGain();
+  }
+
+  setProfile(profile) {
+    if (['marble', 'cyber', 'classic'].includes(profile)) {
+      this.soundProfile = profile;
+      localStorage.setItem('archess_sound_profile', profile);
+    }
+  }
+
+  toggleMute(isMuted = null) {
+    this.muted = (isMuted !== null) ? Boolean(isMuted) : !this.muted;
+    localStorage.setItem('archess_audio_muted', this.muted ? 'true' : 'false');
+    this.updateMasterGain();
+    return this.muted;
+  }
+
+  // Slingshot Pull Tension feedback
+  playTension(powerRatio) {
+    if (this.muted || !this.ctx || powerRatio < 0.08) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      
+      if (this.soundProfile === 'cyber') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(140 + powerRatio * 320, now);
+        osc.frequency.linearRampToValueAtTime(160 + powerRatio * 360, now + 0.05);
+      } else {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(80 + powerRatio * 180, now);
+        osc.frequency.linearRampToValueAtTime(95 + powerRatio * 210, now + 0.05);
+      }
+
+      const vol = Math.min(0.08 * powerRatio, 0.12);
+      gain.gain.setValueAtTime(vol, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+
+      osc.connect(gain);
+      gain.connect(this.masterGain || this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.07);
+    } catch(e) {}
+  }
+
+  // Slingshot Release Snap
   playLaunch(powerRatio) {
     if (this.muted || !this.ctx) return;
     try {
       const now = this.ctx.currentTime;
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(150, now);
-      osc.frequency.exponentialRampToValueAtTime(540 * powerRatio + 120, now + 0.18);
-      gain.gain.setValueAtTime(0.25 * powerRatio, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+      if (this.soundProfile === 'cyber') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.exponentialRampToValueAtTime(850 * powerRatio + 200, now + 0.15);
+        gain.gain.setValueAtTime(0.3 * powerRatio, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      } else if (this.soundProfile === 'classic') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(180, now);
+        osc.frequency.exponentialRampToValueAtTime(420 * powerRatio + 160, now + 0.12);
+        gain.gain.setValueAtTime(0.24 * powerRatio, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      } else {
+        // Marble: Crisp mechanical snap + whoosh
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(160, now);
+        osc.frequency.exponentialRampToValueAtTime(620 * powerRatio + 140, now + 0.16);
+        gain.gain.setValueAtTime(0.28 * powerRatio, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.20);
+      }
+
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(this.masterGain || this.ctx.destination);
       osc.start(now);
-      osc.stop(now + 0.23);
+      osc.stop(now + 0.22);
     } catch(e) {}
   }
 
+  // Marble-on-Wood Piece Collision Clack
   playImpact(intensity = 1) {
     if (this.muted || !this.ctx) return;
     try {
       const now = this.ctx.currentTime;
-      // Organic pitch randomization for authentic physical marble/wood acoustics
-      const pitchFactor = 0.92 + Math.random() * 0.16;
-      const osc = this.ctx.createOscillator();
-      const oscGain = this.ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(130 * pitchFactor, now);
-      osc.frequency.exponentialRampToValueAtTime(40 * pitchFactor, now + 0.16);
-      const vol = Math.min(0.45 * intensity, 0.65);
-      oscGain.gain.setValueAtTime(vol, now);
-      oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-      osc.connect(oscGain);
-      oscGain.connect(this.ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.2);
+      const vol = Math.min(0.55 * intensity, 0.75);
+      const dest = this.masterGain || this.ctx.destination;
 
-      // Noise crack for marble/wood collision
-      const bufferSize = this.ctx.sampleRate * 0.08;
+      if (this.soundProfile === 'cyber') {
+        const carrier = this.ctx.createOscillator();
+        const mod = this.ctx.createOscillator();
+        const modGain = this.ctx.createGain();
+        const gain = this.ctx.createGain();
+
+        carrier.type = 'sine';
+        carrier.frequency.setValueAtTime(480, now);
+        carrier.frequency.exponentialRampToValueAtTime(110, now + 0.18);
+
+        mod.type = 'sawtooth';
+        mod.frequency.setValueAtTime(120, now);
+        modGain.gain.setValueAtTime(320 * intensity, now);
+        modGain.gain.exponentialRampToValueAtTime(1, now + 0.16);
+
+        gain.gain.setValueAtTime(vol * 0.8, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+        mod.connect(modGain);
+        modGain.connect(carrier.frequency);
+        carrier.connect(gain);
+        gain.connect(dest);
+
+        mod.start(now);
+        carrier.start(now);
+        mod.stop(now + 0.22);
+        carrier.stop(now + 0.22);
+        return;
+      }
+
+      if (this.soundProfile === 'classic') {
+        const pitchFactor = 0.94 + Math.random() * 0.12;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(280 * pitchFactor, now);
+        osc.frequency.exponentialRampToValueAtTime(80 * pitchFactor, now + 0.08);
+        gain.gain.setValueAtTime(vol * 0.7, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+        osc.connect(gain);
+        gain.connect(dest);
+        osc.start(now);
+        osc.stop(now + 0.1);
+        return;
+      }
+
+      // Marble & Walnut: Physical Piezo Transient + Dual-Resonance Ceramic Ring
+      const pitchFactor = 0.93 + Math.random() * 0.14;
+
+      // 1. Transient click (hard contact)
+      const bufferSize = Math.floor(this.ctx.sampleRate * 0.04);
       const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
       const data = buffer.getChannelData(0);
       for (let i = 0; i < bufferSize; i++) {
-        data[i] = Math.random() * 2 - 1;
+        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.15));
       }
       const noise = this.ctx.createBufferSource();
       noise.buffer = buffer;
       const noiseFilter = this.ctx.createBiquadFilter();
       noiseFilter.type = 'bandpass';
-      noiseFilter.frequency.setValueAtTime(850 * pitchFactor, now);
-      noiseFilter.Q.setValueAtTime(3, now);
+      noiseFilter.frequency.setValueAtTime(3600 * pitchFactor, now);
+      noiseFilter.Q.setValueAtTime(4.5, now);
       const noiseGain = this.ctx.createGain();
-      noiseGain.gain.setValueAtTime(vol * 0.5, now);
-      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      noiseGain.gain.setValueAtTime(vol * 0.65, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
       noise.connect(noiseFilter);
       noiseFilter.connect(noiseGain);
-      noiseGain.connect(this.ctx.destination);
+      noiseGain.connect(dest);
       noise.start(now);
+
+      // 2. High-resonance marble ceramic tone (1380Hz overtone)
+      const oscHigh = this.ctx.createOscillator();
+      const gainHigh = this.ctx.createGain();
+      oscHigh.type = 'sine';
+      oscHigh.frequency.setValueAtTime(1380 * pitchFactor, now);
+      oscHigh.frequency.exponentialRampToValueAtTime(950 * pitchFactor, now + 0.09);
+      gainHigh.gain.setValueAtTime(vol * 0.45, now);
+      gainHigh.gain.exponentialRampToValueAtTime(0.001, now + 0.10);
+      oscHigh.connect(gainHigh);
+      gainHigh.connect(dest);
+      oscHigh.start(now);
+      oscHigh.stop(now + 0.11);
+
+      // 3. Dense hardwood/felt body thud (640Hz fundamental dropping to 90Hz)
+      const oscBody = this.ctx.createOscillator();
+      const gainBody = this.ctx.createGain();
+      oscBody.type = 'triangle';
+      oscBody.frequency.setValueAtTime(640 * pitchFactor, now);
+      oscBody.frequency.exponentialRampToValueAtTime(75 * pitchFactor, now + 0.14);
+      gainBody.gain.setValueAtTime(vol * 0.6, now);
+      gainBody.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+      oscBody.connect(gainBody);
+      gainBody.connect(dest);
+      oscBody.start(now);
+      oscBody.stop(now + 0.17);
     } catch(e) {}
   }
 
+  // Cushion / Perimeter Barrier Rebound Thud
   playBounce() {
     if (this.muted || !this.ctx) return;
     try {
       const now = this.ctx.currentTime;
-      const bouncePitch = 0.94 + Math.random() * 0.12;
+      const dest = this.masterGain || this.ctx.destination;
+
+      if (this.soundProfile === 'cyber') {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(320, now);
+        osc.frequency.exponentialRampToValueAtTime(90, now + 0.09);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+        osc.connect(gain);
+        gain.connect(dest);
+        osc.start(now);
+        osc.stop(now + 0.11);
+        return;
+      }
+
+      // Marble & Classic: Low acoustic cushion absorption thud
+      const pitchFactor = 0.95 + Math.random() * 0.10;
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(290 * bouncePitch, now);
-      osc.frequency.exponentialRampToValueAtTime(190 * bouncePitch, now + 0.06);
-      gain.gain.setValueAtTime(0.12, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+      osc.frequency.setValueAtTime(135 * pitchFactor, now);
+      osc.frequency.exponentialRampToValueAtTime(45 * pitchFactor, now + 0.14);
+      gain.gain.setValueAtTime(0.32, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+      // Lowpass noise cushion puff
+      const bufferSize = Math.floor(this.ctx.sampleRate * 0.08);
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.3));
+      }
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buffer;
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(260, now);
+      const noiseGain = this.ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.18, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+      noise.connect(filter);
+      filter.connect(noiseGain);
+      noiseGain.connect(dest);
+      noise.start(now);
+
       osc.connect(gain);
-      gain.connect(this.ctx.destination);
+      gain.connect(dest);
       osc.start(now);
-      osc.stop(now + 0.08);
+      osc.stop(now + 0.16);
+    } catch(e) {}
+  }
+
+  // Sovereign King Awakening Fanfare
+  playAwakening() {
+    if (this.muted || !this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const dest = this.masterGain || this.ctx.destination;
+      const freqs = [196.00, 293.66, 392.00, 493.88];
+      freqs.forEach((f, i) => {
+        const startTime = now + i * 0.07;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(f, startTime);
+        gain.gain.setValueAtTime(0.25, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.65);
+        osc.connect(gain);
+        gain.connect(dest);
+        osc.start(startTime);
+        osc.stop(startTime + 0.7);
+      });
     } catch(e) {}
   }
 
   playVictory(isDraw = false) {
     if (this.muted || !this.ctx) return;
     try {
+      const dest = this.masterGain || this.ctx.destination;
       const notes = isDraw 
-        ? [329.63, 392.00, 493.88, 587.33] // E minor 7 contemplative draw chord
-        : [440, 554.37, 659.25, 880, 1108.73]; // A major triumphant fanfare
+        ? [329.63, 392.00, 493.88, 587.33]
+        : [440, 554.37, 659.25, 880, 1108.73];
       notes.forEach((freq, idx) => {
         const startTime = this.ctx.currentTime + idx * (isDraw ? 0.12 : 0.09);
         const osc = this.ctx.createOscillator();
@@ -117,7 +329,7 @@ class ArchessAudio {
         gain.gain.setValueAtTime(isDraw ? 0.16 : 0.22, startTime);
         gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.4);
         osc.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(dest);
         osc.start(startTime);
         osc.stop(startTime + 0.45);
       });
@@ -128,15 +340,16 @@ class ArchessAudio {
     if (this.muted || !this.ctx) return;
     try {
       const now = this.ctx.currentTime;
+      const dest = this.masterGain || this.ctx.destination;
       const osc = this.ctx.createOscillator();
       const oscGain = this.ctx.createGain();
       osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(140, now);
+      osc.frequency.setValueAtTime(160, now);
       osc.frequency.exponentialRampToValueAtTime(25, now + 0.35);
-      oscGain.gain.setValueAtTime(0.4, now);
+      oscGain.gain.setValueAtTime(0.45, now);
       oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
       osc.connect(oscGain);
-      oscGain.connect(this.ctx.destination);
+      oscGain.connect(dest);
       osc.start(now);
       osc.stop(now + 0.4);
 
@@ -150,14 +363,14 @@ class ArchessAudio {
       noise.buffer = buffer;
       const filter = this.ctx.createBiquadFilter();
       filter.type = 'highpass';
-      filter.frequency.setValueAtTime(900, now);
+      filter.frequency.setValueAtTime(1100, now);
       filter.frequency.exponentialRampToValueAtTime(250, now + 0.2);
       const noiseGain = this.ctx.createGain();
-      noiseGain.gain.setValueAtTime(0.45, now);
+      noiseGain.gain.setValueAtTime(0.5, now);
       noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
       noise.connect(filter);
       filter.connect(noiseGain);
-      noiseGain.connect(this.ctx.destination);
+      noiseGain.connect(dest);
       noise.start(now);
     } catch(e) {}
   }
@@ -858,10 +1071,20 @@ class ArchessArena {
       }
     };
 
+    let lastTensionSoundTime = 0;
     const handlePointerMove = (e) => {
       if (this.isDragging && this.selectedPiece) {
         const screenPos = getPointerScreenPos(e);
         this.dragScreenCurrent = screenPos;
+        const pullScreenX = this.dragScreenAnchor.x - this.dragScreenCurrent.x;
+        const pullScreenY = this.dragScreenAnchor.y - this.dragScreenCurrent.y;
+        const screenDist = Math.hypot(pullScreenX, pullScreenY);
+        const powerRatio = Math.min(screenDist, this.maxPullDistance) / this.maxPullDistance;
+        const now = performance.now();
+        if (now - lastTensionSoundTime > 90) {
+          this.audio.playTension(powerRatio);
+          lastTensionSoundTime = now;
+        }
         if (e.cancelable) e.preventDefault();
       }
     };
@@ -1550,7 +1773,8 @@ class ArchessArena {
     king.mass = 2.6;
     king.bounce = 0.85;
 
-    this.audio.playImpact(1.8);
+    this.audio.playAwakening();
+    this.audio.playImpact(1.6);
     this.screenShake = 14;
     this.spawnImpactParticles(king.x, king.y, 45, true, king.team === 'white' ? ['#ffd700', '#00e1d9', '#ffffff'] : ['#ff4757', '#ff7675', '#ffffff']);
     this.addDamageNumber(king.x, king.y - king.radius * 1.6, 0, true, king.team === 'white' ? '#ffd700' : '#ff4757', '👑 SOVEREIGN AWAKENED!');

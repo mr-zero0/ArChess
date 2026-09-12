@@ -161,8 +161,9 @@
           <span>Reset Board</span>
         </button>
       </div>
+    </div>
 
-        <!-- Turn Indicator & Guidance Banner -->
+    <!-- Turn Indicator & Guidance Banner -->
     <div class="turn-indicator-bar">
       <div class="turn-badge">
         <div class="turn-timer-wrap" title="Turn Active">
@@ -464,6 +465,68 @@
             </div>
           </div>
         </div>
+
+        <!-- Tactical Soundscape & Audio Section -->
+        <div class="atelier-section">
+          <div class="section-label-bar">
+            <h4>Tactical Soundscape &amp; Physical Acoustics</h4>
+            <span class="active-indicator" id="atelierSoundActiveName">Grandmaster Marble &amp; Wood</span>
+          </div>
+
+          <!-- Volume Controls Row -->
+          <div class="soundscape-volume-bar">
+            <div class="volume-slider-label">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+              <span>Master Acoustic Volume</span>
+            </div>
+            <div class="volume-slider-wrap">
+              <input type="range" id="soundMasterVolumeSlider" min="0" max="100" value="80" class="custom-gold-slider">
+              <span class="volume-val-badge" id="soundMasterVolumeValue">80%</span>
+            </div>
+          </div>
+
+          <!-- Soundscape Profiles -->
+          <div class="sound-profile-grid" id="soundProfileGrid">
+            <!-- Marble & Wood -->
+            <div class="sound-card-item active" data-sound-profile="marble">
+              <div class="sound-card-header">
+                <span class="sound-card-icon">🏛️</span>
+                <span class="sound-card-name">Grandmaster Marble</span>
+              </div>
+              <p class="sound-card-desc">Dense polished marble piece impacts with resonant hardwood cushion thuds.</p>
+              <div class="sound-card-actions">
+                <button type="button" class="btn-sound-preview" data-preview="impact">Test Clack</button>
+                <button type="button" class="btn-sound-preview" data-preview="bounce">Test Cushion</button>
+              </div>
+            </div>
+
+            <!-- Cybernetic Synthwave -->
+            <div class="sound-card-item" data-sound-profile="cyber">
+              <div class="sound-card-header">
+                <span class="sound-card-icon">⚡</span>
+                <span class="sound-card-name">Cybernetic Synth</span>
+              </div>
+              <p class="sound-card-desc">Resonant FM modulated kinetic impulses, energy deflector shields, and neon surges.</p>
+              <div class="sound-card-actions">
+                <button type="button" class="btn-sound-preview" data-preview="impact">Test Clack</button>
+                <button type="button" class="btn-sound-preview" data-preview="bounce">Test Cushion</button>
+              </div>
+            </div>
+
+            <!-- Tournament Classic -->
+            <div class="sound-card-item" data-sound-profile="classic">
+              <div class="sound-card-header">
+                <span class="sound-card-icon">🏆</span>
+                <span class="sound-card-name">Tournament Classic</span>
+              </div>
+              <p class="sound-card-desc">Crisp, dry mechanical wood piece taps and subtle acoustic arena perimeter knocks.</p>
+              <div class="sound-card-actions">
+                <button type="button" class="btn-sound-preview" data-preview="impact">Test Clack</button>
+                <button type="button" class="btn-sound-preview" data-preview="bounce">Test Cushion</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="appearance-modal-foot">
@@ -474,10 +537,10 @@
   </div>
 
   <!-- Scripts -->
-  <script src="/static/js/react-chessboard-bundle.js?v=2.7.3"></script>
-  <script src="/static/js/game.js?v=2.7.3"></script>
-  <script src="/static/js/main.js?v=2.7.3"></script>
-  <script src="/static/js/auth.js?v=2.7.3"></script>
+  <script src="/static/js/react-chessboard-bundle.js?v=2.8.0"></script>
+  <script src="/static/js/game.js?v=2.8.0"></script>
+  <script src="/static/js/main.js?v=2.8.0"></script>
+  <script src="/static/js/auth.js?v=2.8.0"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       // Sync current logged in user name with White player card

@@ -4214,3 +4214,183 @@ button {
   border-color: var(--gold-light, #ffd700) !important;
 }
 
+/* -------------------------------------------------------------
+   Tactical Soundscape & Acoustic Customizer Styles (v2.8.0)
+------------------------------------------------------------- */
+.soundscape-volume-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  border-radius: var(--radius-md, 10px);
+  padding: 12px 18px;
+  margin-bottom: 16px;
+}
+
+.volume-slider-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--foreground, #f8fafc);
+  letter-spacing: 0.02em;
+}
+
+.volume-slider-label svg {
+  color: var(--gold, #d4af37);
+}
+
+.volume-slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  max-width: 320px;
+}
+
+.custom-gold-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+  transition: background var(--transition-fast, 0.15s ease);
+}
+
+.custom-gold-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--gold-gradient, linear-gradient(135deg, #ffd700, #b8860b));
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+  cursor: pointer;
+  border: 2px solid #ffffff;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.custom-gold-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 14px rgba(212, 175, 55, 0.8);
+}
+
+.custom-gold-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--gold-gradient, linear-gradient(135deg, #ffd700, #b8860b));
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+  cursor: pointer;
+  border: 2px solid #ffffff;
+}
+
+.volume-val-badge {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--gold-light, #ffd700);
+  background: rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  padding: 2px 8px;
+  border-radius: 6px;
+  min-width: 44px;
+  text-align: center;
+}
+
+.sound-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .sound-profile-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sound-card-item {
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.22s var(--ease-spring, ease);
+}
+
+.sound-card-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.22);
+  transform: translateY(-2px);
+}
+
+.sound-card-item.active {
+  border-color: var(--gold-bright, #eab308);
+  background: rgba(234, 179, 8, 0.08);
+  box-shadow: 0 0 14px rgba(234, 179, 8, 0.22), inset 0 0 8px rgba(234, 179, 8, 0.08);
+}
+
+.sound-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sound-card-icon {
+  font-size: 1.25rem;
+}
+
+.sound-card-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-primary, #ffffff);
+}
+
+.sound-card-desc {
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--muted-foreground, #94a3b8);
+  margin: 0;
+  flex: 1;
+}
+
+.sound-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.btn-sound-preview {
+  font-family: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--foreground, #f8fafc);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-sound-preview:hover {
+  background: rgba(212, 175, 55, 0.18);
+  border-color: rgba(212, 175, 55, 0.45);
+  color: var(--gold-light, #ffd700);
+}
+
+

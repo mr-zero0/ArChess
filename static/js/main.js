@@ -526,6 +526,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (isMuted) {
     if (arena && arena.audio) {
       arena.audio.muted = true;
+      arena.audio.updateMasterGain();
     }
     if (audioBtn) {
       audioBtn.classList.add('muted');
@@ -537,9 +538,10 @@ document.addEventListener('DOMContentLoaded', () => {
     audioBtn.addEventListener('click', () => {
       isMuted = !isMuted;
       if (arena && arena.audio) {
-        arena.audio.muted = isMuted;
+        arena.audio.toggleMute(isMuted);
+      } else {
+        localStorage.setItem('archess_audio_muted', isMuted ? 'true' : 'false');
       }
-      localStorage.setItem('archess_audio_muted', isMuted ? 'true' : 'false');
       audioBtn.classList.toggle('muted', isMuted);
       audioBtn.innerHTML = isMuted 
         ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`
@@ -547,6 +549,108 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast(isMuted ? 'Game Audio Muted' : 'Game Audio Active');
     });
   }
+
+  /* -------------------------------------------------------------
+     Dynamic Tactical Soundscape Controls & Profiles
+  ------------------------------------------------------------- */
+  const SOUND_PROFILE_NAMES = {
+    marble: 'Grandmaster Marble & Wood',
+    cyber: 'Cybernetic Synthwave',
+    classic: 'Tournament Classic'
+  };
+
+  const soundProfileCards = document.querySelectorAll('.sound-card-item');
+  const soundVolumeSlider = document.getElementById('soundMasterVolumeSlider');
+  const soundVolumeValue = document.getElementById('soundMasterVolumeValue');
+  const soundActiveName = document.getElementById('atelierSoundActiveName');
+
+  let savedSoundProfile = localStorage.getItem('archess_sound_profile') || 'marble';
+  let savedVolume = parseFloat(localStorage.getItem('archess_master_volume') || '0.8');
+
+  function applySoundProfile(profileKey, showNotice = false) {
+    if (!SOUND_PROFILE_NAMES[profileKey]) return;
+    savedSoundProfile = profileKey;
+    localStorage.setItem('archess_sound_profile', profileKey);
+
+    if (arena && arena.audio) {
+      arena.audio.setProfile(profileKey);
+    }
+
+    soundProfileCards.forEach(c => {
+      c.classList.toggle('active', c.getAttribute('data-sound-profile') === profileKey);
+    });
+
+    if (soundActiveName) {
+      soundActiveName.textContent = SOUND_PROFILE_NAMES[profileKey];
+    }
+
+    window.dispatchEvent(new CustomEvent('archess_sound_profile_change', {
+      detail: { profile: profileKey }
+    }));
+
+    if (showNotice) {
+      showToast(`Acoustic Profile: ${SOUND_PROFILE_NAMES[profileKey]}`);
+    }
+  }
+
+  function applyMasterVolume(volPct, save = true) {
+    const ratio = Math.max(0, Math.min(100, parseInt(volPct, 10))) / 100;
+    savedVolume = ratio;
+    if (save) {
+      localStorage.setItem('archess_master_volume', ratio.toString());
+    }
+
+    if (soundVolumeSlider) soundVolumeSlider.value = Math.round(ratio * 100);
+    if (soundVolumeValue) soundVolumeValue.textContent = `${Math.round(ratio * 100)}%`;
+
+    if (arena && arena.audio) {
+      arena.audio.setVolume(ratio);
+    }
+  }
+
+  // Initialize Soundscape UI
+  applySoundProfile(savedSoundProfile, false);
+  applyMasterVolume(Math.round(savedVolume * 100), false);
+
+  if (soundVolumeSlider) {
+    soundVolumeSlider.addEventListener('input', (e) => {
+      applyMasterVolume(e.target.value, true);
+    });
+  }
+
+  soundProfileCards.forEach(card => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.btn-sound-preview')) return;
+      const profile = card.getAttribute('data-sound-profile');
+      applySoundProfile(profile, true);
+      if (arena && arena.audio) {
+        arena.audio.init();
+        arena.audio.playImpact(1.1);
+      }
+    });
+  });
+
+  // Sound preview buttons (Test Clack / Test Cushion)
+  document.querySelectorAll('.btn-sound-preview').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const card = btn.closest('.sound-card-item');
+      const profile = card ? card.getAttribute('data-sound-profile') : savedSoundProfile;
+      applySoundProfile(profile, false);
+
+      if (arena && arena.audio) {
+        arena.audio.init();
+        const type = btn.getAttribute('data-preview');
+        if (type === 'bounce') {
+          arena.audio.playBounce();
+          showToast(`Playing Cushion Thud (${SOUND_PROFILE_NAMES[profile]})`);
+        } else {
+          arena.audio.playImpact(1.3);
+          showToast(`Playing Marble Clack (${SOUND_PROFILE_NAMES[profile]})`);
+        }
+      }
+    });
+  });
 
   // Theme Mode (Dark / Light) Toggle
   const themeToggleBtn = document.getElementById('themeModeToggleBtn');

@@ -2,6 +2,33 @@
 
 All notable changes, architectural pivots, bugfixes, and refactorings across **ArChess** are documented in this file.
 
+## [2.8.0] - 2026-09-12
+
+### 🎵 Dynamic Soundscape Engine & Grandmaster Acoustic Customizer
+- **Physical Web Audio Synthesis (`ArchessAudio`)**:
+  - Overhauled procedural audio architecture with a dedicated `masterGainNode` connected to `AudioContext.destination` enabling real-time volume modulation.
+  - **Multi-Harmonic Marble Clack (`playImpact`)**: Synthesized authentic physical collision acoustic modeling combining a 3.6kHz piezo transient impact click with dual-resonant ceramic body overtones (640Hz fundamental + 1380Hz harmonic overtone with Q=4.5) scaled dynamically by collision velocity and piece momentum.
+  - **Cushion Rail Boundary Thud (`playBounce`)**: Engineered low-frequency acoustic perimeter dampening (135Hz exponential drop to 45Hz) with a 260Hz low-pass cushion compression puff simulating elastic rail absorption.
+  - **Slingshot Drag Tension (`playTension`)**: Added tactile power strain feedback audio that smoothly rises in pitch as the player pulls back the slingshot band during aiming.
+  - **Slingshot Impulse Snap (`playLaunch`)**: Authentic mechanical elastic snap and piece slide whoosh.
+  - **Sovereign King Awakening (`playAwakening`)**: Regal multi-part fanfare chord (G3, D4, G4, B4) with shimmering harmonic decay when the Citadel King awakens into mobile combat.
+- **3 Bespoke Soundscape Profiles**:
+  - 🏛️ **Grandmaster Marble & Wood**: Polished heavyweight marble piece collisions with dense felt-backed hardwood cushion dampening (default).
+  - ⚡ **Cybernetic Synthwave**: Frequency-modulated (FM) carrier synthesizer, resonant deflector shield pings, and neon impulse surges.
+  - 🏆 **Tournament Classic**: Crisp, dry mechanical Staunton wood piece taps and subtle tournament boundary knocks.
+- **Grandmaster Atelier Soundscape Controls**:
+  - Embedded **Tactical Soundscape & Physical Acoustics** panel into `#appearanceModalBackdrop`.
+  - Added interactive gold Master Acoustic Volume slider (`0%` to `100%`) with real-time numeric badge feedback and `localStorage` persistence.
+  - Added soundscape profile switcher cards with one-click **Test Clack** and **Test Cushion** preview buttons.
+  - Synchronized mute toggle (`#audioToggleBtn`) and volume controls with both Canvas Arena and React Chessboard.
+
+### 🛡️ Template Architecture: Toolbar DOM Hierarchy Bugfix
+- **Isolated Toolbar Element**: Resolved a critical layout nesting bug in `templates/play.html` where `<div class="play-arena-toolbar">` lacked a closing tag, accidentally trapping the turn indicator bar, board resize strip, and the main canvas arena stage inside the flexbox toolbar.
+- **Automated HTML Tag Validation**: Added `test_html_tag_balance` in `tests/test_archess.py` ensuring zero unclosed or mismatched tags across all templates (`templates/*.html`).
+- **Cache Busting**: Bumped all frontend script query strings in `templates/play.html` to `?v=2.8.0`.
+
+---
+
 ## [2.7.3] - 2026-09-11
 
 ### 🎯 Physics Engine: Slingshot Impulse Vector & Forward Trajectory Alignment
