@@ -2,6 +2,33 @@
 
 All notable changes, architectural pivots, bugfixes, and refactorings across **ArChess** are documented in this file.
 
+## [2.9.0] - 2026-09-13
+
+### 🎨 Multi-Design Systems & Bento Grid Architecture
+- **6 Bespoke UI Design Languages (`data-ui-design`)**:
+  - 🔮 **Glassmorphism**: Frosted glass effects, deep `backdrop-filter: blur(16px)`, translucent surfaces (`rgba(15, 23, 42, 0.45)`), and luminous 1px perimeter borders (`rgba(255, 255, 255, 0.18)`).
+  - 💥 **Neobrutalism**: Thick 3px solid borders (`#000`), hard 5px offset drop shadows (`5px 5px 0px #000`), high-contrast cyber pop accents (electric yellow, cyan, hot magenta), and a raw, confident retro feel.
+  - 🕊️ **Minimal with Generous Whitespace**: High-end editorial aesthetic with doubled padding, spacious gaps, crisp hairline dividers, quiet typography, and zero visual clutter.
+  - 🍏 **iOS Native**: Adheres to Apple's Human Interface Guidelines (HIG) with San Francisco font styling, 24px squircle card radii, segmented pill switches, subtle vibrancy, and system blue accents.
+  - 📱 **Material Design 3 (MD3)**: Google Material You dynamic color scheme, tonal surface containers (`#1d1b20`, `#2b2930`), 28px pill contours, and tactile state layers.
+  - 👑 **Dark Premium**: Deep obsidian noir canvas (`#050811`), subtle radial vignette gradients, metallic gold and silver foil accents, and Cinzel serif typography.
+- **🍱 Apple-Style Bento Grid Architecture**:
+  - Engineered modular CSS Bento Grid layout engine (`.bento-grid`, `.bento-card`, `.bento-col-12` through `.bento-col-3`, `.bento-row-2`, `.bento-stat-cluster`, `.bento-badge-row`).
+  - **Landing Page (`templates/index.html`)**: Replaced basic tactical section with `#bentoShowcaseSection`, presenting asymmetric modular cards, kinetic ability badges, live preview board, and tactical telemetry.
+  - **Piece Codex (`templates/arsenal.html`)**: Upgraded piece inspector into a responsive Bento Grid layout featuring Bento Hero showcase, vector kinetic metrics, and deployment tactics.
+  - **Rankings Ladder (`templates/leaderboard.html`)**: Added Top 3 Grandmasters Podium Bento Grid (Gold, Silver, Bronze) highlighting commander avatars, win rates, and Elo ratings.
+- **🎛️ Universal Design Switcher Modal & Controls**:
+  - Added global Design Picker Modal (`#designPickerModal`) with interactive design cards, live color swatch strips, and instant preview.
+  - Added navigation header switcher button (`#navDesignToggleBtn`) and side expansion drawer UI Design section across all pages.
+  - Added dedicated UI Design Language customizer panel in Grandmaster Atelier modal on `/play`.
+  - Added zero-flash pre-hydration script in `<head>` to immediately apply saved preference before render.
+  - Persisted user preference via `localStorage('archess_ui_design')` and Sonner toast confirmations.
+- **🧪 Automated Verification**:
+  - Added `test_ui_design_systems_and_bento_grid` in `tests/test_archess.py`.
+  - 100% test pass rate across 15 automated test cases.
+
+---
+
 ## [2.8.0] - 2026-09-12
 
 ### 🎵 Dynamic Soundscape Engine & Grandmaster Acoustic Customizer

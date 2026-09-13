@@ -6,6 +6,8 @@
   <title>ARCHESS | Global Ranked Leaderboard & Grandmasters</title>
   <script>
     (function() {
+      var design = localStorage.getItem('archess_ui_design') || 'dark-premium';
+      document.documentElement.setAttribute('data-ui-design', design);
       var mode = localStorage.getItem('archess_theme_mode');
       if (mode === 'light' || (!mode && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches)) {
         document.documentElement.setAttribute('data-theme', 'light');
@@ -42,6 +44,37 @@
         <li><a href="/leaderboard"><span>Rankings & Ladder</span> <span class="nav-num">04</span></a></li>
       </ul>
 
+      <!-- Design Language Selector in Drawer -->
+      <div class="drawer-design-section">
+        <span class="drawer-design-title">Design Language</span>
+        <div class="drawer-design-pills">
+          <button class="drawer-design-btn active" data-design-key="dark-premium">
+            <span>Dark Premium</span>
+            <span style="font-size: 0.7rem; color: var(--gold-light);">Obsidian</span>
+          </button>
+          <button class="drawer-design-btn" data-design-key="glassmorphism">
+            <span>Glassmorphism</span>
+            <span style="font-size: 0.7rem; color: #00f2fe;">Frosted</span>
+          </button>
+          <button class="drawer-design-btn" data-design-key="neobrutalism">
+            <span>Neobrutalism</span>
+            <span style="font-size: 0.7rem; color: #ffe600;">Bold Pop</span>
+          </button>
+          <button class="drawer-design-btn" data-design-key="minimal">
+            <span>Minimalist</span>
+            <span style="font-size: 0.7rem; color: #94a3b8;">Zen Space</span>
+          </button>
+          <button class="drawer-design-btn" data-design-key="ios-native">
+            <span>iOS Native</span>
+            <span style="font-size: 0.7rem; color: #0a84ff;">Apple HIG</span>
+          </button>
+          <button class="drawer-design-btn" data-design-key="material3">
+            <span>Material 3</span>
+            <span style="font-size: 0.7rem; color: #d0bcff;">Google M3</span>
+          </button>
+        </div>
+      </div>
+
       <div class="drawer-footer-actions">
         <a href="/play" class="btn-gold" style="width: 100%; justify-content: center;">
           <span>Launch Arena</span>
@@ -73,6 +106,18 @@
       </ul>
 
       <div class="nav-actions">
+        <!-- UI Design Language Selector Trigger -->
+        <button class="btn-nav-design-toggle" id="navDesignToggleBtn" title="Switch UI Design Language" aria-label="Switch UI Design Language">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle>
+            <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle>
+            <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle>
+            <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle>
+            <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path>
+          </svg>
+          <span>Design</span>
+        </button>
+
         <!-- UIverse Theme Mode Toggle (Dark / Light) -->
         <button class="btn-theme-mode-toggle" id="themeModeToggleBtn" title="Toggle Light / Dark Mode" aria-label="Toggle Light / Dark Mode">
           <span class="theme-toggle-icon icon-sun" aria-hidden="true">
@@ -124,6 +169,99 @@
       <p class="section-desc">
         Climb the official Archess Grandmaster rankings. Win tactical matches to earn rating points and secure your spot among the vanguard.
       </p>
+    </div>
+
+    <!-- Top 3 Grandmasters Podium Bento Grid -->
+    <div class="bento-grid" style="margin-bottom: 32px; max-width: 1380px;">
+      <!-- Rank #1 Gold Champion Spotlight -->
+      <div class="bento-card bento-col-4" style="border-color: rgba(212, 175, 55, 0.4); background: linear-gradient(145deg, rgba(212, 175, 55, 0.08) 0%, rgba(12, 17, 26, 0.9) 100%);">
+        <div class="bento-header" style="margin-bottom: 8px;">
+          <span class="bento-eyebrow" style="color: #ffd700;">
+            👑 Rank #1 &bull; Reigning Champion
+          </span>
+          <div style="display: flex; align-items: center; gap: 14px; margin-top: 6px;">
+            <div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #ffe066 0%, #d4af37 100%); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #000; box-shadow: 0 0 16px rgba(255, 215, 0, 0.5);">
+              ♔
+            </div>
+            <div>
+              <h3 class="bento-title" style="font-size: 1.3rem; margin: 0;">Magnus_Kinetic</h3>
+              <span style="font-size: 0.74rem; color: var(--gold-light); font-weight: 600;">Grandmaster Vanguard</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="bento-stat-cluster" style="margin: 12px 0;">
+          <div class="bento-stat-hero tabular-nums" style="color: #ffd700; font-size: 2.5rem;">2850</div>
+          <div class="bento-stat-meta">
+            <span class="bento-stat-label">Official ELO</span>
+            <span class="bento-stat-sub">94.2% Win Rate &bull; 48W 3L 2D</span>
+          </div>
+        </div>
+
+        <div class="bento-badge-row">
+          <span class="tag-badge" style="border-color: #ffd700; color: #ffd700;">Undefeated Streak (14)</span>
+        </div>
+      </div>
+
+      <!-- Rank #2 Silver Challenger Spotlight -->
+      <div class="bento-card bento-col-4" style="border-color: rgba(203, 213, 225, 0.3);">
+        <div class="bento-header" style="margin-bottom: 8px;">
+          <span class="bento-eyebrow" style="color: #cbd5e1;">
+            🥈 Rank #2 &bull; Apex Challenger
+          </span>
+          <div style="display: flex; align-items: center; gap: 14px; margin-top: 6px;">
+            <div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #f8fafc 0%, #94a3b8 100%); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #000;">
+              ♚
+            </div>
+            <div>
+              <h3 class="bento-title" style="font-size: 1.3rem; margin: 0;">Hikaru_Impulse</h3>
+              <span style="font-size: 0.74rem; color: #cbd5e1; font-weight: 600;">Master Tactician</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="bento-stat-cluster" style="margin: 12px 0;">
+          <div class="bento-stat-hero tabular-nums" style="color: #cbd5e1; font-size: 2.5rem;">2780</div>
+          <div class="bento-stat-meta">
+            <span class="bento-stat-label">Official ELO</span>
+            <span class="bento-stat-sub">88.5% Win Rate &bull; 42W 5L 1D</span>
+          </div>
+        </div>
+
+        <div class="bento-badge-row">
+          <span class="chip-tag">Ricochet Specialist</span>
+        </div>
+      </div>
+
+      <!-- Rank #3 Bronze Sentinel Spotlight -->
+      <div class="bento-card bento-col-4" style="border-color: rgba(205, 127, 50, 0.3);">
+        <div class="bento-header" style="margin-bottom: 8px;">
+          <span class="bento-eyebrow" style="color: #cd7f32;">
+            🥉 Rank #3 &bull; Master Sentinel
+          </span>
+          <div style="display: flex; align-items: center; gap: 14px; margin-top: 6px;">
+            <div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #e69138 0%, #a64d79 100%); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #fff;">
+              ♞
+            </div>
+            <div>
+              <h3 class="bento-title" style="font-size: 1.3rem; margin: 0;">Prism_Sniper</h3>
+              <span style="font-size: 0.74rem; color: #e69138; font-weight: 600;">Shockwave Sniper</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="bento-stat-cluster" style="margin: 12px 0;">
+          <div class="bento-stat-hero tabular-nums" style="color: #e69138; font-size: 2.5rem;">2710</div>
+          <div class="bento-stat-meta">
+            <span class="bento-stat-label">Official ELO</span>
+            <span class="bento-stat-sub">84.1% Win Rate &bull; 37W 7L 0D</span>
+          </div>
+        </div>
+
+        <div class="bento-badge-row">
+          <span class="chip-tag">Wall Ricochet Expert</span>
+        </div>
+      </div>
     </div>
 
     <div class="leaderboard-table-card" style="max-width: 1380px; width: 100%; margin: 0 auto;">
@@ -215,6 +353,88 @@
       <div style="color: var(--gold-light);">Aim &bull; Launch &bull; Collide &bull; Conquer</div>
     </div>
   </footer>
+
+  <!-- Multi-Design System Selection Modal -->
+  <div class="modal-backdrop" id="designPickerModal" role="dialog" aria-modal="true">
+    <div class="modal-dialog design-picker-modal-dialog">
+      <div class="appearance-modal-head" style="margin-bottom: 8px;">
+        <div class="head-meta">
+          <span class="eyebrow">AESTHETIC ARCHITECTURE</span>
+          <h2 class="title" style="font-size: 1.5rem;">Select UI Design Language</h2>
+          <p class="subtitle">Experience ARCHESS across 6 distinct modern design systems. Every surface, border, and elevation re-skins in real time.</p>
+        </div>
+        <button class="modal-close-icon" id="closeDesignModalBtn" aria-label="Close Design Selector">&times;</button>
+      </div>
+
+      <div class="design-picker-grid">
+        <!-- 1. Dark Premium -->
+        <div class="design-picker-card" data-design-key="dark-premium">
+          <div class="design-preview-strip preview-dark">
+            <span style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em;">Obsidian &bull; Metallic Gold</span>
+          </div>
+          <div class="design-card-meta">
+            <h4>Dark Premium</h4>
+            <p>Deep void noir backgrounds, metallic gold and platinum foil gradients, Cinzel luxury serif typography, and specular rim lines.</p>
+          </div>
+        </div>
+
+        <!-- 2. Glassmorphism -->
+        <div class="design-picker-card" data-design-key="glassmorphism">
+          <div class="design-preview-strip preview-glass">
+            <span style="font-size: 0.75rem; font-weight: 700; color: #00f2fe;">Frosted Crystal &bull; Blur</span>
+          </div>
+          <div class="design-card-meta">
+            <h4>Glassmorphism</h4>
+            <p>Translucent frosted glass panels with 24px blur, 1px luminous borders, cyan/violet ambient backlights, and specular bevels.</p>
+          </div>
+        </div>
+
+        <!-- 3. Neobrutalism -->
+        <div class="design-picker-card" data-design-key="neobrutalism">
+          <div class="design-preview-strip preview-brutal">
+            <span style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase;">Raw &bull; 3px Solid &bull; Pop</span>
+          </div>
+          <div class="design-card-meta">
+            <h4>Neobrutalism</h4>
+            <p>Thick 3px solid borders, hard 5px offset drop shadows, cyber yellow &amp; hot pink accents, raw unpolished edges, and chunky typography.</p>
+          </div>
+        </div>
+
+        <!-- 4. Minimal with Generous Whitespace -->
+        <div class="design-picker-card" data-design-key="minimal">
+          <div class="design-preview-strip preview-minimal">
+            <span style="font-size: 0.75rem; font-weight: 600; color: #e2e8f0;">Zen &bull; Generous Whitespace</span>
+          </div>
+          <div class="design-card-meta">
+            <h4>Minimalist</h4>
+            <p>Abundant negative space, whisper-thin 1px borders, zero noisy gradients, serene monochrome palette, and pure typographic clarity.</p>
+          </div>
+        </div>
+
+        <!-- 5. iOS Native -->
+        <div class="design-picker-card" data-design-key="ios-native">
+          <div class="design-preview-strip preview-ios">
+            <span style="font-size: 0.75rem; font-weight: 600; color: #ffffff;">Apple HIG &bull; Cupertino Squircle</span>
+          </div>
+          <div class="design-card-meta">
+            <h4>iOS Native</h4>
+            <p>Apple Human Interface Guidelines, SF Pro font feel, continuous squircle cards, Cupertino segmented control pills, and system vibrancy.</p>
+          </div>
+        </div>
+
+        <!-- 6. Material Design 3 -->
+        <div class="design-picker-card" data-design-key="material3">
+          <div class="design-preview-strip preview-m3">
+            <span style="font-size: 0.75rem; font-weight: 700;">Google M3 &bull; Material You</span>
+          </div>
+          <div class="design-card-meta">
+            <h4>Material Design 3</h4>
+            <p>Google Material You dynamic color, tonal surface container hierarchy, expressive rounded 28px pills, and floating action cards.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="/static/js/auth.js"></script>
   <script src="/static/js/main.js"></script>

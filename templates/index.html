@@ -8,6 +8,8 @@
   
   <script>
     (function() {
+      var design = localStorage.getItem('archess_ui_design') || 'dark-premium';
+      document.documentElement.setAttribute('data-ui-design', design);
       var mode = localStorage.getItem('archess_theme_mode');
       if (mode === 'light' || (!mode && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches)) {
         document.documentElement.setAttribute('data-theme', 'light');
@@ -67,6 +69,37 @@
         </li>
       </ul>
 
+      <!-- Design Language Selector in Drawer -->
+      <div class="drawer-design-section">
+        <span class="drawer-design-title">Design Language</span>
+        <div class="drawer-design-pills">
+          <button class="drawer-design-btn active" data-design-key="dark-premium">
+            <span>Dark Premium</span>
+            <span style="font-size: 0.7rem; color: var(--gold-light);">Obsidian</span>
+          </button>
+          <button class="drawer-design-btn" data-design-key="glassmorphism">
+            <span>Glassmorphism</span>
+            <span style="font-size: 0.7rem; color: #00f2fe;">Frosted</span>
+          </button>
+          <button class="drawer-design-btn" data-design-key="neobrutalism">
+            <span>Neobrutalism</span>
+            <span style="font-size: 0.7rem; color: #ffe600;">Bold Pop</span>
+          </button>
+          <button class="drawer-design-btn" data-design-key="minimal">
+            <span>Minimalist</span>
+            <span style="font-size: 0.7rem; color: #94a3b8;">Zen Space</span>
+          </button>
+          <button class="drawer-design-btn" data-design-key="ios-native">
+            <span>iOS Native</span>
+            <span style="font-size: 0.7rem; color: #0a84ff;">Apple HIG</span>
+          </button>
+          <button class="drawer-design-btn" data-design-key="material3">
+            <span>Material 3</span>
+            <span style="font-size: 0.7rem; color: #d0bcff;">Google M3</span>
+          </button>
+        </div>
+      </div>
+
       <div class="drawer-footer-actions">
         <div class="drawer-theme-switch-row" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: rgba(255,255,255,0.04); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); margin-bottom: 6px;">
           <span style="font-size: 0.82rem; font-weight: 600; color: var(--text-secondary);">Theme Mode</span>
@@ -121,6 +154,18 @@
       </ul>
 
       <div class="nav-actions">
+        <!-- UI Design Language Selector Trigger -->
+        <button class="btn-nav-design-toggle" id="navDesignToggleBtn" title="Switch UI Design Language" aria-label="Switch UI Design Language">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle>
+            <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle>
+            <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle>
+            <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle>
+            <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path>
+          </svg>
+          <span>Design</span>
+        </button>
+
         <!-- UIverse Theme Mode Toggle (Dark / Light) -->
         <button class="btn-theme-mode-toggle" id="themeModeToggleBtn" title="Toggle Light / Dark Mode" aria-label="Toggle Light / Dark Mode">
           <span class="theme-toggle-icon icon-sun" aria-hidden="true">
@@ -431,51 +476,162 @@
       </div>
     </section>
 
-    <!-- 3 Core Tactical Principles (Minimalist, Zero Emojis) -->
-    <section class="tactical-principles-section">
+    <!-- Apple-Style Bento Grid Showcase Section (Tactical Kinetic Engine) -->
+    <section class="bento-showcase-section" id="bentoShowcaseSection" style="padding: 90px 0;">
       <div class="container">
         <div class="section-head-chess">
-          <div class="rank-file-label">[ 03 &bull; TACTICAL ENGINE ]</div>
-          <h2>Physics Meets Classical Strategy</h2>
-          <p>Strict conservation of momentum replaces rigid tile steps.</p>
+          <div class="rank-file-label">[ 03 &bull; BENTO GRID ARCHITECTURE ]</div>
+          <h2>Kinetic Engine &amp; Tactical Systems</h2>
+          <p>Strict conservation of momentum meets classical chess geometry in an Apple-inspired modular layout.</p>
         </div>
 
-        <div class="principles-grid">
-          <div class="principle-card">
-            <div class="principle-glyph">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="22" y1="12" x2="18" y2="12"/>
-                <line x1="6" y1="12" x2="2" y2="12"/>
-                <line x1="12" y1="6" x2="12" y2="2"/>
-                <line x1="12" y1="22" x2="12" y2="18"/>
-              </svg>
+        <div class="bento-grid">
+          <!-- Bento Tile 1: Sub-Degree Vector Trajectory & Kinetic Impulse (Col 8) -->
+          <div class="bento-card bento-col-8">
+            <div class="bento-header">
+              <span class="bento-eyebrow">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <span>Vector Physics Engine</span>
+              </span>
+              <h3 class="bento-title">Sub-Degree Trajectory &amp; Kinetic Impulse</h3>
+              <p class="bento-desc">
+                Replace rigid square steps with sub-degree angular targeting. Bank shots off high-elasticity perimeter cushions allow surgical strikes into fortified backlines.
+              </p>
             </div>
-            <h3>Trajectory &amp; Impulse</h3>
-            <p>Sub-degree vector aiming with power scaling. Bank shots off high-elasticity perimeter cushions allow strikes into guarded backlines.</p>
+
+            <div class="bento-visual-box" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+              <div style="display: flex; align-items: center; gap: 16px;">
+                <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(212, 175, 55, 0.12); border: 1px solid var(--gold-border); display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
+                  🎯
+                </div>
+                <div>
+                  <div style="font-size: 0.88rem; font-weight: 700; color: var(--foreground);">Slingshot Precision Vector</div>
+                  <div style="font-size: 0.74rem; color: var(--muted-foreground); font-family: var(--font-mono);">0.01&deg; Angular Resolution &bull; Variable Tension</div>
+                </div>
+              </div>
+              <div style="font-family: var(--font-mono); font-size: 0.85rem; font-weight: 700; color: var(--gold-light);">
+                &Delta;v = F &times; &Delta;t / m
+              </div>
+            </div>
+
+            <div class="bento-badge-row">
+              <span class="tag-badge">Sub-Degree Aiming</span>
+              <span class="tag-badge">Perimeter Rebounds</span>
+              <span class="tag-badge">Recoil Momentum</span>
+            </div>
           </div>
 
-          <div class="principle-card">
-            <div class="principle-glyph">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
+          <!-- Bento Tile 2: 32 Physical Mass Bodies (Col 4) -->
+          <div class="bento-card bento-col-4">
+            <div class="bento-header">
+              <span class="bento-eyebrow">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+                <span>Mass Dynamics</span>
+              </span>
+              <h3 class="bento-title">32 Physical Bodies</h3>
+              <p class="bento-desc">Each unit possesses calibrated mass and restitution coefficients.</p>
             </div>
-            <h3>Mass-Scaled Damage</h3>
-            <p>Each unit has distinct mass. Heavy Rooks deliver bulldozer impacts, while agile Knights and Bishops gain kinetic force through rebounds.</p>
+
+            <div class="bento-stat-cluster">
+              <div class="bento-stat-hero tabular-nums">32</div>
+              <div class="bento-stat-meta">
+                <span class="bento-stat-label">Independent Mass Units</span>
+                <span class="bento-stat-sub">60 FPS Physics Simulation</span>
+              </div>
+            </div>
+
+            <div class="bento-badge-row">
+              <span class="chip-tag">Rook: 3.2kg</span>
+              <span class="chip-tag">Knight: 1.8kg</span>
+              <span class="chip-tag">Queen: 2.5kg</span>
+            </div>
           </div>
 
-          <div class="principle-card">
-            <div class="principle-glyph">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polygon points="12 2 2 7 12 12 22 7 12 2"/>
-                <polyline points="2 17 12 22 22 17"/>
-                <polyline points="2 12 12 17 22 12"/>
-              </svg>
+          <!-- Bento Tile 3: 3-Way Perspectives (Col 4) -->
+          <div class="bento-card bento-col-4">
+            <div class="bento-header">
+              <span class="bento-eyebrow">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                <span>Arena Perspectives</span>
+              </span>
+              <h3 class="bento-title">3-Way View Matrix</h3>
+              <p class="bento-desc">Switch perspectives in real time with zero state loss or interruption.</p>
             </div>
-            <h3>2D &amp; 3D Perspectives</h3>
-            <p>Seamless toggle between top-down 2D tactical precision and immersive 3D isometric board depth at any point during your match.</p>
+
+            <div style="display: flex; flex-direction: column; gap: 8px; margin: 12px 0;">
+              <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; font-size: 0.8rem;">
+                <span>🏛️ 3D Isometric Tabletop</span>
+                <span style="font-size: 0.72rem; color: var(--gold-light);">Slingshot</span>
+              </div>
+              <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; font-size: 0.8rem;">
+                <span>⚔️ 2D Arena Combat</span>
+                <span style="font-size: 0.72rem; color: #00f2fe;">React Chess</span>
+              </div>
+              <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; font-size: 0.8rem;">
+                <span>♟️ 2D Classic FIDE</span>
+                <span style="font-size: 0.72rem; color: var(--text-muted);">Standard Rules</span>
+              </div>
+            </div>
+
+            <div class="bento-badge-row">
+              <a href="/play" class="btn btn-outline btn-sm" style="width: 100%; justify-content: center;">
+                <span>Launch Arena Perspectives &rarr;</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- Bento Tile 4: 6 Codex Signature Abilities (Col 8) -->
+          <div class="bento-card bento-col-8">
+            <div class="bento-header">
+              <span class="bento-eyebrow">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
+                <span>Tactical Codex</span>
+              </span>
+              <h3 class="bento-title">6 Codex Signature Abilities</h3>
+              <p class="bento-desc">
+                Transform standard chess moves into kinetic tactical strikes with Shockwave Leaping, Juggernaut Sieges, Diagonal Sniping, and Sovereign Awakening.
+              </p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin: 12px 0;">
+              <div style="padding: 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; text-align: center;">
+                <div style="font-size: 1.4rem; color: var(--gold-light);">♞</div>
+                <div style="font-size: 0.78rem; font-weight: 700; color: var(--foreground); margin-top: 4px;">Shockwave</div>
+                <div style="font-size: 0.68rem; color: var(--muted-foreground);">The Knight</div>
+              </div>
+              <div style="padding: 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; text-align: center;">
+                <div style="font-size: 1.4rem; color: var(--gold-light);">♜</div>
+                <div style="font-size: 0.78rem; font-weight: 700; color: var(--foreground); margin-top: 4px;">Siege Breaker</div>
+                <div style="font-size: 0.68rem; color: var(--muted-foreground);">The Rook</div>
+              </div>
+              <div style="padding: 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; text-align: center;">
+                <div style="font-size: 1.4rem; color: var(--gold-light);">♝</div>
+                <div style="font-size: 0.78rem; font-weight: 700; color: var(--foreground); margin-top: 4px;">Prism Surge</div>
+                <div style="font-size: 0.68rem; color: var(--muted-foreground);">The Bishop</div>
+              </div>
+              <div style="padding: 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; text-align: center;">
+                <div style="font-size: 1.4rem; color: var(--gold-light);">♛</div>
+                <div style="font-size: 0.78rem; font-weight: 700; color: var(--foreground); margin-top: 4px;">Supernova</div>
+                <div style="font-size: 0.68rem; color: var(--muted-foreground);">The Queen</div>
+              </div>
+              <div style="padding: 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; text-align: center;">
+                <div style="font-size: 1.4rem; color: var(--gold-light);">♚</div>
+                <div style="font-size: 0.78rem; font-weight: 700; color: var(--foreground); margin-top: 4px;">Awakening</div>
+                <div style="font-size: 0.68rem; color: var(--muted-foreground);">The King</div>
+              </div>
+              <div style="padding: 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; text-align: center;">
+                <div style="font-size: 1.4rem; color: var(--gold-light);">♟</div>
+                <div style="font-size: 0.78rem; font-weight: 700; color: var(--foreground); margin-top: 4px;">Bastion Wall</div>
+                <div style="font-size: 0.68rem; color: var(--muted-foreground);">The Pawn</div>
+              </div>
+            </div>
+
+            <div class="bento-badge-row" style="justify-content: space-between; align-items: center;">
+              <span style="font-size: 0.76rem; color: var(--muted-foreground);">Explore mass parameters &amp; ability charts in Codex</span>
+              <a href="/arsenal" class="btn btn-ghost btn-sm">
+                <span>Open Piece Codex &rarr;</span>
+              </a>
+            </div>
           </div>
         </div>
       </div>
@@ -519,6 +675,88 @@
       </div>
     </div>
   </footer>
+
+  <!-- Multi-Design System Selection Modal -->
+  <div class="modal-backdrop" id="designPickerModal" role="dialog" aria-modal="true">
+    <div class="modal-dialog design-picker-modal-dialog">
+      <div class="appearance-modal-head" style="margin-bottom: 8px;">
+        <div class="head-meta">
+          <span class="eyebrow">AESTHETIC ARCHITECTURE</span>
+          <h2 class="title" style="font-size: 1.5rem;">Select UI Design Language</h2>
+          <p class="subtitle">Experience ARCHESS across 6 distinct modern design systems. Every surface, border, and elevation re-skins in real time.</p>
+        </div>
+        <button class="modal-close-icon" id="closeDesignModalBtn" aria-label="Close Design Selector">&times;</button>
+      </div>
+
+      <div class="design-picker-grid">
+        <!-- 1. Dark Premium -->
+        <div class="design-picker-card" data-design-key="dark-premium">
+          <div class="design-preview-strip preview-dark">
+            <span style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em;">Obsidian &bull; Metallic Gold</span>
+          </div>
+          <div class="design-card-meta">
+            <h4>Dark Premium</h4>
+            <p>Deep void noir backgrounds, metallic gold and platinum foil gradients, Cinzel luxury serif typography, and specular rim lines.</p>
+          </div>
+        </div>
+
+        <!-- 2. Glassmorphism -->
+        <div class="design-picker-card" data-design-key="glassmorphism">
+          <div class="design-preview-strip preview-glass">
+            <span style="font-size: 0.75rem; font-weight: 700; color: #00f2fe;">Frosted Crystal &bull; Blur</span>
+          </div>
+          <div class="design-card-meta">
+            <h4>Glassmorphism</h4>
+            <p>Translucent frosted glass panels with 24px blur, 1px luminous borders, cyan/violet ambient backlights, and specular bevels.</p>
+          </div>
+        </div>
+
+        <!-- 3. Neobrutalism -->
+        <div class="design-picker-card" data-design-key="neobrutalism">
+          <div class="design-preview-strip preview-brutal">
+            <span style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase;">Raw &bull; 3px Solid &bull; Pop</span>
+          </div>
+          <div class="design-card-meta">
+            <h4>Neobrutalism</h4>
+            <p>Thick 3px solid borders, hard 5px offset drop shadows, cyber yellow &amp; hot pink accents, raw unpolished edges, and chunky typography.</p>
+          </div>
+        </div>
+
+        <!-- 4. Minimal with Generous Whitespace -->
+        <div class="design-picker-card" data-design-key="minimal">
+          <div class="design-preview-strip preview-minimal">
+            <span style="font-size: 0.75rem; font-weight: 600; color: #e2e8f0;">Zen &bull; Generous Whitespace</span>
+          </div>
+          <div class="design-card-meta">
+            <h4>Minimalist</h4>
+            <p>Abundant negative space, whisper-thin 1px borders, zero noisy gradients, serene monochrome palette, and pure typographic clarity.</p>
+          </div>
+        </div>
+
+        <!-- 5. iOS Native -->
+        <div class="design-picker-card" data-design-key="ios-native">
+          <div class="design-preview-strip preview-ios">
+            <span style="font-size: 0.75rem; font-weight: 600; color: #ffffff;">Apple HIG &bull; Cupertino Squircle</span>
+          </div>
+          <div class="design-card-meta">
+            <h4>iOS Native</h4>
+            <p>Apple Human Interface Guidelines, SF Pro font feel, continuous squircle cards, Cupertino segmented control pills, and system vibrancy.</p>
+          </div>
+        </div>
+
+        <!-- 6. Material Design 3 -->
+        <div class="design-picker-card" data-design-key="material3">
+          <div class="design-preview-strip preview-m3">
+            <span style="font-size: 0.75rem; font-weight: 700;">Google M3 &bull; Material You</span>
+          </div>
+          <div class="design-card-meta">
+            <h4>Material Design 3</h4>
+            <p>Google Material You dynamic color, tonal surface container hierarchy, expressive rounded 28px pills, and floating action cards.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Scripts -->
   <script src="/static/js/auth.js?v=2.3.0"></script>

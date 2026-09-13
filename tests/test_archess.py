@@ -304,4 +304,40 @@ def test_html_tag_balance():
         assert len(checker.errors) == 0, f"HTML tag errors in {filepath}: {checker.errors}"
         assert len(checker.stack) == 0, f"Unclosed tags in {filepath}: {checker.stack}"
 
+def test_ui_design_systems_and_bento_grid(client):
+    """Verify presence of 6 design system tokens in CSS and Bento Grid in templates."""
+    # 1. Check style.css for all 6 design system overrides and Bento Grid classes
+    css_res = client.get("/static/css/style.css")
+    assert css_res.status_code == 200
+    css = css_res.data.decode("utf-8")
+    for design in ["glassmorphism", "neobrutalism", "minimal", "ios-native", "material3", "dark-premium"]:
+        assert f'data-ui-design="{design}"' in css, f"Missing {design} in CSS"
+    assert ".bento-grid" in css
+    assert ".bento-card" in css
+    assert ".btn-nav-design-toggle" in css
+    assert ".design-picker-card" in css
+
+    # 2. Check all views for design switchers and pre-hydration
+    for path in ["/", "/play", "/arsenal", "/leaderboard"]:
+        res = client.get(path)
+        assert res.status_code == 200
+        html = res.data.decode("utf-8")
+        assert "archess_ui_design" in html, f"Pre-hydration missing in {path}"
+        assert 'id="navDesignToggleBtn"' in html, f"Nav design button missing in {path}"
+        assert 'class="drawer-design-section"' in html, f"Drawer design section missing in {path}"
+        assert 'id="designPickerModal"' in html, f"Design picker modal missing in {path}"
+
+    # 3. Check Bento Grid on Landing, Arsenal, and Leaderboard
+    index_html = client.get("/").data.decode("utf-8")
+    assert 'id="bentoShowcaseSection"' in index_html
+    assert 'class="bento-grid"' in index_html
+
+    arsenal_html = client.get("/arsenal").data.decode("utf-8")
+    assert 'class="bento-grid"' in arsenal_html
+
+    lead_html = client.get("/leaderboard").data.decode("utf-8")
+    assert 'class="bento-grid"' in lead_html
+    assert "Magnus_Kinetic" in lead_html
+
+
 

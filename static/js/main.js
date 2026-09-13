@@ -688,6 +688,107 @@ document.addEventListener('DOMContentLoaded', () => {
     drawerThemeToggleBtn.addEventListener('click', toggleThemeMode);
   }
 
+  // =========================================================================
+  // MULTI-DESIGN SYSTEM CONTROLLER
+  // Supports: Dark Premium, Glassmorphism, Neobrutalism, Minimal, iOS Native, Material 3
+  // =========================================================================
+  const designModal = document.getElementById('designPickerModal');
+  const navDesignToggleBtn = document.getElementById('navDesignToggleBtn');
+  const closeDesignModalBtn = document.getElementById('closeDesignModalBtn');
+
+  const DESIGN_LABELS = {
+    'dark-premium': 'Dark Premium (Obsidian & Gold)',
+    'glassmorphism': 'Glassmorphism (Frosted Crystal)',
+    'neobrutalism': 'Neobrutalism (Bold & Raw Pop)',
+    'minimal': 'Minimalist (Zen Whitespace)',
+    'ios-native': 'iOS Native (Cupertino HIG)',
+    'material3': 'Material 3 (Google Material You)'
+  };
+
+  function applyUiDesign(designKey, announce = false) {
+    if (!DESIGN_LABELS[designKey]) designKey = 'dark-premium';
+    document.documentElement.setAttribute('data-ui-design', designKey);
+    localStorage.setItem('archess_ui_design', designKey);
+
+    // Update active state in design modal cards
+    document.querySelectorAll('.design-picker-card').forEach(card => {
+      card.classList.toggle('active', card.getAttribute('data-design-key') === designKey);
+    });
+
+    // Update active state in drawer buttons
+    document.querySelectorAll('.drawer-design-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-design-key') === designKey);
+    });
+
+    // Update active state in atelier cards
+    document.querySelectorAll('.atelier-design-card').forEach(card => {
+      card.classList.toggle('active', card.getAttribute('data-design-key') === designKey);
+    });
+
+    // Update active label in atelier if present
+    const atelierDesignLabel = document.getElementById('atelierDesignActiveName');
+    if (atelierDesignLabel) {
+      atelierDesignLabel.textContent = DESIGN_LABELS[designKey];
+    }
+
+    if (announce) {
+      showToast(`${DESIGN_LABELS[designKey]} Activated`);
+    }
+  }
+
+  // Initial load
+  const initialDesign = document.documentElement.getAttribute('data-ui-design') || localStorage.getItem('archess_ui_design') || 'dark-premium';
+  applyUiDesign(initialDesign, false);
+
+  // Modal handlers
+  if (navDesignToggleBtn && designModal) {
+    navDesignToggleBtn.addEventListener('click', () => {
+      designModal.classList.add('active');
+    });
+  }
+  if (closeDesignModalBtn && designModal) {
+    closeDesignModalBtn.addEventListener('click', () => {
+      designModal.classList.remove('active');
+    });
+  }
+  if (designModal) {
+    designModal.addEventListener('click', (e) => {
+      if (e.target === designModal) designModal.classList.remove('active');
+    });
+  }
+
+  // Design modal cards click
+  document.querySelectorAll('.design-picker-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const key = card.getAttribute('data-design-key');
+      if (key) {
+        applyUiDesign(key, true);
+        if (designModal) designModal.classList.remove('active');
+      }
+    });
+  });
+
+  // Drawer design buttons click
+  document.querySelectorAll('.drawer-design-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.getAttribute('data-design-key');
+      if (key) {
+        applyUiDesign(key, true);
+      }
+    });
+  });
+
+  // Atelier design cards click
+  document.querySelectorAll('.atelier-design-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const key = card.getAttribute('data-design-key');
+      if (key) {
+        applyUiDesign(key, true);
+      }
+    });
+  });
+
+
   // Play Again Button inside Victory Modal
   const playAgainBtn = document.getElementById('btnPlayAgain');
   const victoryModal = document.getElementById('victoryModal');

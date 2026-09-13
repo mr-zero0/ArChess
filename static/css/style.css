@@ -4394,3 +4394,834 @@ button {
 }
 
 
+
+/* ==========================================================================
+   ARCHESS MULTI-DESIGN SYSTEM & BENTO GRID ARCHITECTURE
+   ==========================================================================
+   Supports 7 Core Aesthetics:
+   1. Glassmorphism (Frosted glass, blur, subtle borders, luminous glow)
+   2. Neobrutalism (Thick 3px borders, hard 5px drop shadows, cyber pop colors)
+   3. Minimal with generous whitespace (Abundant breathing room, clean lines)
+   4. iOS Native (Apple HIG, SF typography, squircle cards, Cupertino segmented)
+   5. Material Design 3 (Google M3, tonal containers, expressive pill shapes)
+   6. Dark Premium (Obsidian black, metallic gold/platinum, Cinzel luxury)
+   7. Bento Grid (Apple-style modular card layout across all views)
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   BENTO GRID LAYOUT SYSTEM
+   -------------------------------------------------------------------------- */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 24px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.bento-card {
+  position: relative;
+  border-radius: var(--bento-radius, 20px);
+  background: var(--bento-bg, var(--surface-1));
+  border: var(--bento-border, 1px solid var(--border));
+  box-shadow: var(--bento-shadow, var(--shadow-md));
+  padding: var(--bento-padding, 28px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  transition: all var(--duration-normal) var(--ease-spring);
+}
+
+.bento-card:hover {
+  transform: var(--bento-hover-transform, translateY(-3px));
+  box-shadow: var(--bento-hover-shadow, var(--shadow-xl));
+  border-color: var(--bento-hover-border, var(--border-hover));
+}
+
+/* Grid Column Spans */
+.bento-col-12 { grid-column: span 12; }
+.bento-col-9  { grid-column: span 9; }
+.bento-col-8  { grid-column: span 8; }
+.bento-col-7  { grid-column: span 7; }
+.bento-col-6  { grid-column: span 6; }
+.bento-col-5  { grid-column: span 5; }
+.bento-col-4  { grid-column: span 4; }
+.bento-col-3  { grid-column: span 3; }
+
+/* Grid Row Spans */
+.bento-row-2  { grid-row: span 2; }
+.bento-row-3  { grid-row: span 3; }
+
+/* Bento Card Elements */
+.bento-header {
+  margin-bottom: 20px;
+}
+
+.bento-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bento-accent, var(--gold-light));
+  margin-bottom: 8px;
+}
+
+.bento-title {
+  font-family: var(--bento-title-font, var(--font-sans));
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--bento-title-color, var(--foreground));
+  margin-bottom: 8px;
+  letter-spacing: -0.02em;
+}
+
+.bento-desc {
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--bento-desc-color, var(--muted-foreground));
+  margin-bottom: 0;
+}
+
+.bento-stat-cluster {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.bento-stat-hero {
+  font-family: var(--font-tech);
+  font-size: 3.2rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--bento-accent, var(--gold-bright));
+}
+
+.bento-stat-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.bento-stat-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.bento-stat-sub {
+  font-size: 0.72rem;
+  color: var(--muted-foreground);
+}
+
+.bento-visual-box {
+  position: relative;
+  width: 100%;
+  border-radius: calc(var(--bento-radius, 20px) - 6px);
+  background: var(--bento-sub-bg, rgba(0, 0, 0, 0.3));
+  border: var(--bento-sub-border, 1px solid rgba(255, 255, 255, 0.08));
+  overflow: hidden;
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.bento-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+/* --------------------------------------------------------------------------
+   DESIGN 1: GLASSMORPHISM (Frosted Glass, Luminous Glow, Blur)
+   -------------------------------------------------------------------------- */
+[data-ui-design="glassmorphism"] {
+  --bento-bg: rgba(255, 255, 255, 0.04);
+  --bento-border: 1px solid rgba(255, 255, 255, 0.18);
+  --bento-radius: 24px;
+  --bento-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.37), inset 0 1px 1px 0 rgba(255, 255, 255, 0.28);
+  --bento-hover-border: 1px solid rgba(0, 242, 254, 0.5);
+  --bento-hover-shadow: 0 20px 50px 0 rgba(0, 242, 254, 0.25), inset 0 1px 2px rgba(255, 255, 255, 0.4);
+  --bento-accent: #00f2fe;
+}
+
+[data-ui-design="glassmorphism"] body {
+  background: radial-gradient(circle at 15% 15%, rgba(14, 165, 233, 0.15) 0%, transparent 45%),
+              radial-gradient(circle at 85% 85%, rgba(168, 85, 247, 0.18) 0%, transparent 45%),
+              radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.08) 0%, transparent 60%),
+              #070b14;
+}
+
+[data-ui-design="glassmorphism"] .site-header,
+[data-ui-design="glassmorphism"] .side-expansion-drawer,
+[data-ui-design="glassmorphism"] .play-arena-toolbar,
+[data-ui-design="glassmorphism"] .turn-indicator-bar {
+  background: rgba(11, 18, 33, 0.68) !important;
+  backdrop-filter: blur(24px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(200%) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+[data-ui-design="glassmorphism"] .card,
+[data-ui-design="glassmorphism"] .bento-card,
+[data-ui-design="glassmorphism"] .theme-card,
+[data-ui-design="glassmorphism"] .sidebar-match-card,
+[data-ui-design="glassmorphism"] .sidebar-casualties-card,
+[data-ui-design="glassmorphism"] .leaderboard-table-card,
+[data-ui-design="glassmorphism"] .appearance-modal-card,
+[data-ui-design="glassmorphism"] .modal-dialog,
+[data-ui-design="glassmorphism"] .piece-detail-card,
+[data-ui-design="glassmorphism"] .action-banner-box {
+  background: rgba(255, 255, 255, 0.04) !important;
+  backdrop-filter: blur(20px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+  border-radius: 22px !important;
+}
+
+[data-ui-design="glassmorphism"] .btn-gold,
+[data-ui-design="glassmorphism"] .btn-default {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.75) 0%, rgba(79, 172, 254, 0.85) 100%) !important;
+  color: #030816 !important;
+  font-weight: 700 !important;
+  border: 1px solid rgba(255, 255, 255, 0.45) !important;
+  box-shadow: 0 8px 24px rgba(0, 242, 254, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  backdrop-filter: blur(12px) !important;
+  border-radius: 9999px !important;
+}
+
+[data-ui-design="glassmorphism"] .btn-outline,
+[data-ui-design="glassmorphism"] .btn-ghost {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  backdrop-filter: blur(14px) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  border-radius: 9999px !important;
+}
+
+[data-ui-design="glassmorphism"] .tag-badge,
+[data-ui-design="glassmorphism"] .badge-pill,
+[data-ui-design="glassmorphism"] .announcement-pill {
+  background: rgba(0, 242, 254, 0.12) !important;
+  border: 1px solid rgba(0, 242, 254, 0.35) !important;
+  color: #38bdf8 !important;
+  backdrop-filter: blur(12px) !important;
+  box-shadow: 0 2px 12px rgba(0, 242, 254, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+}
+
+/* --------------------------------------------------------------------------
+   DESIGN 2: NEOBRUTALISM (Thick 3px Borders, Hard 5px Shadows, Bold Pop)
+   -------------------------------------------------------------------------- */
+[data-ui-design="neobrutalism"] {
+  --bento-bg: #18181b;
+  --bento-border: 3px solid #f4f4f5;
+  --bento-radius: 6px;
+  --bento-shadow: 6px 6px 0px #ffe600;
+  --bento-hover-border: 3px solid #ffe600;
+  --bento-hover-shadow: 8px 8px 0px #00f0ff;
+  --bento-hover-transform: translate(-2px, -2px);
+  --bento-accent: #ffe600;
+  --bento-title-font: var(--font-tech);
+}
+
+[data-ui-design="neobrutalism"] body {
+  background: #09090b;
+  background-image: 
+    radial-gradient(#27272a 1.5px, transparent 1.5px),
+    radial-gradient(#27272a 1.5px, #09090b 1.5px);
+  background-size: 32px 32px;
+  background-position: 0 0, 16px 16px;
+}
+
+[data-ui-design="neobrutalism"] .site-header,
+[data-ui-design="neobrutalism"] .side-expansion-drawer,
+[data-ui-design="neobrutalism"] .play-arena-toolbar,
+[data-ui-design="neobrutalism"] .turn-indicator-bar {
+  background: #18181b !important;
+  border: 3px solid #ffffff !important;
+  box-shadow: 5px 5px 0px #ffe600 !important;
+  backdrop-filter: none !important;
+}
+
+[data-ui-design="neobrutalism"] .card,
+[data-ui-design="neobrutalism"] .bento-card,
+[data-ui-design="neobrutalism"] .theme-card,
+[data-ui-design="neobrutalism"] .sidebar-match-card,
+[data-ui-design="neobrutalism"] .sidebar-casualties-card,
+[data-ui-design="neobrutalism"] .leaderboard-table-card,
+[data-ui-design="neobrutalism"] .appearance-modal-card,
+[data-ui-design="neobrutalism"] .modal-dialog,
+[data-ui-design="neobrutalism"] .piece-detail-card,
+[data-ui-design="neobrutalism"] .action-banner-box {
+  background: #141417 !important;
+  border: 3px solid #ffffff !important;
+  box-shadow: 6px 6px 0px #ffe600 !important;
+  border-radius: 6px !important;
+  backdrop-filter: none !important;
+}
+
+[data-ui-design="neobrutalism"] .btn-gold,
+[data-ui-design="neobrutalism"] .btn-default {
+  background: #ffe600 !important;
+  color: #000000 !important;
+  font-family: var(--font-tech) !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  border: 3px solid #000000 !important;
+  box-shadow: 4px 4px 0px #ffffff !important;
+  border-radius: 4px !important;
+  transform: none !important;
+}
+
+[data-ui-design="neobrutalism"] .btn-gold:hover,
+[data-ui-design="neobrutalism"] .btn-default:hover {
+  transform: translate(-2px, -2px) !important;
+  box-shadow: 6px 6px 0px #ffffff !important;
+  background: #ffea33 !important;
+}
+
+[data-ui-design="neobrutalism"] .btn-gold:active,
+[data-ui-design="neobrutalism"] .btn-default:active {
+  transform: translate(2px, 2px) !important;
+  box-shadow: 2px 2px 0px #ffffff !important;
+}
+
+[data-ui-design="neobrutalism"] .btn-outline,
+[data-ui-design="neobrutalism"] .btn-ghost {
+  background: #00f0ff !important;
+  color: #000000 !important;
+  font-family: var(--font-tech) !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  border: 3px solid #000000 !important;
+  box-shadow: 4px 4px 0px #ffffff !important;
+  border-radius: 4px !important;
+}
+
+[data-ui-design="neobrutalism"] .btn-outline:hover,
+[data-ui-design="neobrutalism"] .btn-ghost:hover {
+  transform: translate(-2px, -2px) !important;
+  box-shadow: 6px 6px 0px #ffffff !important;
+}
+
+[data-ui-design="neobrutalism"] .tag-badge,
+[data-ui-design="neobrutalism"] .badge-pill,
+[data-ui-design="neobrutalism"] .announcement-pill {
+  background: #ff007f !important;
+  color: #ffffff !important;
+  border: 2px solid #ffffff !important;
+  box-shadow: 3px 3px 0px #000000 !important;
+  border-radius: 4px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+}
+
+[data-ui-design="neobrutalism"] .theme-pill-btn,
+[data-ui-design="neobrutalism"] .view-btn {
+  border: 2px solid #ffffff !important;
+  border-radius: 4px !important;
+  font-weight: 700 !important;
+}
+
+[data-ui-design="neobrutalism"] .theme-pill-btn.active,
+[data-ui-design="neobrutalism"] .view-btn.active {
+  background: #ffe600 !important;
+  color: #000000 !important;
+  box-shadow: 3px 3px 0px #ffffff !important;
+}
+
+/* --------------------------------------------------------------------------
+   DESIGN 3: MINIMAL WITH GENEROUS WHITE SPACE (Pure Zen & Breathing Room)
+   -------------------------------------------------------------------------- */
+[data-ui-design="minimal"] {
+  --bento-bg: rgba(255, 255, 255, 0.015);
+  --bento-border: 1px solid rgba(255, 255, 255, 0.08);
+  --bento-radius: 12px;
+  --bento-shadow: none;
+  --bento-hover-border: 1px solid rgba(255, 255, 255, 0.25);
+  --bento-hover-shadow: none;
+  --bento-hover-transform: none;
+  --bento-padding: 38px;
+  --bento-accent: #e2e8f0;
+}
+
+[data-ui-design="minimal"] body {
+  background: #0b0c10;
+  letter-spacing: 0.01em;
+}
+
+[data-ui-design="minimal"] .site-header,
+[data-ui-design="minimal"] .side-expansion-drawer,
+[data-ui-design="minimal"] .play-arena-toolbar,
+[data-ui-design="minimal"] .turn-indicator-bar {
+  background: #0b0c10 !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+[data-ui-design="minimal"] .card,
+[data-ui-design="minimal"] .bento-card,
+[data-ui-design="minimal"] .theme-card,
+[data-ui-design="minimal"] .sidebar-match-card,
+[data-ui-design="minimal"] .sidebar-casualties-card,
+[data-ui-design="minimal"] .leaderboard-table-card,
+[data-ui-design="minimal"] .appearance-modal-card,
+[data-ui-design="minimal"] .modal-dialog,
+[data-ui-design="minimal"] .piece-detail-card,
+[data-ui-design="minimal"] .action-banner-box {
+  background: rgba(255, 255, 255, 0.015) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: none !important;
+  border-radius: 12px !important;
+  padding: 34px !important;
+}
+
+[data-ui-design="minimal"] .btn-gold,
+[data-ui-design="minimal"] .btn-default {
+  background: #f8fafc !important;
+  color: #0b0c10 !important;
+  border: 1px solid #f8fafc !important;
+  box-shadow: none !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+}
+
+[data-ui-design="minimal"] .btn-gold:hover,
+[data-ui-design="minimal"] .btn-default:hover {
+  background: #e2e8f0 !important;
+  transform: none !important;
+}
+
+[data-ui-design="minimal"] .btn-outline,
+[data-ui-design="minimal"] .btn-ghost {
+  background: transparent !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: none !important;
+  border-radius: 8px !important;
+  font-weight: 500 !important;
+}
+
+[data-ui-design="minimal"] .btn-outline:hover,
+[data-ui-design="minimal"] .btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+  transform: none !important;
+}
+
+[data-ui-design="minimal"] .tag-badge,
+[data-ui-design="minimal"] .badge-pill,
+[data-ui-design="minimal"] .announcement-pill {
+  background: transparent !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #94a3b8 !important;
+  box-shadow: none !important;
+  border-radius: 6px !important;
+}
+
+/* --------------------------------------------------------------------------
+   DESIGN 4: iOS NATIVE (Apple Human Interface Guidelines, Cupertino HIG)
+   -------------------------------------------------------------------------- */
+[data-ui-design="ios-native"] {
+  --bento-bg: rgba(28, 28, 30, 0.85);
+  --bento-border: 1px solid rgba(255, 255, 255, 0.1);
+  --bento-radius: 24px;
+  --bento-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  --bento-hover-border: 1px solid rgba(10, 132, 255, 0.45);
+  --bento-hover-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  --bento-accent: #0a84ff;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+}
+
+[data-ui-design="ios-native"] body {
+  background: #000000;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+}
+
+[data-ui-design="ios-native"] .site-header,
+[data-ui-design="ios-native"] .side-expansion-drawer,
+[data-ui-design="ios-native"] .play-arena-toolbar,
+[data-ui-design="ios-native"] .turn-indicator-bar {
+  background: rgba(22, 22, 24, 0.8) !important;
+  backdrop-filter: blur(25px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(25px) saturate(190%) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-ui-design="ios-native"] .card,
+[data-ui-design="ios-native"] .bento-card,
+[data-ui-design="ios-native"] .theme-card,
+[data-ui-design="ios-native"] .sidebar-match-card,
+[data-ui-design="ios-native"] .sidebar-casualties-card,
+[data-ui-design="ios-native"] .leaderboard-table-card,
+[data-ui-design="ios-native"] .appearance-modal-card,
+[data-ui-design="ios-native"] .modal-dialog,
+[data-ui-design="ios-native"] .piece-detail-card,
+[data-ui-design="ios-native"] .action-banner-box {
+  background: rgba(28, 28, 30, 0.82) !important;
+  backdrop-filter: blur(25px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(25px) saturate(190%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35) !important;
+  border-radius: 24px !important;
+}
+
+[data-ui-design="ios-native"] .btn-gold,
+[data-ui-design="ios-native"] .btn-default {
+  background: #0a84ff !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border: none !important;
+  box-shadow: 0 4px 14px rgba(10, 132, 255, 0.4) !important;
+  border-radius: 9999px !important;
+}
+
+[data-ui-design="ios-native"] .btn-gold:hover,
+[data-ui-design="ios-native"] .btn-default:hover {
+  background: #0071e3 !important;
+  transform: scale(1.02) !important;
+}
+
+[data-ui-design="ios-native"] .btn-outline,
+[data-ui-design="ios-native"] .btn-ghost {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 9999px !important;
+  font-weight: 500 !important;
+}
+
+[data-ui-design="ios-native"] .theme-picker-group,
+[data-ui-design="ios-native"] .view-mode-toggle {
+  background: rgba(118, 118, 128, 0.24) !important;
+  border-radius: 9999px !important;
+  padding: 3px !important;
+  border: none !important;
+}
+
+[data-ui-design="ios-native"] .theme-pill-btn,
+[data-ui-design="ios-native"] .view-btn {
+  border-radius: 9999px !important;
+  border: none !important;
+  font-weight: 500 !important;
+}
+
+[data-ui-design="ios-native"] .theme-pill-btn.active,
+[data-ui-design="ios-native"] .view-btn.active {
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* --------------------------------------------------------------------------
+   DESIGN 5: MATERIAL DESIGN 3 (Google M3, Material You, Tonal Containers)
+   -------------------------------------------------------------------------- */
+[data-ui-design="material3"] {
+  --bento-bg: #211f26;
+  --bento-border: 1px solid rgba(255, 255, 255, 0.05);
+  --bento-radius: 28px;
+  --bento-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  --bento-hover-border: 1px solid #d0bcff;
+  --bento-hover-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
+  --bento-accent: #d0bcff;
+}
+
+[data-ui-design="material3"] body {
+  background: #141218;
+}
+
+[data-ui-design="material3"] .site-header,
+[data-ui-design="material3"] .side-expansion-drawer,
+[data-ui-design="material3"] .play-arena-toolbar,
+[data-ui-design="material3"] .turn-indicator-bar {
+  background: #1d1b20 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+}
+
+[data-ui-design="material3"] .card,
+[data-ui-design="material3"] .bento-card,
+[data-ui-design="material3"] .theme-card,
+[data-ui-design="material3"] .sidebar-match-card,
+[data-ui-design="material3"] .sidebar-casualties-card,
+[data-ui-design="material3"] .leaderboard-table-card,
+[data-ui-design="material3"] .appearance-modal-card,
+[data-ui-design="material3"] .modal-dialog,
+[data-ui-design="material3"] .piece-detail-card,
+[data-ui-design="material3"] .action-banner-box {
+  background: #211f26 !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35) !important;
+  border-radius: 28px !important;
+}
+
+[data-ui-design="material3"] .btn-gold,
+[data-ui-design="material3"] .btn-default {
+  background: #d0bcff !important;
+  color: #381e72 !important;
+  font-weight: 700 !important;
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+  border-radius: 9999px !important;
+}
+
+[data-ui-design="material3"] .btn-gold:hover,
+[data-ui-design="material3"] .btn-default:hover {
+  background: #e8def8 !important;
+  transform: translateY(-2px) !important;
+}
+
+[data-ui-design="material3"] .btn-outline,
+[data-ui-design="material3"] .btn-ghost {
+  background: #2b2930 !important;
+  color: #d0bcff !important;
+  border: 1px solid #49454f !important;
+  border-radius: 9999px !important;
+}
+
+[data-ui-design="material3"] .btn-outline:hover,
+[data-ui-design="material3"] .btn-ghost:hover {
+  background: #36343b !important;
+}
+
+[data-ui-design="material3"] .tag-badge,
+[data-ui-design="material3"] .badge-pill,
+[data-ui-design="material3"] .announcement-pill {
+  background: #4a4458 !important;
+  color: #e8def8 !important;
+  border: none !important;
+  border-radius: 12px !important;
+}
+
+/* --------------------------------------------------------------------------
+   DESIGN 6: DARK PREMIUM (Obsidian Noir, Metallic Gold, Cinzel Luxury)
+   -------------------------------------------------------------------------- */
+[data-ui-design="dark-premium"] {
+  --bento-bg: var(--surface-1);
+  --bento-border: 1px solid var(--border);
+  --bento-radius: 20px;
+  --bento-shadow: var(--shadow-md);
+  --bento-hover-border: var(--gold-border-bright);
+  --bento-hover-shadow: var(--shadow-xl), 0 0 25px rgba(212, 175, 55, 0.25);
+  --bento-accent: var(--gold-light);
+  --bento-title-font: var(--font-serif);
+}
+
+/* --------------------------------------------------------------------------
+   DESIGN PICKER MODAL & CONTROLS
+   -------------------------------------------------------------------------- */
+.btn-nav-design-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 13px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: all var(--duration-fast) var(--ease-spring);
+}
+
+.btn-nav-design-toggle:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--gold-border);
+  color: var(--gold-light);
+  transform: translateY(-1px);
+}
+
+.design-picker-modal-dialog {
+  max-width: 920px;
+  width: 95%;
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: 24px;
+  padding: 32px;
+}
+
+.design-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.design-picker-card {
+  position: relative;
+  border-radius: 16px;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px solid var(--border);
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-spring);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.design-picker-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--gold-border);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.design-picker-card.active {
+  border-color: var(--gold-bright);
+  background: rgba(212, 175, 55, 0.08);
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.25);
+}
+
+.design-preview-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  border-radius: 8px;
+  padding: 0 10px;
+}
+
+.preview-glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 15px rgba(0, 242, 254, 0.2);
+}
+
+.preview-brutal {
+  background: #ffe600;
+  color: #000;
+  border: 2px solid #000;
+  box-shadow: 3px 3px 0 #fff;
+  font-weight: 800;
+}
+
+.preview-minimal {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.preview-ios {
+  background: #0a84ff;
+  border-radius: 9999px;
+  box-shadow: 0 4px 12px rgba(10, 132, 255, 0.35);
+}
+
+.preview-m3 {
+  background: #d0bcff;
+  color: #381e72;
+  border-radius: 9999px;
+}
+
+.preview-dark {
+  background: linear-gradient(135deg, #f5e4a8 0%, #d4af37 60%, #a88627 100%);
+  color: #000;
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+}
+
+.design-card-meta h4 {
+  font-size: 0.96rem;
+  font-weight: 700;
+  margin-bottom: 3px;
+  color: var(--foreground);
+}
+
+.design-card-meta p {
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: var(--muted-foreground);
+  margin: 0;
+}
+
+.drawer-design-section {
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 12px;
+}
+
+.drawer-design-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-foreground);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.drawer-design-pills {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.drawer-design-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid transparent;
+  color: var(--foreground);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.drawer-design-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--border);
+}
+
+.drawer-design-btn.active {
+  background: rgba(212, 175, 55, 0.15);
+  border-color: var(--gold-border);
+  color: var(--gold-light);
+  font-weight: 700;
+}
+
+/* Responsive Bento Breakpoints */
+@media (max-width: 1024px) {
+  .bento-col-12, .bento-col-9, .bento-col-8, .bento-col-7,
+  .bento-col-6, .bento-col-5, .bento-col-4, .bento-col-3 {
+    grid-column: span 6;
+  }
+  .bento-row-2, .bento-row-3 {
+    grid-row: span 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .bento-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .bento-col-12, .bento-col-9, .bento-col-8, .bento-col-7,
+  .bento-col-6, .bento-col-5, .bento-col-4, .bento-col-3 {
+    grid-column: span 1;
+  }
+  .bento-stat-hero {
+    font-size: 2.4rem;
+  }
+  .design-picker-modal-dialog {
+    padding: 20px;
+  }
+}
