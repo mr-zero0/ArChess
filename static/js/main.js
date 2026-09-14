@@ -68,45 +68,48 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* -------------------------------------------------------------
-     1. Interactive Tactical Cursor Tracker
+     1. Interactive Tactical Cursor Tracker (Hover-Capable Devices)
   ------------------------------------------------------------- */
-  const cursorDot = document.createElement('div');
-  cursorDot.className = 'custom-cursor-dot';
-  const cursorRing = document.createElement('div');
-  cursorRing.className = 'custom-cursor-ring';
-  document.body.appendChild(cursorDot);
-  document.body.appendChild(cursorRing);
+  const supportsHover = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  if (supportsHover) {
+    const cursorDot = document.createElement('div');
+    cursorDot.className = 'custom-cursor-dot';
+    const cursorRing = document.createElement('div');
+    cursorRing.className = 'custom-cursor-ring';
+    document.body.appendChild(cursorDot);
+    document.body.appendChild(cursorRing);
 
-  let mouseX = window.innerWidth / 2;
-  let mouseY = window.innerHeight / 2;
-  let ringX = mouseX;
-  let ringY = mouseY;
+    let mouseX = window.innerWidth / 2;
+    let mouseY = window.innerHeight / 2;
+    let ringX = mouseX;
+    let ringY = mouseY;
 
-  window.addEventListener('mousemove', (e) => {
-    mouseX = e.clientX;
-    mouseY = e.clientY;
-    cursorDot.style.transform = `translate(${mouseX}px, ${mouseY}px)`;
-  });
+    window.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+      cursorDot.style.transform = `translate(${mouseX}px, ${mouseY}px)`;
+    }, { passive: true });
 
-  function renderCursor() {
-    ringX += (mouseX - ringX) * 0.18;
-    ringY += (mouseY - ringY) * 0.18;
-    cursorRing.style.transform = `translate(${ringX}px, ${ringY}px)`;
+    function renderCursor() {
+      ringX += (mouseX - ringX) * 0.22;
+      ringY += (mouseY - ringY) * 0.22;
+      cursorRing.style.transform = `translate(${ringX}px, ${ringY}px)`;
+      requestAnimationFrame(renderCursor);
+    }
     requestAnimationFrame(renderCursor);
-  }
-  requestAnimationFrame(renderCursor);
 
-  // Hover states for interactive elements
-  const hoverSelectors = 'a, button, input, .pillar-card, .piece-tab-item, .arena-card, .mechanic-box, .faq-item';
-  document.querySelectorAll(hoverSelectors).forEach(el => {
-    el.addEventListener('mouseenter', () => cursorRing.classList.add('cursor-hover'));
-    el.addEventListener('mouseleave', () => cursorRing.classList.remove('cursor-hover'));
-  });
+    // Hover states for interactive elements
+    const hoverSelectors = 'a, button, input, .pillar-card, .piece-tab-item, .arena-card, .mechanic-box, .faq-item, .theme-card, .bento-card';
+    document.querySelectorAll(hoverSelectors).forEach(el => {
+      el.addEventListener('mouseenter', () => cursorRing.classList.add('cursor-hover'));
+      el.addEventListener('mouseleave', () => cursorRing.classList.remove('cursor-hover'));
+    });
 
-  const canvasElem = document.getElementById('archessCanvas');
-  if (canvasElem) {
-    canvasElem.addEventListener('mousedown', () => cursorRing.classList.add('cursor-drag'));
-    window.addEventListener('mouseup', () => cursorRing.classList.remove('cursor-drag'));
+    const canvasElem = document.getElementById('archessCanvas');
+    if (canvasElem) {
+      canvasElem.addEventListener('mousedown', () => cursorRing.classList.add('cursor-drag'));
+      window.addEventListener('mouseup', () => cursorRing.classList.remove('cursor-drag'));
+    }
   }
 
   /* -------------------------------------------------------------
@@ -137,12 +140,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function animateBg() {
+      if (document.hidden) {
+        requestAnimationFrame(animateBg);
+        return;
+      }
       bgCtx.clearRect(0, 0, bgWidth, bgHeight);
       bgCtx.fillStyle = 'rgba(212, 175, 55, 0.25)';
 
       for (let i = 0; i < particleCount; i++) {
         const p = particles[i];
         p.x += p.vx;
+
         p.y += p.vy;
 
         if (p.x < 0) p.x = bgWidth;
@@ -335,19 +343,73 @@ document.addEventListener('DOMContentLoaded', () => {
   if (view2DArenaBtn) view2DArenaBtn.addEventListener('click', () => applyViewMode('2d-arena', true));
   if (view2DClassicBtn) view2DClassicBtn.addEventListener('click', () => applyViewMode('2d-classic', true));
 
-  const savedViewMode = localStorage.getItem('archess_view_mode') || '3d-arena';
+  const playUrlParams = new URLSearchParams(window.location.search);
+  const urlViewMode = playUrlParams.get('mode') || playUrlParams.get('view');
+  const savedViewMode = urlViewMode || localStorage.getItem('archess_view_mode') || '3d-arena';
   applyViewMode(savedViewMode, false);
 
-  // Game Mode Switcher (vs Bot AI, Pass & Play)
+  // Game Mode Switcher (vs Bot AI, Pass & Play) & AI Difficulty Selector
   const modeBtns = document.querySelectorAll('.game-mode-btn');
+  const botDiffGroup = document.getElementById('botDifficultyToolbarGroup');
+  const botDiffBtns = document.querySelectorAll('.bot-difficulty-btn');
+
+  function updateBlackPlayerSub(mode, diff) {
+    const blackSub = document.getElementById('blackPlayerSub');
+    if (!blackSub) return;
+    if (arena && arena.opponentName) {
+      blackSub.textContent = 'Black Army • Challenged Opponent';
+      return;
+    }
+    if (mode === 'pvp') {
+      blackSub.textContent = 'Black Army • Local Guest';
+      return;
+    }
+    const titles = {
+      cadet: 'Black Army • Cadet Bot AI',
+      commander: 'Black Army • Commander Bot AI',
+      grandmaster: 'Black Army • Grandmaster Neural AI'
+    };
+    blackSub.textContent = titles[diff] || 'Black Army • Autonomous AI';
+  }
+
+  function applyBotDifficulty(diff) {
+    botDiffBtns.forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-diff') === diff);
+    });
+    if (arena && typeof arena.setBotDifficulty === 'function') {
+      arena.setBotDifficulty(diff);
+    }
+    const currentMode = localStorage.getItem('archess_game_mode') || 'bot';
+    updateBlackPlayerSub(currentMode, diff);
+    localStorage.setItem('archess_bot_difficulty', diff);
+  }
+
+  botDiffBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const diff = btn.getAttribute('data-diff') || 'commander';
+      applyBotDifficulty(diff);
+      const labels = {
+        cadet: 'AI Tier: Cadet (Casual Recruit)',
+        commander: 'AI Tier: Commander (Balanced Tactical)',
+        grandmaster: 'AI Tier: Grandmaster (Predictive Bank-Shot Neural AI)'
+      };
+      window.ArchessToast?.show(labels[diff] || diff, 'info', 2800, 'AI TIER');
+    });
+  });
+
   function applyGameMode(mode) {
     modeBtns.forEach(b => {
       b.classList.toggle('active', b.getAttribute('data-mode') === mode);
     });
     const blackName = document.getElementById('blackPlayerName');
-    const blackSub = document.getElementById('blackPlayerSub');
-    if (blackName) blackName.textContent = mode === 'bot' ? 'ArChess Bot' : 'Player 2';
-    if (blackSub) blackSub.textContent = mode === 'bot' ? 'Black Army • Autonomous AI' : 'Black Army • Local Guest';
+    if (blackName && (!arena || !arena.opponentName)) {
+      blackName.textContent = mode === 'bot' ? 'ArChess Bot' : 'Player 2';
+    }
+    if (botDiffGroup) {
+      botDiffGroup.style.display = mode === 'bot' ? 'flex' : 'none';
+    }
+    const currentDiff = localStorage.getItem('archess_bot_difficulty') || 'commander';
+    updateBlackPlayerSub(mode, currentDiff);
 
     if (arena) {
       arena.setGameMode(mode);
@@ -367,8 +429,23 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   const savedMode = localStorage.getItem('archess_game_mode') || 'bot';
+  const savedBotDiff = localStorage.getItem('archess_bot_difficulty') || 'commander';
+  applyBotDifficulty(savedBotDiff);
   if (modeBtns.length > 0) {
     applyGameMode(savedMode);
+  }
+
+  // URL Parameter Hook: Challenge Opponent (e.g. /play?opponent=Magnus_Kinetic)
+  const opponentParam = playUrlParams.get('opponent');
+  if (opponentParam) {
+    const blackName = document.getElementById('blackPlayerName');
+    const blackSub = document.getElementById('blackPlayerSub');
+    if (blackName) blackName.textContent = opponentParam;
+    if (blackSub) blackSub.textContent = 'Black Army • Challenged Opponent';
+    if (arena) arena.opponentName = opponentParam;
+    setTimeout(() => {
+      showToast(`⚔️ Challenge Match Activated: Playing vs ${opponentParam}`);
+    }, 450);
   }
 
   // Board Theme & Piece Set Switcher (Grandmaster Atelier)
@@ -630,24 +707,84 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Sound preview buttons (Test Clack / Test Cushion)
+  // Sound preview buttons (Test Clack / Test Cushion / Preview Echo)
   document.querySelectorAll('.btn-sound-preview').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const card = btn.closest('.sound-card-item');
-      const profile = card ? card.getAttribute('data-sound-profile') : savedSoundProfile;
-      applySoundProfile(profile, false);
+      const soundProf = card ? card.getAttribute('data-sound-profile') : null;
+      const acousticEnv = card ? card.getAttribute('data-acoustic-env') : null;
+
+      if (soundProf) applySoundProfile(soundProf, false);
+      if (acousticEnv) applyAcousticEnvironment(acousticEnv, false);
 
       if (arena && arena.audio) {
         arena.audio.init();
         const type = btn.getAttribute('data-preview');
         if (type === 'bounce') {
           arena.audio.playBounce();
-          showToast(`Playing Cushion Thud (${SOUND_PROFILE_NAMES[profile]})`);
+          showToast(`Playing Cushion Thud (${SOUND_PROFILE_NAMES[soundProf || savedSoundProfile]})`);
+        } else if (type === 'reverb') {
+          arena.audio.playImpact(1.2);
+          showToast(`Spatial Reverb Echo: ${ACOUSTIC_ENV_NAMES[acousticEnv || savedAcousticEnv]}`);
         } else {
           arena.audio.playImpact(1.3);
-          showToast(`Playing Marble Clack (${SOUND_PROFILE_NAMES[profile]})`);
+          showToast(`Playing Marble Clack (${SOUND_PROFILE_NAMES[soundProf || savedSoundProfile]})`);
         }
+      }
+    });
+  });
+
+  /* -------------------------------------------------------------
+     Acoustic Spatial Ambience & Convolver Reverb (v3.1.0)
+  ------------------------------------------------------------- */
+  const ACOUSTIC_ENV_NAMES = {
+    citadel: 'Obsidian Citadel (1.8s Reverb)',
+    wood: 'Warm Walnut Salon (0.7s Reverb)',
+    void: 'Cyber Void (Comb Feedback)',
+    cathedral: 'Grand Cathedral (3.0s Reverb)'
+  };
+
+  const acousticEnvCards = document.querySelectorAll('.sound-card-item[data-acoustic-env]');
+  const acousticActiveName = document.getElementById('atelierAcousticActiveName');
+  let savedAcousticEnv = localStorage.getItem('archess_acoustic_environment') || 'citadel';
+
+  function applyAcousticEnvironment(envKey, showNotice = false) {
+    if (!ACOUSTIC_ENV_NAMES[envKey]) return;
+    savedAcousticEnv = envKey;
+    localStorage.setItem('archess_acoustic_environment', envKey);
+
+    if (arena && arena.audio) {
+      arena.audio.setEnvironment(envKey);
+    }
+
+    acousticEnvCards.forEach(c => {
+      c.classList.toggle('active', c.getAttribute('data-acoustic-env') === envKey);
+    });
+
+    if (acousticActiveName) {
+      acousticActiveName.textContent = ACOUSTIC_ENV_NAMES[envKey];
+    }
+
+    window.dispatchEvent(new CustomEvent('archess_acoustic_environment_change', {
+      detail: { environment: envKey }
+    }));
+
+    if (showNotice) {
+      showToast(`Acoustic Ambience: ${ACOUSTIC_ENV_NAMES[envKey]}`);
+    }
+  }
+
+  applyAcousticEnvironment(savedAcousticEnv, false);
+
+  acousticEnvCards.forEach(card => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.btn-sound-preview')) return;
+      const env = card.getAttribute('data-acoustic-env');
+      applyAcousticEnvironment(env, true);
+      if (arena && arena.audio) {
+        arena.audio.init();
+        arena.audio.playImpact(1.1);
       }
     });
   });
@@ -839,8 +976,28 @@ document.addEventListener('DOMContentLoaded', () => {
         `• Ratio: ${dmgRatio}`,
         `• Breakdown: ${whiteDmg} vs ${blackDmg}`,
         '',
+        '── TACTICAL TIMELINE ──',
+        ...Array.from(document.querySelectorAll('#timelineEventsList .timeline-event-item')).slice(0, 8).map(el => {
+          const t = el.querySelector('.timeline-event-time')?.textContent || '';
+          const trn = el.querySelector('.timeline-event-turn')?.textContent || '';
+          const d = el.querySelector('.timeline-event-desc')?.textContent || '';
+          return `• [${t}] ${trn}: ${d}`;
+        }),
+        '',
         'Verified on ArChess Grandmaster Ledger (https://archess.net)'
       ].join('\n');
+
+  // Toggle Match Timeline Accordion inside Victory Modal
+  const toggleTimelineBtn = document.getElementById('toggleTimelineBtn');
+  const timelineEventsList = document.getElementById('timelineEventsList');
+  const timelineToggleIcon = document.getElementById('timelineToggleIcon');
+  if (toggleTimelineBtn && timelineEventsList) {
+    toggleTimelineBtn.addEventListener('click', () => {
+      const isVisible = timelineEventsList.style.display === 'flex';
+      timelineEventsList.style.display = isVisible ? 'none' : 'flex';
+      if (timelineToggleIcon) timelineToggleIcon.textContent = isVisible ? '▼' : '▲';
+    });
+  }
 
       navigator.clipboard.writeText(reportText).then(() => {
         const originalHtml = copyMatchBtn.innerHTML;
@@ -859,6 +1016,193 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
     });
+  }
+
+  /* -------------------------------------------------------------
+     Tactical Combat Replay Engine (v2.9.8)
+  ------------------------------------------------------------- */
+  const replayBar = document.getElementById('tacticalReplayBar');
+  const replayTitle = document.getElementById('replayMatchTitle');
+  const replayTicker = document.getElementById('replayEventText');
+  const replayScrubber = document.getElementById('replayTurnScrubber');
+  const btnReplayPlayPause = document.getElementById('btnReplayPlayPause');
+  const btnReplayPrev = document.getElementById('btnReplayPrev');
+  const btnReplayNext = document.getElementById('btnReplayNext');
+  const btnExitReplay = document.getElementById('btnExitReplay');
+  const replayPlayIcon = document.getElementById('replayPlayIcon');
+  const replaySpeedBtns = document.querySelectorAll('.replay-speed-btn');
+  const btnLaunchReplay = document.getElementById('btnLaunchReplay');
+
+  let replayMatchData = null;
+  let replayEvents = [];
+  let replayCurrentIndex = 0;
+  let replayInterval = null;
+  let replaySpeed = 1;
+  let isReplayPlaying = false;
+
+  async function loadTacticalReplay(matchId) {
+    if (!matchId) return;
+    try {
+      const res = await fetch(`/api/matches/${matchId}`);
+      if (!res.ok) throw new Error('Match not found');
+      const data = await res.json();
+      if (!data.success || !data.match) throw new Error('Invalid match data');
+
+      replayMatchData = data.match;
+      replayEvents = (data.match.events || []).map(e => {
+        let payload = e.payload;
+        if (typeof payload === 'string') {
+          try { payload = JSON.parse(payload); } catch(err) { payload = {}; }
+        }
+        return {
+          event_type: e.event_type,
+          payload: payload,
+          created_at: e.created_at
+        };
+      });
+
+      // If no milestone events, synthesize at least turn summary events
+      if (replayEvents.length === 0) {
+        replayEvents = [
+          { event_type: 'OPENING', payload: { desc: `Combat initialized: ${replayMatchData.white_username} vs ${replayMatchData.black_username}`, turn: 1 } },
+          { event_type: 'CLIMAX', payload: { desc: `Engagement lasted ${replayMatchData.turns} turns with ${(replayMatchData.white_damage || 0) + (replayMatchData.black_damage || 0)} total force output.`, turn: Math.ceil(replayMatchData.turns / 2) } },
+          { event_type: replayMatchData.winner === 'draw' ? 'STALEMATE' : 'VICTORY', payload: { desc: `Official match conclusion: ${replayMatchData.winner.toUpperCase()} declared.`, turn: replayMatchData.turns } }
+        ];
+      }
+
+      if (replayBar) replayBar.style.display = 'flex';
+      if (replayScrubber) {
+        replayScrubber.min = 0;
+        replayScrubber.max = Math.max(0, replayEvents.length - 1);
+        replayScrubber.value = 0;
+      }
+      replayCurrentIndex = 0;
+      updateReplayStep(0);
+
+      window.ArchessToast?.show(`Replay loaded: Match #${matchId} (${replayEvents.length} events)`, 'success', 3200, 'REPLAY ACTIVE');
+    } catch (err) {
+      window.ArchessToast?.show(`Unable to load replay for Match #${matchId}`, 'error', 3500, 'REPLAY ERROR');
+    }
+  }
+
+  function updateReplayStep(idx) {
+    if (!replayEvents || replayEvents.length === 0) return;
+    replayCurrentIndex = Math.max(0, Math.min(replayEvents.length - 1, idx));
+    if (replayScrubber) replayScrubber.value = replayCurrentIndex;
+
+    const ev = replayEvents[replayCurrentIndex];
+    const turn = ev.payload?.turn || (replayCurrentIndex + 1);
+    if (replayTitle) {
+      replayTitle.textContent = `REPLAY: Turn ${turn} (${replayCurrentIndex + 1}/${replayEvents.length})`;
+    }
+
+    let desc = ev.payload?.desc || ev.payload?.summary || ev.event_type;
+    if (replayTicker) {
+      replayTicker.textContent = `[${ev.event_type}] ${desc}`;
+    }
+
+    // Trigger visual kinetic shockwave cue on canvas if arena is active
+    if (arena && ev.payload?.x && ev.payload?.y && typeof arena.spawnShockwave === 'function') {
+      const color = ev.payload.team === 'black' ? 'rgba(255, 59, 78, 0.8)' : 'rgba(212, 175, 55, 0.85)';
+      arena.spawnShockwave(ev.payload.x, ev.payload.y, color, 80, 3);
+    }
+  }
+
+  function startReplayPlayback() {
+    if (isReplayPlaying) return;
+    isReplayPlaying = true;
+    if (btnReplayPlayPause) {
+      btnReplayPlayPause.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
+    }
+
+    const intervalMs = Math.max(250, Math.round(1500 / replaySpeed));
+    replayInterval = setInterval(() => {
+      if (replayCurrentIndex >= replayEvents.length - 1) {
+        stopReplayPlayback();
+        return;
+      }
+      updateReplayStep(replayCurrentIndex + 1);
+    }, intervalMs);
+  }
+
+  function stopReplayPlayback() {
+    isReplayPlaying = false;
+    if (replayInterval) {
+      clearInterval(replayInterval);
+      replayInterval = null;
+    }
+    if (btnReplayPlayPause) {
+      btnReplayPlayPause.innerHTML = '<svg id="replayPlayIcon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
+    }
+  }
+
+  if (btnReplayPlayPause) {
+    btnReplayPlayPause.addEventListener('click', () => {
+      if (isReplayPlaying) stopReplayPlayback();
+      else startReplayPlayback();
+    });
+  }
+
+  if (btnReplayPrev) {
+    btnReplayPrev.addEventListener('click', () => {
+      stopReplayPlayback();
+      updateReplayStep(replayCurrentIndex - 1);
+    });
+  }
+
+  if (btnReplayNext) {
+    btnReplayNext.addEventListener('click', () => {
+      stopReplayPlayback();
+      updateReplayStep(replayCurrentIndex + 1);
+    });
+  }
+
+  if (replayScrubber) {
+    replayScrubber.addEventListener('input', (e) => {
+      stopReplayPlayback();
+      updateReplayStep(parseInt(e.target.value, 10));
+    });
+  }
+
+  replaySpeedBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      replaySpeedBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      replaySpeed = parseFloat(btn.getAttribute('data-speed') || '1');
+      if (isReplayPlaying) {
+        stopReplayPlayback();
+        startReplayPlayback();
+      }
+    });
+  });
+
+  if (btnExitReplay) {
+    btnExitReplay.addEventListener('click', () => {
+      stopReplayPlayback();
+      if (replayBar) replayBar.style.display = 'none';
+      window.ArchessToast?.show('Exited Replay Mode — Tactical Arena Ready', 'info', 2500);
+    });
+  }
+
+  if (btnLaunchReplay) {
+    btnLaunchReplay.addEventListener('click', () => {
+      const vModal = document.getElementById('victoryModal');
+      if (vModal) vModal.classList.remove('active');
+      const targetMatchId = window.lastSettledMatchId;
+      if (targetMatchId) {
+        loadTacticalReplay(targetMatchId);
+      } else {
+        window.ArchessToast?.show('Settlement recorded. Loading combat review.', 'info', 2000);
+        loadTacticalReplay(1);
+      }
+    });
+  }
+
+  // Check URL for ?replay=<id>
+  const playUrlParamsReplay = new URLSearchParams(window.location.search);
+  const requestedReplayId = playUrlParamsReplay.get('replay');
+  if (requestedReplayId) {
+    setTimeout(() => loadTacticalReplay(requestedReplayId), 300);
   }
 
   /* -------------------------------------------------------------
@@ -1148,5 +1492,397 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast('Hero cinematic paused');
       }
     });
+  }
+
+  /* -------------------------------------------------------------
+     PWA Service Worker Registration & Tactical Connectivity
+  ------------------------------------------------------------- */
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        .then((reg) => {
+          reg.onupdatefound = () => {
+            const installing = reg.installing;
+            if (installing) {
+              installing.onstatechange = () => {
+                if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+                  window.ArchessToast?.show('Tactical update available. Refresh for latest arena.', 'info', 4000, 'UPDATE READY');
+                }
+              };
+            }
+          };
+        })
+        .catch((err) => {
+          console.warn('[PWA] Service Worker registration failed:', err);
+        });
+    });
+  }
+
+  window.addEventListener('offline', () => {
+    window.ArchessToast?.show('Offline Protocol Active. Local battle simulation operating normally.', 'error', 4500, 'OFFLINE COMBAT');
+    document.documentElement.classList.add('is-offline');
+  });
+
+  window.addEventListener('online', () => {
+    window.ArchessToast?.show('Tactical Uplink Restored. Cloud match sync active.', 'success', 3500, 'ONLINE');
+    document.documentElement.classList.remove('is-offline');
+  });
+
+  /* -------------------------------------------------------------
+     Real-Time Multiplayer Controller & WebSocket Engine (v3.0.0)
+  ------------------------------------------------------------- */
+  const btnOpenMultiplayer = document.getElementById('btnOpenMultiplayerModal');
+  const modalMultiplayer = document.getElementById('multiplayerModalBackdrop');
+  const btnCloseMultiplayer = document.getElementById('btnCloseMultiplayerModal');
+  const btnCancelMultiplayer = document.getElementById('btnCancelMultiplayerModal');
+
+  const btnQuickMatch = document.getElementById('btnQuickMatch');
+  const quickMatchBtnText = document.getElementById('quickMatchBtnText');
+  const btnCreateRoom = document.getElementById('btnCreateRoom');
+  const hostRoomInitialWrap = document.getElementById('hostRoomInitialWrap');
+  const hostRoomActiveWrap = document.getElementById('hostRoomActiveWrap');
+  const createdRoomCode = document.getElementById('createdRoomCode');
+  const btnCopyRoomLink = document.getElementById('btnCopyRoomLink');
+  const btnEnterCreatedRoom = document.getElementById('btnEnterCreatedRoom');
+
+  const inputJoinRoomCode = document.getElementById('inputJoinRoomCode');
+  const btnJoinRoomByCode = document.getElementById('btnJoinRoomByCode');
+
+  const activeMpBar = document.getElementById('activeMultiplayerBar');
+  const mpRoomTitle = document.getElementById('mpRoomTitle');
+  const mpRolePill = document.getElementById('mpRolePill');
+  const mpStatusText = document.getElementById('mpStatusText');
+  const mpPingPill = document.getElementById('mpPingPill');
+  const btnLeaveMultiplayer = document.getElementById('btnLeaveMultiplayer');
+  const mpStatusDot = document.getElementById('multiplayerStatusDot');
+
+  let activeWebSocket = null;
+  let activeRoomId = null;
+  let activeRole = null;
+  let pingTimer = null;
+  let pingStartTime = 0;
+
+  function openMultiplayerModal() {
+    if (modalMultiplayer) {
+      modalMultiplayer.style.display = 'flex';
+      modalMultiplayer.classList.add('active');
+    }
+  }
+
+  function closeMultiplayerModal() {
+    if (modalMultiplayer) {
+      modalMultiplayer.classList.remove('active');
+      modalMultiplayer.style.display = 'none';
+    }
+  }
+
+  if (btnOpenMultiplayer) btnOpenMultiplayer.addEventListener('click', openMultiplayerModal);
+  if (btnCloseMultiplayer) btnCloseMultiplayer.addEventListener('click', closeMultiplayerModal);
+  if (btnCancelMultiplayer) btnCancelMultiplayer.addEventListener('click', closeMultiplayerModal);
+
+  function getCurrentUsername() {
+    try {
+      const user = JSON.parse(localStorage.getItem('archess_user') || '{}');
+      return user.username || 'Commander';
+    } catch(e) {
+      return 'Commander';
+    }
+  }
+
+  function connectToCombatRoom(roomId, preferredRole = null) {
+    if (!roomId) return;
+    const cleanRid = roomId.trim().toUpperCase();
+
+    // Close any prior socket
+    if (activeWebSocket) {
+      try { activeWebSocket.close(); } catch(e) {}
+      activeWebSocket = null;
+    }
+    clearInterval(pingTimer);
+
+    closeMultiplayerModal();
+    if (activeMpBar) activeMpBar.style.display = 'flex';
+    if (mpStatusDot) {
+      mpStatusDot.className = 'multiplayer-status-dot searching';
+    }
+    if (mpRoomTitle) mpRoomTitle.textContent = `ROOM: ${cleanRid}`;
+    if (mpStatusText) mpStatusText.textContent = 'Connecting to tactical relay...';
+
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${window.location.host}/ws/combat/${cleanRid}`;
+
+    try {
+      const ws = new WebSocket(wsUrl);
+      activeWebSocket = ws;
+      activeRoomId = cleanRid;
+
+      ws.onopen = () => {
+        const username = getCurrentUsername();
+        ws.send(JSON.stringify({
+          type: 'join',
+          username: username,
+          preferred_role: preferredRole
+        }));
+      };
+
+      ws.onmessage = (evt) => {
+        try {
+          const msg = JSON.parse(evt.data);
+          handleMultiplayerMessage(msg);
+        } catch(e) {}
+      };
+
+      ws.onerror = () => {
+        if (mpStatusText) mpStatusText.textContent = 'Connection error on tactical relay.';
+        window.ArchessToast?.show('Failed to connect to multiplayer room.', 'error', 3000, 'RELAY ERROR');
+      };
+
+      ws.onclose = () => {
+        clearInterval(pingTimer);
+        if (activeWebSocket === ws) {
+          activeWebSocket = null;
+          if (mpStatusDot) mpStatusDot.className = 'multiplayer-status-dot';
+          if (arena) arena.setMultiplayerState(false, null);
+          window.ArchessToast?.show('Disconnected from combat room.', 'info', 2500, 'DISCONNECTED');
+        }
+      };
+    } catch(err) {
+      window.ArchessToast?.show('Could not establish WebSocket connection.', 'error', 3000, 'SOCKET ERROR');
+    }
+  }
+
+  function handleMultiplayerMessage(msg) {
+    const mtype = msg.type;
+
+    if (mtype === 'handshake_ok') {
+      activeRole = msg.role;
+      if (mpRolePill) mpRolePill.textContent = `YOU: ${activeRole.toUpperCase()}`;
+      if (mpStatusDot) mpStatusDot.className = 'multiplayer-status-dot connected';
+
+      if (arena) {
+        arena.setMultiplayerState(true, activeRole);
+      }
+
+      // Update player cards
+      const whiteName = document.getElementById('whitePlayerName');
+      const whiteSub = document.getElementById('whitePlayerSub');
+      const blackName = document.getElementById('blackPlayerName');
+      const blackSub = document.getElementById('blackPlayerSub');
+
+      const roomData = msg.room || {};
+      const whiteUser = roomData.white?.username || 'White Army';
+      const blackUser = roomData.black?.username || 'Waiting for Challenger...';
+
+      if (whiteName) whiteName.textContent = whiteUser;
+      if (whiteSub) whiteSub.textContent = activeRole === 'white' ? 'White Army • You' : 'White Army • Opponent';
+      if (blackName) blackName.textContent = blackUser;
+      if (blackSub) blackSub.textContent = activeRole === 'black' ? 'Black Army • You' : (roomData.black?.username ? 'Black Army • Opponent' : 'Waiting for Challenger');
+
+      // Start periodic ping measurement
+      startPingLoop();
+      window.ArchessToast?.show(`Joined Room ${msg.room_id} as ${activeRole.toUpperCase()}`, 'success', 3000, 'CONNECTED');
+      return;
+    }
+
+    if (mtype === 'room_state') {
+      const room = msg.room || {};
+      if (room.status === 'in_combat') {
+        const whiteUser = room.white?.username || 'White';
+        const blackUser = room.black?.username || 'Black';
+        if (mpStatusText) mpStatusText.textContent = `Combat in progress: ${whiteUser} vs ${blackUser}`;
+        const blackName = document.getElementById('blackPlayerName');
+        const blackSub = document.getElementById('blackPlayerSub');
+        if (blackName && room.black?.username) blackName.textContent = room.black.username;
+        if (blackSub) blackSub.textContent = activeRole === 'black' ? 'Black Army • You' : 'Black Army • Opponent';
+      } else {
+        if (mpStatusText) mpStatusText.textContent = 'Waiting for opponent to join...';
+      }
+      return;
+    }
+
+    if (mtype === 'opponent_aim') {
+      if (arena) {
+        arena.setOpponentAim(msg);
+      }
+      return;
+    }
+
+    if (mtype === 'opponent_aim_cancel') {
+      if (arena) {
+        arena.clearOpponentAim();
+      }
+      return;
+    }
+
+    if (mtype === 'opponent_launch') {
+      if (arena) {
+        arena.executeRemoteLaunch(msg.pieceId, msg.vx, msg.vy, msg.powerRatio * arena.maxPullDistance);
+      }
+      return;
+    }
+
+    if (mtype === 'opponent_disconnected') {
+      if (mpStatusText) mpStatusText.textContent = `Opponent (${msg.role.toUpperCase()}) disconnected from room.`;
+      window.ArchessToast?.show(`Opponent (${msg.role.toUpperCase()}) disconnected.`, 'warning', 4000, 'OPPONENT LEFT');
+      return;
+    }
+
+    if (mtype === 'pong') {
+      const latency = Math.max(1, Math.round(performance.now() - pingStartTime));
+      if (mpPingPill) mpPingPill.textContent = `Ping: ${latency}ms`;
+      return;
+    }
+  }
+
+  function startPingLoop() {
+    clearInterval(pingTimer);
+    pingTimer = setInterval(() => {
+      if (activeWebSocket && activeWebSocket.readyState === WebSocket.OPEN) {
+        pingStartTime = performance.now();
+        activeWebSocket.send(JSON.stringify({ type: 'ping', client_ts: Date.now() }));
+      }
+    }, 4000);
+  }
+
+  // Wire arena outbound callbacks to active WebSocket
+  if (arena) {
+    arena.onAimUpdate = (data) => {
+      if (activeWebSocket && activeWebSocket.readyState === WebSocket.OPEN) {
+        activeWebSocket.send(JSON.stringify({
+          type: 'aim',
+          pieceId: data.pieceId,
+          pullScreenX: data.pullScreenX,
+          pullScreenY: data.pullScreenY,
+          powerRatio: data.powerRatio
+        }));
+      }
+    };
+
+    arena.onAimCancel = () => {
+      if (activeWebSocket && activeWebSocket.readyState === WebSocket.OPEN) {
+        activeWebSocket.send(JSON.stringify({ type: 'aim_cancel' }));
+      }
+    };
+
+    arena.onPieceLaunchBroadcast = (data) => {
+      if (activeWebSocket && activeWebSocket.readyState === WebSocket.OPEN) {
+        activeWebSocket.send(JSON.stringify({
+          type: 'launch',
+          pieceId: data.pieceId,
+          vx: data.vx,
+          vy: data.vy,
+          dist: data.dist,
+          powerRatio: data.powerRatio
+        }));
+      }
+    };
+  }
+
+  // 1. Quick Match Action
+  if (btnQuickMatch) {
+    btnQuickMatch.addEventListener('click', async () => {
+      if (quickMatchBtnText) quickMatchBtnText.textContent = 'Searching...';
+      btnQuickMatch.disabled = true;
+
+      try {
+        const res = await fetch('/api/multiplayer/quick_match', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: getCurrentUsername() })
+        });
+        const data = await res.json();
+        if (data.success && data.room_id) {
+          connectToCombatRoom(data.room_id, data.role);
+        } else {
+          window.ArchessToast?.show('Could not match with opponent.', 'error', 3000, 'MATCH ERROR');
+        }
+      } catch(err) {
+        window.ArchessToast?.show('Network error during quick match.', 'error', 3000, 'NETWORK ERROR');
+      } finally {
+        if (quickMatchBtnText) quickMatchBtnText.textContent = 'Find Opponent';
+        btnQuickMatch.disabled = false;
+      }
+    });
+  }
+
+  // 2. Create Private Room Action
+  let newlyCreatedRoomId = null;
+  if (btnCreateRoom) {
+    btnCreateRoom.addEventListener('click', async () => {
+      btnCreateRoom.disabled = true;
+      try {
+        const res = await fetch('/api/multiplayer/rooms/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: getCurrentUsername() })
+        });
+        const data = await res.json();
+        if (data.success && data.room_id) {
+          newlyCreatedRoomId = data.room_id;
+          if (createdRoomCode) createdRoomCode.textContent = data.room_id;
+          if (hostRoomInitialWrap) hostRoomInitialWrap.style.display = 'none';
+          if (hostRoomActiveWrap) hostRoomActiveWrap.style.display = 'flex';
+        }
+      } catch(e) {
+        window.ArchessToast?.show('Could not generate private room.', 'error', 3000, 'ROOM ERROR');
+      } finally {
+        btnCreateRoom.disabled = false;
+      }
+    });
+  }
+
+  if (btnCopyRoomLink) {
+    btnCopyRoomLink.addEventListener('click', () => {
+      if (!newlyCreatedRoomId) return;
+      const inviteUrl = `${window.location.origin}/play?room=${newlyCreatedRoomId}`;
+      navigator.clipboard.writeText(inviteUrl).then(() => {
+        window.ArchessToast?.show(`Invite link copied to clipboard: ${newlyCreatedRoomId}`, 'success', 3500, 'LINK COPIED');
+      }).catch(() => {
+        window.ArchessToast?.show(`Room Code: ${newlyCreatedRoomId}`, 'info', 3000, 'ROOM CODE');
+      });
+    });
+  }
+
+  if (btnEnterCreatedRoom) {
+    btnEnterCreatedRoom.addEventListener('click', () => {
+      if (newlyCreatedRoomId) {
+        connectToCombatRoom(newlyCreatedRoomId, 'white');
+      }
+    });
+  }
+
+  // 3. Join by Room Code Action
+  if (btnJoinRoomByCode) {
+    btnJoinRoomByCode.addEventListener('click', () => {
+      const code = (inputJoinRoomCode?.value || '').trim();
+      if (!code || code.length < 3) {
+        window.ArchessToast?.show('Please enter a valid room code (e.g. ARC-729)', 'warning', 2500, 'INVALID CODE');
+        return;
+      }
+      connectToCombatRoom(code, 'black');
+    });
+  }
+
+  // Leave Multiplayer Room Action
+  if (btnLeaveMultiplayer) {
+    btnLeaveMultiplayer.addEventListener('click', () => {
+      if (activeWebSocket) {
+        try { activeWebSocket.close(); } catch(e) {}
+        activeWebSocket = null;
+      }
+      clearInterval(pingTimer);
+      if (activeMpBar) activeMpBar.style.display = 'none';
+      if (mpStatusDot) mpStatusDot.className = 'multiplayer-status-dot';
+      if (arena) arena.setMultiplayerState(false, null);
+      window.ArchessToast?.show('Returned to Local Solo Arena', 'info', 2500, 'SOLO MODE');
+    });
+  }
+
+  // URL Parameter Hook: Auto-Join Room via URL (/play?room=ARC-729)
+  const roomParam = playUrlParams.get('room');
+  if (roomParam) {
+    setTimeout(() => {
+      connectToCombatRoom(roomParam, 'black');
+    }, 450);
   }
 });

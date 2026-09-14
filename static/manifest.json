@@ -1,0 +1,42 @@
+{
+  "name": "ArChess — Kinetic Physical Chess",
+  "short_name": "ArChess",
+  "description": "Tactical hybrid physical chess variant. Aim, launch pieces with momentum, and shatter enemy lines across 2D and 3D perspectives.",
+  "start_url": "/play",
+  "display": "standalone",
+  "background_color": "#07080b",
+  "theme_color": "#07080b",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/static/media/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/media/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["games", "entertainment", "strategy"],
+  "shortcuts": [
+    {
+      "name": "Play Tactical Arena",
+      "url": "/play?mode=3d",
+      "description": "Launch straight into the 3D isometric tabletop arena"
+    },
+    {
+      "name": "Piece Codex & Arsenal",
+      "url": "/arsenal",
+      "description": "Inspect kinetic weapon specs and signature abilities"
+    },
+    {
+      "name": "Grandmaster Ladder",
+      "url": "/leaderboard",
+      "description": "View real-time FIDE Elo rankings and tactical dossiers"
+    }
+  ]
+}

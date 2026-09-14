@@ -1,166 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ARCHESS | Global Ranked Leaderboard & Grandmasters</title>
-  <script>
-    (function() {
-      var design = localStorage.getItem('archess_ui_design') || 'dark-premium';
-      document.documentElement.setAttribute('data-ui-design', design);
-      var mode = localStorage.getItem('archess_theme_mode');
-      if (mode === 'light' || (!mode && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches)) {
-        document.documentElement.setAttribute('data-theme', 'light');
-      } else {
-        document.documentElement.setAttribute('data-theme', 'dark');
-      }
-    })();
-  </script>
-  <link rel="icon" type="image/png" href="/static/media/logo.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
-  <link rel="stylesheet" href="/static/css/style.css?v=2.5.0">
-</head>
-<body>
+{% set active_page = "leaderboard" %}
+{% extends "base.html" %}
 
-  <!-- Side Expansion Menu Drawer Backdrop & Drawer -->
-  <div class="side-drawer-backdrop" id="sideDrawerBackdrop" aria-hidden="true">
-    <aside class="side-expansion-drawer" id="sideExpansionDrawer" aria-label="Tactical Navigation">
-      <div class="drawer-header">
-        <a href="/" class="brand-logo" style="gap: 8px;">
-          <div class="logo-icon-wrap" style="width: 28px; height: 28px;">
-            <img src="/static/media/logo.png" alt="Archess Crest">
-          </div>
-          <div class="brand-text" style="font-size: 1.1rem;">ARC<span>H</span>ESS</div>
-        </a>
-        <button class="drawer-close-btn" id="drawerCloseBtn" aria-label="Close navigation drawer">&times;</button>
-      </div>
+{% block title %}ARCHESS | Global Ranked Leaderboard &amp; Grandmasters{% endblock %}
 
-      <ul class="drawer-nav-list">
-        <li><a href="/play"><span>Tactical Arena</span> <span class="nav-num">01</span></a></li>
-        <li><a href="/#themesSection"><span>Chess Themes</span> <span class="nav-num">02</span></a></li>
-        <li><a href="/arsenal"><span>Piece Codex</span> <span class="nav-num">03</span></a></li>
-        <li><a href="/leaderboard"><span>Rankings & Ladder</span> <span class="nav-num">04</span></a></li>
-      </ul>
+{% block meta_description %}Official ARCHESS Global ELO Rankings, Grandmaster divisions, and real-time kinetic match standings.{% endblock %}
 
-      <!-- Design Language Selector in Drawer -->
-      <div class="drawer-design-section">
-        <span class="drawer-design-title">Design Language</span>
-        <div class="drawer-design-pills">
-          <button class="drawer-design-btn active" data-design-key="dark-premium">
-            <span>Dark Premium</span>
-            <span style="font-size: 0.7rem; color: var(--gold-light);">Obsidian</span>
-          </button>
-          <button class="drawer-design-btn" data-design-key="glassmorphism">
-            <span>Glassmorphism</span>
-            <span style="font-size: 0.7rem; color: #00f2fe;">Frosted</span>
-          </button>
-          <button class="drawer-design-btn" data-design-key="neobrutalism">
-            <span>Neobrutalism</span>
-            <span style="font-size: 0.7rem; color: #ffe600;">Bold Pop</span>
-          </button>
-          <button class="drawer-design-btn" data-design-key="minimal">
-            <span>Minimalist</span>
-            <span style="font-size: 0.7rem; color: #94a3b8;">Zen Space</span>
-          </button>
-          <button class="drawer-design-btn" data-design-key="ios-native">
-            <span>iOS Native</span>
-            <span style="font-size: 0.7rem; color: #0a84ff;">Apple HIG</span>
-          </button>
-          <button class="drawer-design-btn" data-design-key="material3">
-            <span>Material 3</span>
-            <span style="font-size: 0.7rem; color: #d0bcff;">Google M3</span>
-          </button>
-        </div>
-      </div>
-
-      <div class="drawer-footer-actions">
-        <a href="/play" class="btn-gold" style="width: 100%; justify-content: center;">
-          <span>Launch Arena</span>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        </a>
-        <div style="font-size: 0.72rem; color: var(--text-muted); text-align: center; margin-top: 6px;">
-          ARCHESS Engine &bull; mr-zero0/ArChess
-        </div>
-      </div>
-    </aside>
-  </div>
-
-  <!-- Navigation Header with Auth State -->
-  <header class="site-header">
-    <div class="container nav-container">
-      <a href="/" class="brand-logo" aria-label="Archess Home">
-        <div class="logo-icon-wrap">
-          <img src="/static/media/logo.png" alt="Archess Crest">
-        </div>
-        <div class="brand-text">ARC<span>H</span>ESS</div>
-      </a>
-
-      <ul class="nav-links">
-        <li><a href="/">Home</a></li>
-        <li><a href="/play">Play Arena</a></li>
-        <li><a href="/#themesSection">Themes</a></li>
-        <li><a href="/arsenal">Piece Codex</a></li>
-        <li><a href="/leaderboard" class="active">Leaderboard</a></li>
-      </ul>
-
-      <div class="nav-actions">
-        <!-- UI Design Language Selector Trigger -->
-        <button class="btn-nav-design-toggle" id="navDesignToggleBtn" title="Switch UI Design Language" aria-label="Switch UI Design Language">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle>
-            <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle>
-            <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle>
-            <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle>
-            <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path>
-          </svg>
-          <span>Design</span>
-        </button>
-
-        <!-- UIverse Theme Mode Toggle (Dark / Light) -->
-        <button class="btn-theme-mode-toggle" id="themeModeToggleBtn" title="Toggle Light / Dark Mode" aria-label="Toggle Light / Dark Mode">
-          <span class="theme-toggle-icon icon-sun" aria-hidden="true">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="5"></circle>
-              <line x1="12" y1="1" x2="12" y2="3"></line>
-              <line x1="12" y1="21" x2="12" y2="23"></line>
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-              <line x1="1" y1="12" x2="3" y2="12"></line>
-              <line x1="21" y1="12" x2="23" y2="12"></line>
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-            </svg>
-          </span>
-          <span class="theme-toggle-icon icon-moon" aria-hidden="true">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-            </svg>
-          </span>
-        </button>
-
-        <button class="btn-audio-toggle" id="audioToggleBtn" title="Toggle Sound FX">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
-          </svg>
-        </button>
-
-        <!-- Side Expansion Menu Trigger Button -->
-        <button class="btn-side-menu-toggle" id="sideMenuToggleBtn" aria-label="Open Navigation Menu">
-          <span class="menu-icon-bars">
-            <span class="bar bar-1"></span>
-            <span class="bar bar-2"></span>
-          </span>
-          <span>Menu</span>
-        </button>
-
-        <div id="navAuthContainer"></div>
-      </div>
-    </div>
-  </header>
-
+{% block content %}
   <main class="container" style="padding-top: 130px; padding-bottom: 90px;">
     
     <div class="section-header">
@@ -264,6 +109,71 @@
       </div>
     </div>
 
+    <!-- 8-Commander Knockout Tournament Championship Bracket (v3.1.0) -->
+    <div class="tournament-bracket-card" id="tournamentBracketSection" style="max-width: 1380px; width: 100%; margin: 0 auto 36px;">
+      <div class="tournament-card-header">
+        <div class="bracket-title-wrap">
+          <div class="bracket-eyebrow">
+            <span class="bracket-badge-pill" id="bracketSeasonBadge">SEASON 1 CHAMPIONSHIP</span>
+            <span class="bracket-status-tag" id="bracketStatusTag">QUARTERFINALS IN PROGRESS</span>
+          </div>
+          <h3 class="bracket-heading">Knockout Tournament Championship</h3>
+          <p class="bracket-subhead">8 seeded commanders battle in single-elimination physical chess for the Golden Sovereign Crown.</p>
+        </div>
+        <div class="bracket-controls-wrap">
+          <button class="btn btn-gold btn-sm" id="btnSimulateRound">
+            <span id="btnSimulateText">⚡ Simulate Next Round</span>
+          </button>
+          <button class="btn btn-outline btn-sm" id="btnResetTournament" title="Reset tournament and seed a new season">
+            <span>↺ New Season</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Champion Banner (Displayed when tournament is completed) -->
+      <div class="tournament-champion-banner" id="tournamentChampionBanner" style="display: none;">
+        <div class="champion-glow-disc">👑</div>
+        <div class="champion-meta">
+          <span class="champion-eyebrow">REIGNING TOURNAMENT CHAMPION</span>
+          <h2 class="champion-name" id="tournamentChampionName">Vanguard_Prime</h2>
+          <span class="champion-desc" id="tournamentChampionSub">Season 1 Golden Sovereign Champion &bull; Undefeated Run</span>
+        </div>
+        <a href="/play?opponent=Vanguard_Prime&mode=3d" class="btn btn-gold btn-md" id="btnChallengeChampion">
+          <span>⚔️ Challenge Champion</span>
+        </a>
+      </div>
+
+      <!-- 3-Column Knockout Bracket Grid -->
+      <div class="bracket-stages-grid" id="bracketStagesGrid">
+        <!-- Col 1: Quarterfinals (4 matches) -->
+        <div class="bracket-stage-col" id="stageQuarterfinals">
+          <div class="stage-col-head">
+            <h4>QUARTERFINALS</h4>
+            <span>4 Duels &bull; Best of 3</span>
+          </div>
+          <div class="stage-matches-list" id="matchesQuarterfinals"></div>
+        </div>
+
+        <!-- Col 2: Semifinals (2 matches) -->
+        <div class="bracket-stage-col" id="stageSemifinals">
+          <div class="stage-col-head">
+            <h4>SEMIFINALS</h4>
+            <span>2 Duels &bull; Best of 3</span>
+          </div>
+          <div class="stage-matches-list" id="matchesSemifinals"></div>
+        </div>
+
+        <!-- Col 3: Grand Championship Finals (1 match) -->
+        <div class="bracket-stage-col stage-finals" id="stageFinals">
+          <div class="stage-col-head">
+            <h4>GRAND FINALS</h4>
+            <span>Championship Duel</span>
+          </div>
+          <div class="stage-matches-list" id="matchesFinals"></div>
+        </div>
+      </div>
+    </div>
+
     <div class="leaderboard-table-card" style="max-width: 1380px; width: 100%; margin: 0 auto;">
       <div class="table-card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
         <div>
@@ -282,16 +192,46 @@
         </div>
       </div>
 
+      <div class="table-card-subbar">
+        <div class="leaderboard-tier-filters" id="tierFilterGroup">
+          <button type="button" class="tier-filter-pill active" data-tier="all">
+            <span class="tier-dot tier-dot-all"></span>
+            <span>All Divisions</span>
+            <span class="tier-badge-count" id="countAll">0</span>
+          </button>
+          <button type="button" class="tier-filter-pill" data-tier="grandmaster">
+            <span class="tier-dot tier-dot-gm"></span>
+            <span>Grandmaster (2700+)</span>
+            <span class="tier-badge-count" id="countGm">0</span>
+          </button>
+          <button type="button" class="tier-filter-pill" data-tier="master">
+            <span class="tier-dot tier-dot-master"></span>
+            <span>Master (2400+)</span>
+            <span class="tier-badge-count" id="countMaster">0</span>
+          </button>
+          <button type="button" class="tier-filter-pill" data-tier="contender">
+            <span class="tier-dot tier-dot-contender"></span>
+            <span>Contender (&lt;2400)</span>
+            <span class="tier-badge-count" id="countContender">0</span>
+          </button>
+        </div>
+        <div style="font-size: 0.78rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          <span>Select any player to inspect tactical combat dossier</span>
+        </div>
+      </div>
+
       <table class="leaderboard-table">
         <thead>
           <tr>
-            <th style="width: 80px;">Rank</th>
+            <th style="width: 70px;">Rank</th>
             <th>Player &amp; Avatar</th>
             <th>Division / Tier</th>
             <th>ELO Rating</th>
             <th>Matches</th>
             <th>Wins / Losses</th>
             <th>Win Rate</th>
+            <th style="text-align: right; width: 110px;">Dossier</th>
           </tr>
         </thead>
         <tbody id="fullLeaderboardBody">
@@ -304,6 +244,7 @@
             <td><div class="skeleton-cell" style="width: 45px;"></div></td>
             <td><div class="skeleton-cell" style="width: 75px;"></div></td>
             <td><div class="skeleton-cell" style="width: 110px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 60px; margin-left: auto;"></div></td>
           </tr>
           <tr class="skeleton-tr">
             <td><div class="skeleton-cell" style="width: 32px;"></div></td>
@@ -313,6 +254,7 @@
             <td><div class="skeleton-cell" style="width: 45px;"></div></td>
             <td><div class="skeleton-cell" style="width: 70px;"></div></td>
             <td><div class="skeleton-cell" style="width: 110px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 60px; margin-left: auto;"></div></td>
           </tr>
           <tr class="skeleton-tr">
             <td><div class="skeleton-cell" style="width: 32px;"></div></td>
@@ -322,6 +264,7 @@
             <td><div class="skeleton-cell" style="width: 45px;"></div></td>
             <td><div class="skeleton-cell" style="width: 80px;"></div></td>
             <td><div class="skeleton-cell" style="width: 110px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 60px; margin-left: auto;"></div></td>
           </tr>
           <tr class="skeleton-tr">
             <td><div class="skeleton-cell" style="width: 32px;"></div></td>
@@ -331,6 +274,7 @@
             <td><div class="skeleton-cell" style="width: 45px;"></div></td>
             <td><div class="skeleton-cell" style="width: 70px;"></div></td>
             <td><div class="skeleton-cell" style="width: 110px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 60px; margin-left: auto;"></div></td>
           </tr>
           <tr class="skeleton-tr">
             <td><div class="skeleton-cell" style="width: 32px;"></div></td>
@@ -340,104 +284,92 @@
             <td><div class="skeleton-cell" style="width: 45px;"></div></td>
             <td><div class="skeleton-cell" style="width: 75px;"></div></td>
             <td><div class="skeleton-cell" style="width: 110px;"></div></td>
+            <td><div class="skeleton-cell" style="width: 60px; margin-left: auto;"></div></td>
           </tr>
         </tbody>
       </table>
     </div>
 
+    <!-- Tactical Commander Dossier Modal -->
+    <div class="modal-backdrop" id="playerDossierModal" role="dialog" aria-modal="true" aria-hidden="true">
+      <div class="modal-dialog player-dossier-dialog">
+        <div class="dossier-modal-head">
+          <div class="dossier-head-meta">
+            <span class="dossier-eyebrow">COMMAND TELEMETRY // DECLASSIFIED</span>
+            <h2 class="dossier-title" id="dossierUsername">Commander Dossier</h2>
+            <p class="dossier-subtitle">Verified kinetic combat record and tactical career statistics.</p>
+          </div>
+          <button type="button" class="modal-close-icon" id="closeDossierModalBtn" aria-label="Close Dossier">&times;</button>
+        </div>
+
+        <div id="dossierLoadingState" class="dossier-loading" style="display: none; padding: 40px; text-align: center;">
+          <div class="dossier-spinner"></div>
+          <p style="margin-top: 14px; font-size: 0.88rem; color: var(--text-muted);">Decrypting player combat telemetry...</p>
+        </div>
+
+        <div id="dossierContentArea">
+          <!-- Profile Card Cluster -->
+          <div class="dossier-profile-cluster">
+            <div class="dossier-avatar-disc" id="dossierAvatarDisc">♞</div>
+            <div class="dossier-profile-info">
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <h3 class="dossier-name" id="dossierPlayerName">Player</h3>
+                <span class="division-pill grandmaster" id="dossierTierPill">Grandmaster</span>
+              </div>
+              <p class="dossier-subinfo" id="dossierSubinfo">Active Combatant &bull; Season 1 Competitive Ladder</p>
+            </div>
+          </div>
+
+          <!-- Bento Metric Grid -->
+          <div class="dossier-metrics-grid">
+            <div class="dossier-metric-card highlight">
+              <span class="metric-label">ELO RATING</span>
+              <span class="metric-value tabular-nums" id="dossierElo">0</span>
+              <span class="metric-footnote" id="dossierTierFootnote">Top Division</span>
+            </div>
+            <div class="dossier-metric-card">
+              <span class="metric-label">TOTAL BATTLES</span>
+              <span class="metric-value tabular-nums" id="dossierMatches">0</span>
+              <span class="metric-footnote" id="dossierRecordText">0W &bull; 0L &bull; 0D</span>
+            </div>
+            <div class="dossier-metric-card">
+              <span class="metric-label">COMBAT WIN RATE</span>
+              <div style="display: flex; align-items: baseline; gap: 8px;">
+                <span class="metric-value tabular-nums" id="dossierWinRate">0%</span>
+              </div>
+              <div class="winrate-progress-track" style="margin-top: 8px; width: 100%;">
+                <div class="winrate-progress-fill" id="dossierWinRateFill" style="width: 0%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Combat Operations -->
+          <div class="dossier-section-header">
+            <h4>Recent Arena Engagements</h4>
+            <span class="dossier-badge-count" id="dossierMatchCountLabel">Latest 10</span>
+          </div>
+
+          <div class="dossier-match-list" id="dossierMatchList">
+            <!-- Dynamically populated matches -->
+          </div>
+        </div>
+
+        <div class="dossier-modal-footer">
+          <a href="/play" id="dossierChallengeBtn" class="btn btn-default btn-sm">
+            <span>Challenge in Arena</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </a>
+          <button type="button" class="btn btn-outline btn-sm" id="dossierDismissBtn">
+            <span>Close Dossier</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
   </main>
+{% endblock %}
 
-  <footer class="site-footer">
-    <div class="container footer-bottom">
-      <div>&copy; 2026 ARCHESS &bull; mr-zero0/ArChess. Free &amp; Open-Source.</div>
-      <div style="color: var(--gold-light);">Aim &bull; Launch &bull; Collide &bull; Conquer</div>
-    </div>
-  </footer>
-
-  <!-- Multi-Design System Selection Modal -->
-  <div class="modal-backdrop" id="designPickerModal" role="dialog" aria-modal="true">
-    <div class="modal-dialog design-picker-modal-dialog">
-      <div class="appearance-modal-head" style="margin-bottom: 8px;">
-        <div class="head-meta">
-          <span class="eyebrow">AESTHETIC ARCHITECTURE</span>
-          <h2 class="title" style="font-size: 1.5rem;">Select UI Design Language</h2>
-          <p class="subtitle">Experience ARCHESS across 6 distinct modern design systems. Every surface, border, and elevation re-skins in real time.</p>
-        </div>
-        <button class="modal-close-icon" id="closeDesignModalBtn" aria-label="Close Design Selector">&times;</button>
-      </div>
-
-      <div class="design-picker-grid">
-        <!-- 1. Dark Premium -->
-        <div class="design-picker-card" data-design-key="dark-premium">
-          <div class="design-preview-strip preview-dark">
-            <span style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em;">Obsidian &bull; Metallic Gold</span>
-          </div>
-          <div class="design-card-meta">
-            <h4>Dark Premium</h4>
-            <p>Deep void noir backgrounds, metallic gold and platinum foil gradients, Cinzel luxury serif typography, and specular rim lines.</p>
-          </div>
-        </div>
-
-        <!-- 2. Glassmorphism -->
-        <div class="design-picker-card" data-design-key="glassmorphism">
-          <div class="design-preview-strip preview-glass">
-            <span style="font-size: 0.75rem; font-weight: 700; color: #00f2fe;">Frosted Crystal &bull; Blur</span>
-          </div>
-          <div class="design-card-meta">
-            <h4>Glassmorphism</h4>
-            <p>Translucent frosted glass panels with 24px blur, 1px luminous borders, cyan/violet ambient backlights, and specular bevels.</p>
-          </div>
-        </div>
-
-        <!-- 3. Neobrutalism -->
-        <div class="design-picker-card" data-design-key="neobrutalism">
-          <div class="design-preview-strip preview-brutal">
-            <span style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase;">Raw &bull; 3px Solid &bull; Pop</span>
-          </div>
-          <div class="design-card-meta">
-            <h4>Neobrutalism</h4>
-            <p>Thick 3px solid borders, hard 5px offset drop shadows, cyber yellow &amp; hot pink accents, raw unpolished edges, and chunky typography.</p>
-          </div>
-        </div>
-
-        <!-- 4. Minimal with Generous Whitespace -->
-        <div class="design-picker-card" data-design-key="minimal">
-          <div class="design-preview-strip preview-minimal">
-            <span style="font-size: 0.75rem; font-weight: 600; color: #e2e8f0;">Zen &bull; Generous Whitespace</span>
-          </div>
-          <div class="design-card-meta">
-            <h4>Minimalist</h4>
-            <p>Abundant negative space, whisper-thin 1px borders, zero noisy gradients, serene monochrome palette, and pure typographic clarity.</p>
-          </div>
-        </div>
-
-        <!-- 5. iOS Native -->
-        <div class="design-picker-card" data-design-key="ios-native">
-          <div class="design-preview-strip preview-ios">
-            <span style="font-size: 0.75rem; font-weight: 600; color: #ffffff;">Apple HIG &bull; Cupertino Squircle</span>
-          </div>
-          <div class="design-card-meta">
-            <h4>iOS Native</h4>
-            <p>Apple Human Interface Guidelines, SF Pro font feel, continuous squircle cards, Cupertino segmented control pills, and system vibrancy.</p>
-          </div>
-        </div>
-
-        <!-- 6. Material Design 3 -->
-        <div class="design-picker-card" data-design-key="material3">
-          <div class="design-preview-strip preview-m3">
-            <span style="font-size: 0.75rem; font-weight: 700;">Google M3 &bull; Material You</span>
-          </div>
-          <div class="design-card-meta">
-            <h4>Material Design 3</h4>
-            <p>Google Material You dynamic color, tonal surface container hierarchy, expressive rounded 28px pills, and floating action cards.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script src="/static/js/auth.js"></script>
-  <script src="/static/js/main.js"></script>
+{% block extra_scripts %}
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
       try {
@@ -445,12 +377,48 @@
         const data = await res.json();
         const tbody = document.getElementById('fullLeaderboardBody');
         const searchInput = document.getElementById('leaderboardSearchInput');
+        const tierButtons = document.querySelectorAll('.tier-filter-pill');
+        const dossierModal = document.getElementById('playerDossierModal');
+        const closeDossierBtn = document.getElementById('closeDossierModalBtn');
+        const dismissDossierBtn = document.getElementById('dossierDismissBtn');
+        
         let players = data.leaderboard || [];
+        let activeTier = 'all';
+        let searchQuery = '';
+
+        // Calculate counts for division filter pills
+        function updateCounts() {
+          const gmCount = players.filter(p => p.elo_rating >= 2700).length;
+          const masterCount = players.filter(p => p.elo_rating >= 2400 && p.elo_rating < 2700).length;
+          const contenderCount = players.filter(p => p.elo_rating < 2400).length;
+
+          const countAllEl = document.getElementById('countAll');
+          const countGmEl = document.getElementById('countGm');
+          const countMasterEl = document.getElementById('countMaster');
+          const countContenderEl = document.getElementById('countContender');
+
+          if (countAllEl) countAllEl.textContent = players.length;
+          if (countGmEl) countGmEl.textContent = gmCount;
+          if (countMasterEl) countMasterEl.textContent = masterCount;
+          if (countContenderEl) countContenderEl.textContent = contenderCount;
+        }
+
+        function getFilteredPlayers() {
+          return players.filter(p => {
+            const matchesSearch = p.username.toLowerCase().includes(searchQuery);
+            if (!matchesSearch) return false;
+
+            if (activeTier === 'grandmaster') return p.elo_rating >= 2700;
+            if (activeTier === 'master') return p.elo_rating >= 2400 && p.elo_rating < 2700;
+            if (activeTier === 'contender') return p.elo_rating < 2400;
+            return true;
+          });
+        }
 
         function renderRows(list) {
           if (!tbody) return;
           if (list.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">No players match your search query.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 36px 20px;">No players match the selected filters or search query.</td></tr>';
             return;
           }
           tbody.innerHTML = list.map((p, idx) => {
@@ -462,7 +430,7 @@
             const tierClass = p.elo_rating >= 2700 ? 'grandmaster' : (p.elo_rating >= 2400 ? 'master' : 'contender');
             
             return `
-              <tr>
+              <tr class="leaderboard-player-row" data-username="${p.username}" title="Click to inspect tactical dossier">
                 <td><span class="rank-badge ${rankClass}">#${idx + 1}</span></td>
                 <td>
                   <div class="player-avatar-chip">
@@ -482,24 +450,319 @@
                     <span class="winrate-text tabular-nums">${winRate}%</span>
                   </div>
                 </td>
+                <td style="text-align: right;">
+                  <button type="button" class="btn-inspect-dossier" data-username="${p.username}">
+                    <span>Inspect</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                  </button>
+                </td>
               </tr>
             `;
           }).join('');
-        }
 
-        renderRows(players);
-
-        if (searchInput) {
-          searchInput.addEventListener('input', (e) => {
-            const q = e.target.value.toLowerCase().trim();
-            const filtered = players.filter(p => p.username.toLowerCase().includes(q));
-            renderRows(filtered);
+          // Wire up row and inspect clicks
+          tbody.querySelectorAll('tr.leaderboard-player-row').forEach(row => {
+            row.addEventListener('click', (e) => {
+              const username = row.getAttribute('data-username');
+              if (username) openDossier(username);
+            });
           });
         }
+
+        updateCounts();
+        renderRows(getFilteredPlayers());
+
+        // Tier button clicks
+        tierButtons.forEach(btn => {
+          btn.addEventListener('click', () => {
+            tierButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            activeTier = btn.getAttribute('data-tier') || 'all';
+            renderRows(getFilteredPlayers());
+          });
+        });
+
+        // Search input
+        if (searchInput) {
+          searchInput.addEventListener('input', (e) => {
+            searchQuery = e.target.value.toLowerCase().trim();
+            renderRows(getFilteredPlayers());
+          });
+        }
+
+        // Commander Dossier Modal Logic
+        async function openDossier(username) {
+          if (!dossierModal) return;
+          dossierModal.classList.add('active');
+          dossierModal.setAttribute('aria-hidden', 'false');
+
+          const loading = document.getElementById('dossierLoadingState');
+          const content = document.getElementById('dossierContentArea');
+          if (loading) loading.style.display = 'block';
+          if (content) content.style.display = 'none';
+
+          const titleEl = document.getElementById('dossierUsername');
+          if (titleEl) titleEl.textContent = `${username} // DOSSIER`;
+
+          try {
+            const statsRes = await fetch(`/api/users/${encodeURIComponent(username)}/stats`);
+            if (!statsRes.ok) throw new Error('Player not found');
+            const data = await statsRes.json();
+
+            const user = data.user || {};
+            const stats = data.stats || {};
+            const matches = data.recent_matches || [];
+
+            // Populate profile
+            const nameEl = document.getElementById('dossierPlayerName');
+            const tierPill = document.getElementById('dossierTierPill');
+            const subinfo = document.getElementById('dossierSubinfo');
+            const challengeBtn = document.getElementById('dossierChallengeBtn');
+
+            if (nameEl) nameEl.textContent = user.username || username;
+            if (tierPill) {
+              tierPill.textContent = stats.tier || 'Contender';
+              tierPill.className = `division-pill ${(stats.tier || 'contender').toLowerCase()}`;
+            }
+            if (subinfo) {
+              const joined = user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Active Member';
+              subinfo.textContent = `Combatant ID #${user.id || 0} &bull; Registered ${joined}`;
+            }
+            if (challengeBtn) {
+              challengeBtn.href = `/play?opponent=${encodeURIComponent(user.username || username)}`;
+            }
+
+            // Populate metrics
+            const eloEl = document.getElementById('dossierElo');
+            const matchesEl = document.getElementById('dossierMatches');
+            const recordText = document.getElementById('dossierRecordText');
+            const winRateEl = document.getElementById('dossierWinRate');
+            const winRateFill = document.getElementById('dossierWinRateFill');
+            const tierFootnote = document.getElementById('dossierTierFootnote');
+
+            if (eloEl) eloEl.textContent = stats.elo_rating || 1200;
+            if (matchesEl) matchesEl.textContent = stats.matches_played || 0;
+            if (recordText) recordText.textContent = `${stats.wins || 0}W \u2022 ${stats.losses || 0}L \u2022 ${stats.draws || 0}D`;
+            if (winRateEl) winRateEl.textContent = `${stats.win_rate || 0}%`;
+            if (winRateFill) winRateFill.style.width = `${Math.min(100, Math.max(0, stats.win_rate || 0))}%`;
+            if (tierFootnote) tierFootnote.textContent = `${stats.tier || 'Contender'} Division`;
+
+            // Populate recent matches
+            const matchList = document.getElementById('dossierMatchList');
+            const matchCountLabel = document.getElementById('dossierMatchCountLabel');
+            if (matchCountLabel) matchCountLabel.textContent = `${matches.length} Engagements`;
+
+            if (matchList) {
+              if (matches.length === 0) {
+                matchList.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px; font-size: 0.82rem;">No recent arena engagements recorded for this combatant.</div>';
+              } else {
+                matchList.innerHTML = matches.map(m => {
+                  const isWhite = (m.white_username === username);
+                  const opponent = isWhite ? m.black_username : m.white_username;
+                  const mySide = isWhite ? 'White' : 'Black';
+                  const myDmg = isWhite ? m.white_damage : m.black_damage;
+                  const oppDmg = isWhite ? m.black_damage : m.white_damage;
+                  
+                  let outcomeClass = 'outcome-draw';
+                  let outcomeText = 'DRAW';
+                  if (m.winner === 'white') {
+                    outcomeClass = isWhite ? 'outcome-victory' : 'outcome-defeat';
+                    outcomeText = isWhite ? 'VICTORY' : 'DEFEAT';
+                  } else if (m.winner === 'black') {
+                    outcomeClass = isWhite ? 'outcome-defeat' : 'outcome-victory';
+                    outcomeText = isWhite ? 'DEFEAT' : 'VICTORY';
+                  }
+
+                  const durationMin = Math.floor((m.duration_sec || 0) / 60);
+                  const durationSec = (m.duration_sec || 0) % 60;
+                  const timeStr = `${durationMin}m ${durationSec}s`;
+
+                  return `
+                    <div class="dossier-match-item">
+                      <div style="display: flex; align-items: center; gap: 10px;">
+                        <span class="outcome-pill ${outcomeClass}">${outcomeText}</span>
+                        <div>
+                          <div style="font-weight: 600; color: #fff;">vs. ${opponent}</div>
+                          <div style="font-size: 0.72rem; color: var(--text-muted);">${mySide} &bull; ${m.turns || 0} turns &bull; ${timeStr}</div>
+                        </div>
+                      </div>
+                      <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="text-align: right; font-family: var(--font-mono); font-size: 0.76rem;">
+                          <span style="color: #4ade80;">+${myDmg} DMG</span>
+                          <span style="color: var(--text-muted); margin: 0 4px;">/</span>
+                          <span style="color: #f87171;">-${oppDmg}</span>
+                        </div>
+                        <a href="/play?replay=${m.id}&mode=3d" class="btn-dossier-replay" title="Replay Combat Engagement">▶ Replay</a>
+                      </div>
+                    </div>
+                  `;
+                }).join('');
+              }
+            }
+
+            if (loading) loading.style.display = 'none';
+            if (content) content.style.display = 'block';
+          } catch (err) {
+            if (loading) loading.style.display = 'none';
+            if (content) {
+              content.style.display = 'block';
+              content.innerHTML = '<div style="text-align: center; color: #f87171; padding: 24px;">Failed to load player dossier telemetry.</div>';
+            }
+          }
+        }
+
+        function closeDossier() {
+          if (!dossierModal) return;
+          dossierModal.classList.remove('active');
+          dossierModal.setAttribute('aria-hidden', 'true');
+        }
+
+        if (closeDossierBtn) closeDossierBtn.addEventListener('click', closeDossier);
+        if (dismissDossierBtn) dismissDossierBtn.addEventListener('click', closeDossier);
+        if (dossierModal) {
+          dossierModal.addEventListener('click', (e) => {
+            if (e.target === dossierModal) closeDossier();
+          });
+        }
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && dossierModal && dossierModal.classList.contains('active')) {
+            closeDossier();
+          }
+        });
+
+        /* -------------------------------------------------------------
+           Tournament Championship Bracket Client Engine (v3.1.0)
+        ------------------------------------------------------------- */
+        const seasonBadge = document.getElementById('bracketSeasonBadge');
+        const statusTag = document.getElementById('bracketStatusTag');
+        const btnSimulate = document.getElementById('btnSimulateRound');
+        const btnSimulateText = document.getElementById('btnSimulateText');
+        const btnResetTourney = document.getElementById('btnResetTournament');
+        const championBanner = document.getElementById('tournamentChampionBanner');
+        const championName = document.getElementById('tournamentChampionName');
+        const championSub = document.getElementById('tournamentChampionSub');
+        const btnChallengeChamp = document.getElementById('btnChallengeChampion');
+
+        const containerQF = document.getElementById('matchesQuarterfinals');
+        const containerSF = document.getElementById('matchesSemifinals');
+        const containerF = document.getElementById('matchesFinals');
+
+        function renderMatchCard(match) {
+          const p1 = match.player1;
+          const p2 = match.player2;
+          const isFinished = match.status === 'completed';
+          const winnerId = match.winner ? match.winner.id : null;
+
+          function renderPlayerRow(p, score, isWinner) {
+            if (!p) {
+              return `
+                <div class="bracket-player-row tbd-row">
+                  <span class="seed-badge">TBD</span>
+                  <span class="player-name">Waiting for victor...</span>
+                  <span class="player-score">-</span>
+                </div>
+              `;
+            }
+            const winClass = isFinished ? (isWinner ? 'is-winner' : 'is-loser') : '';
+            return `
+              <div class="bracket-player-row ${winClass}">
+                <span class="seed-badge">#${p.seed || p.id}</span>
+                <span class="player-name">${p.username}</span>
+                <span class="player-score">${score}</span>
+              </div>
+            `;
+          }
+
+          const duelLink = (p1 && p2) ? `/play?opponent=${encodeURIComponent(p2.username)}&mode=3d` : '#';
+
+          return `
+            <div class="bracket-match-card ${match.status}">
+              <div class="match-card-meta">
+                <span class="match-id-badge">${match.match_id}</span>
+                <span class="match-status-pill">${match.status.toUpperCase()}</span>
+              </div>
+              <div class="match-participants">
+                ${renderPlayerRow(p1, match.score1, winnerId && p1 && p1.id === winnerId)}
+                ${renderPlayerRow(p2, match.score2, winnerId && p2 && p2.id === winnerId)}
+              </div>
+              <div class="match-card-foot">
+                ${(p1 && p2) ? `<a href="${duelLink}" class="btn-match-spectate">⚔️ Spectate / Duel</a>` : '<span style="font-size: 0.68rem; color: var(--muted-foreground);">Awaiting Prior Round</span>'}
+              </div>
+            </div>
+          `;
+        }
+
+        async function loadTournamentBracket() {
+          try {
+            const res = await fetch('/api/tournament/bracket');
+            const data = await res.json();
+            if (data.success && data.tournament) {
+              const t = data.tournament;
+              if (seasonBadge) seasonBadge.textContent = `SEASON ${t.season} CHAMPIONSHIP`;
+              if (statusTag) statusTag.textContent = `${t.status.toUpperCase()} IN PROGRESS`;
+
+              if (containerQF) containerQF.innerHTML = t.bracket.quarterfinals.map(renderMatchCard).join('');
+              if (containerSF) containerSF.innerHTML = t.bracket.semifinals.map(renderMatchCard).join('');
+              if (containerF) containerF.innerHTML = t.bracket.finals.map(renderMatchCard).join('');
+
+              if (t.status === 'completed' && t.winner) {
+                if (championBanner) championBanner.style.display = 'flex';
+                if (championName) championName.textContent = t.winner.username;
+                if (championSub) championSub.textContent = `Season ${t.season} Golden Sovereign Champion • Official ELO ${t.winner.elo}`;
+                if (btnChallengeChamp) btnChallengeChamp.href = `/play?opponent=${encodeURIComponent(t.winner.username)}&mode=3d`;
+                if (btnSimulate) btnSimulate.style.display = 'none';
+              } else {
+                if (championBanner) championBanner.style.display = 'none';
+                if (btnSimulate) {
+                  btnSimulate.style.display = 'inline-flex';
+                  if (btnSimulateText) {
+                    btnSimulateText.textContent = t.status === 'quarterfinals' ? '⚡ Simulate Quarterfinals' : (t.status === 'semifinals' ? '⚡ Simulate Semifinals' : '⚡ Simulate Grand Finals');
+                  }
+                }
+              }
+            }
+          } catch(e) {
+            console.warn('Tournament bracket load error:', e);
+          }
+        }
+
+        if (btnSimulate) {
+          btnSimulate.addEventListener('click', async () => {
+            btnSimulate.disabled = true;
+            if (btnSimulateText) btnSimulateText.textContent = 'Simulating Combat...';
+            try {
+              const res = await fetch('/api/tournament/simulate', { method: 'POST' });
+              const data = await res.json();
+              if (data.success) {
+                loadTournamentBracket();
+                window.ArchessToast?.show(`Round advanced: ${data.tournament.status.toUpperCase()}`, 'success', 3000, 'CHAMPIONSHIP');
+              }
+            } catch(e) {
+              window.ArchessToast?.show('Failed to simulate round.', 'error', 3000, 'TOURNAMENT ERROR');
+            } finally {
+              btnSimulate.disabled = false;
+            }
+          });
+        }
+
+        if (btnResetTourney) {
+          btnResetTourney.addEventListener('click', async () => {
+            try {
+              const res = await fetch('/api/tournament/reset', { method: 'POST' });
+              const data = await res.json();
+              if (data.success) {
+                loadTournamentBracket();
+                window.ArchessToast?.show('Championship tournament reset for a new season!', 'info', 3000, 'NEW SEASON');
+              }
+            } catch(e) {}
+          });
+        }
+
+        loadTournamentBracket();
+
       } catch (e) {
-        console.error(e);
+        console.error('Leaderboard initialization error:', e);
       }
     });
   </script>
-</body>
-</html>
+{% endblock %}

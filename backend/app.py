@@ -7,8 +7,10 @@ Leaderboards, Game Match Settlement, Telemetry, and Tracker-Compliant Structured
 import os
 import uuid
 import time
+import json
 from flask import Flask, request, jsonify, session, render_template, send_from_directory
 from flask_cors import CORS
+from flask_sock import Sock
 
 from backend.logger import setup_logging
 from backend.database import (
@@ -17,9 +19,13 @@ from backend.database import (
     authenticate_user,
     get_user_by_id,
     get_leaderboard,
+    get_user_stats,
+    get_match_by_id,
     record_match_result,
     log_telemetry_event
 )
+from backend.multiplayer import room_manager
+from backend.tournament import tournament_engine
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
@@ -35,6 +41,7 @@ app = Flask(
 )
 app.secret_key = os.environ.get("SECRET_KEY", "archess_tactical_secret_key_2026_x9")
 CORS(app, supports_credentials=True)
+sock = Sock(app)
 
 # Initialize database schema and seeds
 init_db()
@@ -107,6 +114,22 @@ def legacy_assets(filename):
     return send_from_directory(os.path.join(STATIC_DIR, "media"), filename)
 
 # -------------------------------------------------------------
+# PWA & Offline Engine Routes
+# -------------------------------------------------------------
+@app.route("/manifest.json")
+def serve_manifest():
+    response = send_from_directory(STATIC_DIR, "manifest.json", mimetype="application/manifest+json")
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    return response
+
+@app.route("/sw.js")
+def serve_service_worker():
+    response = send_from_directory(STATIC_DIR, "sw.js", mimetype="application/javascript")
+    response.headers["Service-Worker-Allowed"] = "/"
+    response.headers["Cache-Control"] = "no-cache"
+    return response
+
+# -------------------------------------------------------------
 # API Endpoints: Health & Observability
 # -------------------------------------------------------------
 @app.route("/api/health", methods=["GET"])
@@ -123,10 +146,16 @@ def health_check():
 # -------------------------------------------------------------
 @app.route("/api/auth/register", methods=["POST"])
 def api_register():
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"success": False, "error": "Invalid JSON payload."}), 400
+
     username = data.get("username", "")
     email = data.get("email", "")
     password = data.get("password", "")
+
+    if not isinstance(username, str) or not isinstance(email, str) or not isinstance(password, str):
+        return jsonify({"success": False, "error": "Username, email, and password must be valid strings."}), 400
 
     success, result = register_user(username, email, password)
     if success:
@@ -136,9 +165,15 @@ def api_register():
 
 @app.route("/api/auth/login", methods=["POST"])
 def api_login():
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"success": False, "error": "Invalid JSON payload."}), 400
+
     username_or_email = data.get("username_or_email") or data.get("identifier") or ""
     password = data.get("password", "")
+
+    if not isinstance(username_or_email, str) or not isinstance(password, str):
+        return jsonify({"success": False, "error": "Invalid credentials format."}), 400
 
     success, result = authenticate_user(username_or_email, password)
     if success:
@@ -166,36 +201,208 @@ def api_logout():
 # -------------------------------------------------------------
 @app.route("/api/leaderboard", methods=["GET"])
 def api_leaderboard():
-    limit = request.args.get("limit", default=25, type=int)
-    leaderboard_data = get_leaderboard(limit=min(limit, 100))
+    try:
+        raw_limit = request.args.get("limit", default=25, type=int)
+        if raw_limit is None:
+            raw_limit = 25
+        limit = max(1, min(raw_limit, 100))
+    except (ValueError, TypeError):
+        limit = 25
+
+    leaderboard_data = get_leaderboard(limit=limit)
     return jsonify({"success": True, "leaderboard": leaderboard_data}), 200
+
+@app.route("/api/users/<username>/stats", methods=["GET"])
+def api_user_stats(username):
+    stats_data = get_user_stats(username)
+    if not stats_data:
+        return jsonify({"success": False, "error": f"Player '{username}' not found."}), 404
+    return jsonify({"success": True, **stats_data}), 200
+
 
 # -------------------------------------------------------------
 # API Endpoints: Match Settlement
 # -------------------------------------------------------------
 @app.route("/api/matches/record", methods=["POST"])
 def api_record_match():
-    data = request.get_json() or {}
-    white = data.get("white_username", "Player1")
-    black = data.get("black_username", "Player2")
-    winner = data.get("winner", "draw")
-    white_dmg = data.get("white_damage", 0)
-    black_dmg = data.get("black_damage", 0)
-    turns = data.get("turns", 0)
-    duration = data.get("duration_sec", 0)
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"success": False, "error": "Invalid JSON payload."}), 400
+
+    white = str(data.get("white_username", "Player1")).strip()
+    black = str(data.get("black_username", "Player2")).strip()
+    winner = str(data.get("winner", "draw")).strip().lower()
+
+    if winner not in ["white", "black", "draw"]:
+        return jsonify({"success": False, "error": "Invalid winner value. Must be 'white', 'black', or 'draw'."}), 400
+
+    try:
+        white_dmg = max(0, int(data.get("white_damage", 0)))
+        black_dmg = max(0, int(data.get("black_damage", 0)))
+        turns = max(0, int(data.get("turns", 0)))
+        duration = max(0, int(data.get("duration_sec", 0)))
+    except (ValueError, TypeError):
+        return jsonify({"success": False, "error": "Damage, turns, and duration must be non-negative integers."}), 400
+
+    # Authorization check: prevent unauthorized tampering with third-party registered ratings
+    user_id = session.get("user_id")
+    if user_id:
+        current_user = get_user_by_id(user_id)
+        if current_user:
+            logged_username = current_user["username"]
+            is_participant = (logged_username in (white, black))
+            is_guest_match = (white in ("Player1", "Guest", "Local") or black in ("Player2", "ArChess Bot", "Bot", "Local"))
+            if not is_participant and not is_guest_match:
+                return jsonify({"success": False, "error": "Unauthorized: Cannot record match results on behalf of other players."}), 403
 
     settlement = record_match_result(white, black, winner, white_dmg, black_dmg, turns, duration)
     return jsonify({"success": True, "settlement": settlement, "message": "Match recorded and ELO updated"}), 200
+
+@app.route("/api/matches/<int:match_id>", methods=["GET"])
+def api_get_match(match_id):
+    match_data = get_match_by_id(match_id)
+    if not match_data:
+        return jsonify({"success": False, "error": f"Match #{match_id} not found."}), 404
+    return jsonify({"success": True, "match": match_data}), 200
 
 # -------------------------------------------------------------
 # API Endpoints: Telemetry Persistence
 # -------------------------------------------------------------
 @app.route("/api/telemetry", methods=["POST"])
 def api_telemetry():
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"success": False, "error": "Invalid JSON payload."}), 400
+
     corr_id = getattr(request, "corr_id", str(uuid.uuid4()))
-    event_type = data.get("event_type", "tactical_event")
+    event_type = str(data.get("event_type", "tactical_event"))[:64]
     payload = data.get("payload", {})
 
     log_telemetry_event(corr_id, event_type, payload)
     return jsonify({"success": True, "recorded": True}), 200
+
+# -------------------------------------------------------------
+# Real-Time Multiplayer Room & Matchmaking REST Endpoints
+# -------------------------------------------------------------
+@app.route("/api/multiplayer/rooms/create", methods=["POST"])
+def api_create_room():
+    data = request.get_json(silent=True) or {}
+    username = str(data.get("username", "Commander"))[:30]
+    room = room_manager.create_room(username)
+    return jsonify({"success": True, "room_id": room.room_id, "room": room.get_summary()}), 201
+
+@app.route("/api/multiplayer/rooms/<room_id>", methods=["GET"])
+def api_get_room(room_id):
+    room = room_manager.get_room(room_id.upper())
+    if not room:
+        return jsonify({"success": False, "error": f"Room {room_id} not found."}), 404
+    return jsonify({"success": True, "room": room.get_summary()}), 200
+
+@app.route("/api/multiplayer/quick_match", methods=["POST"])
+def api_quick_match():
+    data = request.get_json(silent=True) or {}
+    username = str(data.get("username", "Commander"))[:30]
+    room = room_manager.find_quick_match(username)
+    role = "black" if room.white_player and room.white_player.get("username") != username else "white"
+    return jsonify({"success": True, "room_id": room.room_id, "role": role, "room": room.get_summary()}), 200
+
+# -------------------------------------------------------------
+# Knockout Tournament Championship Bracket Endpoints (v3.1.0)
+# -------------------------------------------------------------
+@app.route("/api/tournament/bracket", methods=["GET"])
+def api_tournament_bracket():
+    return jsonify({"success": True, "tournament": tournament_engine.get_summary()}), 200
+
+@app.route("/api/tournament/simulate", methods=["POST"])
+def api_tournament_simulate():
+    summary = tournament_engine.advance_round()
+    return jsonify({"success": True, "tournament": summary, "message": f"Advanced to {summary['status'].upper()}"}), 200
+
+@app.route("/api/tournament/reset", methods=["POST"])
+def api_tournament_reset():
+    data = request.get_json(silent=True) or {}
+    season_num = data.get("season")
+    tournament_engine.initialize_season(season_num)
+    return jsonify({"success": True, "tournament": tournament_engine.get_summary(), "message": "Season reset"}), 200
+
+# -------------------------------------------------------------
+# Real-Time Multiplayer WebSocket Stream
+# -------------------------------------------------------------
+@sock.route("/ws/combat/<room_id>")
+def ws_combat(ws, room_id):
+    clean_rid = room_id.upper()
+    room = room_manager.get_room(clean_rid)
+    if not room:
+        try:
+            ws.send(json.dumps({"type": "error", "message": f"Room {clean_rid} not found."}))
+            ws.close()
+        except Exception:
+            pass
+        return
+
+    # Await initial join handshake: {"type": "join", "username": "...", "preferred_role": "..."}
+    assigned_role = "spectator"
+    username = "Anonymous"
+    try:
+        raw_initial = ws.receive(timeout=10.0)
+        if not raw_initial:
+            return
+        init_data = json.loads(raw_initial)
+        username = str(init_data.get("username", "Commander"))[:30]
+        pref_role = init_data.get("preferred_role")
+        assigned_role = room.add_connection(ws, username, pref_role)
+    except Exception:
+        return
+
+    # Broadcast room state to all room occupants
+    room.broadcast({
+        "type": "room_state",
+        "room": room.get_summary(),
+        "event": f"{username} joined as {assigned_role.upper()}"
+    })
+
+    # Direct handshake confirmation to the connected client
+    try:
+        ws.send(json.dumps({
+            "type": "handshake_ok",
+            "role": assigned_role,
+            "username": username,
+            "room_id": clean_rid,
+            "room": room.get_summary()
+        }))
+    except Exception:
+        pass
+
+    # Message listening loop
+    try:
+        while True:
+            msg_raw = ws.receive()
+            if msg_raw is None:
+                break
+            room.handle_message(ws, assigned_role, msg_raw)
+    except Exception:
+        pass
+    finally:
+        departed = room.remove_connection(ws)
+        if departed in ("white", "black"):
+            room.broadcast({
+                "type": "opponent_disconnected",
+                "role": departed,
+                "room": room.get_summary()
+            })
+
+# -------------------------------------------------------------
+# Global API Error Handlers
+# -------------------------------------------------------------
+@app.errorhandler(404)
+def handle_404_error(e):
+    if request.path.startswith("/api/"):
+        return jsonify({"success": False, "error": "API route not found"}), 404
+    return render_template("index.html"), 404
+
+@app.errorhandler(500)
+def handle_500_error(e):
+    if request.path.startswith("/api/"):
+        return jsonify({"success": False, "error": "Internal server error"}), 500
+    return render_template("index.html"), 500
+

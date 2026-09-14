@@ -1,0 +1,105 @@
+<!-- Side Expansion Menu Drawer Backdrop & Drawer -->
+<div class="side-drawer-backdrop" id="sideDrawerBackdrop" aria-hidden="true">
+  <aside class="side-expansion-drawer" id="sideExpansionDrawer" aria-label="Tactical Navigation">
+    <div class="drawer-header">
+      <a href="/" class="brand-logo" style="gap: 8px;">
+        <div class="logo-icon-wrap" style="width: 28px; height: 28px;">
+          <img src="/static/media/logo.png" alt="Archess Crest">
+        </div>
+        <div class="brand-text" style="font-size: 1.1rem;">ARC<span>H</span>ESS</div>
+      </a>
+      <button class="drawer-close-btn" id="drawerCloseBtn" aria-label="Close navigation drawer">&times;</button>
+    </div>
+
+    <ul class="drawer-nav-list">
+      <li>
+        <a href="/play" class="{% if active_page == 'play' %}active{% endif %}">
+          <span>Tactical Arena</span>
+          <span class="nav-num">01</span>
+        </a>
+      </li>
+      <li>
+        <a href="/#themesSection">
+          <span>Chess Themes</span>
+          <span class="nav-num">02</span>
+        </a>
+      </li>
+      <li>
+        <a href="/arsenal" class="{% if active_page == 'arsenal' %}active{% endif %}">
+          <span>Piece Codex</span>
+          <span class="nav-num">03</span>
+        </a>
+      </li>
+      <li>
+        <a href="/leaderboard" class="{% if active_page == 'leaderboard' %}active{% endif %}">
+          <span>Rankings &amp; Ladder</span>
+          <span class="nav-num">04</span>
+        </a>
+      </li>
+    </ul>
+
+    <!-- Design Language Selector in Drawer -->
+    <div class="drawer-design-section">
+      <span class="drawer-design-title">Design Language</span>
+      <div class="drawer-design-pills">
+        <button class="drawer-design-btn active" data-design-key="dark-premium">
+          <span>Dark Premium</span>
+          <span style="font-size: 0.7rem; color: var(--gold-light);">Obsidian</span>
+        </button>
+        <button class="drawer-design-btn" data-design-key="glassmorphism">
+          <span>Glassmorphism</span>
+          <span style="font-size: 0.7rem; color: #00f2fe;">Frosted</span>
+        </button>
+        <button class="drawer-design-btn" data-design-key="neobrutalism">
+          <span>Neobrutalism</span>
+          <span style="font-size: 0.7rem; color: #ffe600;">Bold Pop</span>
+        </button>
+        <button class="drawer-design-btn" data-design-key="minimal">
+          <span>Minimalist</span>
+          <span style="font-size: 0.7rem; color: #94a3b8;">Zen Space</span>
+        </button>
+        <button class="drawer-design-btn" data-design-key="ios-native">
+          <span>iOS Native</span>
+          <span style="font-size: 0.7rem; color: #0a84ff;">Apple HIG</span>
+        </button>
+        <button class="drawer-design-btn" data-design-key="material3">
+          <span>Material 3</span>
+          <span style="font-size: 0.7rem; color: #d0bcff;">Google M3</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="drawer-footer-actions">
+      <div class="drawer-theme-switch-row" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: rgba(255,255,255,0.04); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); margin-bottom: 6px;">
+        <span style="font-size: 0.82rem; font-weight: 600; color: var(--text-secondary);">Theme Mode</span>
+        <button class="btn-theme-mode-toggle" id="drawerThemeModeToggleBtn" title="Toggle Light / Dark Mode" aria-label="Toggle Light / Dark Mode">
+          <span class="theme-toggle-icon icon-sun" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+          </span>
+          <span class="theme-toggle-icon icon-moon" aria-hidden="true">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </span>
+        </button>
+      </div>
+      <a href="/play" class="btn-gold" style="width: 100%; justify-content: center;">
+        <span>Launch Arena</span>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </a>
+      <div style="font-size: 0.72rem; color: var(--text-muted); text-align: center; margin-top: 6px;">
+        ARCHESS Engine &bull; mr-zero0/ArChess
+      </div>
+    </div>
+  </aside>
+</div>

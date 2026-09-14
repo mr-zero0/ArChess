@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}ARCHESS | Kinetic Chess Variant — Physical Strategy Reimagined{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}Archess is a minimalist tactical chess variant. Aim, launch pieces across the board with momentum, and shatter enemy lines in real time across 2D and 3D perspectives.{% endblock %}">
+  
+  <script>
+    (function() {
+      var design = localStorage.getItem('archess_ui_design') || 'dark-premium';
+      document.documentElement.setAttribute('data-ui-design', design);
+      var mode = localStorage.getItem('archess_theme_mode');
+      if (mode === 'light' || (!mode && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches)) {
+        document.documentElement.setAttribute('data-theme', 'light');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+  <link rel="icon" type="image/png" href="/static/media/logo.png">
+  <link rel="apple-touch-icon" href="/static/media/logo.png">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#07080b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ArChess">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="/static/css/style.css?v=2.5.0">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+  <!-- Dynamic Motion Background Canvas -->
+  <canvas id="bgMotionCanvas"></canvas>
+
+  {% include "components/drawer.html" %}
+
+  {% include "components/navbar.html" %}
+
+  {% block content %}{% endblock %}
+
+  {% block footer %}
+    {% include "components/footer.html" %}
+  {% endblock %}
+
+  {% include "components/design_modal.html" %}
+
+  <!-- Core Scripts -->
+  <script src="/static/js/auth.js?v=2.3.0"></script>
+  <script src="/static/js/main.js?v=2.3.0"></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

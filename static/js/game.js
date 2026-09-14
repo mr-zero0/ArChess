@@ -9,9 +9,15 @@ class ArchessAudio {
   constructor() {
     this.ctx = null;
     this.masterGain = null;
+    this.audioBus = null;
+    this.convolver = null;
+    this.convolverGain = null;
+    this.dryGain = null;
     this.muted = localStorage.getItem('archess_audio_muted') === 'true';
     this.masterVolume = parseFloat(localStorage.getItem('archess_master_volume') || '0.8');
     this.soundProfile = localStorage.getItem('archess_sound_profile') || 'marble';
+    this.environment = localStorage.getItem('archess_acoustic_environment') || 'citadel';
+    this.suddenDeathDrone = null;
   }
 
   init() {
@@ -20,6 +26,21 @@ class ArchessAudio {
       if (AudioContext) {
         this.ctx = new AudioContext();
         this.masterGain = this.ctx.createGain();
+        this.dryGain = this.ctx.createGain();
+        this.convolver = this.ctx.createConvolver();
+        this.convolverGain = this.ctx.createGain();
+        this.audioBus = this.ctx.createGain();
+
+        // Connect acoustic routing graph
+        this.updateImpulseResponse();
+        this.audioBus.connect(this.dryGain);
+        this.audioBus.connect(this.convolver);
+        this.convolver.connect(this.convolverGain);
+
+        this.dryGain.connect(this.masterGain);
+        this.convolverGain.connect(this.masterGain);
+
+        this.updateEnvironmentGains();
         this.updateMasterGain();
         this.masterGain.connect(this.ctx.destination);
       }
@@ -37,6 +58,76 @@ class ArchessAudio {
     } catch(e) {
       this.masterGain.gain.value = effectiveVol;
     }
+  }
+
+  updateImpulseResponse() {
+    if (!this.ctx || !this.convolver) return;
+    try {
+      const sampleRate = this.ctx.sampleRate;
+      let duration, decay;
+      if (this.environment === 'wood') {
+        duration = 0.7;
+        decay = 3.8;
+      } else if (this.environment === 'void') {
+        duration = 1.2;
+        decay = 2.0;
+      } else if (this.environment === 'cathedral') {
+        duration = 3.0;
+        decay = 1.6;
+      } else { // 'citadel'
+        duration = 1.8;
+        decay = 2.4;
+      }
+      const length = Math.floor(sampleRate * duration);
+      const impulse = this.ctx.createBuffer(2, length, sampleRate);
+      const left = impulse.getChannelData(0);
+      const right = impulse.getChannelData(1);
+
+      for (let i = 0; i < length; i++) {
+        const t = i / length;
+        const envFactor = Math.pow(1 - t, decay);
+        const mod = this.environment === 'void' ? Math.sin(i * 0.08) * 0.35 + 0.65 : 1;
+        left[i] = (Math.random() * 2 - 1) * envFactor * mod;
+        right[i] = (Math.random() * 2 - 1) * envFactor * mod;
+      }
+      this.convolver.buffer = impulse;
+    } catch(e) {}
+  }
+
+  updateEnvironmentGains() {
+    if (!this.dryGain || !this.convolverGain) return;
+    let wet = 0.32;
+    let dry = 0.85;
+    if (this.environment === 'wood') {
+      wet = 0.18;
+      dry = 0.92;
+    } else if (this.environment === 'void') {
+      wet = 0.42;
+      dry = 0.72;
+    } else if (this.environment === 'cathedral') {
+      wet = 0.50;
+      dry = 0.68;
+    } else { // citadel
+      wet = 0.32;
+      dry = 0.85;
+    }
+    this.dryGain.gain.value = dry;
+    this.convolverGain.gain.value = wet;
+  }
+
+  setEnvironment(env) {
+    if (['citadel', 'wood', 'void', 'cathedral'].includes(env)) {
+      this.environment = env;
+      localStorage.setItem('archess_acoustic_environment', env);
+      if (this.ctx) {
+        this.updateImpulseResponse();
+        this.updateEnvironmentGains();
+      }
+    }
+  }
+
+  getEnvironment() {
+    return this.environment;
   }
 
   setVolume(volume) {
@@ -82,7 +173,7 @@ class ArchessAudio {
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
 
       osc.connect(gain);
-      gain.connect(this.masterGain || this.ctx.destination);
+      gain.connect(this.audioBus || this.masterGain || this.ctx.destination);
       osc.start(now);
       osc.stop(now + 0.07);
     } catch(e) {}
@@ -118,7 +209,7 @@ class ArchessAudio {
       }
 
       osc.connect(gain);
-      gain.connect(this.masterGain || this.ctx.destination);
+      gain.connect(this.audioBus || this.masterGain || this.ctx.destination);
       osc.start(now);
       osc.stop(now + 0.22);
     } catch(e) {}
@@ -130,7 +221,7 @@ class ArchessAudio {
     try {
       const now = this.ctx.currentTime;
       const vol = Math.min(0.55 * intensity, 0.75);
-      const dest = this.masterGain || this.ctx.destination;
+      const dest = this.audioBus || this.masterGain || this.ctx.destination;
 
       if (this.soundProfile === 'cyber') {
         const carrier = this.ctx.createOscillator();
@@ -235,7 +326,7 @@ class ArchessAudio {
     if (this.muted || !this.ctx) return;
     try {
       const now = this.ctx.currentTime;
-      const dest = this.masterGain || this.ctx.destination;
+      const dest = this.audioBus || this.masterGain || this.ctx.destination;
 
       if (this.soundProfile === 'cyber') {
         const osc = this.ctx.createOscillator();
@@ -295,7 +386,7 @@ class ArchessAudio {
     if (this.muted || !this.ctx) return;
     try {
       const now = this.ctx.currentTime;
-      const dest = this.masterGain || this.ctx.destination;
+      const dest = this.audioBus || this.masterGain || this.ctx.destination;
       const freqs = [196.00, 293.66, 392.00, 493.88];
       freqs.forEach((f, i) => {
         const startTime = now + i * 0.07;
@@ -316,7 +407,7 @@ class ArchessAudio {
   playVictory(isDraw = false) {
     if (this.muted || !this.ctx) return;
     try {
-      const dest = this.masterGain || this.ctx.destination;
+      const dest = this.audioBus || this.masterGain || this.ctx.destination;
       const notes = isDraw 
         ? [329.63, 392.00, 493.88, 587.33]
         : [440, 554.37, 659.25, 880, 1108.73];
@@ -336,11 +427,76 @@ class ArchessAudio {
     } catch(e) {}
   }
 
+  startSuddenDeathDrone() {
+    if (this.muted || !this.ctx || this.suddenDeathDrone) return;
+    try {
+      const now = this.ctx.currentTime;
+      const dest = this.audioBus || this.masterGain || this.ctx.destination;
+
+      // Deep oscillating sub-bass tension drone (55Hz and 110Hz harmonics)
+      const osc1 = this.ctx.createOscillator();
+      const osc2 = this.ctx.createOscillator();
+      const lfo = this.ctx.createOscillator();
+      const lfoGain = this.ctx.createGain();
+      const filter = this.ctx.createBiquadFilter();
+      const droneGain = this.ctx.createGain();
+
+      osc1.type = 'sawtooth';
+      osc1.frequency.setValueAtTime(55, now);
+
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(110.2, now);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(220, now);
+      filter.Q.setValueAtTime(4.5, now);
+
+      // LFO modulation of filter frequency (slow cinematic breathing)
+      lfo.type = 'sine';
+      lfo.frequency.setValueAtTime(0.4, now);
+      lfoGain.gain.setValueAtTime(80, now);
+      lfo.connect(lfoGain);
+      lfoGain.connect(filter.frequency);
+
+      droneGain.gain.setValueAtTime(0.001, now);
+      droneGain.gain.linearRampToValueAtTime(0.24, now + 1.8);
+
+      osc1.connect(filter);
+      osc2.connect(filter);
+      filter.connect(droneGain);
+      droneGain.connect(dest);
+
+      osc1.start(now);
+      osc2.start(now);
+      lfo.start(now);
+
+      this.suddenDeathDrone = {
+        osc1, osc2, lfo, droneGain,
+        stop: () => {
+          try {
+            const stopTime = this.ctx.currentTime;
+            droneGain.gain.linearRampToValueAtTime(0.001, stopTime + 0.6);
+            setTimeout(() => {
+              try { osc1.stop(); osc2.stop(); lfo.stop(); } catch(e) {}
+            }, 700);
+          } catch(e) {}
+        }
+      };
+    } catch(e) {}
+  }
+
+  stopSuddenDeathDrone() {
+    if (this.suddenDeathDrone) {
+      this.suddenDeathDrone.stop();
+      this.suddenDeathDrone = null;
+    }
+  }
+
   playShatter() {
     if (this.muted || !this.ctx) return;
     try {
       const now = this.ctx.currentTime;
-      const dest = this.masterGain || this.ctx.destination;
+      const dest = this.audioBus || this.masterGain || this.ctx.destination;
       const osc = this.ctx.createOscillator();
       const oscGain = this.ctx.createGain();
       osc.type = 'sawtooth';
@@ -389,6 +545,7 @@ class ArchessArena {
     this.boardTheme = localStorage.getItem('archess_board_theme') || 'midnight';
     this.pieceTheme = localStorage.getItem('archess_piece_theme') || 'classic';
     this.gameMode = 'bot'; // 'bot' (vs AI) or 'pvp' (local pass & play)
+    this.botDifficulty = localStorage.getItem('archess_bot_difficulty') || 'commander'; // 'cadet', 'commander', 'grandmaster'
     this.currentTurn = 'white'; // 'white' or 'black'
 
     // Match tracking
@@ -421,6 +578,7 @@ class ArchessArena {
 
     this.particles = [];
     this.damageNumbers = [];
+    this.shockwaves = [];
     this.screenShake = 0;
     this.simulationSettling = false;
     this.totalImpacts = 0;
@@ -429,6 +587,14 @@ class ArchessArena {
 
     // Telemetry callback
     this.onTelemetry = null;
+
+    // Real-Time Multiplayer State (v3.0.0)
+    this.multiplayerMode = false;
+    this.playerRole = null; // 'white', 'black', 'spectator'
+    this.opponentAim = null;
+    this.onAimUpdate = null;
+    this.onAimCancel = null;
+    this.onPieceLaunchBroadcast = null;
 
     this.initCanvasSize();
     this.init32Pieces();
@@ -455,6 +621,8 @@ class ArchessArena {
     if (!pw || pw < 50) pw = window.innerWidth > 900 ? 760 : Math.max(320, window.innerWidth - 40);
     if (!ph || ph < 50) ph = pw;
 
+    const oldLayout = (this.width && this.height) ? this.getBoardLayout() : null;
+
     this.width = Math.round(pw);
     this.height = Math.round(ph);
     this.dpr = window.devicePixelRatio || 1;
@@ -466,6 +634,29 @@ class ArchessArena {
       this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
     this.ctx.scale(this.dpr, this.dpr);
+
+    // Proportional coordinate scaling without resetting active game
+    if (oldLayout && oldLayout.gridSize > 0 && this.pieces && this.pieces.length > 0) {
+      const newLayout = this.getBoardLayout();
+      if (newLayout && newLayout.gridSize > 0) {
+        const scaleRatio = newLayout.gridSize / oldLayout.gridSize;
+        this.pieces.forEach(p => {
+          const relX = (p.x - oldLayout.gridOriginX) / oldLayout.gridSize;
+          const relY = (p.y - oldLayout.gridOriginY) / oldLayout.gridSize;
+          p.x = newLayout.gridOriginX + relX * newLayout.gridSize;
+          p.y = newLayout.gridOriginY + relY * newLayout.gridSize;
+
+          const origRelX = (p.originX - oldLayout.gridOriginX) / oldLayout.gridSize;
+          const origRelY = (p.originY - oldLayout.gridOriginY) / oldLayout.gridSize;
+          p.originX = newLayout.gridOriginX + origRelX * newLayout.gridSize;
+          p.originY = newLayout.gridOriginY + origRelY * newLayout.gridSize;
+
+          p.radius = Math.max(8, Math.round(p.radius * scaleRatio));
+          if (p.wallHalf) p.wallHalf = Math.round(p.wallHalf * scaleRatio);
+          if (p.wallRadius) p.wallRadius = Math.round(p.wallRadius * scaleRatio);
+        });
+      }
+    }
   }
 
   getBoardLayout() {
@@ -505,6 +696,16 @@ class ArchessArena {
   }
 
   logTelemetry(type, message) {
+    if (!this.matchEvents) this.matchEvents = [];
+    const milestoneTypes = ['LAUNCH', 'FORTRESS_WALL_HIT', 'FORTRESS_BREACH', 'SUPERNOVA', 'SOVEREIGN_STRIKE', 'SHOCKWAVE', 'ELIMINATION', 'SUDDEN_DEATH', 'SOVEREIGN_AWAKENED', 'VICTORY', 'STALEMATE'];
+    if (milestoneTypes.includes(type)) {
+      this.matchEvents.push({
+        turn: this.turns || 1,
+        type: type,
+        message: message,
+        timeSec: Math.max(0, Math.round((Date.now() - (this.matchStartTime || Date.now())) / 1000))
+      });
+    }
     if (this.onTelemetry) {
       this.onTelemetry({
         type: type,
@@ -621,16 +822,49 @@ class ArchessArena {
     }
   }
 
+  setBotDifficulty(level) {
+    if (!['cadet', 'commander', 'grandmaster'].includes(level)) return;
+    this.botDifficulty = level;
+    localStorage.setItem('archess_bot_difficulty', level);
+    this.logTelemetry('AI_TIER_CHANGE', `Bot Tactical AI set to: ${level.toUpperCase()}`);
+  }
+
+  /* -------------------------------------------------------------
+     Real-Time Multiplayer Engine Methods (v3.0.0)
+  ------------------------------------------------------------- */
+  setMultiplayerState(active, role) {
+    this.multiplayerMode = Boolean(active);
+    this.playerRole = role || null;
+    this.logTelemetry('MP_STATE', `Multiplayer mode: ${active ? 'ACTIVE' : 'INACTIVE'} (Role: ${role || 'SOLO'})`);
+  }
+
+  setOpponentAim(aimData) {
+    this.opponentAim = aimData;
+  }
+
+  clearOpponentAim() {
+    this.opponentAim = null;
+  }
+
+  executeRemoteLaunch(pieceId, vx, vy, dist) {
+    const piece = this.pieces.find(p => p.id === pieceId && !p.dead);
+    if (!piece) return;
+    this.launchPiece(piece, vx, vy, dist || 60);
+    this.clearOpponentAim();
+  }
+
   triggerBotTurn() {
     if (this.gameMode !== 'bot' || this.currentTurn !== 'black' || this.isGameOver || this.botThinking) return;
 
     this.botThinking = true;
-    this.logTelemetry('BOT_THINKING', 'ArChess Bot calculating tactical impulse trajectory...');
+    const diff = this.botDifficulty || 'commander';
+    this.logTelemetry('BOT_THINKING', `ArChess Bot [${diff.toUpperCase()}] calculating tactical trajectory...`);
 
+    const delay = diff === 'grandmaster' ? 450 : (diff === 'cadet' ? 950 : 700);
     clearTimeout(this.botTimeout);
     this.botTimeout = setTimeout(() => {
       this.executeBotTurn();
-    }, 850);
+    }, delay);
   }
 
   executeBotTurn() {
@@ -642,47 +876,150 @@ class ArchessArena {
 
     if (blackPieces.length === 0 || whitePieces.length === 0) return;
 
-    const targetWeights = { king: 200, queen: 100, rook: 65, bishop: 55, knight: 50, pawn: 25 };
+    const diff = this.botDifficulty || 'commander';
+    const targetWeights = { king: 220, queen: 110, rook: 70, bishop: 60, knight: 55, pawn: 25 };
 
-    // Select candidate shooters (prioritize offensive backline or Awakened King)
-    const offensiveShooters = blackPieces.filter(p => ['queen', 'knight', 'bishop', 'rook', 'king'].includes(p.type));
-    const candidateShooters = offensiveShooters.length > 0 ? offensiveShooters : blackPieces;
+    let shooter = null;
+    let target = null;
+    let aimAngle = 0;
+    let desiredPower = 0.75;
+    let trajectoryMode = 'DIRECT';
 
-    let candidatePairs = [];
-    candidateShooters.forEach(shooter => {
-      whitePieces.forEach(target => {
-        const dx = target.x - shooter.x;
-        const dy = target.y - shooter.y;
-        const d = Math.hypot(dx, dy);
-        const score = (targetWeights[target.type] || 25) / (d + 60);
-        candidatePairs.push({ shooter, target, d, score, dx, dy });
+    if (diff === 'cadet') {
+      // Cadet: casual aim with wide tolerance and randomized piece choice
+      shooter = blackPieces[Math.floor(Math.random() * blackPieces.length)];
+      target = whitePieces[Math.floor(Math.random() * whitePieces.length)];
+      const dx = target.x - shooter.x;
+      const dy = target.y - shooter.y;
+      aimAngle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.28;
+      desiredPower = 0.42 + Math.random() * 0.28;
+    } else if (diff === 'commander') {
+      // Commander: standard prioritized tactical direct fire
+      const offensiveShooters = blackPieces.filter(p => ['queen', 'knight', 'bishop', 'rook', 'king'].includes(p.type));
+      const candidateShooters = offensiveShooters.length > 0 ? offensiveShooters : blackPieces;
+
+      let candidatePairs = [];
+      candidateShooters.forEach(s => {
+        whitePieces.forEach(t => {
+          const dx = t.x - s.x;
+          const dy = t.y - s.y;
+          const d = Math.hypot(dx, dy);
+          const score = (targetWeights[t.type] || 25) / (d + 60);
+          candidatePairs.push({ shooter: s, target: t, d, score, dx, dy });
+        });
       });
-    });
 
-    candidatePairs.sort((a, b) => b.score - a.score);
-    const chosen = candidatePairs[0] || { shooter: blackPieces[0], target: whitePieces[0], dx: 0, dy: 1, d: 100 };
-    const shooter = chosen.shooter;
-    const target = chosen.target;
+      candidatePairs.sort((a, b) => b.score - a.score);
+      const chosen = candidatePairs[0] || { shooter: blackPieces[0], target: whitePieces[0], dx: 0, dy: 1, d: 100 };
+      shooter = chosen.shooter;
+      target = chosen.target;
 
-    // Launch angle towards target
-    const dx = target.x - shooter.x;
-    const dy = target.y - shooter.y;
-    let aimAngle = Math.atan2(dy, dx);
-    aimAngle += (Math.random() - 0.5) * 0.08;
+      const dx = target.x - shooter.x;
+      const dy = target.y - shooter.y;
+      aimAngle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.06;
+      desiredPower = Math.min(0.96, Math.max(0.52, chosen.d / (this.width * 0.7)));
+    } else {
+      // Grandmaster: Neural Evaluator with Line-Of-Sight raycasting and Cushion Bank-Shots
+      const layout = this.getBoardLayout();
+      const wallMinX = layout.gridOriginX;
+      const wallMaxX = layout.gridOriginX + layout.gridSize;
 
-    // Pull distance in opposite direction for slingshot
-    const desiredPower = Math.min(1.0, Math.max(0.48, chosen.d / (this.width * 0.7)));
+      let candidateMoves = [];
+      blackPieces.forEach(s => {
+        whitePieces.forEach(t => {
+          const directDx = t.x - s.x;
+          const directDy = t.y - s.y;
+          const directDist = Math.hypot(directDx, directDy);
+
+          // Raycast check for obstacles between s and t
+          let isDirectBlocked = false;
+          for (let p of this.pieces) {
+            if (p === s || p === t || p.dead) continue;
+            const vX = directDx / directDist;
+            const vY = directDy / directDist;
+            const proj = (p.x - s.x) * vX + (p.y - s.y) * vY;
+            if (proj > s.radius && proj < directDist - t.radius) {
+              const perpDist = Math.abs((p.x - s.x) * -vY + (p.y - s.y) * vX);
+              if (perpDist < (s.radius + p.radius) * 0.95) {
+                isDirectBlocked = true;
+                break;
+              }
+            }
+          }
+
+          const baseScore = (targetWeights[t.type] || 30) * 1.5 - directDist * 0.12;
+
+          if (!isDirectBlocked) {
+            candidateMoves.push({
+              shooter: s,
+              target: t,
+              angle: Math.atan2(directDy, directDx),
+              power: Math.min(1.0, Math.max(0.72, (directDist / (this.width * 0.6)) * 1.1)),
+              score: baseScore + 50,
+              mode: 'DIRECT'
+            });
+          } else {
+            // Calculate bank-shot cushion rebounds off left & right walls
+            const mirrorLeftX = 2 * wallMinX - t.x;
+            const bankAngleLeft = Math.atan2(t.y - s.y, mirrorLeftX - s.x);
+            const tWall = (wallMinX - s.x) / Math.cos(bankAngleLeft);
+            if (tWall > 0) {
+              candidateMoves.push({
+                shooter: s,
+                target: t,
+                angle: bankAngleLeft,
+                power: 0.92,
+                score: baseScore + 25,
+                mode: 'BANK_SHOT_LEFT'
+              });
+            }
+
+            const mirrorRightX = 2 * wallMaxX - t.x;
+            const bankAngleRight = Math.atan2(t.y - s.y, mirrorRightX - s.x);
+            const tWallR = (wallMaxX - s.x) / Math.cos(bankAngleRight);
+            if (tWallR > 0) {
+              candidateMoves.push({
+                shooter: s,
+                target: t,
+                angle: bankAngleRight,
+                power: 0.92,
+                score: baseScore + 25,
+                mode: 'BANK_SHOT_RIGHT'
+              });
+            }
+          }
+        });
+      });
+
+      candidateMoves.sort((a, b) => b.score - a.score);
+      const best = candidateMoves[0] || {
+        shooter: blackPieces[0],
+        target: whitePieces[0],
+        angle: Math.atan2(whitePieces[0].y - blackPieces[0].y, whitePieces[0].x - blackPieces[0].x),
+        power: 0.85,
+        mode: 'DIRECT'
+      };
+
+      shooter = best.shooter;
+      target = best.target;
+      aimAngle = best.angle;
+      desiredPower = best.power;
+      trajectoryMode = best.mode;
+    }
+
+    this.logTelemetry('BOT_AIM', `[AI Tier: ${diff.toUpperCase()}] Aiming ${shooter.type.toUpperCase()} -> ${target.type.toUpperCase()} (${trajectoryMode}, ${Math.round(desiredPower * 100)}% power)`);
+
     const pullDist = desiredPower * this.maxPullDistance;
     const pullX = Math.cos(aimAngle) * pullDist;
     const pullY = Math.sin(aimAngle) * pullDist;
 
-    // Show visual aim preview briefly so user sees the bot aiming
     this.selectedPiece = shooter;
     this.keyboardAiming = true;
     this.keyboardAimAngle = aimAngle;
     this.keyboardAimPower = desiredPower;
 
-    setTimeout(() => {
+    clearTimeout(this.botAimTimeout);
+    this.botAimTimeout = setTimeout(() => {
       if (this.currentTurn === 'black' && !this.isGameOver) {
         this.launchPiece(shooter, pullX, pullY, pullDist);
       }
@@ -696,12 +1033,13 @@ class ArchessArena {
     this.isGameOver = true;
     this.winner = king.team === 'white' ? 'black' : 'white';
 
+    this.audio.stopSuddenDeathDrone();
     this.audio.playVictory();
     this.logTelemetry('VICTORY', `CHECKMATE! ${this.winner.toUpperCase()} ARMY WINS THE MATCH!`);
 
     const durationSec = Math.max(1, Math.round((Date.now() - this.matchStartTime) / 1000));
     const whiteUser = (window.ArchessAuth && window.ArchessAuth.currentUser) ? window.ArchessAuth.currentUser.username : 'Player1';
-    const blackUser = this.gameMode === 'bot' ? 'ArChess Bot' : 'Player2';
+    const blackUser = this.opponentName || (this.gameMode === 'bot' ? 'ArChess Bot' : 'Player2');
 
     const payload = {
       white_username: whiteUser,
@@ -743,12 +1081,13 @@ class ArchessArena {
     this.isGameOver = true;
     this.winner = 'draw';
 
+    this.audio.stopSuddenDeathDrone();
     this.audio.playVictory();
     this.logTelemetry('STALEMATE', `MATCH DRAWN — Insufficient kinetic material! Both Citadel Kings endure with no remaining vanguard pieces.`);
 
     const durationSec = Math.max(1, Math.round((Date.now() - this.matchStartTime) / 1000));
     const whiteUser = (window.ArchessAuth && window.ArchessAuth.currentUser) ? window.ArchessAuth.currentUser.username : 'Player1';
-    const blackUser = this.gameMode === 'bot' ? 'ArChess Bot' : 'Player2';
+    const blackUser = this.opponentName || (this.gameMode === 'bot' ? 'ArChess Bot' : 'Player2');
 
     const payload = {
       white_username: whiteUser,
@@ -823,6 +1162,9 @@ class ArchessArena {
   }
 
   showVictoryModal(winner, payload, settlement) {
+    if (settlement && settlement.match_id) {
+      window.lastSettledMatchId = settlement.match_id;
+    }
     const modal = document.getElementById('victoryModal');
     if (!modal) return;
 
@@ -907,6 +1249,32 @@ class ArchessArena {
       }
     }
 
+    // 4. Render Tactical Combat Timeline
+    const timelineList = document.getElementById('timelineEventsList');
+    if (timelineList && this.matchEvents) {
+      if (this.matchEvents.length === 0) {
+        timelineList.innerHTML = '<div style="color: var(--text-muted); font-size: 0.78rem; text-align: center; padding: 10px;">No critical tactical events recorded.</div>';
+      } else {
+        timelineList.innerHTML = this.matchEvents.slice(-15).map(evt => {
+          let badgeCls = 'badge-cyan';
+          if (evt.type === 'ELIMINATION') badgeCls = 'badge-red';
+          else if (evt.type.includes('BREACH') || evt.type.includes('WALL')) badgeCls = 'badge-orange';
+          else if (evt.type.includes('SOVEREIGN') || evt.type.includes('SUPERNOVA')) badgeCls = 'badge-gold';
+          else if (evt.type === 'VICTORY') badgeCls = 'badge-green';
+          else if (evt.type === 'STALEMATE') badgeCls = 'badge-amber';
+
+          return `
+            <div class="timeline-event-item">
+              <span class="timeline-event-time">${evt.timeSec}s</span>
+              <span class="timeline-event-turn">T${evt.turn}</span>
+              <span class="timeline-event-badge ${badgeCls}">${evt.type}</span>
+              <span class="timeline-event-desc">${evt.message}</span>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
     setTimeout(() => {
       modal.classList.add('active');
     }, 1200);
@@ -917,6 +1285,8 @@ class ArchessArena {
     this.capturedPieces = { white: [], black: [] };
     this.particles = [];
     this.damageNumbers = [];
+    this.shockwaves = [];
+    this.matchEvents = [];
     this.currentTurn = 'white';
     this.selectedPiece = null;
     this.whiteDamage = 0;
@@ -928,6 +1298,7 @@ class ArchessArena {
     this.simulationSettling = false;
     this.turnStartTime = performance.now();
     this.suddenDeathMode = false;
+    this.audio.stopSuddenDeathDrone();
     this.pieceDamageDealt = {};
     this.pieceKills = {};
     const timerRing = document.getElementById('turnTimerRing');
@@ -936,7 +1307,11 @@ class ArchessArena {
       timerRing.setAttribute('class', 'turn-timer-circle');
     }
     clearTimeout(this.botTimeout);
+    clearTimeout(this.botAimTimeout);
+    this.botTimeout = null;
+    this.botAimTimeout = null;
     this.botThinking = false;
+    this.keyboardAiming = false;
     this.updateHUD();
     if (this.onResetArena) {
       this.onResetArena();
@@ -1021,6 +1396,13 @@ class ArchessArena {
     const handlePointerDown = (e) => {
       if (this.isGameOver) return;
       if (this.gameMode === 'bot' && this.currentTurn === 'black') return;
+      if (this.multiplayerMode) {
+        if (this.playerRole === 'spectator') return;
+        if (this.playerRole && this.playerRole !== this.currentTurn) {
+          window.ArchessToast?.show("Waiting for opponent's turn", 'warning', 1800, 'MULTIPLAYER');
+          return;
+        }
+      }
       this.audio.init();
 
       const screenPos = getPointerScreenPos(e);
@@ -1085,6 +1467,17 @@ class ArchessArena {
           this.audio.playTension(powerRatio);
           lastTensionSoundTime = now;
         }
+        if (this.multiplayerMode && typeof this.onAimUpdate === 'function') {
+          if (!this._lastAimEmit || now - this._lastAimEmit > 33) {
+            this._lastAimEmit = now;
+            this.onAimUpdate({
+              pieceId: this.selectedPiece.id,
+              pullScreenX,
+              pullScreenY,
+              powerRatio
+            });
+          }
+        }
         if (e.cancelable) e.preventDefault();
       }
     };
@@ -1099,6 +1492,10 @@ class ArchessArena {
 
       if (screenDist > 14) {
         const clampedDist = Math.min(screenDist, this.maxPullDistance);
+        const powerRatio = clampedDist / this.maxPullDistance;
+        let launchVx = pullScreenX;
+        let launchVy = pullScreenY;
+
         if (this.renderMode === '2d') {
           this.launchPiece(this.selectedPiece, pullScreenX, pullScreenY, clampedDist);
         } else {
@@ -1106,13 +1503,27 @@ class ArchessArena {
           const layout = this.getBoardLayout();
           const centerY = this.height / 2;
           const ny = (this.selectedPiece.y - centerY) / (layout.boardSize / 2);
-          const depth = 1 + ny * 0.20;
-          const pitch = 0.58;
+          const depth = 1 + ny * 0.18;
+          const pitch = 0.68;
           const scale = 0.86;
 
-          const pullBoardX = (pullScreenX / screenDist) / (scale * depth) * clampedDist;
-          const pullBoardY = (pullScreenY / screenDist) / (scale * pitch) * clampedDist;
-          this.launchPiece(this.selectedPiece, pullBoardX, pullBoardY, clampedDist);
+          launchVx = (pullScreenX / screenDist) / (scale * depth) * clampedDist;
+          launchVy = (pullScreenY / screenDist) / (scale * pitch) * clampedDist;
+          this.launchPiece(this.selectedPiece, launchVx, launchVy, clampedDist);
+        }
+
+        if (this.multiplayerMode && typeof this.onPieceLaunchBroadcast === 'function') {
+          this.onPieceLaunchBroadcast({
+            pieceId: this.selectedPiece.id,
+            vx: launchVx,
+            vy: launchVy,
+            dist: clampedDist,
+            powerRatio
+          });
+        }
+      } else {
+        if (this.multiplayerMode && typeof this.onAimCancel === 'function') {
+          this.onAimCancel();
         }
       }
       this.selectedPiece = null;
@@ -1128,6 +1539,11 @@ class ArchessArena {
 
     // Keyboard Gameplay Listeners (Tracker Parity)
     window.addEventListener('keydown', (e) => {
+      // Do not intercept keystrokes when typing into input fields or modals
+      const targetTag = e.target ? (e.target.tagName || '').toUpperCase() : '';
+      if (targetTag === 'INPUT' || targetTag === 'TEXTAREA' || (e.target && e.target.isContentEditable)) {
+        return;
+      }
       if (['Tab', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'Enter', 'Escape'].includes(e.code)) {
         this.handleKeyboardControl(e);
       }
@@ -1135,6 +1551,7 @@ class ArchessArena {
   }
 
   handleKeyboardControl(e) {
+    if (this.audio) this.audio.init();
     if (this.isGameOver) return;
     if (this.gameMode === 'bot' && this.currentTurn === 'black') return;
     const livingActivePieces = this.pieces.filter(p => !p.dead && p.team === this.currentTurn && (p.type !== 'king' || p.awakened));
@@ -1201,8 +1618,21 @@ class ArchessArena {
 
     this.audio.playLaunch(powerRatio);
     this.spawnLaunchSparks(piece.x, piece.y, angle);
+    this.spawnShockwave(piece.x, piece.y, piece.team === 'white' ? '#ffd700' : '#ff4757', 36, 2.5);
 
     this.logTelemetry('LAUNCH', `Piece: ${piece.team.toUpperCase()}_${piece.type.toUpperCase()} | Power: ${Math.round(powerRatio * 100)}% | Speed: ${Math.hypot(piece.vx, piece.vy).toFixed(1)}`);
+  }
+
+  spawnShockwave(x, y, color = '#ffd700', maxRadius = 55, lineWidth = 3.5) {
+    this.shockwaves.push({
+      x,
+      y,
+      radius: 4,
+      maxRadius,
+      color,
+      alpha: 1,
+      lineWidth
+    });
   }
 
   spawnLaunchSparks(x, y, angle) {
@@ -1423,6 +1853,7 @@ class ArchessArena {
 
                 this.audio.playImpact(hitSpeed / 4.5);
                 this.spawnImpactParticles(attacker.x, attacker.y, 18, false, ['#00e1d9', '#67e8f9', '#ffd700', '#ffffff']);
+                this.spawnShockwave(attacker.x, attacker.y, '#00e1d9', 46, 3);
                 this.addDamageNumber(king.x, king.y - half, wallDamage, false, '#00e1d9', `WALL -${wallDamage}`);
                 this.addDamageNumber(attacker.x, attacker.y, recoilDmg, false, '#f87171', `RECOIL -${recoilDmg}`);
 
@@ -1434,6 +1865,7 @@ class ArchessArena {
                   attacker.hp = 0;
                   this.audio.playShatter();
                   this.spawnImpactParticles(attacker.x, attacker.y, 28, true);
+                  this.spawnShockwave(attacker.x, attacker.y, '#f87171', 65, 4);
                   this.addDamageNumber(attacker.x, attacker.y, 0, true, '#ff3b4e', 'SHATTERED!');
                   if (!this.capturedPieces) this.capturedPieces = { white: [], black: [] };
                   this.capturedPieces[attacker.team].push(attacker.type);
@@ -1448,6 +1880,7 @@ class ArchessArena {
                   king.wallHp = 0;
                   this.audio.playShatter();
                   this.spawnImpactParticles(king.x, king.y, 55, true, ['#00e1d9', '#ffd700', '#ff3b4e', '#ffffff']);
+                  this.spawnShockwave(king.x, king.y, '#ff3b4e', 90, 5);
                   this.screenShake = 16;
                   this.addDamageNumber(king.x, king.y - king.radius * 1.5, 0, true, '#ff3b4e', 'WALL BREACHED!');
                   this.logTelemetry('FORTRESS_BREACH', `[CRITICAL BREACH] ${king.team.toUpperCase()} King's Fortress Wall has collapsed! Citadel is now vulnerable!`);
@@ -1641,6 +2074,7 @@ class ArchessArena {
                 this.addDamageNumber(striker.x, striker.y, recoilDamage, false, '#f87171', `RECOIL -${recoilDamage}`);
 
                 this.screenShake = isCritical ? 7 : 3;
+                this.spawnShockwave(cx, cy, isCritical ? '#ffd700' : (striker.team === 'white' ? '#ffd700' : '#ff4757'), isCritical ? 65 : 42, isCritical ? 4 : 2.5);
                 this.totalImpacts++;
                 this.audio.playImpact(relativeSpeed / 6);
 
@@ -1656,6 +2090,7 @@ class ArchessArena {
                       this.pieceKills[sKey] = (this.pieceKills[sKey] || 0) + 1;
                     }
                     this.spawnImpactParticles(p.x, p.y, 35, true);
+                    this.spawnShockwave(p.x, p.y, p.team === 'white' ? '#ffd700' : '#ff3b4e', 75, 4.5);
                     this.audio.playShatter();
                     if (!this.capturedPieces) this.capturedPieces = { white: [], black: [] };
                     this.capturedPieces[p.team].push(p.type);
@@ -1735,6 +2170,17 @@ class ArchessArena {
       if (d.alpha <= 0) this.damageNumbers.splice(i, 1);
     }
 
+    // Shockwaves expansion and decay
+    for (let i = this.shockwaves.length - 1; i >= 0; i--) {
+      const sw = this.shockwaves[i];
+      sw.radius += (sw.maxRadius - sw.radius) * 0.18 + 1.2;
+      sw.alpha -= dt * 2.2;
+      sw.lineWidth = Math.max(0.6, sw.lineWidth * 0.94);
+      if (sw.alpha <= 0 || sw.radius >= sw.maxRadius) {
+        this.shockwaves.splice(i, 1);
+      }
+    }
+
     // Screen Shake decay
     if (this.screenShake > 0) {
       this.screenShake -= dt * 25;
@@ -1757,9 +2203,10 @@ class ArchessArena {
 
     if (whiteVanguard === 0 && blackVanguard === 0 && !this.isGameOver && !this.suddenDeathMode) {
       this.suddenDeathMode = true;
+      this.audio.startSuddenDeathDrone();
       this.logTelemetry('SUDDEN_DEATH', '👑 SOVEREIGN SHOWDOWN! Both armies depleted — Kings enter Sudden Death Duel!');
       if (window.ArchessToast) {
-        window.ArchessToast.warning('👑 SOVEREIGN SHOWDOWN: SUDDEN DEATH! Both Kings mobile for the final duel!');
+        window.ArchessToast.show('👑 SOVEREIGN SHOWDOWN: SUDDEN DEATH! Both Kings mobile for the final duel!', 'warning', 4500, 'SUDDEN DEATH');
       }
     }
   }
@@ -2227,6 +2674,50 @@ class ArchessArena {
     ctx.shadowBlur = 0;
 
     ctx.restore();
+
+    // 4. Opponent Real-Time Aim Preview (Multiplayer Mode)
+    if (this.opponentAim && this.opponentAim.pieceId) {
+      const oppPiece = this.pieces.find(p => p.id === this.opponentAim.pieceId && !p.dead);
+      if (oppPiece) {
+        const oppDist = Math.hypot(this.opponentAim.pullScreenX || 0, this.opponentAim.pullScreenY || 0);
+        if (oppDist >= 10) {
+          const oppDirX = (this.opponentAim.pullScreenX || 0) / oppDist;
+          const oppDirY = (this.opponentAim.pullScreenY || 0) / oppDist;
+          const oppPower = this.opponentAim.powerRatio || Math.min(1.0, oppDist / this.maxPullDistance);
+          const oppElevation = this.renderMode === '3d' ? 26 : 0;
+          const oppStart = this.toScreen(oppPiece.x, oppPiece.y, oppElevation);
+          const oppLen = 120 + oppPower * 170;
+          const oppEnd = {
+            x: oppStart.x + oppDirX * oppLen,
+            y: oppStart.y + oppDirY * oppLen
+          };
+
+          const oppColor = oppPiece.team === 'white' ? '#ffd700' : '#ff4757';
+          ctx.save();
+          ctx.beginPath();
+          ctx.setLineDash([7, 9]);
+          ctx.lineDashOffset = -(performance.now() * 0.05) % 16;
+          ctx.lineWidth = 3.5 + oppPower * 2.0;
+          ctx.strokeStyle = oppColor;
+          ctx.shadowColor = oppColor;
+          ctx.shadowBlur = 14;
+          ctx.moveTo(oppStart.x, oppStart.y);
+          ctx.lineTo(oppEnd.x, oppEnd.y);
+          ctx.stroke();
+
+          // Opponent Arrowhead
+          const oppAngle = Math.atan2(oppDirY, oppDirX);
+          ctx.beginPath();
+          ctx.fillStyle = oppColor;
+          ctx.moveTo(oppEnd.x, oppEnd.y);
+          ctx.lineTo(oppEnd.x - 14 * Math.cos(oppAngle - 0.4), oppEnd.y - 14 * Math.sin(oppAngle - 0.4));
+          ctx.lineTo(oppEnd.x - 14 * Math.cos(oppAngle + 0.4), oppEnd.y - 14 * Math.sin(oppAngle + 0.4));
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+    }
   }
 
   /* -------------------------------------------------------------
@@ -2924,6 +3415,25 @@ class ArchessArena {
   renderVFX() {
     const ctx = this.ctx;
 
+    // Expanding Holographic Shockwaves
+    this.shockwaves.forEach((sw) => {
+      const pos = this.toScreen(sw.x, sw.y, this.renderMode === '3d' ? 4 : 0);
+      ctx.save();
+      ctx.beginPath();
+      if (this.renderMode === '3d') {
+        ctx.ellipse(pos.x, pos.y, sw.radius * 1.08, sw.radius * 0.48, 0, 0, Math.PI * 2);
+      } else {
+        ctx.arc(pos.x, pos.y, sw.radius, 0, Math.PI * 2);
+      }
+      ctx.strokeStyle = sw.color;
+      ctx.globalAlpha = Math.max(0, sw.alpha);
+      ctx.lineWidth = sw.lineWidth;
+      ctx.shadowColor = sw.color;
+      ctx.shadowBlur = 12;
+      ctx.stroke();
+      ctx.restore();
+    });
+
     // Particles
     this.particles.forEach((p) => {
       const pos = this.toScreen(p.x, p.y, this.renderMode === '3d' ? 8 : 0);
@@ -2952,7 +3462,7 @@ class ArchessArena {
 
   loop(timestamp) {
     if (!this.lastTime) this.lastTime = timestamp;
-    const dt = Math.min((timestamp - this.lastTime) / 1000, 0.1);
+    const elapsed = Math.min((timestamp - this.lastTime) / 1000, 0.1);
     this.lastTime = timestamp;
 
     try {
@@ -2961,9 +3471,9 @@ class ArchessArena {
         const ring = document.getElementById('turnTimerRing');
         if (ring) {
           if (!this.turnStartTime) this.turnStartTime = timestamp;
-          const elapsed = (timestamp - this.turnStartTime) / 1000;
+          const elapsedTurn = (timestamp - this.turnStartTime) / 1000;
           const budget = this.turnBudget || 45;
-          const remaining = Math.max(0, budget - elapsed);
+          const remaining = Math.max(0, budget - elapsedTurn);
           const frac = remaining / budget;
           ring.style.strokeDashoffset = (97.4 * (1 - frac)) + 'px';
           if (remaining <= 5) {
@@ -2983,7 +3493,19 @@ class ArchessArena {
         this.ctx.translate(sx, sy);
       }
 
-      this.updatePhysics(dt);
+      // Fixed-timestep 60Hz physics accumulator (deterministic simulation across 30Hz - 144Hz)
+      this.physicsAccumulator = (this.physicsAccumulator || 0) + elapsed;
+      const fixedDt = 1 / 60;
+      let subSteps = 0;
+      while (this.physicsAccumulator >= fixedDt && subSteps < 5) {
+        this.updatePhysics(fixedDt);
+        this.physicsAccumulator -= fixedDt;
+        subSteps++;
+      }
+      if (subSteps >= 5) {
+        this.physicsAccumulator = 0;
+      }
+
       this.renderBoard();
       this.renderTrajectory();
 

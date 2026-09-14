@@ -1,0 +1,73 @@
+<!-- Slim Minimalist Navigation Header -->
+<header class="site-header">
+  <div class="container nav-container">
+    <a href="/" class="brand-logo" aria-label="Archess Home">
+      <div class="logo-icon-wrap">
+        <img src="/static/media/logo.png" alt="Archess Logo">
+      </div>
+      <div class="brand-text">ARC<span>H</span>ESS</div>
+    </a>
+
+    <ul class="nav-links">
+      <li><a href="/" class="{% if active_page == 'home' %}active{% endif %}">Overview</a></li>
+      <li><a href="/play" class="{% if active_page == 'play' %}active{% endif %}">Arena</a></li>
+      <li><a href="/#themesSection">Themes</a></li>
+      <li><a href="/arsenal" class="{% if active_page == 'arsenal' %}active{% endif %}">Pieces</a></li>
+      <li><a href="/leaderboard" class="{% if active_page == 'leaderboard' %}active{% endif %}">Rankings</a></li>
+    </ul>
+
+    <div class="nav-actions">
+      <!-- UI Design Language Selector Trigger -->
+      <button class="btn-nav-design-toggle" id="navDesignToggleBtn" title="Switch UI Design Language" aria-label="Switch UI Design Language">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle>
+          <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle>
+          <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle>
+          <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle>
+          <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path>
+        </svg>
+        <span>Design</span>
+      </button>
+
+      <!-- UIverse Theme Mode Toggle (Dark / Light) -->
+      <button class="btn-theme-mode-toggle" id="themeModeToggleBtn" title="Toggle Light / Dark Mode" aria-label="Toggle Light / Dark Mode">
+        <span class="theme-toggle-icon icon-sun" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        </span>
+        <span class="theme-toggle-icon icon-moon" aria-hidden="true">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </span>
+      </button>
+
+      <button class="btn-audio-toggle" id="audioToggleBtn" title="Toggle Ambient Audio" aria-label="Toggle Audio">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+        </svg>
+      </button>
+
+      <!-- Side Expansion Menu Trigger Button -->
+      <button class="btn-side-menu-toggle" id="sideMenuToggleBtn" aria-label="Open Navigation Menu">
+        <span class="menu-icon-bars">
+          <span class="bar bar-1"></span>
+          <span class="bar bar-2"></span>
+        </span>
+        <span>Menu</span>
+      </button>
+
+      <div id="navAuthContainer"></div>
+    </div>
+  </div>
+</header>

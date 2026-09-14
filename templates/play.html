@@ -1,166 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ARCHESS | Play Tactical Chess Arena — 32-Piece Physics</title>
-  <script>
-    (function() {
-      var design = localStorage.getItem('archess_ui_design') || 'dark-premium';
-      document.documentElement.setAttribute('data-ui-design', design);
-      var mode = localStorage.getItem('archess_theme_mode');
-      if (mode === 'light' || (!mode && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches)) {
-        document.documentElement.setAttribute('data-theme', 'light');
-      } else {
-        document.documentElement.setAttribute('data-theme', 'dark');
-      }
-    })();
-  </script>
-  <link rel="icon" type="image/png" href="/static/media/logo.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
-  <link rel="stylesheet" href="/static/css/style.css?v=2.5.0">
-</head>
-<body>
+{% set active_page = "play" %}
+{% extends "base.html" %}
 
-  <!-- Side Expansion Menu Drawer Backdrop & Drawer -->
-  <div class="side-drawer-backdrop" id="sideDrawerBackdrop" aria-hidden="true">
-    <aside class="side-expansion-drawer" id="sideExpansionDrawer" aria-label="Tactical Navigation">
-      <div class="drawer-header">
-        <a href="/" class="brand-logo" style="gap: 8px;">
-          <div class="logo-icon-wrap" style="width: 28px; height: 28px;">
-            <img src="/static/media/logo.png" alt="Archess Crest">
-          </div>
-          <div class="brand-text" style="font-size: 1.1rem;">ARC<span>H</span>ESS</div>
-        </a>
-        <button class="drawer-close-btn" id="drawerCloseBtn" aria-label="Close navigation drawer">&times;</button>
-      </div>
+{% block title %}ARCHESS | Play Tactical Chess Arena — 32-Piece Physics{% endblock %}
 
-      <ul class="drawer-nav-list">
-        <li><a href="/play"><span>Tactical Arena</span> <span class="nav-num">01</span></a></li>
-        <li><a href="/#themesSection"><span>Chess Themes</span> <span class="nav-num">02</span></a></li>
-        <li><a href="/arsenal"><span>Piece Codex</span> <span class="nav-num">03</span></a></li>
-        <li><a href="/leaderboard"><span>Rankings & Ladder</span> <span class="nav-num">04</span></a></li>
-      </ul>
+{% block meta_description %}Launch into the Archess arena. Slingshot kinetic pieces across 3D and 2D physics battlegrounds or classic FIDE rules.{% endblock %}
 
-      <!-- Design Language Selector in Drawer -->
-      <div class="drawer-design-section">
-        <span class="drawer-design-title">Design Language</span>
-        <div class="drawer-design-pills">
-          <button class="drawer-design-btn active" data-design-key="dark-premium">
-            <span>Dark Premium</span>
-            <span style="font-size: 0.7rem; color: var(--gold-light);">Obsidian</span>
-          </button>
-          <button class="drawer-design-btn" data-design-key="glassmorphism">
-            <span>Glassmorphism</span>
-            <span style="font-size: 0.7rem; color: #00f2fe;">Frosted</span>
-          </button>
-          <button class="drawer-design-btn" data-design-key="neobrutalism">
-            <span>Neobrutalism</span>
-            <span style="font-size: 0.7rem; color: #ffe600;">Bold Pop</span>
-          </button>
-          <button class="drawer-design-btn" data-design-key="minimal">
-            <span>Minimalist</span>
-            <span style="font-size: 0.7rem; color: #94a3b8;">Zen Space</span>
-          </button>
-          <button class="drawer-design-btn" data-design-key="ios-native">
-            <span>iOS Native</span>
-            <span style="font-size: 0.7rem; color: #0a84ff;">Apple HIG</span>
-          </button>
-          <button class="drawer-design-btn" data-design-key="material3">
-            <span>Material 3</span>
-            <span style="font-size: 0.7rem; color: #d0bcff;">Google M3</span>
-          </button>
-        </div>
-      </div>
-
-      <div class="drawer-footer-actions">
-        <a href="/play" class="btn-gold" style="width: 100%; justify-content: center;">
-          <span>Launch Arena</span>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        </a>
-        <div style="font-size: 0.72rem; color: var(--text-muted); text-align: center; margin-top: 6px;">
-          ARCHESS Engine &bull; mr-zero0/ArChess
-        </div>
-      </div>
-    </aside>
-  </div>
-
-  <!-- Navigation Header with Auth State -->
-  <header class="site-header">
-    <div class="container nav-container">
-      <a href="/" class="brand-logo" aria-label="Archess Home">
-        <div class="logo-icon-wrap">
-          <img src="/static/media/logo.png" alt="Archess Crest">
-        </div>
-        <div class="brand-text">ARC<span>H</span>ESS</div>
-      </a>
-
-      <ul class="nav-links">
-        <li><a href="/">Home</a></li>
-        <li><a href="/play" class="active">Play Arena</a></li>
-        <li><a href="/#themesSection">Themes</a></li>
-        <li><a href="/arsenal">Piece Codex</a></li>
-        <li><a href="/leaderboard">Leaderboard</a></li>
-      </ul>
-
-      <div class="nav-actions">
-        <!-- UI Design Language Selector Trigger -->
-        <button class="btn-nav-design-toggle" id="navDesignToggleBtn" title="Switch UI Design Language" aria-label="Switch UI Design Language">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle>
-            <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle>
-            <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle>
-            <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle>
-            <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path>
-          </svg>
-          <span>Design</span>
-        </button>
-
-        <!-- UIverse Theme Mode Toggle (Dark / Light) -->
-        <button class="btn-theme-mode-toggle" id="themeModeToggleBtn" title="Toggle Light / Dark Mode" aria-label="Toggle Light / Dark Mode">
-          <span class="theme-toggle-icon icon-sun" aria-hidden="true">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="5"></circle>
-              <line x1="12" y1="1" x2="12" y2="3"></line>
-              <line x1="12" y1="21" x2="12" y2="23"></line>
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-              <line x1="1" y1="12" x2="3" y2="12"></line>
-              <line x1="21" y1="12" x2="23" y2="12"></line>
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-            </svg>
-          </span>
-          <span class="theme-toggle-icon icon-moon" aria-hidden="true">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-            </svg>
-          </span>
-        </button>
-
-        <button class="btn-audio-toggle" id="audioToggleBtn" title="Toggle Sound FX">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
-          </svg>
-        </button>
-
-        <!-- Side Expansion Menu Trigger Button -->
-        <button class="btn-side-menu-toggle" id="sideMenuToggleBtn" aria-label="Open Navigation Menu">
-          <span class="menu-icon-bars">
-            <span class="bar bar-1"></span>
-            <span class="bar bar-2"></span>
-          </span>
-          <span>Menu</span>
-        </button>
-
-        <div id="navAuthContainer"></div>
-      </div>
-    </div>
-  </header>
-
+{% block content %}
   <main class="play-page-container container">
     
     <!-- Arena Control Toolbar -->
@@ -172,6 +17,16 @@
         <div class="theme-picker-group">
           <button class="theme-pill-btn game-mode-btn active" id="modeVsBotBtn" data-mode="bot">vs Bot AI</button>
           <button class="theme-pill-btn game-mode-btn" id="modePvpBtn" data-mode="pvp">Pass &amp; Play</button>
+        </div>
+      </div>
+
+      <!-- Bot Tactical AI Tier Selector -->
+      <div class="arena-toolbar-group" id="botDifficultyToolbarGroup">
+        <span>AI Tier:</span>
+        <div class="theme-picker-group">
+          <button class="theme-pill-btn bot-difficulty-btn" data-diff="cadet" data-bot-diff="cadet" title="Cadet: Casual recruit level with wider aim tolerance">Cadet</button>
+          <button class="theme-pill-btn bot-difficulty-btn active" data-diff="commander" data-bot-diff="commander" title="Commander: Standard tactical targeting">Commander</button>
+          <button class="theme-pill-btn bot-difficulty-btn" data-diff="grandmaster" data-bot-diff="grandmaster" title="Grandmaster: Predictive bank-shot neural AI">Grandmaster</button>
         </div>
       </div>
 
@@ -192,11 +47,19 @@
           <button class="theme-pill-btn theme-board-btn active" data-theme="midnight" title="Midnight Obsidian">Midnight</button>
           <button class="theme-pill-btn theme-board-btn" data-theme="woodland" title="Woodland Walnut">Woodland</button>
           <button class="theme-pill-btn theme-board-btn" data-theme="emerald" title="Tournament Emerald">Emerald</button>
-          <button class="theme-pill-btn btn-customizer-trigger" id="btnOpenAppearanceModal" title="Open Board & Piece Sets Customizer">
+          <button class="theme-pill-btn btn-customizer-trigger" id="btnOpenAppearanceModal" title="Open Board &amp; Piece Sets Customizer">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24M14.83 14.83l4.24 4.24M14.83 9.17l4.24-4.24M4.93 19.07l4.24-4.24"/></svg>
             <span>+ More</span>
           </button>
         </div>
+      </div>
+
+      <!-- Live Multiplayer Matchmaking Trigger -->
+      <div class="arena-toolbar-group">
+        <button class="theme-pill-btn btn-multiplayer-trigger" id="btnOpenMultiplayerModal" title="Live Multiplayer Room & Matchmaking">
+          <span class="multiplayer-status-dot" id="multiplayerStatusDot"></span>
+          <span id="multiplayerBtnLabel">⚔️ Live Multiplayer</span>
+        </button>
       </div>
 
       <!-- Re-rack Button -->
@@ -247,6 +110,61 @@
       <div class="arena-canvas-stage" id="arenaCanvasStage">
         <canvas id="archessCanvas"></canvas>
         <div id="reactChessboardRoot" class="react-chessboard-stage" style="display: none;"></div>
+
+        <!-- Interactive Tactical Combat Replay HUD Bar -->
+        <div class="tactical-replay-bar" id="tacticalReplayBar" style="display: none;">
+          <div class="replay-head-row">
+            <div class="replay-status-pill">
+              <span class="replay-pulse-dot"></span>
+              <span id="replayMatchTitle">REPLAY MODE: Turn 0 / 0</span>
+            </div>
+            <div class="replay-event-ticker" id="replayEventTicker">
+              <span class="ticker-label">INTEL:</span>
+              <span class="ticker-text" id="replayEventText">Scrub through combat timeline or press Play.</span>
+            </div>
+            <button class="btn-ghost btn-sm" id="btnExitReplay" title="Exit replay and return to live battle">
+              <span>✕ Exit Replay</span>
+            </button>
+          </div>
+
+          <div class="replay-control-row">
+            <button class="replay-ctrl-btn" id="btnReplayPrev" title="Previous Tactical Event">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
+            </button>
+            <button class="replay-ctrl-btn replay-play-btn" id="btnReplayPlayPause" title="Play / Pause Replay">
+              <svg id="replayPlayIcon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            </button>
+            <button class="replay-ctrl-btn" id="btnReplayNext" title="Next Tactical Event">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+            </button>
+            <div class="replay-slider-wrap">
+              <input type="range" class="replay-scrubber-slider" id="replayTurnScrubber" min="0" max="0" value="0" step="1">
+            </div>
+            <div class="replay-speed-toggle">
+              <button class="replay-speed-btn active" data-speed="1">1x</button>
+              <button class="replay-speed-btn" data-speed="2">2x</button>
+              <button class="replay-speed-btn" data-speed="4">4x</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Real-Time Multiplayer Active HUD Bar -->
+        <div class="active-multiplayer-bar" id="activeMultiplayerBar" style="display: none;">
+          <div class="mp-bar-left">
+            <span class="mp-pulse-dot"></span>
+            <span class="mp-room-title" id="mpRoomTitle">ROOM: ARC-000</span>
+            <span class="mp-role-pill" id="mpRolePill">YOU: WHITE</span>
+          </div>
+          <div class="mp-bar-center">
+            <span class="mp-intel-text" id="mpStatusText">Waiting for challenger to connect...</span>
+          </div>
+          <div class="mp-bar-right">
+            <span class="mp-ping-pill" id="mpPingPill">Ping: --ms</span>
+            <button class="btn-ghost btn-sm" id="btnLeaveMultiplayer" title="Leave room and return to solo arena">
+              <span>✕ Exit Room</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Match Sidebar -->
@@ -316,13 +234,6 @@
 
   </main>
 
-  <footer class="site-footer">
-    <div class="container footer-bottom">
-      <div>&copy; 2026 ARCHESS &bull; mr-zero0/ArChess. Free &amp; Open-Source.</div>
-      <div style="color: var(--gold-light);">Aim &bull; Launch &bull; Collide &bull; Conquer</div>
-    </div>
-  </footer>
-
   <!-- Victory / Game Over Post-Match Analytics Modal -->
   <div class="modal-backdrop" id="victoryModal" role="dialog" aria-modal="true">
     <div class="modal-dialog victory-modal-dialog">
@@ -381,10 +292,28 @@
         </div>
       </div>
 
+      <!-- Tactical Engagement Timeline -->
+      <div class="victory-timeline-section" id="victoryTimelineSection">
+        <div class="timeline-header" id="toggleTimelineBtn">
+          <span class="timeline-title-wrap">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            <span>Tactical Engagement Timeline</span>
+          </span>
+          <span id="timelineToggleIcon" class="timeline-toggle-chevron">▼</span>
+        </div>
+        <div class="timeline-events-list" id="timelineEventsList">
+          <!-- Dynamically populated from match telemetry events -->
+        </div>
+      </div>
+
       <div class="victory-modal-actions">
         <button class="btn-gold" id="btnPlayAgain">
           <span>Play Again</span>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+        </button>
+        <button class="btn-ghost" id="btnLaunchReplay" title="Review tactical timeline in interactive replay mode">
+          <span>▶ Replay Combat</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
         </button>
         <button class="btn-ghost" id="btnCopyMatchReport" title="Copy Tournament Match Report to Clipboard">
           <span>Copy Match Report</span>
@@ -403,7 +332,7 @@
       <div class="appearance-modal-head">
         <div class="head-meta">
           <span class="eyebrow">GRANDMASTER ATELIER</span>
-          <h2 class="title">Board & Piece Customizer</h2>
+          <h2 class="title">Board &amp; Piece Customizer</h2>
           <p class="subtitle">Personalize chess palettes and piece sets across 3D Arena, 2D Arena, and 2D Classic.</p>
         </div>
         <button class="modal-close-icon" id="btnCloseAppearanceModal" aria-label="Close Customizer">✕</button>
@@ -439,7 +368,7 @@
                 <div style="background: #e8edf3;"></div><div style="background: #4f5d75;"></div>
                 <div style="background: #4f5d75;"></div><div style="background: #e8edf3;"></div>
               </div>
-              <span class="theme-card-name">Ivory & Platinum</span>
+              <span class="theme-card-name">Ivory &amp; Platinum</span>
             </div>
             <!-- Emerald -->
             <div class="theme-card-item" data-board-theme="emerald">
@@ -479,7 +408,7 @@
         <!-- Piece Styles Section -->
         <div class="atelier-section">
           <div class="section-label-bar">
-            <h4>Piece Sets & Materials</h4>
+            <h4>Piece Sets &amp; Materials</h4>
             <span class="active-indicator" id="atelierPieceActiveName">Staunton Prestige</span>
           </div>
           <div class="piece-theme-grid" id="pieceThemeGrid">
@@ -571,6 +500,65 @@
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- Acoustic Spatial Ambience & Convolver Reverb (v3.1.0) -->
+        <div class="atelier-section" id="acousticEnvironmentSection">
+          <div class="section-label-bar">
+            <h4>Acoustic Ambience &amp; Reverb</h4>
+            <span class="active-indicator" id="atelierAcousticActiveName">Obsidian Citadel</span>
+          </div>
+          <div class="sound-profile-grid" id="acousticEnvGrid" style="margin-top: 12px;">
+            <!-- Citadel Stone -->
+            <div class="sound-card-item active" data-acoustic-env="citadel">
+              <div class="sound-card-header">
+                <span class="sound-card-icon">🏰</span>
+                <span class="sound-card-name">Obsidian Citadel</span>
+              </div>
+              <p class="sound-card-desc">Deep stone chamber reflections with 1.8s atmospheric spatial diffusion.</p>
+              <div class="sound-card-actions">
+                <button type="button" class="btn-sound-preview" data-preview="reverb">Preview Echo</button>
+              </div>
+            </div>
+
+            <!-- Walnut Salon -->
+            <div class="sound-card-item" data-acoustic-env="wood">
+              <div class="sound-card-header">
+                <span class="sound-card-icon">🪵</span>
+                <span class="sound-card-name">Warm Walnut Salon</span>
+              </div>
+              <p class="sound-card-desc">Intimate hardwood parlor with warm low-mid resonance and tight 0.7s decay.</p>
+              <div class="sound-card-actions">
+                <button type="button" class="btn-sound-preview" data-preview="reverb">Preview Echo</button>
+              </div>
+            </div>
+
+            <!-- Cyber Void -->
+            <div class="sound-card-item" data-acoustic-env="void">
+              <div class="sound-card-header">
+                <span class="sound-card-icon">⚡</span>
+                <span class="sound-card-name">Cyber Void</span>
+              </div>
+              <p class="sound-card-desc">Futuristic vacuum shimmer with metallic comb filtering and digital feedback.</p>
+              <div class="sound-card-actions">
+                <button type="button" class="btn-sound-preview" data-preview="reverb">Preview Echo</button>
+              </div>
+            </div>
+
+            <!-- Grand Cathedral -->
+            <div class="sound-card-item" data-acoustic-env="cathedral">
+              <div class="sound-card-header">
+                <span class="sound-card-icon">⛪</span>
+                <span class="sound-card-name">Grand Cathedral</span>
+              </div>
+              <p class="sound-card-desc">Vast gothic vaults with magnificent 3.0s stereo decay and lush tail reflections.</p>
+              <div class="sound-card-actions">
+                <button type="button" class="btn-sound-preview" data-preview="reverb">Preview Echo</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- UI Design Language Section in Atelier -->
         <div class="atelier-section">
           <div class="section-label-bar">
@@ -639,6 +627,7 @@
             </div>
           </div>
         </div>
+
       </div>
 
       <div class="appearance-modal-foot">
@@ -647,95 +636,96 @@
       </div>
     </div>
   </div>
-</div>
 
-  <!-- Multi-Design System Selection Modal -->
-  <div class="modal-backdrop" id="designPickerModal" role="dialog" aria-modal="true">
-    <div class="modal-dialog design-picker-modal-dialog">
-      <div class="appearance-modal-head" style="margin-bottom: 8px;">
+  <!-- Real-Time Multiplayer Matchmaking Modal -->
+  <div class="modal-backdrop" id="multiplayerModalBackdrop" role="dialog" aria-modal="true" style="display: none;">
+    <div class="modal-dialog multiplayer-modal-dialog">
+      <div class="appearance-modal-head">
         <div class="head-meta">
-          <span class="eyebrow">AESTHETIC ARCHITECTURE</span>
-          <h2 class="title" style="font-size: 1.5rem;">Select UI Design Language</h2>
-          <p class="subtitle">Experience ARCHESS across 6 distinct modern design systems. Every surface, border, and elevation re-skins in real time.</p>
+          <span class="eyebrow">AUTHORITATIVE REAL-TIME ENGINE</span>
+          <h2 class="title">Tactical Multiplayer Nexus</h2>
+          <p class="subtitle">Deploy synchronized 60Hz physics across desktop and mobile. Host private duels or auto-match with active commanders.</p>
         </div>
-        <button class="modal-close-icon" id="closeDesignModalBtn" aria-label="Close Design Selector">&times;</button>
+        <button class="modal-close-icon" id="btnCloseMultiplayerModal" aria-label="Close Multiplayer Modal">✕</button>
       </div>
 
-      <div class="design-picker-grid">
-        <!-- 1. Dark Premium -->
-        <div class="design-picker-card" data-design-key="dark-premium">
-          <div class="design-preview-strip preview-dark">
-            <span style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em;">Obsidian &bull; Metallic Gold</span>
+      <div class="multiplayer-bento-grid">
+        <!-- 1. Quick Match (Auto-Pairing) -->
+        <div class="mp-action-card highlight-card">
+          <div class="mp-card-icon">⚡</div>
+          <div class="mp-card-info">
+            <h4>Quick Match (Auto-Pairing)</h4>
+            <p>Automatically match with any active commander waiting in the combat queue.</p>
           </div>
-          <div class="design-card-meta">
-            <h4>Dark Premium</h4>
-            <p>Deep void noir backgrounds, metallic gold and platinum foil gradients, Cinzel luxury serif typography, and specular rim lines.</p>
+          <button class="btn btn-gold btn-md" id="btnQuickMatch">
+            <span id="quickMatchBtnText">Find Opponent</span>
+          </button>
+        </div>
+
+        <!-- 2. Host Private Room -->
+        <div class="mp-action-card">
+          <div class="mp-card-icon">👑</div>
+          <div class="mp-card-info">
+            <h4>Create Private Arena</h4>
+            <p>Generate a unique room code and shareable invite link for 1v1 tactical combat.</p>
+          </div>
+          <div id="hostRoomInitialWrap">
+            <button class="btn btn-outline btn-md" id="btnCreateRoom">
+              <span>Generate Room Code</span>
+            </button>
+          </div>
+          <div id="hostRoomActiveWrap" style="display: none;" class="room-share-box">
+            <div class="room-code-display" id="createdRoomCode">ARC-000</div>
+            <div class="room-btn-actions">
+              <button class="btn btn-gold btn-sm" id="btnCopyRoomLink">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                <span>Copy Invite Link</span>
+              </button>
+              <button class="btn btn-outline btn-sm" id="btnEnterCreatedRoom">
+                <span>Enter Room &rarr;</span>
+              </button>
+            </div>
           </div>
         </div>
 
-        <!-- 2. Glassmorphism -->
-        <div class="design-picker-card" data-design-key="glassmorphism">
-          <div class="design-preview-strip preview-glass">
-            <span style="font-size: 0.75rem; font-weight: 700; color: #00f2fe;">Frosted Crystal &bull; Blur</span>
+        <!-- 3. Join by Room Code -->
+        <div class="mp-action-card">
+          <div class="mp-card-icon">🎯</div>
+          <div class="mp-card-info">
+            <h4>Join by Room Code</h4>
+            <p>Enter an invite code provided by another commander to enter their combat arena.</p>
           </div>
-          <div class="design-card-meta">
-            <h4>Glassmorphism</h4>
-            <p>Translucent frosted glass panels with 24px blur, 1px luminous borders, cyan/violet ambient backlights, and specular bevels.</p>
+          <div class="join-input-wrap">
+            <input type="text" id="inputJoinRoomCode" class="mp-room-input" placeholder="e.g. ARC-729" maxlength="10">
+            <button class="btn btn-outline btn-md" id="btnJoinRoomByCode">
+              <span>Connect &rarr;</span>
+            </button>
           </div>
         </div>
+      </div>
 
-        <!-- 3. Neobrutalism -->
-        <div class="design-picker-card" data-design-key="neobrutalism">
-          <div class="design-preview-strip preview-brutal">
-            <span style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase;">Raw &bull; 3px Solid &bull; Pop</span>
-          </div>
-          <div class="design-card-meta">
-            <h4>Neobrutalism</h4>
-            <p>Thick 3px solid borders, hard 5px offset drop shadows, cyber yellow &amp; hot pink accents, raw unpolished edges, and chunky typography.</p>
-          </div>
+      <div class="appearance-modal-foot">
+        <div style="font-size: 0.78rem; color: var(--muted-foreground);">
+          ⚡ Sub-millisecond WebSocket relay &bull; Spectators supported when room is full &bull; Zero install required
         </div>
-
-        <!-- 4. Minimal with Generous Whitespace -->
-        <div class="design-picker-card" data-design-key="minimal">
-          <div class="design-preview-strip preview-minimal">
-            <span style="font-size: 0.75rem; font-weight: 600; color: #e2e8f0;">Zen &bull; Generous Whitespace</span>
-          </div>
-          <div class="design-card-meta">
-            <h4>Minimalist</h4>
-            <p>Abundant negative space, whisper-thin 1px borders, zero noisy gradients, serene monochrome palette, and pure typographic clarity.</p>
-          </div>
-        </div>
-
-        <!-- 5. iOS Native -->
-        <div class="design-picker-card" data-design-key="ios-native">
-          <div class="design-preview-strip preview-ios">
-            <span style="font-size: 0.75rem; font-weight: 600; color: #ffffff;">Apple HIG &bull; Cupertino Squircle</span>
-          </div>
-          <div class="design-card-meta">
-            <h4>iOS Native</h4>
-            <p>Apple Human Interface Guidelines, SF Pro font feel, continuous squircle cards, Cupertino segmented control pills, and system vibrancy.</p>
-          </div>
-        </div>
-
-        <!-- 6. Material Design 3 -->
-        <div class="design-picker-card" data-design-key="material3">
-          <div class="design-preview-strip preview-m3">
-            <span style="font-size: 0.75rem; font-weight: 700;">Google M3 &bull; Material You</span>
-          </div>
-          <div class="design-card-meta">
-            <h4>Material Design 3</h4>
-            <p>Google Material You dynamic color, tonal surface container hierarchy, expressive rounded 28px pills, and floating action cards.</p>
-          </div>
-        </div>
+        <button class="btn btn-ghost btn-sm" id="btnCancelMultiplayerModal">Close</button>
       </div>
     </div>
   </div>
+{% endblock %}
 
-  <!-- Scripts -->
+{% block footer %}
+  <footer class="site-footer">
+    <div class="container footer-bottom">
+      <div>&copy; 2026 ARCHESS &bull; mr-zero0/ArChess. Free &amp; Open-Source.</div>
+      <div style="color: var(--gold-light);">Aim &bull; Launch &bull; Collide &bull; Conquer</div>
+    </div>
+  </footer>
+{% endblock %}
+
+{% block extra_scripts %}
   <script src="/static/js/react-chessboard-bundle.js?v=2.8.0"></script>
   <script src="/static/js/game.js?v=2.8.0"></script>
-  <script src="/static/js/main.js?v=2.8.0"></script>
-  <script src="/static/js/auth.js?v=2.8.0"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       // Sync current logged in user name with White player card
@@ -767,13 +757,12 @@
         localStorage.setItem('archess_board_scale', currentScale);
         // Trigger window resize event for 2D React Chessboard and Canvas observer
         window.dispatchEvent(new Event('resize'));
-        // Re-init canvas to match new size
+        // Re-init canvas to match new size without resetting game
         setTimeout(() => {
           if (window.archessGame && window.archessGame.initCanvasSize) {
             window.archessGame.initCanvasSize();
-            window.archessGame.resetBoard();
           }
-        }, 350);
+        }, 150);
       }
 
       shrinkBtn.addEventListener('click', () => applyBoardScale(currentScale - STEP));
@@ -783,5 +772,4 @@
       if (currentScale !== 100) applyBoardScale(currentScale);
     });
   </script>
-</body>
-</html>
+{% endblock %}
