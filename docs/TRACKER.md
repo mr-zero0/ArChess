@@ -109,6 +109,7 @@
 | **Sovereign Awakening (`v2.7.2`)** | • Added dynamic King Awakening when vanguard is depleted (`speedMulti = 1.35`, `mass = 2.6`, glowing aura).<br>• Rebalanced Fortress Wall from 500 to 280 HP and reduced recoil from 25% to 12%.<br>• Replaced `INSUFFICIENT_MATERIAL` automatic draws with sudden death mobile King duels.<br>• Integrated Bot AI support and updated control hints to `(King: Citadel • 👑 Awakens When Alone)`. | • Fulfills user request to prevent stalemate traps and give both players realistic, equal chances in endgames. |
 | **Real-Time Multiplayer Engine (`v3.0.0`)** | • Built thread-safe `RoomManager` and `CombatRoom` (using `threading.RLock`) managing 6-character room codes (`ARC-XXX`) and roles (`white`, `black`, `spectator`).<br>• Added WebSocket endpoint `/ws/combat/<room_id>` and REST `/api/multiplayer/*`.<br>• Real-time marching-dash laser aiming vector sync and kinetic slingshot launch relay.<br>• Added `#multiplayerModalBackdrop` (Quick Match, Private Arena URL copy, Code Join) and docked `#activeMultiplayerBar` with 4-second ping calculation. | • Unlocks authoritative multiplayer combat across networks with zero desync and full spectator support. |
 | **Knockout Tournament Bracket & Reverb (`v3.1.0`)** | • Created `backend/tournament.py` with 8-commander single-elimination knockout championship bracket engine and Elo-weighted match simulations.<br>• Added `/api/tournament/bracket`, `/api/tournament/simulate`, `/api/tournament/reset`.<br>• Added `#tournamentBracketSection` on leaderboard with Quarterfinals, Semifinals, Grand Finals cards, live scores, and Golden Sovereign Crown banner.<br>• Implemented synthetic impulse response `ConvolverNode` spatial reverb in `ArchessAudio` (`citadel`, `wood`, `void`, `cathedral`) and Atelier environment selector. | • Introduces structured seasonal championship competition and state-of-the-art acoustic spatialization for all kinetic impacts. |
+| **Commander Achievements & Emotes (`v3.2.0`)** | • Created `backend/achievements.py` with 7-badge achievement catalog, progression calculator, and automatic match criteria evaluation.<br>• Added `/api/achievements` and `/api/users/<user>/achievements`.<br>• Added Career Achievements & Badges grid to Tactical Commander Dossier on `/leaderboard`.<br>• Built `#victoryAchievementsWrap` unlock showcase in victory settlement modal with celebratory toasts.<br>• Built `#combatEmoteDock` and `spawnFloatingReaction()` with dynamic rising bubbles, particle trails, sound chimes, and multiplayer WebSocket broadcasting. | • Rewards commanders with tangible prestige badges and adds lively, real-time social expressions for duelists and spectators. |
 | **`README.md` & `requirements.txt`** | • Created professional project documentation and dependency manifest. | • Standard open-source onboarding. |
 
 ---
@@ -148,15 +149,16 @@
 | **Bot AI Profiles & Sudden Death Audio** | Multi-tier AI (Cadet/Commander/Grandmaster bank-shot) and procedural 55Hz/110Hz sub-bass tension drone | ✅ PASS | `pytest -k test_bot_difficulty_profiles_and_sudden_death_audio` |
 | **Real-Time Multiplayer WebSocket Engine** | Thread-safe `CombatRoom` relay, REST `/api/multiplayer/*`, WebSocket `/ws/combat/<id>`, live aim preview, remote launch | ✅ PASS | `pytest -k test_real_time_multiplayer_engine` |
 | **Knockout Tournament Bracket & Reverb Acoustics** | 8-commander knockout bracket engine, `/api/tournament/*`, ELO probabilities, Golden Crown banner, and synthetic impulse response convolver spatial reverb (`citadel`, `wood`, `void`, `cathedral`) | ✅ PASS | `pytest -k test_tournament_bracket_and_environmental_acoustics` |
+| **Commander Career Achievements & Emotes Engine** | 7-badge career achievements catalog, dynamic criteria unlock engine, user progression API (`/api/achievements`, `/api/users/<user>/achievements`), dossier badge showcase, victory unlock banner, and floating combat emote dock (`⚔️`, `🔥`, `👑`, `🎯`, `💀`, `⚡`) with WebSocket broadcast | ✅ PASS | `pytest -k test_career_achievements_and_combat_reactions` |
 
 ---
 
 ## 🔮 4. Pending / Next Phase Roadmap
 
-1. **Player Career & Achievement Badges**:
-   - Unlockable cosmetic piece skins, board borders, and commander insignia earned from tournament triumphs and win streaks.
-2. **Combat Spectator Chat & Dynamic Reactions**:
-   - Sub-second emoji reactions and spectator commentary during active multiplayer duels and tournament finals.
-3. **Continuous Performance & Headless Regression Suite**:
-   - Continuous integration hooks and load tests for concurrent combat rooms.
+1. **Procedural Particle VFX Themes**:
+   - Customizable cosmetic kinetic particle trails (Golden Sparks, Cosmic Nebula, Neon Arc, Void Dust) selectable in Atelier.
+2. **Combat Spectator Commentary Stream**:
+   - Real-time automated algorithmic tactical commentary stream in multiplayer duels and tournament matches.
+3. **Continuous Headless Stress & Load Testing**:
+   - Concurrent multi-room benchmark suites with automatic latency tracking.
 

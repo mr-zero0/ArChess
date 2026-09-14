@@ -1727,6 +1727,16 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    if (mtype === 'reaction') {
+      if (arena) {
+        arena.spawnFloatingReaction(msg.emoji, msg.originX, msg.originY, msg.username || msg.role);
+      }
+      if (msg.role !== myAssignedRole) {
+        window.ArchessToast?.show(`${msg.username || 'Adversary'}: ${msg.emoji}`, 'info', 2000, 'COMBAT EMOTE');
+      }
+      return;
+    }
+
     if (mtype === 'pong') {
       const latency = Math.max(1, Math.round(performance.now() - pingStartTime));
       if (mpPingPill) mpPingPill.textContent = `Ping: ${latency}ms`;
@@ -1877,6 +1887,25 @@ document.addEventListener('DOMContentLoaded', () => {
       window.ArchessToast?.show('Returned to Local Solo Arena', 'info', 2500, 'SOLO MODE');
     });
   }
+
+  // Dynamic Combat Emote Reaction Dock (v3.2.0)
+  const emoteButtons = document.querySelectorAll('.btn-combat-emote');
+  emoteButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const emoji = btn.getAttribute('data-emote') || '⚔️';
+      if (arena) {
+        arena.spawnFloatingReaction(emoji, null, null, 'You');
+      }
+      if (activeWebSocket && activeWebSocket.readyState === WebSocket.OPEN) {
+        activeWebSocket.send(JSON.stringify({
+          type: 'reaction',
+          emoji: emoji,
+          username: getCurrentUsername()
+        }));
+      }
+    });
+  });
 
   // URL Parameter Hook: Auto-Join Room via URL (/play?room=ARC-729)
   const roomParam = playUrlParams.get('room');

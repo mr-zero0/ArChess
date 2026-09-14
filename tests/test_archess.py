@@ -7,6 +7,7 @@ telemetry, and logger conformity.
 import os
 import sys
 import json
+import uuid
 import pytest
 
 # Ensure project root is in sys.path
@@ -985,4 +986,106 @@ def test_tournament_bracket_and_environmental_acoustics(client):
     assert "applyAcousticEnvironment" in main_code
     assert "archess_acoustic_environment" in main_code
     assert "data-acoustic-env" in main_code
+
+
+def test_career_achievements_and_combat_reactions(client):
+    """Phase 13 validation: Commander career achievements catalog, dynamic unlock evaluation, and combat emote reactions."""
+    # 1. Achievements Catalog API
+    cat_res = client.get("/api/achievements")
+    assert cat_res.status_code == 200
+    cat_data = cat_res.get_json()
+    assert cat_data["success"] is True
+    catalog = cat_data["achievements"]
+    assert len(catalog) >= 7
+    ids = [a["id"] for a in catalog]
+    assert "first_strike" in ids
+    assert "damage_centurion" in ids
+    assert "sudden_death_victor" in ids
+    assert "tournament_champion" in ids
+    assert "nexus_duelist" in ids
+
+    # 2. User Achievements Query
+    user_res = client.get("/api/users/Vanguard_Prime/achievements")
+    assert user_res.status_code == 200
+    user_data = user_res.get_json()
+    assert user_data["success"] is True
+    assert user_data["username"] == "Vanguard_Prime"
+    assert len(user_data["achievements"]) >= 7
+
+    # 3. Dynamic Unlock via Match Recording
+    test_user = f"AchieveCommander_{uuid.uuid4().hex[:8]}"
+    match_payload = {
+        "white_username": test_user,
+        "black_username": "ArChess Bot",
+        "winner": "white",
+        "white_damage": 310,
+        "black_damage": 50,
+        "turns": 11,
+        "duration_sec": 38,
+        "sudden_death": True
+    }
+    rec_res = client.post("/api/matches/record", json=match_payload)
+    assert rec_res.status_code == 200
+    rec_data = rec_res.get_json()
+    assert rec_data["success"] is True
+    newly_unlocked = rec_data.get("newly_unlocked_achievements", [])
+    unlocked_ids = [a["id"] for a in newly_unlocked]
+    # Expect first_strike, ricochet_master, sudden_death_victor
+    assert "first_strike" in unlocked_ids
+    assert "ricochet_master" in unlocked_ids
+    assert "sudden_death_victor" in unlocked_ids
+
+    # Query again and verify unlock persistence
+    user_res2 = client.get(f"/api/users/{test_user}/achievements")
+    assert user_res2.status_code == 200
+    achs2 = {a["id"]: a for a in user_res2.get_json()["achievements"]}
+    assert achs2["first_strike"]["unlocked"] is True
+    assert achs2["ricochet_master"]["unlocked"] is True
+    assert achs2["sudden_death_victor"]["unlocked"] is True
+
+    # 4. Leaderboard Template Elements
+    lead_res = client.get("/leaderboard")
+    assert lead_res.status_code == 200
+    lead_html = lead_res.data.decode("utf-8")
+    assert 'id="dossierAchievementsGrid"' in lead_html
+    assert 'id="dossierAchievementCountLabel"' in lead_html
+
+    # 5. Play Arena UI Emote Dock & Floating Reactions Stage
+    play_res = client.get("/play")
+    assert play_res.status_code == 200
+    play_html = play_res.data.decode("utf-8")
+    assert 'id="combatEmoteDock"' in play_html
+    assert 'id="floatingReactionsStage"' in play_html
+    assert 'id="victoryAchievementsWrap"' in play_html
+    assert 'id="victoryBadgesList"' in play_html
+    assert 'data-emote="⚔️"' in play_html
+    assert 'data-emote="🔥"' in play_html
+
+    # 6. CSS Styles for Achievements & Emotes
+    css_res = client.get("/static/css/style.css")
+    assert css_res.status_code == 200
+    css = css_res.data.decode("utf-8")
+    assert ".combat-emote-dock" in css
+    assert ".btn-combat-emote" in css
+    assert ".floating-reaction-bubble" in css
+    assert ".dossier-achievements-grid" in css
+    assert ".dossier-badge-chip" in css
+    assert ".victory-achievements-wrap" in css
+    assert ".victory-badge-card" in css
+
+    # 7. Game.js & Main.js Integration
+    root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    game_js_path = os.path.join(root_dir, "static", "js", "game.js")
+    with open(game_js_path, "r", encoding="utf-8") as f:
+        game_code = f.read()
+    assert "spawnFloatingReaction" in game_code
+    assert "playReactionChime" in game_code
+    assert "victoryAchievementsWrap" in game_code
+
+    main_js_path = os.path.join(root_dir, "static", "js", "main.js")
+    with open(main_js_path, "r", encoding="utf-8") as f:
+        main_code = f.read()
+    assert "btn-combat-emote" in main_code
+    assert "mtype === 'reaction'" in main_code
+
 

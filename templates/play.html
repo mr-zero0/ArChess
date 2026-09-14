@@ -165,6 +165,19 @@
             </button>
           </div>
         </div>
+
+        <!-- Dynamic Combat Emote Reaction Dock (v3.2.0) -->
+        <div class="combat-emote-dock" id="combatEmoteDock" role="toolbar" aria-label="Tactical Combat Emotes">
+          <button type="button" class="btn-combat-emote" data-emote="⚔️" title="Duel / Attack">⚔️</button>
+          <button type="button" class="btn-combat-emote" data-emote="🔥" title="On Fire / Brilliant">🔥</button>
+          <button type="button" class="btn-combat-emote" data-emote="👑" title="Sovereign / Checkmate">👑</button>
+          <button type="button" class="btn-combat-emote" data-emote="🎯" title="Bullseye / Precision">🎯</button>
+          <button type="button" class="btn-combat-emote" data-emote="💀" title="Shattered / Defeat">💀</button>
+          <button type="button" class="btn-combat-emote" data-emote="⚡" title="Shockwave / Kinetic">⚡</button>
+        </div>
+
+        <!-- Floating Reactions Stage Container -->
+        <div class="floating-reactions-stage" id="floatingReactionsStage"></div>
       </div>
 
       <!-- Match Sidebar -->
@@ -274,6 +287,15 @@
             <div class="mvp-desc" id="mvpDesc">Dominated board center and delivered the decisive breakthrough.</div>
           </div>
         </div>
+      </div>
+
+      <!-- Newly Unlocked Career Achievements Banner (v3.2.0) -->
+      <div class="victory-achievements-wrap" id="victoryAchievementsWrap" style="display: none;">
+        <div class="victory-achievements-head">
+          <span class="badge-star-icon">🎖️</span>
+          <span>NEW CAREER BADGE UNLOCKED!</span>
+        </div>
+        <div class="victory-badges-list" id="victoryBadgesList"></div>
       </div>
 
       <!-- Kinetic Battle Output Chart (White vs Black) -->

@@ -530,6 +530,27 @@ class ArchessAudio {
       noise.start(now);
     } catch(e) {}
   }
+
+  playReactionChime() {
+    if (this.muted || !this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const dest = this.audioBus || this.masterGain || this.ctx.destination;
+      const freqs = [659.25, 880.00, 1046.50];
+      freqs.forEach((f, i) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(f, now + i * 0.04);
+        gain.gain.setValueAtTime(0.2, now + i * 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.04 + 0.25);
+        osc.connect(gain);
+        gain.connect(dest);
+        osc.start(now + i * 0.04);
+        osc.stop(now + i * 0.04 + 0.28);
+      });
+    } catch(e) {}
+  }
 }
 
 class ArchessArena {
@@ -657,6 +678,42 @@ class ArchessArena {
         });
       }
     }
+  }
+
+  spawnFloatingReaction(emoji, originX = null, originY = null, sender = null) {
+    const stage = document.getElementById('floatingReactionsStage') || this.canvas?.parentElement;
+    if (!stage) return;
+
+    if (this.audio) {
+      this.audio.playReactionChime();
+    }
+
+    const bubble = document.createElement('div');
+    bubble.className = 'floating-reaction-bubble';
+
+    const rect = this.canvas ? this.canvas.getBoundingClientRect() : { width: 500, height: 500 };
+    const left = originX !== null ? originX : (rect.width * 0.35 + Math.random() * (rect.width * 0.3));
+    const top = originY !== null ? originY : (rect.height * 0.65 + Math.random() * (rect.height * 0.15));
+
+    bubble.style.left = `${left}px`;
+    bubble.style.top = `${top}px`;
+
+    const emojiSpan = document.createElement('span');
+    emojiSpan.textContent = emoji || '⚔️';
+    bubble.appendChild(emojiSpan);
+
+    if (sender) {
+      const senderSpan = document.createElement('span');
+      senderSpan.className = 'reaction-sender';
+      senderSpan.textContent = sender;
+      bubble.appendChild(senderSpan);
+    }
+
+    stage.appendChild(bubble);
+
+    setTimeout(() => {
+      if (bubble.parentElement) bubble.parentElement.removeChild(bubble);
+    }, 2200);
   }
 
   getBoardLayout() {
@@ -1059,10 +1116,10 @@ class ArchessArena {
     })
     .then(res => res.json())
     .then(data => {
-      this.showVictoryModal(this.winner, payload, data.settlement);
+      this.showVictoryModal(this.winner, payload, data.settlement, data.newly_unlocked_achievements || []);
     })
     .catch(() => {
-      this.showVictoryModal(this.winner, payload, null);
+      this.showVictoryModal(this.winner, payload, null, []);
     });
 
     // Telemetry event
@@ -1107,10 +1164,10 @@ class ArchessArena {
     })
     .then(res => res.json())
     .then(data => {
-      this.showVictoryModal('draw', payload, data.settlement);
+      this.showVictoryModal('draw', payload, data.settlement, data.newly_unlocked_achievements || []);
     })
     .catch(() => {
-      this.showVictoryModal('draw', payload, null);
+      this.showVictoryModal('draw', payload, null, []);
     });
 
     fetch('/api/telemetry', {
@@ -1161,12 +1218,39 @@ class ArchessArena {
     };
   }
 
-  showVictoryModal(winner, payload, settlement) {
+  showVictoryModal(winner, payload, settlement, newlyUnlocked = []) {
     if (settlement && settlement.match_id) {
       window.lastSettledMatchId = settlement.match_id;
     }
     const modal = document.getElementById('victoryModal');
     if (!modal) return;
+
+    // Newly Unlocked Career Achievements Banner (v3.2.0)
+    const achWrap = document.getElementById('victoryAchievementsWrap');
+    const achList = document.getElementById('victoryBadgesList');
+    if (achWrap && achList) {
+      if (newlyUnlocked && newlyUnlocked.length > 0) {
+        achWrap.style.display = 'block';
+        achList.innerHTML = newlyUnlocked.map(a => `
+          <div class="victory-badge-card">
+            <span class="badge-icon">${a.icon}</span>
+            <div>
+              <div class="badge-name">${a.title} &bull; <span style="font-size: 0.72rem; color: var(--gold-bright); text-transform: uppercase;">${a.tier} Tier</span></div>
+              <div class="badge-desc">${a.description}</div>
+            </div>
+          </div>
+        `).join('');
+
+        newlyUnlocked.forEach((a, idx) => {
+          setTimeout(() => {
+            window.ArchessToast?.show(`🎖️ Career Badge Unlocked: ${a.title}`, 'success', 4500, 'ACHIEVEMENT');
+          }, 800 + idx * 600);
+        });
+      } else {
+        achWrap.style.display = 'none';
+        achList.innerHTML = '';
+      }
+    }
 
     const badge = document.getElementById('victoryBadge');
     const title = document.getElementById('victoryTitle');

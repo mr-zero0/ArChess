@@ -26,6 +26,11 @@ from backend.database import (
 )
 from backend.multiplayer import room_manager
 from backend.tournament import tournament_engine
+from backend.achievements import (
+    get_all_achievements,
+    get_user_achievements,
+    evaluate_match_achievements
+)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
@@ -256,7 +261,45 @@ def api_record_match():
                 return jsonify({"success": False, "error": "Unauthorized: Cannot record match results on behalf of other players."}), 403
 
     settlement = record_match_result(white, black, winner, white_dmg, black_dmg, turns, duration)
-    return jsonify({"success": True, "settlement": settlement, "message": "Match recorded and ELO updated"}), 200
+
+    # Evaluate newly unlocked achievements for winner & participants
+    white_winner = (winner == "white")
+    black_winner = (winner == "black")
+    white_unlocked = evaluate_match_achievements(white, {
+        "is_winner": white_winner,
+        "turns": turns,
+        "sudden_death": bool(data.get("sudden_death", False)),
+        "is_multiplayer": bool(data.get("is_multiplayer", False)),
+        "opponent": black,
+        "opponent_elo": int(data.get("black_elo", 0) or 0)
+    })
+    black_unlocked = evaluate_match_achievements(black, {
+        "is_winner": black_winner,
+        "turns": turns,
+        "sudden_death": bool(data.get("sudden_death", False)),
+        "is_multiplayer": bool(data.get("is_multiplayer", False)),
+        "opponent": white,
+        "opponent_elo": int(data.get("white_elo", 0) or 0)
+    })
+
+    return jsonify({
+        "success": True,
+        "settlement": settlement,
+        "newly_unlocked_achievements": white_unlocked + black_unlocked,
+        "message": "Match recorded and ELO updated"
+    }), 200
+
+# -------------------------------------------------------------
+# API Endpoints: Commander Achievements & Badges (v3.2.0)
+# -------------------------------------------------------------
+@app.route("/api/achievements", methods=["GET"])
+def api_achievements():
+    return jsonify({"success": True, "achievements": get_all_achievements()}), 200
+
+@app.route("/api/users/<username>/achievements", methods=["GET"])
+def api_user_achievements(username):
+    user_achs = get_user_achievements(username)
+    return jsonify({"success": True, "username": username, "achievements": user_achs}), 200
 
 @app.route("/api/matches/<int:match_id>", methods=["GET"])
 def api_get_match(match_id):

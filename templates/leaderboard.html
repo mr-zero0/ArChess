@@ -352,6 +352,16 @@
           <div class="dossier-match-list" id="dossierMatchList">
             <!-- Dynamically populated matches -->
           </div>
+
+          <!-- Career Achievements & Badges (v3.2.0) -->
+          <div class="dossier-section-header" style="margin-top: 24px;">
+            <h4>Career Achievements &amp; Badges</h4>
+            <span class="dossier-badge-count" id="dossierAchievementCountLabel">0 / 7 Unlocked</span>
+          </div>
+
+          <div class="dossier-achievements-grid" id="dossierAchievementsGrid">
+            <!-- Dynamically populated badges -->
+          </div>
         </div>
 
         <div class="dossier-modal-footer">
@@ -598,6 +608,35 @@
                   `;
                 }).join('');
               }
+            }
+
+            // Populate Career Achievements & Badges (v3.2.0)
+            try {
+              const achRes = await fetch(`/api/users/${encodeURIComponent(username)}/achievements`);
+              const achData = await achRes.json();
+              const achGrid = document.getElementById('dossierAchievementsGrid');
+              const achCountLabel = document.getElementById('dossierAchievementCountLabel');
+
+              if (achData && achData.achievements) {
+                const achs = achData.achievements;
+                const unlockedCount = achs.filter(a => a.unlocked).length;
+                if (achCountLabel) achCountLabel.textContent = `${unlockedCount} / ${achs.length} Unlocked`;
+
+                if (achGrid) {
+                  achGrid.innerHTML = achs.map(a => `
+                    <div class="dossier-badge-chip ${a.unlocked ? 'is-unlocked ' + a.tier : 'is-locked'}" title="${a.title}: ${a.description}">
+                      <span class="badge-chip-icon">${a.icon}</span>
+                      <div class="badge-chip-meta">
+                        <span class="badge-chip-title">${a.title}</span>
+                        <span class="badge-chip-desc">${a.description}</span>
+                        <span class="badge-chip-tier">${a.unlocked ? a.tier.toUpperCase() : (a.progress_percent > 0 ? a.progress_percent + '% Progress' : 'LOCKED')}</span>
+                      </div>
+                    </div>
+                  `).join('');
+                }
+              }
+            } catch (achErr) {
+              console.warn('Achievements load error:', achErr);
             }
 
             if (loading) loading.style.display = 'none';

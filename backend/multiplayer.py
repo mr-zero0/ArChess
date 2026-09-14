@@ -199,9 +199,24 @@ class CombatRoom:
             self.status = "finished"
             self.winner = msg.get("winner")
             self.broadcast({
-                "type": "match_finished",
+                "type": "game_over",
                 "winner": self.winner,
-                "reason": msg.get("reason", "CHECKMATE")
+                "reason": msg.get("reason", "checkmate"),
+                "turns": self.turns_elapsed
+            })
+            return
+
+        # 7. Dynamic Combat Emote Reaction (broadcast to all room occupants)
+        if mtype == "reaction":
+            emoji = str(msg.get("emoji", "⚔️"))[:8]
+            sender_name = str(msg.get("username", role))[:30]
+            self.broadcast({
+                "type": "reaction",
+                "role": role,
+                "username": sender_name,
+                "emoji": emoji,
+                "originX": msg.get("originX"),
+                "originY": msg.get("originY")
             })
             return
 
