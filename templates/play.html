@@ -237,6 +237,24 @@
           </div>
         </div>
 
+        <!-- Tactical Match Commentary Card (v3.3.0) -->
+        <div class="sidebar-commentary-card" id="sidebarCommentaryCard">
+          <div class="commentary-header">
+            <h4>
+              <span class="live-commentary-pulse"></span>
+              <span>Tactical Commentary</span>
+            </h4>
+            <span class="commentary-feed-badge" id="commentaryModeBadge">Live Telemetry</span>
+          </div>
+          <div class="commentary-ticker-wrap" id="tacticalCommentaryTicker">
+            <span class="ticker-icon" id="commentaryTickerIcon">🎙️</span>
+            <span class="ticker-message" id="commentaryTickerText">Awaiting opening engagement...</span>
+          </div>
+          <div class="commentary-feed-scroll" id="tacticalCommentaryFeed">
+            <!-- Dynamically populated from commentary events -->
+          </div>
+        </div>
+
         <!-- Match Mode Context Note -->
         <div class="sidebar-context-note">
           Physics Combat (3D &amp; 2D Arena) &bull; Standard FIDE (2D Classic) &bull; <a href="/arsenal" class="sidebar-context-link">View Codex &rarr;</a>
@@ -576,6 +594,63 @@
               <p class="sound-card-desc">Vast gothic vaults with magnificent 3.0s stereo decay and lush tail reflections.</p>
               <div class="sound-card-actions">
                 <button type="button" class="btn-sound-preview" data-preview="reverb">Preview Echo</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Kinetic Particle VFX Themes Section (v3.3.0) -->
+        <div class="atelier-section" id="particleVfxSection">
+          <div class="section-label-bar">
+            <h4>Kinetic Particle VFX Themes</h4>
+            <span class="active-indicator" id="atelierParticleActiveName">Golden Sovereign Sparks</span>
+          </div>
+          <div class="sound-profile-grid" id="particleVfxGrid" style="margin-top: 12px;">
+            <!-- Sovereign Sparks -->
+            <div class="sound-card-item active" data-particle-theme="sovereign_sparks">
+              <div class="sound-card-header">
+                <span class="sound-card-icon">✨</span>
+                <span class="sound-card-name">Golden Sovereign Sparks</span>
+              </div>
+              <p class="sound-card-desc">High-specular gold glittering stars and dust with dual-phase radiant shimmer.</p>
+              <div class="sound-card-actions">
+                <button type="button" class="btn-particle-preview" data-preview-particle="sovereign_sparks">Preview Burst</button>
+              </div>
+            </div>
+
+            <!-- Cosmic Nebula -->
+            <div class="sound-card-item" data-particle-theme="cosmic_nebula">
+              <div class="sound-card-header">
+                <span class="sound-card-icon">🌌</span>
+                <span class="sound-card-name">Cosmic Nebula</span>
+              </div>
+              <p class="sound-card-desc">Soft glowing violet and astral stardust clouds with expansion dissipation.</p>
+              <div class="sound-card-actions">
+                <button type="button" class="btn-particle-preview" data-preview-particle="cosmic_nebula">Preview Burst</button>
+              </div>
+            </div>
+
+            <!-- Neon Arc -->
+            <div class="sound-card-item" data-particle-theme="neon_arc">
+              <div class="sound-card-header">
+                <span class="sound-card-icon">⚡</span>
+                <span class="sound-card-name">Neon Arc</span>
+              </div>
+              <p class="sound-card-desc">Electric cyan and magenta high-frequency lightning sparks with kinetic jitter.</p>
+              <div class="sound-card-actions">
+                <button type="button" class="btn-particle-preview" data-preview-particle="neon_arc">Preview Burst</button>
+              </div>
+            </div>
+
+            <!-- Void Embers -->
+            <div class="sound-card-item" data-particle-theme="void_embers">
+              <div class="sound-card-header">
+                <span class="sound-card-icon">🔥</span>
+                <span class="sound-card-name">Void Embers</span>
+              </div>
+              <p class="sound-card-desc">Smoldering crimson and amber sparks with rising thermal lift and smoke dissipation.</p>
+              <div class="sound-card-actions">
+                <button type="button" class="btn-particle-preview" data-preview-particle="void_embers">Preview Burst</button>
               </div>
             </div>
           </div>

@@ -1088,4 +1088,79 @@ def test_career_achievements_and_combat_reactions(client):
     assert "btn-combat-emote" in main_code
     assert "mtype === 'reaction'" in main_code
 
+def test_particle_vfx_themes_and_commentary_stream(client):
+    """Verify kinetic particle VFX themes customizer and real-time tactical commentary engine (v3.3.0)."""
+    root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    
+    # 1. Template integration in play.html
+    play_res = client.get("/play")
+    assert play_res.status_code == 200
+    play_html = play_res.data.decode("utf-8")
+    
+    # Particle VFX section and cards
+    assert 'id="particleVfxSection"' in play_html
+    assert 'id="particleVfxGrid"' in play_html
+    assert 'id="atelierParticleActiveName"' in play_html
+    assert 'data-particle-theme="sovereign_sparks"' in play_html
+    assert 'data-particle-theme="cosmic_nebula"' in play_html
+    assert 'data-particle-theme="neon_arc"' in play_html
+    assert 'data-particle-theme="void_embers"' in play_html
+    assert 'data-preview-particle="sovereign_sparks"' in play_html
+
+    # Tactical Commentary sidebar card, ticker, and feed
+    assert 'id="sidebarCommentaryCard"' in play_html
+    assert 'id="tacticalCommentaryTicker"' in play_html
+    assert 'id="commentaryTickerIcon"' in play_html
+    assert 'id="commentaryTickerText"' in play_html
+    assert 'id="tacticalCommentaryFeed"' in play_html
+    assert 'id="commentaryModeBadge"' in play_html
+
+    # 2. CSS rules in static/css/style.css
+    css_res = client.get("/static/css/style.css")
+    assert css_res.status_code == 200
+    css = css_res.data.decode("utf-8")
+    assert ".btn-particle-preview" in css
+    assert ".sidebar-commentary-card" in css
+    assert ".commentary-header" in css
+    assert ".live-commentary-pulse" in css
+    assert ".commentary-feed-badge" in css
+    assert ".commentary-ticker-wrap" in css
+    assert ".commentary-feed-scroll" in css
+    assert ".commentary-feed-item" in css
+    assert ".type-strike" in css
+    assert ".type-rebound" in css
+    assert ".type-breach" in css
+    assert ".type-shatter" in css
+    assert ".type-sovereign" in css
+    assert ".type-sudden_death" in css
+
+    # 3. Game.js particle themes and commentary engine
+    game_js_path = os.path.join(root_dir, "static", "js", "game.js")
+    with open(game_js_path, "r", encoding="utf-8") as f:
+        game_code = f.read()
+    assert "this.particleTheme" in game_code
+    assert "setParticleTheme(" in game_code
+    assert "getParticleThemePalette(" in game_code
+    assert "spawnParticleBurst(" in game_code
+    assert "sovereign_sparks" in game_code
+    assert "cosmic_nebula" in game_code
+    assert "neon_arc" in game_code
+    assert "void_embers" in game_code
+    assert "this.commentaryLog" in game_code
+    assert "addCommentary(" in game_code
+    assert "p.shape === 'star'" in game_code
+    assert "p.shape === 'nebula'" in game_code
+    assert "p.shape === 'lightning'" in game_code
+
+    # 4. Main.js wiring
+    main_js_path = os.path.join(root_dir, "static", "js", "main.js")
+    with open(main_js_path, "r", encoding="utf-8") as f:
+        main_code = f.read()
+    assert "PARTICLE_THEME_NAMES" in main_code
+    assert "applyParticleTheme(" in main_code
+    assert "tacticalCommentaryTicker" in main_code
+    assert "tacticalCommentaryFeed" in main_code
+    assert "arena.onCommentary" in main_code
+
+
 

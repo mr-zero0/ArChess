@@ -789,6 +789,120 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  /* -------------------------------------------------------------
+     Kinetic Particle VFX Themes (v3.3.0)
+  ------------------------------------------------------------- */
+  const PARTICLE_THEME_NAMES = {
+    sovereign_sparks: 'Golden Sovereign Sparks',
+    cosmic_nebula: 'Cosmic Nebula',
+    neon_arc: 'Neon Arc',
+    void_embers: 'Void Embers'
+  };
+
+  const particleThemeCards = document.querySelectorAll('.sound-card-item[data-particle-theme]');
+  const particleActiveName = document.getElementById('atelierParticleActiveName');
+  let savedParticleTheme = localStorage.getItem('archess_particle_theme') || 'sovereign_sparks';
+
+  function applyParticleTheme(themeKey, showNotice = false) {
+    if (!PARTICLE_THEME_NAMES[themeKey]) return;
+    savedParticleTheme = themeKey;
+    localStorage.setItem('archess_particle_theme', themeKey);
+
+    if (arena && typeof arena.setParticleTheme === 'function') {
+      arena.setParticleTheme(themeKey);
+    }
+
+    particleThemeCards.forEach(card => {
+      card.classList.toggle('active', card.getAttribute('data-particle-theme') === themeKey);
+    });
+
+    if (particleActiveName) {
+      particleActiveName.textContent = PARTICLE_THEME_NAMES[themeKey];
+    }
+
+    if (showNotice) {
+      showToast(`VFX Theme Active: ${PARTICLE_THEME_NAMES[themeKey]}`);
+    }
+  }
+
+  particleThemeCards.forEach(card => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.btn-particle-preview')) return;
+      const theme = card.getAttribute('data-particle-theme');
+      applyParticleTheme(theme, true);
+      if (arena && typeof arena.spawnParticleBurst === 'function') {
+        const cx = (arena.canvas.width / (arena.dpr || 1)) / 2;
+        const cy = (arena.canvas.height / (arena.dpr || 1)) / 2;
+        arena.spawnParticleBurst(cx, cy, theme, 38);
+      }
+    });
+  });
+
+  document.querySelectorAll('.btn-particle-preview').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const theme = btn.getAttribute('data-preview-particle');
+      applyParticleTheme(theme, false);
+      if (arena && typeof arena.spawnParticleBurst === 'function') {
+        const cx = (arena.canvas.width / (arena.dpr || 1)) / 2;
+        const cy = (arena.canvas.height / (arena.dpr || 1)) / 2;
+        arena.spawnParticleBurst(cx, cy, theme, 42);
+        showToast(`Triggered VFX Burst: ${PARTICLE_THEME_NAMES[theme]}`);
+      }
+    });
+  });
+
+  applyParticleTheme(savedParticleTheme, false);
+
+  /* -------------------------------------------------------------
+     Automated Tactical Match Commentary Stream (v3.3.0)
+  ------------------------------------------------------------- */
+  const commentaryTicker = document.getElementById('tacticalCommentaryTicker');
+  const commentaryTickerIcon = document.getElementById('commentaryTickerIcon');
+  const commentaryTickerText = document.getElementById('commentaryTickerText');
+  const commentaryFeed = document.getElementById('tacticalCommentaryFeed');
+
+  function renderCommentaryEntry(entry) {
+    if (!entry) return;
+
+    if (commentaryTickerText) {
+      commentaryTickerText.textContent = entry.text;
+    }
+    if (commentaryTickerIcon) {
+      commentaryTickerIcon.textContent = entry.icon || '🎙️';
+    }
+    if (commentaryTicker) {
+      commentaryTicker.classList.remove('pulse-glow');
+      void commentaryTicker.offsetWidth;
+      commentaryTicker.classList.add('pulse-glow');
+    }
+
+    if (commentaryFeed) {
+      const item = document.createElement('div');
+      item.className = `commentary-feed-item type-${entry.type || 'info'}`;
+      const timeStr = new Date(entry.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      item.innerHTML = `
+        <div class="feed-item-meta">
+          <span class="feed-item-icon">${entry.icon || '🎙️'}</span>
+          <span class="feed-item-badge">${(entry.type || 'INTEL').toUpperCase()}</span>
+          <span class="feed-item-time">${timeStr}</span>
+        </div>
+        <div class="feed-item-body">${entry.text}</div>
+      `;
+      commentaryFeed.insertBefore(item, commentaryFeed.firstChild);
+
+      while (commentaryFeed.children.length > 35) {
+        commentaryFeed.removeChild(commentaryFeed.lastChild);
+      }
+    }
+  }
+
+  if (arena) {
+    arena.onCommentary = (entry) => {
+      renderCommentaryEntry(entry);
+    };
+  }
+
   // Theme Mode (Dark / Light) Toggle
   const themeToggleBtn = document.getElementById('themeModeToggleBtn');
   const drawerThemeToggleBtn = document.getElementById('drawerThemeModeToggleBtn');

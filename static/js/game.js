@@ -606,6 +606,13 @@ class ArchessArena {
     this.whiteDamage = 0;
     this.blackDamage = 0;
 
+    // Kinetic Particle VFX Themes (v3.3.0)
+    this.particleTheme = localStorage.getItem('archess_particle_theme') || 'sovereign_sparks';
+
+    // Automated Tactical Match Commentary Stream (v3.3.0)
+    this.commentaryLog = [];
+    this.onCommentary = null;
+
     // Telemetry callback
     this.onTelemetry = null;
 
@@ -625,6 +632,7 @@ class ArchessArena {
 
     this.logTelemetry('SYSTEM', 'ArChess 32-Piece Physics Engine initialized. Board Mode: 3D Isometric.');
     this.logTelemetry('TURN_START', `Turn active: ${this.currentTurn.toUpperCase()} army ready.`);
+    this.addCommentary('Vanguard units mobilized on tactical grid. Engagement initiated.', 'info', '⚔️');
   }
 
   initCanvasSize() {
@@ -710,6 +718,8 @@ class ArchessArena {
     }
 
     stage.appendChild(bubble);
+
+    this.addCommentary(`${sender || 'Commander'} signaled reaction: ${emoji}`, 'emote', emoji);
 
     setTimeout(() => {
       if (bubble.parentElement) bubble.parentElement.removeChild(bubble);
@@ -1093,6 +1103,7 @@ class ArchessArena {
     this.audio.stopSuddenDeathDrone();
     this.audio.playVictory();
     this.logTelemetry('VICTORY', `CHECKMATE! ${this.winner.toUpperCase()} ARMY WINS THE MATCH!`);
+    this.addCommentary(`🏆 CHECKMATE ANNIHILATION! ${this.winner.toUpperCase()} Sovereign triumphs in Turn ${this.turns}!`, 'victory', '👑');
 
     const durationSec = Math.max(1, Math.round((Date.now() - this.matchStartTime) / 1000));
     const whiteUser = (window.ArchessAuth && window.ArchessAuth.currentUser) ? window.ArchessAuth.currentUser.username : 'Player1';
@@ -1401,6 +1412,7 @@ class ArchessArena {
       this.onResetArena();
     }
     this.logTelemetry('RESET', 'Board reset to standard 32-piece tournament arrangement.');
+    this.addCommentary('Combat arena re-racked. All 32 units restored to opening arrangement.', 'info', '🔄');
   }
 
   /* -------------------------------------------------------------
@@ -1700,11 +1712,100 @@ class ArchessArena {
     }
     piece.inMotion = true;
 
-    this.audio.playLaunch(powerRatio);
     this.spawnLaunchSparks(piece.x, piece.y, angle);
     this.spawnShockwave(piece.x, piece.y, piece.team === 'white' ? '#ffd700' : '#ff4757', 36, 2.5);
 
     this.logTelemetry('LAUNCH', `Piece: ${piece.team.toUpperCase()}_${piece.type.toUpperCase()} | Power: ${Math.round(powerRatio * 100)}% | Speed: ${Math.hypot(piece.vx, piece.vy).toFixed(1)}`);
+
+    const teamName = piece.team === 'white' ? 'White' : 'Black';
+    const pieceName = piece.type.toUpperCase();
+    const powerPct = Math.round(powerRatio * 100);
+    if (powerRatio > 0.82) {
+      this.addCommentary(`High-velocity blast! ${teamName} ${pieceName} unleashed with ${powerPct}% kinetic force!`, 'strike', '🚀');
+    } else {
+      this.addCommentary(`${teamName} ${pieceName} strikes into combat at ${powerPct}% impulse.`, 'strike', '⚔️');
+    }
+  }
+
+  /* -------------------------------------------------------------
+     Kinetic Particle VFX Themes (v3.3.0)
+     Themes: 'sovereign_sparks', 'cosmic_nebula', 'neon_arc', 'void_embers'
+  ------------------------------------------------------------- */
+  setParticleTheme(theme) {
+    const validThemes = ['sovereign_sparks', 'cosmic_nebula', 'neon_arc', 'void_embers'];
+    if (validThemes.includes(theme)) {
+      this.particleTheme = theme;
+      try {
+        localStorage.setItem('archess_particle_theme', theme);
+      } catch (e) {}
+    }
+  }
+
+  getParticleThemePalette(theme = null) {
+    const t = theme || this.particleTheme || 'sovereign_sparks';
+    switch (t) {
+      case 'cosmic_nebula':
+        return ['#a855f7', '#6366f1', '#06b6d4', '#ec4899', '#c084fc'];
+      case 'neon_arc':
+        return ['#00f0ff', '#ff0055', '#10b981', '#f43f5e', '#ffffff'];
+      case 'void_embers':
+        return ['#ef4444', '#f97316', '#eab308', '#7f1d1d', '#451a03'];
+      case 'sovereign_sparks':
+      default:
+        return ['#ffd700', '#fde047', '#f59e0b', '#ffffff', '#fbbf24'];
+    }
+  }
+
+  spawnParticleBurst(x, y, themeOverride = null, count = 36) {
+    const theme = themeOverride || this.particleTheme || 'sovereign_sparks';
+    const palette = this.getParticleThemePalette(theme);
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.random() * 6.5 + 2.0;
+      const shape = theme === 'cosmic_nebula' ? 'nebula'
+                  : theme === 'neon_arc' ? 'lightning'
+                  : theme === 'void_embers' ? 'ember'
+                  : 'star';
+      this.particles.push({
+        x: x,
+        y: y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        radius: (theme === 'cosmic_nebula' ? Math.random() * 4.5 + 2.5 : Math.random() * 3.2 + 1.2),
+        color: palette[Math.floor(Math.random() * palette.length)],
+        alpha: 1,
+        life: Math.random() * 0.45 + 0.35,
+        shape: shape,
+        jitter: theme === 'neon_arc',
+        thermalLift: theme === 'void_embers'
+      });
+    }
+  }
+
+  /* -------------------------------------------------------------
+     Automated Tactical Match Commentary Stream (v3.3.0)
+  ------------------------------------------------------------- */
+  addCommentary(text, type = 'info', icon = '🎙️') {
+    const entry = {
+      id: 'comm_' + Math.random().toString(36).substring(2, 9),
+      text,
+      type, // 'strike', 'rebound', 'breach', 'shatter', 'sovereign', 'sudden_death', 'emote', 'victory', 'info'
+      icon,
+      timestamp: Date.now(),
+      turn: this.currentTurn
+    };
+    if (!this.commentaryLog) this.commentaryLog = [];
+    this.commentaryLog.unshift(entry);
+    if (this.commentaryLog.length > 50) {
+      this.commentaryLog.pop();
+    }
+    if (typeof this.onCommentary === 'function') {
+      try {
+        this.onCommentary(entry);
+      } catch (e) {
+        console.warn('onCommentary error:', e);
+      }
+    }
   }
 
   spawnShockwave(x, y, color = '#ffd700', maxRadius = 55, lineWidth = 3.5) {
@@ -1720,6 +1821,12 @@ class ArchessArena {
   }
 
   spawnLaunchSparks(x, y, angle) {
+    const palette = this.getParticleThemePalette();
+    const theme = this.particleTheme || 'sovereign_sparks';
+    const shape = theme === 'cosmic_nebula' ? 'nebula'
+                : theme === 'neon_arc' ? 'lightning'
+                : theme === 'void_embers' ? 'ember'
+                : 'star';
     for (let i = 0; i < 24; i++) {
       const spread = (Math.random() - 0.5) * 1.3;
       const speed = Math.random() * 5 + 1.8;
@@ -1729,17 +1836,26 @@ class ArchessArena {
         vx: -Math.cos(angle + spread) * speed,
         vy: -Math.sin(angle + spread) * speed,
         radius: Math.random() * 3 + 1,
-        color: '#ffd700',
+        color: palette[Math.floor(Math.random() * palette.length)],
         alpha: 1,
-        life: 0.55
+        life: 0.55,
+        shape: shape,
+        jitter: theme === 'neon_arc',
+        thermalLift: theme === 'void_embers'
       });
     }
   }
 
   spawnImpactParticles(x, y, count = 20, isCritical = false, customColors = null) {
+    const theme = this.particleTheme || 'sovereign_sparks';
+    const palette = this.getParticleThemePalette();
     const colors = customColors || (isCritical 
-      ? ['#ff3344', '#ffaa00', '#ffffff', '#ffd700'] 
-      : ['#ffd700', '#f5df88', '#ff9900', '#ffffff']);
+      ? ['#ff3344', '#ffaa00', '#ffffff', ...palette] 
+      : palette);
+    const shape = theme === 'cosmic_nebula' ? 'nebula'
+                : theme === 'neon_arc' ? 'lightning'
+                : theme === 'void_embers' ? 'ember'
+                : 'star';
 
     for (let i = 0; i < count; i++) {
       const pAngle = Math.random() * Math.PI * 2;
@@ -1752,7 +1868,10 @@ class ArchessArena {
         radius: Math.random() * 3.5 + 1.2,
         color: colors[Math.floor(Math.random() * colors.length)],
         alpha: 1,
-        life: Math.random() * 0.45 + 0.3
+        life: Math.random() * 0.45 + 0.3,
+        shape: shape,
+        jitter: theme === 'neon_arc',
+        thermalLift: theme === 'void_embers'
       });
     }
   }
@@ -1804,17 +1923,26 @@ class ArchessArena {
           p.vx *= this.friction;
           p.vy *= this.friction;
 
-          // Particle trail
-          if (speed > 3 && Math.random() < 0.4) {
+          // Particle trail (v3.3.0 theme-aware)
+          if (speed > 3 && Math.random() < 0.45) {
+            const theme = this.particleTheme || 'sovereign_sparks';
+            const palette = this.getParticleThemePalette();
+            const shape = theme === 'cosmic_nebula' ? 'nebula'
+                        : theme === 'neon_arc' ? 'lightning'
+                        : theme === 'void_embers' ? 'ember'
+                        : 'star';
             this.particles.push({
               x: p.x,
               y: p.y,
               vx: (Math.random() - 0.5) * 0.5,
               vy: (Math.random() - 0.5) * 0.5,
-              radius: Math.random() * 2 + 1,
-              color: p.team === 'white' ? '#ffd700' : '#ff4655',
+              radius: (theme === 'cosmic_nebula' ? Math.random() * 3 + 1.8 : Math.random() * 2 + 1),
+              color: palette[Math.floor(Math.random() * palette.length)],
               alpha: 0.5,
-              life: 0.35
+              life: 0.35,
+              shape: shape,
+              jitter: theme === 'neon_arc',
+              thermalLift: theme === 'void_embers'
             });
           }
 
@@ -1830,6 +1958,9 @@ class ArchessArena {
               this.logTelemetry('PRISM_SURGE', 'Bishop gained +15% Prism Surge on wall reflection!');
             }
             this.audio.playBounce();
+            if (speed > 4.2) {
+              this.addCommentary(`Kinetic rebound! ${p.team.toUpperCase()} ${p.type.toUpperCase()} ricochets off western cushion!`, 'rebound', '⚡');
+            }
           } else if (p.x + p.radius > maxX) {
             p.x = maxX - p.radius;
             p.vx = -p.vx * bounceCoeff;
@@ -1838,6 +1969,9 @@ class ArchessArena {
               this.logTelemetry('PRISM_SURGE', 'Bishop gained +15% Prism Surge on wall reflection!');
             }
             this.audio.playBounce();
+            if (speed > 4.2) {
+              this.addCommentary(`Kinetic rebound! ${p.team.toUpperCase()} ${p.type.toUpperCase()} ricochets off eastern cushion!`, 'rebound', '⚡');
+            }
           }
 
           if (p.y - p.radius < minY) {
@@ -1848,6 +1982,9 @@ class ArchessArena {
               this.logTelemetry('PRISM_SURGE', 'Bishop gained +15% Prism Surge on wall reflection!');
             }
             this.audio.playBounce();
+            if (speed > 4.2) {
+              this.addCommentary(`Kinetic rebound! ${p.team.toUpperCase()} ${p.type.toUpperCase()} ricochets off northern cushion!`, 'rebound', '⚡');
+            }
           } else if (p.y + p.radius > maxY) {
             p.y = maxY - p.radius;
             p.vy = -p.vy * bounceCoeff;
@@ -1856,6 +1993,9 @@ class ArchessArena {
               this.logTelemetry('PRISM_SURGE', 'Bishop gained +15% Prism Surge on wall reflection!');
             }
             this.audio.playBounce();
+            if (speed > 4.2) {
+              this.addCommentary(`Kinetic rebound! ${p.team.toUpperCase()} ${p.type.toUpperCase()} ricochets off southern cushion!`, 'rebound', '⚡');
+            }
           }
         } else {
           p.vx = 0;
@@ -1942,6 +2082,7 @@ class ArchessArena {
                 this.addDamageNumber(attacker.x, attacker.y, recoilDmg, false, '#f87171', `RECOIL -${recoilDmg}`);
 
                 this.logTelemetry('FORTRESS_WALL_HIT', `${attacker.team.toUpperCase()} ${attacker.type.toUpperCase()} struck ${king.team.toUpperCase()} King's Fortress Wall! -${wallDamage} HP [${Math.max(0, Math.round(king.wallHp))}/${king.maxWallHp}] | Attacker Recoil: -${recoilDmg} HP`);
+                this.addCommentary(`Bulkhead under fire! ${attacker.team.toUpperCase()} ${attacker.type.toUpperCase()} inflicts ${wallDamage} DMG on ${king.team.toUpperCase()} Citadel Wall (${Math.max(0, Math.round(king.wallHp))}/${king.maxWallHp} HP).`, 'breach', '🛡️');
 
                 // Check if attacker dies from recoil
                 if (attacker.hp <= 0 && !attacker.dead) {
@@ -1968,6 +2109,7 @@ class ArchessArena {
                   this.screenShake = 16;
                   this.addDamageNumber(king.x, king.y - king.radius * 1.5, 0, true, '#ff3b4e', 'WALL BREACHED!');
                   this.logTelemetry('FORTRESS_BREACH', `[CRITICAL BREACH] ${king.team.toUpperCase()} King's Fortress Wall has collapsed! Citadel is now vulnerable!`);
+                  this.addCommentary(`🚨 CITADEL BREACHED! ${king.team.toUpperCase()} King's Fortress Wall destroyed! The Sovereign is exposed!`, 'breach', '💥');
                 }
               }
             } else {
@@ -2163,6 +2305,11 @@ class ArchessArena {
                 this.audio.playImpact(relativeSpeed / 6);
 
                 this.logTelemetry('COLLISION', `${striker.team}_${striker.type} struck ${defender.team}_${defender.type} | Dmg: -${primaryDamage} HP | Recoil: -${recoilDamage} HP | RelSpeed: ${relativeSpeed.toFixed(1)}`);
+                if (isCritical) {
+                  this.addCommentary(`CRITICAL IMPACT! ${striker.team.toUpperCase()} ${striker.type.toUpperCase()} inflicts ${primaryDamage} DMG on ${defender.team.toUpperCase()} ${defender.type.toUpperCase()}!`, 'strike', '💥');
+                } else {
+                  this.addCommentary(`Direct hit! ${striker.team.toUpperCase()} ${striker.type.toUpperCase()} strikes ${defender.team.toUpperCase()} ${defender.type.toUpperCase()} for ${primaryDamage} DMG.`, 'strike', '⚔️');
+                }
 
                 // Death checks
                 [p1, p2].forEach(p => {
@@ -2182,6 +2329,7 @@ class ArchessArena {
                       this.onPieceCaptured(p.team, p.type, this.getMaterialDiff());
                     }
                     this.logTelemetry('ELIMINATION', `[!] ${p.team.toUpperCase()} ${p.type.toUpperCase()} shattered and removed from board.`);
+                    this.addCommentary(`SHATTERED! ${p.team.toUpperCase()} ${p.type.toUpperCase()} neutralized and eliminated from combat!`, 'shatter', '💀');
                     this.checkSovereignAwakening();
                     if (p.type === 'king') {
                       this.handleKingElimination(p);
@@ -2243,6 +2391,13 @@ class ArchessArena {
       const p = this.particles[i];
       p.x += p.vx;
       p.y += p.vy;
+      if (p.jitter) {
+        p.x += (Math.random() - 0.5) * 1.8;
+        p.y += (Math.random() - 0.5) * 1.8;
+      }
+      if (p.thermalLift) {
+        p.vy -= 0.06;
+      }
       p.alpha -= dt / p.life;
       if (p.alpha <= 0) this.particles.splice(i, 1);
     }
@@ -2289,6 +2444,7 @@ class ArchessArena {
       this.suddenDeathMode = true;
       this.audio.startSuddenDeathDrone();
       this.logTelemetry('SUDDEN_DEATH', '👑 SOVEREIGN SHOWDOWN! Both armies depleted — Kings enter Sudden Death Duel!');
+      this.addCommentary('⚠️ SUDDEN DEATH DUEL! All vanguard depleted — Sovereign duel determines match outcome!', 'sudden_death', '⚠️');
       if (window.ArchessToast) {
         window.ArchessToast.show('👑 SOVEREIGN SHOWDOWN: SUDDEN DEATH! Both Kings mobile for the final duel!', 'warning', 4500, 'SUDDEN DEATH');
       }
@@ -2314,6 +2470,7 @@ class ArchessArena {
       window.ArchessToast.success(`👑 The ${king.team === 'white' ? 'White' : 'Black'} King Awakens! Immovable anchor broken — Mobile Combat active!`);
     }
     this.logTelemetry('SOVEREIGN_AWAKENED', `${king.team.toUpperCase()} King has awakened into mobile combat!`);
+    this.addCommentary(`👑 SOVEREIGN AWAKENED! ${king.team === 'white' ? 'White' : 'Black'} King breaks citadel anchor to enter mobile combat!`, 'sovereign', '👑');
     this.updateHUD();
   }
 
@@ -3518,14 +3675,54 @@ class ArchessArena {
       ctx.restore();
     });
 
-    // Particles
+    // Particles (v3.3.0 theme-aware rendering: stars, nebulae, lightning diamonds, embers)
     this.particles.forEach((p) => {
       const pos = this.toScreen(p.x, p.y, this.renderMode === '3d' ? 8 : 0);
-      ctx.beginPath();
-      ctx.arc(pos.x, pos.y, p.radius, 0, Math.PI * 2);
-      ctx.fillStyle = p.color;
+      ctx.save();
       ctx.globalAlpha = Math.max(0, p.alpha);
-      ctx.fill();
+      
+      if (p.shape === 'star') {
+        ctx.fillStyle = p.color;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        const r = p.radius * 1.4;
+        ctx.moveTo(pos.x, pos.y - r);
+        ctx.quadraticCurveTo(pos.x, pos.y, pos.x + r, pos.y);
+        ctx.quadraticCurveTo(pos.x, pos.y, pos.x, pos.y + r);
+        ctx.quadraticCurveTo(pos.x, pos.y, pos.x - r, pos.y);
+        ctx.quadraticCurveTo(pos.x, pos.y, pos.x, pos.y - r);
+        ctx.fill();
+      } else if (p.shape === 'nebula') {
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 10;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (p.shape === 'lightning') {
+        ctx.fillStyle = p.color;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        const s = p.radius * 1.2;
+        ctx.moveTo(pos.x, pos.y - s);
+        ctx.lineTo(pos.x + s, pos.y);
+        ctx.lineTo(pos.x, pos.y + s);
+        ctx.lineTo(pos.x - s, pos.y);
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        ctx.fillStyle = p.color;
+        if (p.shape === 'ember') {
+          ctx.shadowColor = '#ff4500';
+          ctx.shadowBlur = 6;
+        }
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
     });
     ctx.globalAlpha = 1;
 

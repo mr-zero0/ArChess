@@ -6622,3 +6622,197 @@ button {
   color: var(--muted-foreground, #a1a1aa);
 }
 
+/* =============================================================
+   Phase 14 (v3.3.0): Kinetic Particle VFX & Tactical Match Commentary
+   ============================================================= */
+
+/* Particle VFX Themes Customizer in Atelier */
+.btn-particle-preview {
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--gold-bright, #ffd700);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-particle-preview:hover {
+  background: rgba(212, 175, 55, 0.2);
+  border-color: var(--gold-bright, #ffd700);
+  transform: translateY(-1px);
+}
+
+/* Tactical Match Commentary Card in Sidebar */
+.sidebar-commentary-card {
+  background: rgba(14, 18, 27, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg, 12px);
+  padding: 14px 16px;
+  margin-top: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.commentary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.commentary-header h4 {
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--foreground, #ffffff);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.live-commentary-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: pulseBeacon 1.8s infinite;
+}
+
+.commentary-feed-badge {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--gold-bright, #ffd700);
+  background: rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  padding: 2px 7px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.commentary-ticker-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 6px;
+  padding: 8px 12px;
+  transition: all 0.25s ease;
+}
+
+.commentary-ticker-wrap.pulse-glow {
+  border-color: var(--gold-bright, #ffd700);
+  box-shadow: 0 0 14px rgba(212, 175, 55, 0.25);
+}
+
+.commentary-ticker-wrap .ticker-icon {
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+
+.commentary-ticker-wrap .ticker-message {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+}
+
+.commentary-feed-scroll {
+  max-height: 140px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 4px;
+}
+
+.commentary-feed-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.commentary-feed-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+
+.commentary-feed-item {
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 3px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.72rem;
+  animation: fadeInPop 0.25s ease-out;
+}
+
+.commentary-feed-item.type-strike {
+  border-left-color: #38bdf8;
+}
+
+.commentary-feed-item.type-rebound {
+  border-left-color: #f59e0b;
+}
+
+.commentary-feed-item.type-breach {
+  border-left-color: #f87171;
+}
+
+.commentary-feed-item.type-shatter {
+  border-left-color: #ef4444;
+}
+
+.commentary-feed-item.type-sovereign {
+  border-left-color: #ffd700;
+}
+
+.commentary-feed-item.type-sudden_death {
+  border-left-color: #ec4899;
+}
+
+.commentary-feed-item.type-victory {
+  border-left-color: #10b981;
+}
+
+.feed-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.62rem;
+}
+
+.feed-item-badge {
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+}
+
+.feed-item-time {
+  color: var(--muted-foreground, #94a3b8);
+  margin-left: auto;
+}
+
+.feed-item-body {
+  color: #cbd5e1;
+  line-height: 1.3;
+}
+
+

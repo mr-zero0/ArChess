@@ -68,6 +68,11 @@
 | **Match Telemetry API & Victory Tactical Timeline (`v2.9.6`)** | Analytics / Debrief | ✅ COMPLETE | `GET /api/matches/<id>` endpoint returning match metadata & telemetry timeline; `#victoryTimelineSection` in victory modal with collapsible event accordion; ASCII debrief copy with tactical highlights; 28/28 unit tests |
 | **PWA Offline Engine & Service Worker (`v2.9.7`)** | PWA / Offline | ✅ COMPLETE | `static/manifest.json` standalone specification, `static/sw.js` core shell pre-caching, route headers with `Service-Worker-Allowed: /`, luxury online/offline connection status toasts |
 | **Interactive Tactical Combat Replay (`v2.9.8`)** | Analytics / Replay | ✅ COMPLETE | `#tacticalReplayBar` HUD with play/pause, step scrubbing, speed multiplier (1x/2x/4x), milestone event ticker, Dossier match list `▶ Replay` links, Victory Modal review trigger |
+| **Bot AI Profiles & Sudden Death Audio (`v2.9.9`)** | AI / Soundscape | ✅ COMPLETE | 3-tier bot AI (`cadet`, `commander`, `grandmaster` cushion rebound evaluator) and procedural 55Hz/110Hz sub-bass tension drone |
+| **Real-Time WebSocket Multiplayer Engine (`v3.0.0`)** | Multiplayer / Engine | ✅ COMPLETE | Authoritative `CombatRoom` & `RoomManager`, WebSocket `/ws/combat/<id>`, live laser aim sync, remote launch, invite codes |
+| **Knockout Tournament Bracket & Reverb (`v3.1.0`)** | Tournaments / Audio | ✅ COMPLETE | 8-commander single-elimination tournament bracket, `/api/tournament/*`, and synthetic impulse response convolver spatial reverb |
+| **Commander Career Achievements & Emotes (`v3.2.0`)** | Career / Social | ✅ COMPLETE | 7-badge career achievements catalog, user progression API, dossier showcase, and floating combat emote reaction dock |
+| **Kinetic Particle VFX & Match Commentary (`v3.3.0`)** | VFX / Intelligence | ✅ COMPLETE | 4 bespoke particle themes (`sovereign_sparks`, `cosmic_nebula`, `neon_arc`, `void_embers`), theme-aware rendering, Atelier customizer, and live algorithmic tactical commentary feed & ticker |
 
 ---
 
@@ -110,6 +115,7 @@
 | **Real-Time Multiplayer Engine (`v3.0.0`)** | • Built thread-safe `RoomManager` and `CombatRoom` (using `threading.RLock`) managing 6-character room codes (`ARC-XXX`) and roles (`white`, `black`, `spectator`).<br>• Added WebSocket endpoint `/ws/combat/<room_id>` and REST `/api/multiplayer/*`.<br>• Real-time marching-dash laser aiming vector sync and kinetic slingshot launch relay.<br>• Added `#multiplayerModalBackdrop` (Quick Match, Private Arena URL copy, Code Join) and docked `#activeMultiplayerBar` with 4-second ping calculation. | • Unlocks authoritative multiplayer combat across networks with zero desync and full spectator support. |
 | **Knockout Tournament Bracket & Reverb (`v3.1.0`)** | • Created `backend/tournament.py` with 8-commander single-elimination knockout championship bracket engine and Elo-weighted match simulations.<br>• Added `/api/tournament/bracket`, `/api/tournament/simulate`, `/api/tournament/reset`.<br>• Added `#tournamentBracketSection` on leaderboard with Quarterfinals, Semifinals, Grand Finals cards, live scores, and Golden Sovereign Crown banner.<br>• Implemented synthetic impulse response `ConvolverNode` spatial reverb in `ArchessAudio` (`citadel`, `wood`, `void`, `cathedral`) and Atelier environment selector. | • Introduces structured seasonal championship competition and state-of-the-art acoustic spatialization for all kinetic impacts. |
 | **Commander Achievements & Emotes (`v3.2.0`)** | • Created `backend/achievements.py` with 7-badge achievement catalog, progression calculator, and automatic match criteria evaluation.<br>• Added `/api/achievements` and `/api/users/<user>/achievements`.<br>• Added Career Achievements & Badges grid to Tactical Commander Dossier on `/leaderboard`.<br>• Built `#victoryAchievementsWrap` unlock showcase in victory settlement modal with celebratory toasts.<br>• Built `#combatEmoteDock` and `spawnFloatingReaction()` with dynamic rising bubbles, particle trails, sound chimes, and multiplayer WebSocket broadcasting. | • Rewards commanders with tangible prestige badges and adds lively, real-time social expressions for duelists and spectators. |
+| **Kinetic Particle VFX & Tactical Commentary Stream (`v3.3.0`)** | • Built 4 selectable kinetic particle themes (`sovereign_sparks`, `cosmic_nebula`, `neon_arc`, `void_embers`) in `static/js/game.js` with bespoke palette generation, `spawnParticleBurst()`, and theme-aware particle rendering (4-point sparkle stars, glowing astral nebulae, electric lightning diamonds, and smoldering embers with thermal lift).<br>• Integrated `#particleVfxSection` in Grandmaster Atelier modal (`templates/play.html`) with active indicators and instant canvas burst preview triggers.<br>• Engineered automated algorithmic Tactical Commentary Engine in `static/js/game.js` emitting play-by-play combat intel across piece launches, cushion rebounds, fortress wall impacts, breaches, critical collisions, eliminations, sovereign awakenings, and checkmate victories.<br>• Added `#sidebarCommentaryCard` in `templates/play.html` featuring animated live beacon, `#tacticalCommentaryTicker` with glowing pulses, and chronological `#tacticalCommentaryFeed` debrief ledger.<br>• Added automated unit test `test_particle_vfx_themes_and_commentary_stream` in `tests/test_archess.py` verifying all 35/35 tests pass in 0.99s. | • Delivers stunning customizable visual particle fidelity and broadcast-grade tactical commentary debriefs, elevating ArChess into a professional spectator and competitive gaming experience. |
 | **`README.md` & `requirements.txt`** | • Created professional project documentation and dependency manifest. | • Standard open-source onboarding. |
 
 ---
@@ -150,15 +156,16 @@
 | **Real-Time Multiplayer WebSocket Engine** | Thread-safe `CombatRoom` relay, REST `/api/multiplayer/*`, WebSocket `/ws/combat/<id>`, live aim preview, remote launch | ✅ PASS | `pytest -k test_real_time_multiplayer_engine` |
 | **Knockout Tournament Bracket & Reverb Acoustics** | 8-commander knockout bracket engine, `/api/tournament/*`, ELO probabilities, Golden Crown banner, and synthetic impulse response convolver spatial reverb (`citadel`, `wood`, `void`, `cathedral`) | ✅ PASS | `pytest -k test_tournament_bracket_and_environmental_acoustics` |
 | **Commander Career Achievements & Emotes Engine** | 7-badge career achievements catalog, dynamic criteria unlock engine, user progression API (`/api/achievements`, `/api/users/<user>/achievements`), dossier badge showcase, victory unlock banner, and floating combat emote dock (`⚔️`, `🔥`, `👑`, `🎯`, `💀`, `⚡`) with WebSocket broadcast | ✅ PASS | `pytest -k test_career_achievements_and_combat_reactions` |
+| **Kinetic Particle VFX Themes & Match Commentary** | 4 bespoke particle themes (`sovereign_sparks`, `cosmic_nebula`, `neon_arc`, `void_embers`), theme-aware rendering (stars, nebulae, lightning diamonds, embers), Atelier customizer, and live algorithmic tactical commentary feed & ticker | ✅ PASS | `pytest -k test_particle_vfx_themes_and_commentary_stream` |
 
 ---
 
 ## 🔮 4. Pending / Next Phase Roadmap
 
-1. **Procedural Particle VFX Themes**:
-   - Customizable cosmetic kinetic particle trails (Golden Sparks, Cosmic Nebula, Neon Arc, Void Dust) selectable in Atelier.
-2. **Combat Spectator Commentary Stream**:
-   - Real-time automated algorithmic tactical commentary stream in multiplayer duels and tournament matches.
-3. **Continuous Headless Stress & Load Testing**:
-   - Concurrent multi-room benchmark suites with automatic latency tracking.
+1. **Continuous Headless Stress & Multi-Room Benchmarking**:
+   - Automated concurrent multi-room simulation scripts measuring round-trip WebSocket latency and message throughput.
+2. **Tactical Game Replay Export & PGN/FEN Converter**:
+   - One-click PGN / FEN algebraic notation export of ArChess tactical physical matches for external engine analysis.
+3. **Advanced Sound Synthesis Expansion**:
+   - Synthesizer modulation presets for customized soundscapes and adaptive victory fanfare.
 
