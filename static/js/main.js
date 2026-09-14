@@ -1132,6 +1132,67 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Export PGN and Copy FEN Buttons inside Victory Modal (v3.4.0)
+  const exportPgnBtn = document.getElementById('btnExportPgn');
+  if (exportPgnBtn) {
+    exportPgnBtn.addEventListener('click', () => {
+      const matchId = window.lastSettledMatchId || 1;
+      fetch(`/api/matches/${matchId}/pgn?format=json`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.pgn) {
+            const blob = new Blob([data.pgn], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `archess_match_${matchId}.pgn`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            if (window.ArchessToast) {
+              window.ArchessToast.show(`Downloaded standard PGN for Match #${matchId}!`, 'success', 3500, 'PGN EXPORT');
+            } else {
+              showToast(`Downloaded PGN for Match #${matchId}!`);
+            }
+          } else {
+            window.ArchessToast?.show('Could not fetch PGN record for this match.', 'error', 3000, 'EXPORT ERROR');
+          }
+        })
+        .catch(() => {
+          window.ArchessToast?.show('Error connecting to PGN notation service.', 'error', 3000, 'EXPORT ERROR');
+        });
+    });
+  }
+
+  const copyFenBtn = document.getElementById('btnCopyFen');
+  if (copyFenBtn) {
+    copyFenBtn.addEventListener('click', () => {
+      const matchId = window.lastSettledMatchId || 1;
+      fetch(`/api/matches/${matchId}/fen`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.fen) {
+            navigator.clipboard.writeText(data.fen).then(() => {
+              const origHtml = copyFenBtn.innerHTML;
+              copyFenBtn.textContent = 'COPIED!';
+              if (window.ArchessToast) {
+                window.ArchessToast.show(`FEN copied: ${data.fen}`, 'success', 3500, 'FEN NOTATION');
+              } else {
+                showToast(`FEN copied: ${data.fen}`);
+              }
+              setTimeout(() => { copyFenBtn.innerHTML = origHtml; }, 2200);
+            });
+          } else {
+            window.ArchessToast?.show('Could not generate FEN string.', 'error', 3000, 'FEN ERROR');
+          }
+        })
+        .catch(() => {
+          window.ArchessToast?.show('Error retrieving FEN notation.', 'error', 3000, 'FEN ERROR');
+        });
+    });
+  }
+
   /* -------------------------------------------------------------
      Tactical Combat Replay Engine (v2.9.8)
   ------------------------------------------------------------- */

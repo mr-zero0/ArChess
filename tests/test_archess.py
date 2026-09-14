@@ -1162,5 +1162,98 @@ def test_particle_vfx_themes_and_commentary_stream(client):
     assert "tacticalCommentaryFeed" in main_code
     assert "arena.onCommentary" in main_code
 
+def test_pgn_and_fen_export_engine(client):
+    """Verify standard PGN and FEN generation, REST endpoints, and UI integration (v3.4.0)."""
+    from backend.notation import generate_pgn, generate_fen
+
+    # 1. Direct Python Unit Testing of Notation Engine
+    sample_match = {
+        "id": 42,
+        "created_at": "2026-09-14T12:00:00Z",
+        "white_username": "Magnus_Kinetic",
+        "black_username": "Hikaru_Vector",
+        "winner": "white",
+        "turns": 14,
+        "duration_sec": 65,
+        "white_damage": 450,
+        "black_damage": 210,
+        "events": [
+            {"event_type": "LAUNCH", "payload": {"desc": "White Knight launched at 85% impulse"}},
+            {"event_type": "COLLISION", "payload": {"desc": "White Knight strikes Black Bishop for 45 damage"}},
+            {"event_type": "FORTRESS_BREACH", "payload": {"desc": "Black King wall collapsed!"}},
+            {"event_type": "ELIMINATION", "payload": {"desc": "Black King eliminated from board"}}
+        ]
+    }
+    pgn_str = generate_pgn(sample_match)
+    assert '[Event "ArChess Tactical Combat Season 3"]' in pgn_str
+    assert '[White "Magnus_Kinetic"]' in pgn_str
+    assert '[Black "Hikaru_Vector"]' in pgn_str
+    assert '[Result "1-0"]' in pgn_str
+    assert '[Termination "Sovereign Elimination"]' in pgn_str
+    assert '[WhiteDamage "450 HP"]' in pgn_str
+    assert '1. W_KINETIC_LAUNCH' in pgn_str
+    assert '1-0' in pgn_str
+
+    fen_white = generate_fen("white", 14)
+    assert "4K3" in fen_white
+    fen_black = generate_fen("black", 14)
+    assert "4k3" in fen_black
+    fen_draw = generate_fen("draw", 20)
+    assert "4k3" in fen_draw and "4K3" in fen_draw
+
+    # 2. Record a fresh match and query its PGN/FEN via REST APIs
+    test_user = f"NotationCmd_{uuid.uuid4().hex[:8]}"
+    match_payload = {
+        "white_username": test_user,
+        "black_username": "ArChess Bot",
+        "winner": "white",
+        "white_damage": 300,
+        "black_damage": 40,
+        "turns": 10,
+        "duration_sec": 30
+    }
+    rec_res = client.post("/api/matches/record", json=match_payload)
+    assert rec_res.status_code == 200
+    match_id = rec_res.get_json()["settlement"]["match_id"]
+
+    # Raw PGN download
+    pgn_res = client.get(f"/api/matches/{match_id}/pgn")
+    assert pgn_res.status_code == 200
+    assert pgn_res.mimetype == "text/plain"
+    assert f'archess_match_{match_id}.pgn' in pgn_res.headers.get("Content-Disposition", "")
+    pgn_body = pgn_res.data.decode("utf-8")
+    assert '[Event "ArChess Tactical Combat Season 3"]' in pgn_body
+    assert f'[White "{test_user}"]' in pgn_body
+    assert '1-0' in pgn_body
+
+    # JSON PGN endpoint
+    pgn_json_res = client.get(f"/api/matches/{match_id}/pgn?format=json")
+    assert pgn_json_res.status_code == 200
+    json_data = pgn_json_res.get_json()
+    assert json_data["success"] is True
+    assert json_data["match_id"] == match_id
+    assert '[Event "ArChess Tactical Combat Season 3"]' in json_data["pgn"]
+
+    # FEN endpoint
+    fen_res = client.get(f"/api/matches/{match_id}/fen")
+    assert fen_res.status_code == 200
+    fen_data = fen_res.get_json()
+    assert fen_data["success"] is True
+    assert "fen" in fen_data
+
+    # Non-existent match returns 404
+    err_res = client.get("/api/matches/999999999/pgn")
+    assert err_res.status_code == 404
+    err_fen = client.get("/api/matches/999999999/fen")
+    assert err_fen.status_code == 404
+
+    # 3. UI Buttons in play.html
+    play_res = client.get("/play")
+    assert play_res.status_code == 200
+    play_html = play_res.data.decode("utf-8")
+    assert 'id="btnExportPgn"' in play_html
+    assert 'id="btnCopyFen"' in play_html
+
+
 
 

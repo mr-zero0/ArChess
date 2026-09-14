@@ -8,7 +8,7 @@ import os
 import uuid
 import time
 import json
-from flask import Flask, request, jsonify, session, render_template, send_from_directory
+from flask import Flask, request, jsonify, session, render_template, send_from_directory, Response
 from flask_cors import CORS
 from flask_sock import Sock
 
@@ -31,6 +31,7 @@ from backend.achievements import (
     get_user_achievements,
     evaluate_match_achievements
 )
+from backend.notation import generate_pgn, generate_fen
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
@@ -307,6 +308,26 @@ def api_get_match(match_id):
     if not match_data:
         return jsonify({"success": False, "error": f"Match #{match_id} not found."}), 404
     return jsonify({"success": True, "match": match_data}), 200
+
+@app.route("/api/matches/<int:match_id>/pgn", methods=["GET"])
+def api_get_match_pgn(match_id):
+    match_data = get_match_by_id(match_id)
+    if not match_data:
+        return jsonify({"success": False, "error": f"Match #{match_id} not found."}), 404
+    pgn_text = generate_pgn(match_data)
+    if request.args.get("format") == "json":
+        return jsonify({"success": True, "match_id": match_id, "pgn": pgn_text}), 200
+    res = Response(pgn_text, mimetype="text/plain; charset=utf-8")
+    res.headers["Content-Disposition"] = f'attachment; filename="archess_match_{match_id}.pgn"'
+    return res
+
+@app.route("/api/matches/<int:match_id>/fen", methods=["GET"])
+def api_get_match_fen(match_id):
+    match_data = get_match_by_id(match_id)
+    if not match_data:
+        return jsonify({"success": False, "error": f"Match #{match_id} not found."}), 404
+    fen_str = generate_fen(match_data.get("winner", "white"), match_data.get("turns", 1))
+    return jsonify({"success": True, "match_id": match_id, "fen": fen_str}), 200
 
 # -------------------------------------------------------------
 # API Endpoints: Telemetry Persistence
