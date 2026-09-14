@@ -318,15 +318,13 @@ def test_ui_design_systems_and_bento_grid(client):
     assert ".btn-nav-design-toggle" in css
     assert ".design-picker-card" in css
 
-    # 2. Check all views for design switchers and pre-hydration
+    # 2. Check all views for native Cupertino HIG pre-hydration and clean layout
     for path in ["/", "/play", "/arsenal", "/leaderboard"]:
         res = client.get(path)
         assert res.status_code == 200
         html = res.data.decode("utf-8")
         assert "archess_ui_design" in html, f"Pre-hydration missing in {path}"
-        assert 'id="navDesignToggleBtn"' in html, f"Nav design button missing in {path}"
-        assert 'class="drawer-design-section"' in html, f"Drawer design section missing in {path}"
-        assert 'id="designPickerModal"' in html, f"Design picker modal missing in {path}"
+        assert "ios-native" in html, f"Native iOS design default missing in {path}"
 
     # 3. Check Bento Grid on Landing, Arsenal, and Leaderboard
     index_html = client.get("/").data.decode("utf-8")

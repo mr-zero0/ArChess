@@ -374,8 +374,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function applyBotDifficulty(diff) {
     botDiffBtns.forEach(b => {
-      b.classList.toggle('active', b.getAttribute('data-diff') === diff);
+      const bDiff = b.getAttribute('data-diff') || b.getAttribute('data-bot-diff');
+      b.classList.toggle('active', bDiff === diff);
     });
+    const atelierAiActiveName = document.getElementById('atelierAiActiveName');
+    if (atelierAiActiveName) {
+      const labels = {
+        cadet: 'Cadet (Casual)',
+        commander: 'Commander (Balanced)',
+        grandmaster: 'Grandmaster (Predictive)'
+      };
+      atelierAiActiveName.textContent = labels[diff] || 'Commander (Balanced)';
+    }
     if (arena && typeof arena.setBotDifficulty === 'function') {
       arena.setBotDifficulty(diff);
     }
@@ -386,7 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   botDiffBtns.forEach(btn => {
     btn.addEventListener('click', () => {
-      const diff = btn.getAttribute('data-diff') || 'commander';
+      const diff = btn.getAttribute('data-diff') || btn.getAttribute('data-bot-diff') || 'commander';
       applyBotDifficulty(diff);
       const labels = {
         cadet: 'AI Tier: Cadet (Casual Recruit)',
@@ -940,104 +950,45 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // =========================================================================
-  // MULTI-DESIGN SYSTEM CONTROLLER
-  // Supports: Dark Premium, Glassmorphism, Neobrutalism, Minimal, iOS Native, Material 3
+  // NATIVE UI DESIGN CONTROLLER (Apple HIG / Cupertino Squircle Default)
   // =========================================================================
   const designModal = document.getElementById('designPickerModal');
   const navDesignToggleBtn = document.getElementById('navDesignToggleBtn');
   const closeDesignModalBtn = document.getElementById('closeDesignModalBtn');
 
-  const DESIGN_LABELS = {
-    'dark-premium': 'Dark Premium (Obsidian & Gold)',
-    'glassmorphism': 'Glassmorphism (Frosted Crystal)',
-    'neobrutalism': 'Neobrutalism (Bold & Raw Pop)',
-    'minimal': 'Minimalist (Zen Whitespace)',
-    'ios-native': 'iOS Native (Cupertino HIG)',
-    'material3': 'Material 3 (Google Material You)'
-  };
-
-  function applyUiDesign(designKey, announce = false) {
-    if (!DESIGN_LABELS[designKey]) designKey = 'dark-premium';
+  function applyUiDesign(designKey = 'ios-native', announce = false) {
+    if (!designKey) designKey = 'ios-native';
     document.documentElement.setAttribute('data-ui-design', designKey);
     localStorage.setItem('archess_ui_design', designKey);
 
-    // Update active state in design modal cards
-    document.querySelectorAll('.design-picker-card').forEach(card => {
-      card.classList.toggle('active', card.getAttribute('data-design-key') === designKey);
+    document.querySelectorAll('.design-picker-card, .drawer-design-btn, .atelier-design-card').forEach(el => {
+      el.classList.toggle('active', el.getAttribute('data-design-key') === designKey);
     });
 
-    // Update active state in drawer buttons
-    document.querySelectorAll('.drawer-design-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.getAttribute('data-design-key') === designKey);
-    });
-
-    // Update active state in atelier cards
-    document.querySelectorAll('.atelier-design-card').forEach(card => {
-      card.classList.toggle('active', card.getAttribute('data-design-key') === designKey);
-    });
-
-    // Update active label in atelier if present
     const atelierDesignLabel = document.getElementById('atelierDesignActiveName');
     if (atelierDesignLabel) {
-      atelierDesignLabel.textContent = DESIGN_LABELS[designKey];
+      atelierDesignLabel.textContent = 'iOS Native (Cupertino HIG)';
     }
 
     if (announce) {
-      showToast(`${DESIGN_LABELS[designKey]} Activated`);
+      showToast('Cupertino Minimalist Design Active');
     }
   }
 
-  // Initial load
-  const initialDesign = document.documentElement.getAttribute('data-ui-design') || localStorage.getItem('archess_ui_design') || 'dark-premium';
-  applyUiDesign(initialDesign, false);
+  // Natively enforce Apple HIG Cupertino Squircle Design
+  applyUiDesign('ios-native', false);
 
-  // Modal handlers
   if (navDesignToggleBtn && designModal) {
-    navDesignToggleBtn.addEventListener('click', () => {
-      designModal.classList.add('active');
-    });
+    navDesignToggleBtn.addEventListener('click', () => designModal.classList.add('active'));
   }
   if (closeDesignModalBtn && designModal) {
-    closeDesignModalBtn.addEventListener('click', () => {
-      designModal.classList.remove('active');
-    });
+    closeDesignModalBtn.addEventListener('click', () => designModal.classList.remove('active'));
   }
   if (designModal) {
     designModal.addEventListener('click', (e) => {
       if (e.target === designModal) designModal.classList.remove('active');
     });
   }
-
-  // Design modal cards click
-  document.querySelectorAll('.design-picker-card').forEach(card => {
-    card.addEventListener('click', () => {
-      const key = card.getAttribute('data-design-key');
-      if (key) {
-        applyUiDesign(key, true);
-        if (designModal) designModal.classList.remove('active');
-      }
-    });
-  });
-
-  // Drawer design buttons click
-  document.querySelectorAll('.drawer-design-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const key = btn.getAttribute('data-design-key');
-      if (key) {
-        applyUiDesign(key, true);
-      }
-    });
-  });
-
-  // Atelier design cards click
-  document.querySelectorAll('.atelier-design-card').forEach(card => {
-    card.addEventListener('click', () => {
-      const key = card.getAttribute('data-design-key');
-      if (key) {
-        applyUiDesign(key, true);
-      }
-    });
-  });
 
 
   // Play Again Button inside Victory Modal

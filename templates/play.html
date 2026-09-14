@@ -8,66 +8,55 @@
 {% block content %}
   <main class="play-page-container container">
     
-    <!-- Arena Control Toolbar -->
+    <!-- Minimalist Cupertino Arena Toolbar -->
     <div class="play-arena-toolbar">
       
-      <!-- Match Mode: vs Bot AI vs Pass & Play -->
+      <!-- Primary Match Mode Segmented Control -->
       <div class="arena-toolbar-group">
-        <span>Match:</span>
-        <div class="theme-picker-group">
-          <button class="theme-pill-btn game-mode-btn active" id="modeVsBotBtn" data-mode="bot">vs Bot AI</button>
+        <div class="theme-picker-group cupertino-segmented-control" role="group" aria-label="Game Mode">
+          <button class="theme-pill-btn game-mode-btn active" id="modeVsBotBtn" data-mode="bot">vs AI</button>
           <button class="theme-pill-btn game-mode-btn" id="modePvpBtn" data-mode="pvp">Pass &amp; Play</button>
-        </div>
-      </div>
-
-      <!-- Bot Tactical AI Tier Selector -->
-      <div class="arena-toolbar-group" id="botDifficultyToolbarGroup">
-        <span>AI Tier:</span>
-        <div class="theme-picker-group">
-          <button class="theme-pill-btn bot-difficulty-btn" data-diff="cadet" data-bot-diff="cadet" title="Cadet: Casual recruit level with wider aim tolerance">Cadet</button>
-          <button class="theme-pill-btn bot-difficulty-btn active" data-diff="commander" data-bot-diff="commander" title="Commander: Standard tactical targeting">Commander</button>
-          <button class="theme-pill-btn bot-difficulty-btn" data-diff="grandmaster" data-bot-diff="grandmaster" title="Grandmaster: Predictive bank-shot neural AI">Grandmaster</button>
-        </div>
-      </div>
-
-      <!-- View Mode: 3D Arena (Physics), 2D Arena (Physics), 2D Classic (FIDE) -->
-      <div class="arena-toolbar-group">
-        <span>View:</span>
-        <div class="view-mode-toggle">
-          <button class="view-btn active" id="viewMode3DArena" data-view="3d-arena">3D Arena</button>
-          <button class="view-btn" id="viewMode2DArena" data-view="2d-arena">⚔️ 2D Arena</button>
-          <button class="view-btn" id="viewMode2DClassic" data-view="2d-classic">♟️ 2D Classic</button>
-        </div>
-      </div>
-
-      <!-- Board Theme Selector & Grandmaster Customizer Trigger -->
-      <div class="arena-toolbar-group">
-        <span>Board:</span>
-        <div class="theme-picker-group">
-          <button class="theme-pill-btn theme-board-btn active" data-theme="midnight" title="Midnight Obsidian">Midnight</button>
-          <button class="theme-pill-btn theme-board-btn" data-theme="woodland" title="Woodland Walnut">Woodland</button>
-          <button class="theme-pill-btn theme-board-btn" data-theme="emerald" title="Tournament Emerald">Emerald</button>
-          <button class="theme-pill-btn btn-customizer-trigger" id="btnOpenAppearanceModal" title="Open Board &amp; Piece Sets Customizer">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24M14.83 14.83l4.24 4.24M14.83 9.17l4.24-4.24M4.93 19.07l4.24-4.24"/></svg>
-            <span>+ More</span>
+          <button class="theme-pill-btn btn-multiplayer-trigger" id="btnOpenMultiplayerModal" title="Online Multiplayer">
+            <span class="multiplayer-status-dot" id="multiplayerStatusDot"></span>
+            <span id="multiplayerBtnLabel">Online</span>
           </button>
         </div>
       </div>
 
-      <!-- Live Multiplayer Matchmaking Trigger -->
+      <!-- Perspective View Segmented Control -->
       <div class="arena-toolbar-group">
-        <button class="theme-pill-btn btn-multiplayer-trigger" id="btnOpenMultiplayerModal" title="Live Multiplayer Room & Matchmaking">
-          <span class="multiplayer-status-dot" id="multiplayerStatusDot"></span>
-          <span id="multiplayerBtnLabel">⚔️ Live Multiplayer</span>
+        <div class="view-mode-toggle cupertino-segmented-control" role="group" aria-label="View Mode">
+          <button class="view-btn active" id="viewMode3DArena" data-view="3d-arena">3D</button>
+          <button class="view-btn" id="viewMode2DArena" data-view="2d-arena">2D Arena</button>
+          <button class="view-btn" id="viewMode2DClassic" data-view="2d-classic">Classic</button>
+        </div>
+      </div>
+
+      <!-- Secondary Controls Abstracted Behind Settings & Reset -->
+      <div class="arena-toolbar-group arena-toolbar-actions">
+        <!-- Settings Trigger (Abstracts Board Themes, Soundscapes, AI Difficulty) -->
+        <button class="btn-cupertino-action btn-customizer-trigger" id="btnOpenAppearanceModal" title="Match Settings &amp; Palettes">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span>Settings</span>
+        </button>
+
+        <!-- Reset Board Button -->
+        <button class="btn-cupertino-action" id="arenaResetBtn" title="Reset board to opening arrangement">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+          </svg>
+          <span>Reset</span>
         </button>
       </div>
 
-      <!-- Re-rack Button -->
-      <div class="arena-toolbar-group">
-        <button class="btn btn-outline btn-sm" id="arenaResetBtn" title="Reset board to opening arrangement">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-          <span>Reset Board</span>
-        </button>
+      <!-- Abstracted AI Tier Selector (kept accessible for tests & synced from Settings) -->
+      <div class="arena-toolbar-group" id="botDifficultyToolbarGroup" style="display: none;">
+        <button class="theme-pill-btn bot-difficulty-btn" data-diff="cadet" data-bot-diff="cadet">Cadet</button>
+        <button class="theme-pill-btn bot-difficulty-btn active" data-diff="commander" data-bot-diff="commander">Commander</button>
+        <button class="theme-pill-btn bot-difficulty-btn" data-diff="grandmaster" data-bot-diff="grandmaster">Grandmaster</button>
       </div>
     </div>
 
@@ -75,28 +64,24 @@
     <div class="turn-indicator-bar">
       <div class="turn-badge">
         <div class="turn-timer-wrap" title="Turn Active">
-          <svg class="turn-timer-svg" width="30" height="30" viewBox="0 0 36 36">
+          <svg class="turn-timer-svg" width="28" height="28" viewBox="0 0 36 36">
             <circle class="turn-timer-bg" cx="18" cy="18" r="15.5"></circle>
             <circle class="turn-timer-circle" id="turnTimerRing" cx="18" cy="18" r="15.5"></circle>
           </svg>
           <div class="turn-circle" id="arenaTurnCircle"></div>
         </div>
-        <div class="turn-label" id="arenaTurnLabel">WHITE'S TURN — AIM &amp; LAUNCH</div>
+        <div class="turn-label" id="arenaTurnLabel">WHITE'S TURN</div>
         <div id="arenaPieceCounts" class="tabular-nums" style="font-size: 0.82rem; color: var(--muted-foreground); margin-left: 12px;"></div>
       </div>
 
-      <div class="keyboard-hints-badge" id="arenaControlHints">
-        <span>Controls:</span>
-        <span class="kbd-key">Drag / Mouse</span>
-        <span class="kbd-key">Tab</span> Cycle
-        <span class="kbd-key">WASD</span> Aim
-        <span class="kbd-key">Space</span> Fire
-        <span style="font-size: 0.72rem; color: var(--muted-foreground); margin-left: 6px;">(King: Citadel &bull; 👑 Awakens When Vanguard Falls)</span>
+      <div class="keyboard-hints-badge" id="arenaControlHints" title="Click &amp; drag piece to aim and launch. Tab cycles pieces. Space fires.">
+        <span class="kbd-key">Drag</span> Aim &bull; Launch
+        <span class="kbd-hint-more" style="color: var(--muted-foreground); font-size: 0.75rem; margin-left: 6px;">(or Tab &bull; Space)</span>
       </div>
     </div>
 
-    <!-- Board Size Control -->
-    <div class="board-resize-strip">
+    <!-- Board Size Control (Accessible for responsive scaling, abstracted from primary canvas view) -->
+    <div class="board-resize-strip" style="display: none;">
       <span class="resize-label">Board Size</span>
       <button class="board-resize-btn" id="boardShrinkBtn" title="Shrink board">−</button>
       <span class="board-size-indicator" id="boardSizeLabel">100%</span>
@@ -379,14 +364,27 @@
     <div class="appearance-modal-card" id="appearanceModalCard">
       <div class="appearance-modal-head">
         <div class="head-meta">
-          <span class="eyebrow">GRANDMASTER ATELIER</span>
-          <h2 class="title">Board &amp; Piece Customizer</h2>
-          <p class="subtitle">Personalize chess palettes and piece sets across 3D Arena, 2D Arena, and 2D Classic.</p>
+          <span class="eyebrow">PREFERENCES</span>
+          <h2 class="title">Match Settings</h2>
+          <p class="subtitle">Personalize AI difficulty, board palettes, piece styles, and acoustics.</p>
         </div>
-        <button class="modal-close-icon" id="btnCloseAppearanceModal" aria-label="Close Customizer">✕</button>
+        <button class="modal-close-icon" id="btnCloseAppearanceModal" aria-label="Close Settings">✕</button>
       </div>
 
       <div class="appearance-modal-content">
+        <!-- AI Difficulty Tier Section -->
+        <div class="atelier-section">
+          <div class="section-label-bar">
+            <h4>AI Difficulty</h4>
+            <span class="active-indicator" id="atelierAiActiveName">Tactical Commander</span>
+          </div>
+          <div class="theme-picker-group cupertino-segmented-control" style="margin-top: 8px; width: 100%; display: flex; padding: 4px;">
+            <button type="button" class="theme-pill-btn bot-difficulty-btn bot-diff-setting-pill" data-diff="cadet" data-bot-diff="cadet" style="flex: 1; text-align: center;">Cadet</button>
+            <button type="button" class="theme-pill-btn bot-difficulty-btn bot-diff-setting-pill active" data-diff="commander" data-bot-diff="commander" style="flex: 1; text-align: center;">Commander</button>
+            <button type="button" class="theme-pill-btn bot-difficulty-btn bot-diff-setting-pill" data-diff="grandmaster" data-bot-diff="grandmaster" style="flex: 1; text-align: center;">Grandmaster</button>
+          </div>
+        </div>
+
         <!-- Board Themes Section -->
         <div class="atelier-section">
           <div class="section-label-bar">
@@ -664,74 +662,7 @@
           </div>
         </div>
 
-        <!-- UI Design Language Section in Atelier -->
-        <div class="atelier-section">
-          <div class="section-label-bar">
-            <h4>UI Design Language</h4>
-            <span class="active-indicator" id="atelierDesignActiveName">Dark Premium (Obsidian &amp; Gold)</span>
-          </div>
-          <div class="design-picker-grid" style="margin-top: 12px;">
-            <div class="design-picker-card atelier-design-card active" data-design-key="dark-premium">
-              <div class="design-preview-strip preview-dark">
-                <span style="font-size: 0.72rem; font-weight: 700;">Obsidian &bull; Gold</span>
-              </div>
-              <div class="design-card-meta">
-                <h4 style="font-size: 0.88rem;">Dark Premium</h4>
-                <p style="font-size: 0.72rem;">Luxury gold &amp; platinum foil gradients.</p>
-              </div>
-            </div>
 
-            <div class="design-picker-card atelier-design-card" data-design-key="glassmorphism">
-              <div class="design-preview-strip preview-glass">
-                <span style="font-size: 0.72rem; font-weight: 700; color: #00f2fe;">Frosted &bull; Blur</span>
-              </div>
-              <div class="design-card-meta">
-                <h4 style="font-size: 0.88rem;">Glassmorphism</h4>
-                <p style="font-size: 0.72rem;">Frosted glass with luminous cyan glow.</p>
-              </div>
-            </div>
-
-            <div class="design-picker-card atelier-design-card" data-design-key="neobrutalism">
-              <div class="design-preview-strip preview-brutal">
-                <span style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase;">Raw 3px &bull; Pop</span>
-              </div>
-              <div class="design-card-meta">
-                <h4 style="font-size: 0.88rem;">Neobrutalism</h4>
-                <p style="font-size: 0.72rem;">Thick 3px solid borders, cyber pop shadows.</p>
-              </div>
-            </div>
-
-            <div class="design-picker-card atelier-design-card" data-design-key="minimal">
-              <div class="design-preview-strip preview-minimal">
-                <span style="font-size: 0.72rem; font-weight: 600; color: #e2e8f0;">Zen &bull; Space</span>
-              </div>
-              <div class="design-card-meta">
-                <h4 style="font-size: 0.88rem;">Minimalist</h4>
-                <p style="font-size: 0.72rem;">Generous whitespace, whisper-thin borders.</p>
-              </div>
-            </div>
-
-            <div class="design-picker-card atelier-design-card" data-design-key="ios-native">
-              <div class="design-preview-strip preview-ios">
-                <span style="font-size: 0.72rem; font-weight: 600; color: #fff;">Cupertino &bull; HIG</span>
-              </div>
-              <div class="design-card-meta">
-                <h4 style="font-size: 0.88rem;">iOS Native</h4>
-                <p style="font-size: 0.72rem;">Apple HIG squircle cards, SF font styling.</p>
-              </div>
-            </div>
-
-            <div class="design-picker-card atelier-design-card" data-design-key="material3">
-              <div class="design-preview-strip preview-m3">
-                <span style="font-size: 0.72rem; font-weight: 700;">Google M3</span>
-              </div>
-              <div class="design-card-meta">
-                <h4 style="font-size: 0.88rem;">Material Design 3</h4>
-                <p style="font-size: 0.72rem;">Material You dynamic tonal containers.</p>
-              </div>
-            </div>
-          </div>
-        </div>
 
       </div>
 

@@ -8,7 +8,7 @@
   
   <script>
     (function() {
-      var design = localStorage.getItem('archess_ui_design') || 'dark-premium';
+      var design = localStorage.getItem('archess_ui_design') || 'ios-native';
       document.documentElement.setAttribute('data-ui-design', design);
       var mode = localStorage.getItem('archess_theme_mode');
       if (mode === 'light' || (!mode && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches)) {
