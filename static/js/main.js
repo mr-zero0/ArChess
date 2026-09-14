@@ -1646,27 +1646,55 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   /* -------------------------------------------------------------
-     Hero Video Play/Pause Control
+     Hero Video Play/Pause Control & Resilient Autoplay
   ------------------------------------------------------------- */
   const heroVideo = document.getElementById('heroVideo');
   const videoControlBtn = document.getElementById('videoControlBtn');
   const videoControlIcon = document.getElementById('videoControlIcon');
   const videoControlText = document.getElementById('videoControlText');
 
-  if (heroVideo && videoControlBtn) {
-    videoControlBtn.addEventListener('click', () => {
-      if (heroVideo.paused) {
-        heroVideo.play();
-        if (videoControlIcon) videoControlIcon.innerHTML = '&#10074;&#10074;';
-        if (videoControlText) videoControlText.textContent = 'Pause';
-        showToast('Hero cinematic resumed');
-      } else {
-        heroVideo.pause();
-        if (videoControlIcon) videoControlIcon.innerHTML = '&#9658;';
-        if (videoControlText) videoControlText.textContent = 'Play';
-        showToast('Hero cinematic paused');
+  if (heroVideo) {
+    // Explicitly set muted & playsInline properties to ensure modern browser autoplay policies allow playback
+    heroVideo.muted = true;
+    heroVideo.defaultMuted = true;
+    heroVideo.playsInline = true;
+
+    const syncVideoButtonState = (isPlaying) => {
+      if (videoControlIcon) videoControlIcon.innerHTML = isPlaying ? '&#10074;&#10074;' : '&#9658;';
+      if (videoControlText) videoControlText.textContent = isPlaying ? 'Pause' : 'Play';
+      if (videoControlBtn) {
+        videoControlBtn.setAttribute('aria-label', isPlaying ? 'Pause Hero Video' : 'Play Hero Video');
       }
-    });
+    };
+
+    heroVideo.addEventListener('play', () => syncVideoButtonState(true));
+    heroVideo.addEventListener('pause', () => syncVideoButtonState(false));
+
+    // Attempt autoplay immediately
+    const playPromise = heroVideo.play();
+    if (playPromise !== undefined) {
+      playPromise.then(() => {
+        syncVideoButtonState(true);
+      }).catch(() => {
+        // If autoplay was deferred by browser battery saver or strict policy, synchronize UI
+        syncVideoButtonState(false);
+      });
+    }
+
+    if (videoControlBtn) {
+      videoControlBtn.addEventListener('click', () => {
+        if (heroVideo.paused) {
+          heroVideo.play().then(() => {
+            showToast('Hero cinematic resumed');
+          }).catch((err) => {
+            console.warn('[Hero Video] Playback invocation blocked:', err);
+          });
+        } else {
+          heroVideo.pause();
+          showToast('Hero cinematic paused');
+        }
+      });
+    }
   }
 
   /* -------------------------------------------------------------
