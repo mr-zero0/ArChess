@@ -6,180 +6,176 @@
 {% block meta_description %}Launch into the Archess arena. Slingshot kinetic pieces across 3D and 2D physics battlegrounds or classic FIDE rules.{% endblock %}
 
 {% block content %}
-  <main class="play-page-container container">
-    
-    <!-- Minimalist Cupertino Arena Toolbar -->
-    <div class="play-arena-toolbar">
-      
-      <!-- Primary Match Mode Segmented Control -->
-      <div class="arena-toolbar-group">
-        <div class="theme-picker-group cupertino-segmented-control" role="group" aria-label="Game Mode">
-          <button class="theme-pill-btn game-mode-btn active" id="modeVsBotBtn" data-mode="bot">vs AI</button>
-          <button class="theme-pill-btn game-mode-btn" id="modePvpBtn" data-mode="pvp">Pass &amp; Play</button>
-          <button class="theme-pill-btn btn-multiplayer-trigger" id="btnOpenMultiplayerModal" title="Online Multiplayer">
-            <span class="multiplayer-status-dot" id="multiplayerStatusDot"></span>
-            <span id="multiplayerBtnLabel">Online</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Perspective View Segmented Control -->
-      <div class="arena-toolbar-group">
-        <div class="view-mode-toggle cupertino-segmented-control" role="group" aria-label="View Mode">
-          <button class="view-btn active" id="viewMode3DArena" data-view="3d-arena">3D Realistic</button>
-          <button class="view-btn" id="viewMode2DArena" data-view="2d-arena">2D Arena</button>
-          <button class="view-btn" id="viewMode2DClassic" data-view="2d-classic">Classic</button>
-        </div>
-      </div>
-
-      <!-- 3D Camera Controls (Active in 3D Realistic View) -->
-      <div class="arena-toolbar-group" id="camera3DToolbarGroup">
-        <div class="camera-picker-group cupertino-segmented-control" role="group" aria-label="Camera Perspective">
-          <button class="theme-pill-btn camera-btn active" id="camTabletopBtn" data-cam="tabletop" title="Tabletop Perspective">Tabletop</button>
-          <button class="theme-pill-btn camera-btn" id="camCinematicBtn" data-cam="cinematic" title="Dramatic Cinematic Angle">Cinematic</button>
-          <button class="theme-pill-btn camera-btn" id="camTacticalBtn" data-cam="tactical" title="Top-Down Tactical Overview">Overhead</button>
-          <button class="theme-pill-btn camera-btn" id="camResetBtn" title="Reset Camera Orbit (Right-click drag to orbit freely)">↺ Reset</button>
-        </div>
-      </div>
-
-      <!-- Secondary Controls Abstracted Behind Settings & Reset -->
-      <div class="arena-toolbar-group arena-toolbar-actions">
-        <!-- Settings Trigger (Abstracts Board Themes, Soundscapes, AI Difficulty) -->
-        <button class="btn-cupertino-action btn-customizer-trigger" id="btnOpenAppearanceModal" title="Match Settings &amp; Palettes">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="3"></circle>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-          </svg>
-          <span>Settings</span>
-        </button>
-
-        <!-- Reset Board Button -->
-        <button class="btn-cupertino-action" id="arenaResetBtn" title="Reset board to opening arrangement">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
-          </svg>
-          <span>Reset</span>
-        </button>
-      </div>
-
-      <!-- Abstracted AI Tier Selector (kept accessible for tests & synced from Settings) -->
-      <div class="arena-toolbar-group" id="botDifficultyToolbarGroup" style="display: none;">
-        <button class="theme-pill-btn bot-difficulty-btn" data-diff="cadet" data-bot-diff="cadet">Cadet</button>
-        <button class="theme-pill-btn bot-difficulty-btn active" data-diff="commander" data-bot-diff="commander">Commander</button>
-        <button class="theme-pill-btn bot-difficulty-btn" data-diff="grandmaster" data-bot-diff="grandmaster">Grandmaster</button>
-      </div>
-    </div>
-
-    <!-- Turn Indicator & Guidance Banner -->
-    <div class="turn-indicator-bar">
-      <div class="turn-badge">
-        <div class="turn-timer-wrap" title="Turn Active">
-          <svg class="turn-timer-svg" width="28" height="28" viewBox="0 0 36 36">
-            <circle class="turn-timer-bg" cx="18" cy="18" r="15.5"></circle>
-            <circle class="turn-timer-circle" id="turnTimerRing" cx="18" cy="18" r="15.5"></circle>
-          </svg>
-          <div class="turn-circle" id="arenaTurnCircle"></div>
-        </div>
-        <div class="turn-label" id="arenaTurnLabel">WHITE'S TURN</div>
-        <div id="arenaPieceCounts" class="tabular-nums" style="font-size: 0.82rem; color: var(--muted-foreground); margin-left: 12px;"></div>
-      </div>
-
-      <div class="keyboard-hints-badge" id="arenaControlHints" title="Click &amp; drag piece to aim and launch. Tab cycles pieces. Space fires.">
-        <span class="kbd-key">Drag</span> Aim &bull; Launch
-        <span class="kbd-hint-more" style="color: var(--muted-foreground); font-size: 0.75rem; margin-left: 6px;">(or Tab &bull; Space)</span>
-      </div>
-    </div>
-
-    <!-- Board Size Control (Accessible for responsive scaling, abstracted from primary canvas view) -->
-    <div class="board-resize-strip" style="display: none;">
-      <span class="resize-label">Board Size</span>
-      <button class="board-resize-btn" id="boardShrinkBtn" title="Shrink board">−</button>
-      <span class="board-size-indicator" id="boardSizeLabel">100%</span>
-      <button class="board-resize-btn" id="boardGrowBtn" title="Enlarge board">+</button>
-    </div>
-
-    <!-- Main Game Board & Sidebar Grid -->
+  <main class="play-page-container">
     <div class="play-arena-main-grid">
       
-      <!-- Canvas Board & 2D React Chessboard Container -->
-      <div class="arena-canvas-stage" id="arenaCanvasStage">
-        <div id="threeCanvasContainer" class="three-canvas-stage"></div>
-        <canvas id="archessCanvas" style="display: none;"></canvas>
-        <div id="reactChessboardRoot" class="react-chessboard-stage" style="display: none;"></div>
+      <!-- Left: Dedicated Full-Height Board Column -->
+      <div class="arena-board-column">
+        <div class="arena-canvas-stage" id="arenaCanvasStage">
+          <div id="threeCanvasContainer" class="three-canvas-stage"></div>
+          <canvas id="archessCanvas" style="display: none;"></canvas>
+          <div id="reactChessboardRoot" class="react-chessboard-stage" style="display: none;"></div>
 
-        <!-- Interactive Tactical Combat Replay HUD Bar -->
-        <div class="tactical-replay-bar" id="tacticalReplayBar" style="display: none;">
-          <div class="replay-head-row">
-            <div class="replay-status-pill">
-              <span class="replay-pulse-dot"></span>
-              <span id="replayMatchTitle">REPLAY MODE: Turn 0 / 0</span>
+          <!-- Interactive Tactical Combat Replay HUD Bar -->
+          <div class="tactical-replay-bar" id="tacticalReplayBar" style="display: none;">
+            <div class="replay-head-row">
+              <div class="replay-status-pill">
+                <span class="replay-pulse-dot"></span>
+                <span id="replayMatchTitle">REPLAY MODE: Turn 0 / 0</span>
+              </div>
+              <div class="replay-event-ticker" id="replayEventTicker">
+                <span class="ticker-label">INTEL:</span>
+                <span class="ticker-text" id="replayEventText">Scrub through combat timeline or press Play.</span>
+              </div>
+              <button class="btn-ghost btn-sm" id="btnExitReplay" title="Exit replay and return to live battle">
+                <span>✕ Exit Replay</span>
+              </button>
             </div>
-            <div class="replay-event-ticker" id="replayEventTicker">
-              <span class="ticker-label">INTEL:</span>
-              <span class="ticker-text" id="replayEventText">Scrub through combat timeline or press Play.</span>
+
+            <div class="replay-control-row">
+              <button class="replay-ctrl-btn" id="btnReplayPrev" title="Previous Tactical Event">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
+              </button>
+              <button class="replay-ctrl-btn replay-play-btn" id="btnReplayPlayPause" title="Play / Pause Replay">
+                <svg id="replayPlayIcon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              </button>
+              <button class="replay-ctrl-btn" id="btnReplayNext" title="Next Tactical Event">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+              </button>
+              <div class="replay-slider-wrap">
+                <input type="range" class="replay-scrubber-slider" id="replayTurnScrubber" min="0" max="0" value="0" step="1">
+              </div>
+              <div class="replay-speed-toggle">
+                <button class="replay-speed-btn active" data-speed="1">1x</button>
+                <button class="replay-speed-btn" data-speed="2">2x</button>
+                <button class="replay-speed-btn" data-speed="4">4x</button>
+              </div>
             </div>
-            <button class="btn-ghost btn-sm" id="btnExitReplay" title="Exit replay and return to live battle">
-              <span>✕ Exit Replay</span>
-            </button>
           </div>
 
-          <div class="replay-control-row">
-            <button class="replay-ctrl-btn" id="btnReplayPrev" title="Previous Tactical Event">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
-            </button>
-            <button class="replay-ctrl-btn replay-play-btn" id="btnReplayPlayPause" title="Play / Pause Replay">
-              <svg id="replayPlayIcon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-            </button>
-            <button class="replay-ctrl-btn" id="btnReplayNext" title="Next Tactical Event">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
-            </button>
-            <div class="replay-slider-wrap">
-              <input type="range" class="replay-scrubber-slider" id="replayTurnScrubber" min="0" max="0" value="0" step="1">
+          <!-- Real-Time Multiplayer Active HUD Bar -->
+          <div class="active-multiplayer-bar" id="activeMultiplayerBar" style="display: none;">
+            <div class="mp-bar-left">
+              <span class="mp-pulse-dot"></span>
+              <span class="mp-room-title" id="mpRoomTitle">ROOM: ARC-000</span>
+              <span class="mp-role-pill" id="mpRolePill">YOU: WHITE</span>
             </div>
-            <div class="replay-speed-toggle">
-              <button class="replay-speed-btn active" data-speed="1">1x</button>
-              <button class="replay-speed-btn" data-speed="2">2x</button>
-              <button class="replay-speed-btn" data-speed="4">4x</button>
+            <div class="mp-bar-center">
+              <span class="mp-intel-text" id="mpStatusText">Waiting for challenger to connect...</span>
+            </div>
+            <div class="mp-bar-right">
+              <span class="mp-ping-pill" id="mpPingPill">Ping: --ms</span>
+              <button class="btn-ghost btn-sm" id="btnLeaveMultiplayer" title="Leave room and return to solo arena">
+                <span>✕ Exit Room</span>
+              </button>
             </div>
           </div>
+
+          <!-- Dynamic Combat Emote Reaction Dock (v3.2.0) -->
+          <div class="combat-emote-dock" id="combatEmoteDock" role="toolbar" aria-label="Tactical Combat Emotes">
+            <button type="button" class="btn-combat-emote" data-emote="⚔️" title="Duel / Attack">⚔️</button>
+            <button type="button" class="btn-combat-emote" data-emote="🔥" title="On Fire / Brilliant">🔥</button>
+            <button type="button" class="btn-combat-emote" data-emote="👑" title="Sovereign / Checkmate">👑</button>
+            <button type="button" class="btn-combat-emote" data-emote="🎯" title="Bullseye / Precision">🎯</button>
+            <button type="button" class="btn-combat-emote" data-emote="💀" title="Shattered / Defeat">💀</button>
+            <button type="button" class="btn-combat-emote" data-emote="⚡" title="Shockwave / Kinetic">⚡</button>
+          </div>
+
+          <!-- Floating Reactions Stage Container -->
+          <div class="floating-reactions-stage" id="floatingReactionsStage"></div>
         </div>
-
-        <!-- Real-Time Multiplayer Active HUD Bar -->
-        <div class="active-multiplayer-bar" id="activeMultiplayerBar" style="display: none;">
-          <div class="mp-bar-left">
-            <span class="mp-pulse-dot"></span>
-            <span class="mp-room-title" id="mpRoomTitle">ROOM: ARC-000</span>
-            <span class="mp-role-pill" id="mpRolePill">YOU: WHITE</span>
-          </div>
-          <div class="mp-bar-center">
-            <span class="mp-intel-text" id="mpStatusText">Waiting for challenger to connect...</span>
-          </div>
-          <div class="mp-bar-right">
-            <span class="mp-ping-pill" id="mpPingPill">Ping: --ms</span>
-            <button class="btn-ghost btn-sm" id="btnLeaveMultiplayer" title="Leave room and return to solo arena">
-              <span>✕ Exit Room</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Dynamic Combat Emote Reaction Dock (v3.2.0) -->
-        <div class="combat-emote-dock" id="combatEmoteDock" role="toolbar" aria-label="Tactical Combat Emotes">
-          <button type="button" class="btn-combat-emote" data-emote="⚔️" title="Duel / Attack">⚔️</button>
-          <button type="button" class="btn-combat-emote" data-emote="🔥" title="On Fire / Brilliant">🔥</button>
-          <button type="button" class="btn-combat-emote" data-emote="👑" title="Sovereign / Checkmate">👑</button>
-          <button type="button" class="btn-combat-emote" data-emote="🎯" title="Bullseye / Precision">🎯</button>
-          <button type="button" class="btn-combat-emote" data-emote="💀" title="Shattered / Defeat">💀</button>
-          <button type="button" class="btn-combat-emote" data-emote="⚡" title="Shockwave / Kinetic">⚡</button>
-        </div>
-
-        <!-- Floating Reactions Stage Container -->
-        <div class="floating-reactions-stage" id="floatingReactionsStage"></div>
       </div>
 
-      <!-- Match Sidebar -->
+      <!-- Match Sidebar: All Information & Controls on the Side -->
       <div class="arena-side-sidebar">
         
-        <!-- Live Players Card -->
+        <!-- 1. Turn Indicator & Status HUD Card -->
+        <div class="sidebar-turn-card">
+          <div class="turn-indicator-bar-inner">
+            <div class="turn-badge">
+              <div class="turn-timer-wrap" title="Turn Active">
+                <svg class="turn-timer-svg" width="28" height="28" viewBox="0 0 36 36">
+                  <circle class="turn-timer-bg" cx="18" cy="18" r="15.5"></circle>
+                  <circle class="turn-timer-circle" id="turnTimerRing" cx="18" cy="18" r="15.5"></circle>
+                </svg>
+                <div class="turn-circle" id="arenaTurnCircle"></div>
+              </div>
+              <div class="turn-label" id="arenaTurnLabel">WHITE'S TURN</div>
+              <div id="arenaPieceCounts" class="tabular-nums" style="font-size: 0.82rem; color: var(--muted-foreground); margin-left: 10px;"></div>
+            </div>
+
+            <div class="keyboard-hints-badge" id="arenaControlHints" title="Click &amp; drag piece to aim and launch. Tab cycles pieces. Space fires.">
+              <span class="kbd-key">Drag</span> Aim &bull; Launch
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Command Strip: Modes, Perspectives & Camera Controls -->
+        <div class="sidebar-command-card">
+          <div class="sidebar-ctrl-row">
+            <!-- Game Mode -->
+            <div class="theme-picker-group cupertino-segmented-control" role="group" aria-label="Game Mode">
+              <button class="theme-pill-btn game-mode-btn active" id="modeVsBotBtn" data-mode="bot">vs AI</button>
+              <button class="theme-pill-btn game-mode-btn" id="modePvpBtn" data-mode="pvp">Pass &amp; Play</button>
+              <button class="theme-pill-btn btn-multiplayer-trigger" id="btnOpenMultiplayerModal" title="Online Multiplayer">
+                <span class="multiplayer-status-dot" id="multiplayerStatusDot"></span>
+                <span id="multiplayerBtnLabel">Online</span>
+              </button>
+            </div>
+
+            <!-- Settings & Reset -->
+            <div class="sidebar-action-btns">
+              <button class="btn-cupertino-action btn-customizer-trigger" id="btnOpenAppearanceModal" title="Match Settings &amp; Palettes">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+                <span>Settings</span>
+              </button>
+
+              <button class="btn-cupertino-action" id="arenaResetBtn" title="Reset board to opening arrangement">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+                </svg>
+                <span>Reset</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="sidebar-ctrl-row">
+            <!-- Perspective View Switcher -->
+            <div class="view-mode-toggle cupertino-segmented-control" role="group" aria-label="View Mode">
+              <button class="view-btn active" id="viewMode3DArena" data-view="3d-arena">3D Realistic</button>
+              <button class="view-btn" id="viewMode2DArena" data-view="2d-arena">2D Arena</button>
+              <button class="view-btn" id="viewMode2DClassic" data-view="2d-classic">Classic</button>
+            </div>
+
+            <!-- 3D Camera Controls -->
+            <div class="camera-picker-group cupertino-segmented-control" id="camera3DToolbarGroup" role="group" aria-label="Camera Perspective">
+              <button class="theme-pill-btn camera-btn active" id="camTabletopBtn" data-cam="tabletop" title="Tabletop Perspective">Tabletop</button>
+              <button class="theme-pill-btn camera-btn" id="camCinematicBtn" data-cam="cinematic" title="Dramatic Angle">Cinematic</button>
+              <button class="theme-pill-btn camera-btn" id="camTacticalBtn" data-cam="tactical" title="Top-Down Overview">Overhead</button>
+              <button class="theme-pill-btn camera-btn" id="camResetBtn" title="Reset Camera">↺</button>
+            </div>
+          </div>
+
+          <!-- Abstracted AI Tier Selector (accessible for tests & synced from Settings) -->
+          <div class="arena-toolbar-group" id="botDifficultyToolbarGroup" style="display: none;">
+            <button class="theme-pill-btn bot-difficulty-btn" data-diff="cadet" data-bot-diff="cadet">Cadet</button>
+            <button class="theme-pill-btn bot-difficulty-btn active" data-diff="commander" data-bot-diff="commander">Commander</button>
+            <button class="theme-pill-btn bot-difficulty-btn" data-diff="grandmaster" data-bot-diff="grandmaster">Grandmaster</button>
+          </div>
+
+          <!-- Board Size Control (Accessible for scaling) -->
+          <div class="board-resize-strip" style="display: none;">
+            <span class="resize-label">Board Size</span>
+            <button class="board-resize-btn" id="boardShrinkBtn" title="Shrink board">−</button>
+            <span class="board-size-indicator" id="boardSizeLabel">100%</span>
+            <button class="board-resize-btn" id="boardGrowBtn" title="Enlarge board">+</button>
+          </div>
+        </div>
+
+        <!-- 3. Live Players Card -->
         <div class="sidebar-match-card">
           <div class="match-players-strip">
             <div class="player-strip-unit">
@@ -200,7 +196,7 @@
           </div>
         </div>
 
-        <!-- Captured Casualties & Material Advantage Card -->
+        <!-- 4. Captured Casualties & Material Advantage Card -->
         <div class="sidebar-casualties-card">
           <div class="casualties-header">
             <h4>
@@ -233,7 +229,7 @@
           </div>
         </div>
 
-        <!-- Tactical Match Commentary Card (v3.3.0) -->
+        <!-- 5. Tactical Match Commentary Card (v3.3.0) -->
         <div class="sidebar-commentary-card" id="sidebarCommentaryCard">
           <div class="commentary-header">
             <h4>
@@ -251,14 +247,14 @@
           </div>
         </div>
 
-        <!-- Match Mode Context Note -->
+        <!-- 6. Match Mode Context Note -->
         <div class="sidebar-context-note">
           Physics Combat (3D &amp; 2D Arena) &bull; Standard FIDE (2D Classic) &bull; <a href="/arsenal" class="sidebar-context-link">View Codex &rarr;</a>
         </div>
+
       </div>
 
     </div>
-
   </main>
 
   <!-- Victory / Game Over Post-Match Analytics Modal -->
@@ -762,12 +758,7 @@
 {% endblock %}
 
 {% block footer %}
-  <footer class="site-footer">
-    <div class="container footer-bottom">
-      <div>&copy; 2026 ARCHESS &bull; mr-zero0/ArChess. Free &amp; Open-Source.</div>
-      <div style="color: var(--gold-light);">Aim &bull; Launch &bull; Collide &bull; Conquer</div>
-    </div>
-  </footer>
+  <!-- Zero-scroll layout: footer omitted on interactive arena screen -->
 {% endblock %}
 
 {% block extra_scripts %}

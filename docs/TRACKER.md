@@ -17,6 +17,7 @@
 
 | Feature / Milestone | Category | Status | Verification Snapshot |
 | :--- | :--- | :--- | :--- |
+| **Zero-Scroll Full-Viewport Screen (v3.7.0)**| UI / Ergonomics | ✅ COMPLETE | Full-screen viewport layout (`height: 100vh; overflow: hidden;`), board auto-maximized to available square in dedicated column, all controls & info consolidated to side panel, 0 scrolling required |
 | **Realistic 3D WebGL Engine (v3.6.0)**| 3D Graphics / Engine| ✅ COMPLETE | Full WebGL PBR engine with Three.js v0.186, procedural Staunton 3D pieces, soft shadows, 3D slingshot aiming, OrbitControls presets, and 100% test coverage strictly maintained |
 | **Clean Root Architecture** | Engineering | ✅ COMPLETE | Root has only 4 files; all code in `backend/`, `static/`, `templates/`, `data/` |
 | **Comprehensive Docs Suite** | Documentation | ✅ COMPLETE | `docs/TRACKER.md`, `docs/ARCHITECTURE.md`, `docs/CHANGELOG.md` maintained |

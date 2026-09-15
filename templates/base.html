@@ -31,7 +31,7 @@
   <link rel="stylesheet" href="/static/css/style.css?v=2.5.0">
   {% block extra_head %}{% endblock %}
 </head>
-<body>
+<body class="{% if active_page == 'play' %}play-screen-active{% endif %}">
 
   <!-- Dynamic Motion Background Canvas -->
   <canvas id="bgMotionCanvas"></canvas>

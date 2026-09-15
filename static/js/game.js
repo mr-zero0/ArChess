@@ -653,7 +653,18 @@ class ArchessArena {
     const parent = this.canvas.parentElement;
     let pw = 0;
     let ph = 0;
-    if (parent) {
+
+    const boardColumn = parent ? parent.closest('.arena-board-column') : null;
+    if (boardColumn) {
+      const colRect = boardColumn.getBoundingClientRect();
+      const maxAvailable = Math.floor(Math.min(colRect.width, colRect.height) - 8);
+      if (maxAvailable >= 200) {
+        pw = maxAvailable;
+        ph = maxAvailable;
+        parent.style.width = maxAvailable + 'px';
+        parent.style.height = maxAvailable + 'px';
+      }
+    } else if (parent) {
       const rect = parent.getBoundingClientRect();
       pw = rect.width;
       ph = rect.height;
@@ -662,6 +673,11 @@ class ArchessArena {
     }
     if (!pw || pw < 50) pw = window.innerWidth > 900 ? 760 : Math.max(320, window.innerWidth - 40);
     if (!ph || ph < 50) ph = pw;
+
+    // Enforce square proportions
+    const squareSize = Math.round(Math.min(pw, ph));
+    pw = squareSize;
+    ph = squareSize;
 
     const oldLayout = (this.width && this.height) ? this.getBoardLayout() : null;
 
@@ -1497,10 +1513,15 @@ class ArchessArena {
 
     if (window.ResizeObserver && this.canvas && this.canvas.parentElement) {
       try {
+        const boardColumn = this.canvas.parentElement.closest('.arena-board-column');
         this.resizeObserver = new ResizeObserver(() => {
           this.initCanvasSize();
         });
-        this.resizeObserver.observe(this.canvas.parentElement);
+        if (boardColumn) {
+          this.resizeObserver.observe(boardColumn);
+        } else {
+          this.resizeObserver.observe(this.canvas.parentElement);
+        }
       } catch (e) {}
     }
 

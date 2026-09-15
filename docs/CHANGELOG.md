@@ -2,6 +2,29 @@
 
 All notable changes, architectural pivots, bugfixes, and refactorings across **ArChess** are documented in this file.
 
+## [3.7.0] - 2026-09-15
+
+### 📐 Full-Viewport Zero-Scroll Architecture & Consolidated Side Command Dock
+- **Zero-Scroll Play Screen Layout (`templates/play.html` & `static/css/style.css`)**:
+  - Engineered a full-viewport screen layout (`body.play-screen-active` with `height: 100vh; overflow: hidden;`), eliminating page-level vertical scrolling entirely.
+  - Dedicated full-height `.arena-board-column` maximizes the board to the largest possible square (`aspect-ratio: 1 / 1`) that fits the viewport without clipping.
+  - Omitted page footer on `/play` to prevent bottom push and vertical scrollbar activation.
+- **Consolidated Side Information & Command Dock (`.arena-side-sidebar`)**:
+  - Reorganized all match information, indicators, and controls into a sleek, glassmorphic side panel:
+    - **Active Turn & Status HUD Card (`.sidebar-turn-card`)**: Turn indicator dot, SVG radial timer ring, turn label, piece counts, and control guidance badge.
+    - **Match Command Card (`.sidebar-command-card`)**: Match mode segmented control (vs AI / Pass & Play / Online), View mode toggle (3D Realistic / 2D Arena / Classic), 3D Camera controls (Tabletop / Cinematic / Overhead / ↺ Reset), and quick action buttons (Settings & Reset).
+    - **Live Match Players Card (`.sidebar-match-card`)**: White Commander vs Black Bot AI / Challenger with ELO and disc avatars.
+    - **Battle Casualties & Advantage Card (`.sidebar-casualties-card`)**: Fallen piece racks and material advantage badge.
+    - **Tactical Match Commentary Card (`.sidebar-commentary-card`)**: Live telemetry ticker and auto-scrolling combat event feed.
+- **Responsive Dynamic Square Calculations (`static/js/game.js`)**:
+  - Upgraded `initCanvasSize()` to detect `.arena-board-column` and compute `maxAvailable = Math.floor(Math.min(colRect.width, colRect.height) - 8)`.
+  - Configured `ResizeObserver` to observe `.arena-board-column`, automatically recalculating canvas dimensions and WebGL projection on browser resize or orientation change.
+  - Added responsive fallback (`@media (max-width: 1024px)`) for mobile devices.
+- **Automated Verification**:
+  - 100% test pass rate across 84 test cases with 100% statement and branch coverage strictly maintained.
+
+---
+
 ## [3.6.0] - 2026-09-15
 
 ### 🎮 Realistic 3D WebGL Game Engine & Immersive Visual Overhaul
