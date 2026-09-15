@@ -2,6 +2,26 @@
 
 All notable changes, architectural pivots, bugfixes, and refactorings across **ArChess** are documented in this file.
 
+## [3.9.2] - 2026-09-15
+
+### 💡 3D Studio Illumination Overhaul & Titanium Black Army Visual Clarity
+- **Luminous Studio Lighting (`static/js/engine3d.js`)**:
+  - Elevated ambient baseline illumination from `0.75` to `1.40` (`0xfffbf0`), eliminating murky black shadow crevices across the entire 64-square grid.
+  - Boosted key directional light to `1.85` and side fill light to `1.30`.
+  - Added a dedicated **Rear Rim Light** (`intensity: 1.85`, `0xdbeafe`) positioned behind the Black army (`position.set(0, 26, -26)`), casting a crisp, defined rim contour along Black piece crowns, mitres, and bevels.
+  - Added a warm **Front Fill Light** (`intensity: 0.95`, `0xfff3e0`) for rich specular depth.
+  - Widened and boosted the center overhead spotlight to `1.6` intensity (`0xfff7ed`, angle `Math.PI / 3.0`).
+  - Increased ACESFilmic tone mapping exposure from `1.15` to `1.42` for vibrant, game-engine-grade visual punch.
+- **Titanium Obsidian Black Army Materials (`static/js/engine3d.js`)**:
+  - Upgraded Black army PBR material from pitch-black `0x181c24` to a sleek, polished Metallic Titanium Obsidian (`0x3b4354`, roughness: `0.22`, metalness: `0.40`). Contours, silhouettes, and details reflect light crisply and are instantly identifiable against any square.
+  - Upgraded Black accents to radiant ruby crimson (`0xf43f5e`, metalness: `0.88`).
+- **Enhanced Board & Tile Contrast (`static/js/engine3d.js`)**:
+  - Upgraded dark tiles from muddy near-black to rich walnut espresso (`0x5a4436`, roughness: `0.38`).
+  - Upgraded light tiles to radiant ivory cream (`0xfffaf2`, roughness: `0.28`).
+  - Polished mahogany frame (`0x3a2418`) with sparkling warm amber-gold trim (`0xf59e0b`).
+- **Automated Verification**:
+  - 84/84 tests passing with 100% statement and branch coverage strictly maintained.
+
 ## [3.9.1] - 2026-09-15
 
 ### 🚀 Zero-Stale-Cache Architecture & OrbitControls Pointer Isolation
