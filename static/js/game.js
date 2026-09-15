@@ -624,13 +624,26 @@ class ArchessArena {
     this.onAimCancel = null;
     this.onPieceLaunchBroadcast = null;
 
+    // Realistic 3D WebGL Game Engine (Three.js)
+    this.engine3d = null;
+    if (window.THREE && window.Archess3DEngine) {
+      const container = document.getElementById('threeCanvasContainer');
+      if (container) {
+        try {
+          this.engine3d = new window.Archess3DEngine(this, 'threeCanvasContainer');
+        } catch (err) {
+          console.warn('[ArchessArena] 3D WebGL initialization notice:', err);
+        }
+      }
+    }
+
     this.initCanvasSize();
     this.init32Pieces();
     this.setupListeners();
     this.lastTime = performance.now();
     requestAnimationFrame(this.loop.bind(this));
 
-    this.logTelemetry('SYSTEM', 'ArChess 32-Piece Physics Engine initialized. Board Mode: 3D Isometric.');
+    this.logTelemetry('SYSTEM', 'ArChess 32-Piece Physics Engine initialized. Board Mode: 3D Realistic WebGL.');
     this.logTelemetry('TURN_START', `Turn active: ${this.currentTurn.toUpperCase()} army ready.`);
     this.addCommentary('Vanguard units mobilized on tactical grid. Engagement initiated.', 'info', '⚔️');
   }
@@ -685,6 +698,9 @@ class ArchessArena {
           if (p.wallRadius) p.wallRadius = Math.round(p.wallRadius * scaleRatio);
         });
       }
+    }
+    if (this.engine3d) {
+      this.engine3d.resize(this.width, this.height);
     }
   }
 
@@ -861,10 +877,21 @@ class ArchessArena {
     });
 
     this.updateHUD();
+    if (this.engine3d) {
+      this.engine3d.syncPieces();
+    }
   }
 
   setRenderMode(mode) {
     this.renderMode = mode;
+    const threeContainer = document.getElementById('threeCanvasContainer');
+    if (mode === '3d' && this.engine3d && threeContainer) {
+      threeContainer.style.display = 'block';
+      if (this.canvas) this.canvas.style.display = 'none';
+    } else if (threeContainer) {
+      threeContainer.style.display = 'none';
+      if (this.canvas) this.canvas.style.display = 'block';
+    }
     this.initCanvasSize();
     this.logTelemetry('MODE_CHANGE', `Renderer set to ${mode.toUpperCase()} view.`);
   }
@@ -3065,6 +3092,14 @@ class ArchessArena {
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
 
+    // Contact Drop Shadow beneath piece for realistic depth in 2D
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(0, R * 0.58, R * 0.78, R * 0.22, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.42)';
+    ctx.fill();
+    ctx.restore();
+
     // 1. Multi-Tiered Pedestal Base
     ctx.beginPath();
     ctx.ellipse(0, R * 0.54, R * 0.70, R * 0.20, 0, 0, Math.PI * 2);
@@ -3789,18 +3824,23 @@ class ArchessArena {
         this.physicsAccumulator = 0;
       }
 
-      this.renderBoard();
-      this.renderTrajectory();
+      if (this.renderMode === '3d' && this.engine3d) {
+        this.engine3d.update(elapsed);
+        this.engine3d.render();
+      } else {
+        this.renderBoard();
+        this.renderTrajectory();
 
-      // Sort pieces by Y for proper 3D depth layering (dragged piece on top)
-      const sortedPieces = [...this.pieces].sort((a, b) => {
-        if (a === this.selectedPiece && this.isDragging) return 1;
-        if (b === this.selectedPiece && this.isDragging) return -1;
-        return a.y - b.y;
-      });
-      sortedPieces.forEach(p => this.renderPiece(p));
+        // Sort pieces by Y for proper 3D depth layering (dragged piece on top)
+        const sortedPieces = [...this.pieces].sort((a, b) => {
+          if (a === this.selectedPiece && this.isDragging) return 1;
+          if (b === this.selectedPiece && this.isDragging) return -1;
+          return a.y - b.y;
+        });
+        sortedPieces.forEach(p => this.renderPiece(p));
 
-      this.renderVFX();
+        this.renderVFX();
+      }
       this.ctx.restore();
     } catch (err) {
       console.error('Arena render loop error:', err);

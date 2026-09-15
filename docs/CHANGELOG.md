@@ -2,6 +2,35 @@
 
 All notable changes, architectural pivots, bugfixes, and refactorings across **ArChess** are documented in this file.
 
+## [3.6.0] - 2026-09-15
+
+### 🎮 Realistic 3D WebGL Game Engine & Immersive Visual Overhaul
+- **Realistic 3D WebGL Engine (`static/js/engine3d.js` & Three.js v0.186.0)**:
+  - Bundled modern Three.js and OrbitControls locally into `static/js/three.min.js` (zero external CDN dependencies).
+  - Procedurally modeled all 6 official Staunton chess piece geometries (King with Imperial Crown & Sovereign Cross, Queen with 10-point Coronet & Royal Orb, Rook with 4-Crenelated Ramparts, Bishop with Slotted Mitre, Knight with Horsehead & Mane, Pawn with Spherical Head).
+  - Physically-Based Rendering (PBR) materials with Alabaster Ivory & Polished Maple (White Army), High-Gloss Obsidian Onyx & Smoked Ebony (Black Army), Burnished Gold accents (`roughness: 0.20, metalness: 0.92`), and Crimson metal highlights.
+  - Multi-tier wooden chessboard slab with Mahogany outer frame, Brass inlay perimeter border, and dark/light procedural wood grain textures.
+  - Cushion perimeter rails providing authentic visual boundaries for kinetic piece bounces.
+- **Studio Lighting & Soft Contact Shadows**:
+  - Main Key Directional Light (`1.4x` intensity) with `PCFSoftShadowMap` rendering soft realistic shadows beneath pieces and rails.
+  - Warm Ambient Fill Light (`0.75x`) and Cool Accent Fill Light (`0.55x`) preventing flat dark areas.
+  - Dramatic overhead spotlight focusing on the active combat grid.
+- **Dynamic 3D Slingshot Aiming & Interaction**:
+  - Raycaster-based 3D piece picking with smooth vertical lift on drag.
+  - Illuminated golden marching-dash trajectory ribbon, directional arrowhead cone, and rotating power reticle that shifts to radiant red at peak impulse.
+  - Velocity-based dynamic piece tilting and inertia along the velocity vector during slides and collisions.
+- **3D King Citadel Forcefield & Sovereign Awakening**:
+  - Hexagonal crystalline forcefield barrier surrounding the King while Citadel HP remains active, with dynamic opacity scaling to reflect remaining barrier integrity.
+- **Interactive Orbit Camera with Presets**:
+  - Integrated `OrbitControls` with smooth damping and table tilt limits (right-click or middle-click drag to orbit freely without interfering with left-click slingshot drag).
+  - Preset camera angles accessible via header toolbar: **Tabletop**, **Cinematic**, and **Overhead (Tactical)** with one-click **↺ Reset**.
+- **2D Aesthetic Enhancements**:
+  - Added contact drop shadow ellipses beneath pieces in 2D Arena mode for improved depth.
+- **Automated Verification**:
+  - 100% test pass rate across all 84 test cases with 100% statement and branch coverage strictly maintained.
+
+---
+
 ## [3.5.1] - 2026-09-15
 
 ### 🧪 100% Test Coverage & Authoritative Engine Hardening

@@ -26,9 +26,19 @@
       <!-- Perspective View Segmented Control -->
       <div class="arena-toolbar-group">
         <div class="view-mode-toggle cupertino-segmented-control" role="group" aria-label="View Mode">
-          <button class="view-btn active" id="viewMode3DArena" data-view="3d-arena">3D</button>
+          <button class="view-btn active" id="viewMode3DArena" data-view="3d-arena">3D Realistic</button>
           <button class="view-btn" id="viewMode2DArena" data-view="2d-arena">2D Arena</button>
           <button class="view-btn" id="viewMode2DClassic" data-view="2d-classic">Classic</button>
+        </div>
+      </div>
+
+      <!-- 3D Camera Controls (Active in 3D Realistic View) -->
+      <div class="arena-toolbar-group" id="camera3DToolbarGroup">
+        <div class="camera-picker-group cupertino-segmented-control" role="group" aria-label="Camera Perspective">
+          <button class="theme-pill-btn camera-btn active" id="camTabletopBtn" data-cam="tabletop" title="Tabletop Perspective">Tabletop</button>
+          <button class="theme-pill-btn camera-btn" id="camCinematicBtn" data-cam="cinematic" title="Dramatic Cinematic Angle">Cinematic</button>
+          <button class="theme-pill-btn camera-btn" id="camTacticalBtn" data-cam="tactical" title="Top-Down Tactical Overview">Overhead</button>
+          <button class="theme-pill-btn camera-btn" id="camResetBtn" title="Reset Camera Orbit (Right-click drag to orbit freely)">↺ Reset</button>
         </div>
       </div>
 
@@ -93,7 +103,8 @@
       
       <!-- Canvas Board & 2D React Chessboard Container -->
       <div class="arena-canvas-stage" id="arenaCanvasStage">
-        <canvas id="archessCanvas"></canvas>
+        <div id="threeCanvasContainer" class="three-canvas-stage"></div>
+        <canvas id="archessCanvas" style="display: none;"></canvas>
         <div id="reactChessboardRoot" class="react-chessboard-stage" style="display: none;"></div>
 
         <!-- Interactive Tactical Combat Replay HUD Bar -->
@@ -760,8 +771,10 @@
 {% endblock %}
 
 {% block extra_scripts %}
-  <script src="/static/js/react-chessboard-bundle.js?v=2.8.0"></script>
-  <script src="/static/js/game.js?v=2.8.0"></script>
+  <script src="/static/js/three.min.js?v=3.6.0"></script>
+  <script src="/static/js/engine3d.js?v=3.6.0"></script>
+  <script src="/static/js/react-chessboard-bundle.js?v=3.6.0"></script>
+  <script src="/static/js/game.js?v=3.6.0"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       // Sync current logged in user name with White player card
@@ -771,6 +784,30 @@
           if (wName) wName.textContent = window.ArchessAuth.currentUser.username;
         }
       }, 500);
+
+      // 3D Camera Controls Event Wiring
+      const camTabletop = document.getElementById('camTabletopBtn');
+      const camCinematic = document.getElementById('camCinematicBtn');
+      const camTactical = document.getElementById('camTacticalBtn');
+      const camReset = document.getElementById('camResetBtn');
+
+      function updateCameraActive(activeBtn, preset) {
+        document.querySelectorAll('.camera-btn').forEach(b => b.classList.remove('active'));
+        if (activeBtn) activeBtn.classList.add('active');
+        if (window.archessGame && window.archessGame.engine3d) {
+          window.archessGame.engine3d.setCameraPreset(preset);
+        }
+      }
+
+      if (camTabletop) camTabletop.addEventListener('click', () => updateCameraActive(camTabletop, 'tabletop'));
+      if (camCinematic) camCinematic.addEventListener('click', () => updateCameraActive(camCinematic, 'cinematic'));
+      if (camTactical) camTactical.addEventListener('click', () => updateCameraActive(camTactical, 'tactical'));
+      if (camReset) camReset.addEventListener('click', () => {
+        updateCameraActive(camTabletop, 'tabletop');
+        if (window.archessGame && window.archessGame.engine3d) {
+          window.archessGame.engine3d.resetCamera();
+        }
+      });
 
       // Board Resize Controls
       const stage = document.getElementById('arenaCanvasStage');

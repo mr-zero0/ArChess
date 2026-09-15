@@ -272,7 +272,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const view2DArenaBtn = document.getElementById('viewMode2DArena');
   const view2DClassicBtn = document.getElementById('viewMode2DClassic');
   const archessCanvas = document.getElementById('archessCanvas');
+  const threeCanvasContainer = document.getElementById('threeCanvasContainer');
   const reactChessRoot = document.getElementById('reactChessboardRoot');
+  const cameraToolbarGroup = document.getElementById('camera3DToolbarGroup');
   const kbdHints = document.getElementById('arenaControlHints');
 
   let activeViewMode = '3d-arena';
@@ -292,6 +294,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (mode === '2d-classic') {
       // 2D Classic: Mount react-chessboard for standard FIDE chess
       if (archessCanvas) archessCanvas.style.display = 'none';
+      if (threeCanvasContainer) threeCanvasContainer.style.display = 'none';
+      if (cameraToolbarGroup) cameraToolbarGroup.style.display = 'none';
       if (reactChessRoot) {
         reactChessRoot.style.display = 'flex';
         const currentTheme = localStorage.getItem('archess_board_theme') || 'midnight';
@@ -310,6 +314,8 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (mode === '2d-arena') {
       // 2D Arena: Top-down physical canvas with Drag & Launch Slingshot Impulse!
       if (reactChessRoot) reactChessRoot.style.display = 'none';
+      if (threeCanvasContainer) threeCanvasContainer.style.display = 'none';
+      if (cameraToolbarGroup) cameraToolbarGroup.style.display = 'none';
       if (archessCanvas) {
         archessCanvas.style.display = 'block';
         if (arena) {
@@ -322,19 +328,23 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (userTriggered) showToast('View: 2D Arena (Drag & Launch Kinetic Combat)');
     } else {
-      // 3D Arena: Isometric tabletop physics combat on canvas with Drag & Launch!
+      // 3D Arena: Realistic 3D WebGL game engine with Physical Slingshot & Orbit Camera!
       if (reactChessRoot) reactChessRoot.style.display = 'none';
-      if (archessCanvas) {
+      if (cameraToolbarGroup) cameraToolbarGroup.style.display = 'flex';
+      if (threeCanvasContainer && window.THREE) {
+        threeCanvasContainer.style.display = 'block';
+        if (archessCanvas) archessCanvas.style.display = 'none';
+      } else if (archessCanvas) {
         archessCanvas.style.display = 'block';
-        if (arena) {
-          arena.setRenderMode('3d');
-          arena.initCanvasSize();
-        }
+      }
+      if (arena) {
+        arena.setRenderMode('3d');
+        arena.initCanvasSize();
       }
       if (kbdHints) {
-        kbdHints.innerHTML = '<span>Controls:</span> <span class="kbd-key">Drag &amp; Launch</span> <span class="kbd-key">Tab</span> Cycle <span class="kbd-key">WASD</span> Aim <span class="kbd-key">Space</span> Fire <span style="color: var(--gold-light); font-size: 0.72rem; margin-left: 6px;">(King: Citadel &bull; 👑 Awakens When Alone)</span>';
+        kbdHints.innerHTML = '<span>Controls:</span> <span class="kbd-key">Drag</span> Slingshot <span class="kbd-key">Right-Click Drag</span> Orbit Camera <span style="color: var(--gold-light); font-size: 0.72rem; margin-left: 6px;">(King: Citadel &bull; 👑 Awakens When Alone)</span>';
       }
-      if (userTriggered) showToast('View: 3D Arena (Isometric Slingshot Combat)');
+      if (userTriggered) showToast('View: 3D Realistic WebGL Engine (Physical Combat)');
     }
     localStorage.setItem('archess_view_mode', mode);
   }

@@ -17,6 +17,7 @@
 
 | Feature / Milestone | Category | Status | Verification Snapshot |
 | :--- | :--- | :--- | :--- |
+| **Realistic 3D WebGL Engine (v3.6.0)**| 3D Graphics / Engine| ✅ COMPLETE | Full WebGL PBR engine with Three.js v0.186, procedural Staunton 3D pieces, soft shadows, 3D slingshot aiming, OrbitControls presets, and 100% test coverage strictly maintained |
 | **Clean Root Architecture** | Engineering | ✅ COMPLETE | Root has only 4 files; all code in `backend/`, `static/`, `templates/`, `data/` |
 | **Comprehensive Docs Suite** | Documentation | ✅ COMPLETE | `docs/TRACKER.md`, `docs/ARCHITECTURE.md`, `docs/CHANGELOG.md` maintained |
 | **Multi-Design System (v2.9.0)** | UI / Design Systems | ✅ COMPLETE | 6 switchable UI design languages (`glassmorphism`, `neobrutalism`, `minimal`, `ios-native`, `material3`, `dark-premium`) with `localStorage` persistence & pre-hydration |

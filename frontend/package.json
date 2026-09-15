@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "esbuild src/Archess2DChess.jsx --bundle --minify --outfile=../static/js/react-chessboard-bundle.js --define:process.env.NODE_ENV=\\\"production\\\"",
+    "build:react": "esbuild src/Archess2DChess.jsx --bundle --minify --outfile=../static/js/react-chessboard-bundle.js --define:process.env.NODE_ENV=\\\"production\\\"",
+    "build:three": "esbuild src/three-bundle.js --bundle --minify --outfile=../static/js/three.min.js",
+    "build": "npm run build:three && npm run build:react",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -15,7 +17,8 @@
     "chess.js": "^1.4.0",
     "react": "^19.3.0",
     "react-chessboard": "^5.12.1",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "three": "^0.186.0"
   },
   "devDependencies": {
     "esbuild": "^0.28.2"

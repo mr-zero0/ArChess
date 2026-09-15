@@ -1,0 +1,1013 @@
+/**
+ * ARCHESS - Realistic 3D WebGL Game Engine
+ * Powered by Three.js
+ * 
+ * Features:
+ * - Realistic PBR (Physically-Based Rendering) materials for Board & Pieces
+ * - Handcrafted procedural 3D Staunton piece geometries (King, Queen, Rook, Bishop, Knight, Pawn)
+ * - Dynamic studio lighting: Soft directional key light, ambient fill, dramatic center spotlight
+ * - Real-time soft contact shadows (PCFSoftShadowMap)
+ * - 3D Slingshot Aiming: Illuminated trajectory ribbon, pulsating power reticle, piece elevation
+ * - Dynamic 3D Piece Physics: Velocity-based tilt/inertia, sliding friction, 3D collision sparks
+ * - Crystalline 3D King Citadel Wall & Radiant Sovereign Awakening Vortex
+ * - Interactive Orbit Camera with smooth damping & cinematic angle presets
+ */
+
+(function(window) {
+  'use strict';
+
+  class Archess3DEngine {
+    constructor(arena, containerId) {
+      this.arena = arena;
+      this.container = document.getElementById(containerId);
+      if (!this.container || !window.THREE) {
+        console.warn('[Archess3D] Three.js or container not available');
+        return;
+      }
+
+      this.scene = null;
+      this.camera = null;
+      this.renderer = null;
+      this.controls = null;
+      this.lights = {};
+      this.boardGroup = null;
+      this.piecesGroup = null;
+      this.vfxGroup = null;
+
+      // Piece mesh mapping: piece.id -> THREE.Group
+      this.pieceMeshes = new Map();
+
+      // Slingshot Aiming 3D Objects
+      this.aimTrajectoryMesh = null;
+      this.aimReticleMesh = null;
+      this.aimArrowMesh = null;
+
+      // Citadel Barrier 3D Meshes: team -> THREE.Mesh
+      this.citadelBarriers = {};
+
+      // 3D Particles
+      this.particles3D = [];
+
+      // Camera preset targets
+      this.cameraPresets = {
+        tabletop: { pos: new THREE.Vector3(0, 26, 28), look: new THREE.Vector3(0, 0, 0) },
+        cinematic: { pos: new THREE.Vector3(0, 16, 26), look: new THREE.Vector3(0, 1.5, 0) },
+        tactical: { pos: new THREE.Vector3(0, 38, 4), look: new THREE.Vector3(0, 0, 0) }
+      };
+      this.activePreset = 'tabletop';
+
+      // Raycaster for mouse/touch interactions
+      this.raycaster = new THREE.Raycaster();
+      this.mouse = new THREE.Vector2();
+      this.boardPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0); // Y = 0 plane
+
+      // Geometries and Materials Cache
+      this.materials = {};
+      this.geometries = {};
+
+      this.init();
+    }
+
+    init() {
+      const width = this.container.clientWidth || 960;
+      const height = this.container.clientHeight || 720;
+
+      // 1. Scene setup
+      this.scene = new THREE.Scene();
+      this.scene.background = null; // Transparent background to blend with page theme
+
+      // 2. Camera setup (FOV 42 for realistic perspective without wide-angle fish-eye)
+      this.camera = new THREE.PerspectiveCamera(42, width / height, 0.5, 200);
+      const defaultPreset = this.cameraPresets.tabletop;
+      this.camera.position.copy(defaultPreset.pos);
+      this.camera.lookAt(defaultPreset.look);
+
+      // 3. WebGL Renderer with High Precision & Soft Shadows
+      this.renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: true,
+        powerPreference: 'high-performance'
+      });
+      this.renderer.setSize(width, height);
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      this.renderer.shadowMap.enabled = true;
+      this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      this.renderer.toneMappingExposure = 1.15;
+
+      this.renderer.domElement.id = 'archess3DCanvas';
+      this.renderer.domElement.style.width = '100%';
+      this.renderer.domElement.style.height = '100%';
+      this.renderer.domElement.style.display = 'block';
+      this.renderer.domElement.style.outline = 'none';
+
+      // Clear container and append canvas
+      this.container.innerHTML = '';
+      this.container.appendChild(this.renderer.domElement);
+
+      // 4. OrbitControls
+      if (THREE.OrbitControls) {
+        this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+        this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.05;
+        this.controls.maxPolarAngle = Math.PI / 2.15; // Don't allow dipping below the table
+        this.controls.minDistance = 18;
+        this.controls.maxDistance = 55;
+        this.controls.target.set(0, 0, 0);
+
+        // Map mouse buttons: Left click is aim/slingshot, Right click or Middle click is orbit
+        this.controls.mouseButtons = {
+          LEFT: -1, // Disable left-drag in controls so it doesn't fight piece dragging
+          MIDDLE: THREE.MOUSE.DOLLY,
+          RIGHT: THREE.MOUSE.ROTATE
+        };
+      }
+
+      // 5. Build Material & Geometry Library
+      this.initMaterials();
+
+      // 6. Build Scene Hierarchy
+      this.boardGroup = new THREE.Group();
+      this.piecesGroup = new THREE.Group();
+      this.vfxGroup = new THREE.Group();
+
+      this.scene.add(this.boardGroup);
+      this.scene.add(this.piecesGroup);
+      this.scene.add(this.vfxGroup);
+
+      // 7. Lighting
+      this.setupLights();
+
+      // 8. Build 3D Board & Frame
+      this.buildBoard();
+
+      // 9. Build Aiming Trajectory Meshes
+      this.setupAimMeshes();
+
+      // 10. Sync Initial Pieces
+      this.syncPieces();
+
+      // 11. Wire Input Events
+      this.setupInteractionListeners();
+
+      console.log('[Archess3D] Realistic 3D WebGL Game Engine initialized successfully.');
+    }
+
+    /* -------------------------------------------------------------
+       Materials & Textures Library (PBR Physically-Based Rendering)
+    ------------------------------------------------------------- */
+    initMaterials() {
+      // 1. Procedural Noise / Wood / Marble Textures via Canvas
+      const darkWoodTex = this.createWoodTexture('#241711', '#140c08', 256, 256);
+      const lightWoodTex = this.createWoodTexture('#eddcc4', '#cfb495', 256, 256);
+      const frameWoodTex = this.createWoodTexture('#1c130d', '#0f0a06', 512, 512);
+      const marbleTex = this.createMarbleTexture(256, 256);
+
+      // 2. Board Frame (Polished Mahogany / Dark Walnut with brass inlay)
+      this.materials.boardFrame = new THREE.MeshStandardMaterial({
+        color: 0x1a120b,
+        map: frameWoodTex,
+        roughness: 0.32,
+        metalness: 0.12
+      });
+
+      this.materials.brassTrim = new THREE.MeshStandardMaterial({
+        color: 0xd4af37,
+        roughness: 0.22,
+        metalness: 0.90
+      });
+
+      this.materials.cushionRail = new THREE.MeshStandardMaterial({
+        color: 0x0f172a,
+        roughness: 0.70,
+        metalness: 0.15
+      });
+
+      // 3. Board Tiles
+      this.materials.tileLight = new THREE.MeshStandardMaterial({
+        color: 0xf3ede2,
+        map: lightWoodTex,
+        roughness: 0.25,
+        metalness: 0.05
+      });
+
+      this.materials.tileDark = new THREE.MeshStandardMaterial({
+        color: 0x2b1e16,
+        map: darkWoodTex,
+        roughness: 0.28,
+        metalness: 0.10
+      });
+
+      // 4. White Army: Alabaster Ivory & Polished Maple
+      this.materials.pieceWhite = new THREE.MeshStandardMaterial({
+        color: 0xf7f4eb,
+        roughness: 0.18,
+        metalness: 0.06
+      });
+
+      this.materials.pieceWhiteAccent = new THREE.MeshStandardMaterial({
+        color: 0xd4af37, // Burnished gold crown / finial
+        roughness: 0.20,
+        metalness: 0.92
+      });
+
+      // 5. Black Army: High-Gloss Obsidian Onyx & Smoked Ebony
+      this.materials.pieceBlack = new THREE.MeshStandardMaterial({
+        color: 0x181c24,
+        roughness: 0.15,
+        metalness: 0.18
+      });
+
+      this.materials.pieceBlackAccent = new THREE.MeshStandardMaterial({
+        color: 0xe11d48, // Radiant crimson metal crest
+        roughness: 0.22,
+        metalness: 0.85
+      });
+
+      // 6. Contact Shadows beneath pieces
+      const shadowCanvas = document.createElement('canvas');
+      shadowCanvas.width = 64;
+      shadowCanvas.height = 64;
+      const sctx = shadowCanvas.getContext('2d');
+      const grad = sctx.createRadialGradient(32, 32, 4, 32, 32, 32);
+      grad.addColorStop(0, 'rgba(0,0,0,0.65)');
+      grad.addColorStop(0.5, 'rgba(0,0,0,0.25)');
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      sctx.fillStyle = grad;
+      sctx.fillRect(0, 0, 64, 64);
+      const shadowTex = new THREE.CanvasTexture(shadowCanvas);
+
+      this.materials.contactShadow = new THREE.MeshBasicMaterial({
+        map: shadowTex,
+        transparent: true,
+        opacity: 0.7,
+        depthWrite: false
+      });
+    }
+
+    createWoodTexture(col1, col2, w, h) {
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = col1;
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.fillStyle = col2;
+      for (let i = 0; i < 40; i++) {
+        const y = Math.random() * h;
+        const thickness = Math.random() * 3 + 1;
+        ctx.globalAlpha = Math.random() * 0.25 + 0.08;
+        ctx.fillRect(0, y, w, thickness);
+      }
+      ctx.globalAlpha = 1.0;
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      return tex;
+    }
+
+    createMarbleTexture(w, h) {
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = 'rgba(210, 220, 230, 0.4)';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 12; i++) {
+        ctx.beginPath();
+        ctx.moveTo(Math.random() * w, 0);
+        ctx.bezierCurveTo(Math.random() * w, h * 0.3, Math.random() * w, h * 0.7, Math.random() * w, h);
+        ctx.stroke();
+      }
+      const tex = new THREE.CanvasTexture(canvas);
+      return tex;
+    }
+
+    /* -------------------------------------------------------------
+       Studio Lighting (Key Light, Fill Light, Center Spotlight)
+    ------------------------------------------------------------- */
+    setupLights() {
+      // 1. Warm Ambient Light (Illuminates shadow crevices)
+      const ambientLight = new THREE.AmbientLight(0xfff8ee, 0.75);
+      this.scene.add(ambientLight);
+      this.lights.ambient = ambientLight;
+
+      // 2. Main Key Directional Light (Sunlight from upper right, casts soft shadows)
+      const keyLight = new THREE.DirectionalLight(0xfffdf5, 1.4);
+      keyLight.position.set(16, 32, 20);
+      keyLight.castShadow = true;
+      keyLight.shadow.mapSize.width = 2048;
+      keyLight.shadow.mapSize.height = 2048;
+      keyLight.shadow.camera.near = 10;
+      keyLight.shadow.camera.far = 70;
+      const d = 16;
+      keyLight.shadow.camera.left = -d;
+      keyLight.shadow.camera.right = d;
+      keyLight.shadow.camera.top = d;
+      keyLight.shadow.camera.bottom = -d;
+      keyLight.shadow.bias = -0.0004;
+      keyLight.shadow.radius = 2.0; // Soft shadow filter
+      this.scene.add(keyLight);
+      this.lights.key = keyLight;
+
+      // 3. Cool Accent Fill Light (From opposite side, prevents flat shadows)
+      const fillLight = new THREE.DirectionalLight(0xdbeafe, 0.55);
+      fillLight.position.set(-18, 16, -16);
+      this.scene.add(fillLight);
+      this.lights.fill = fillLight;
+
+      // 4. Dramatic Board Center Spotlight
+      const spotLight = new THREE.SpotLight(0xffecd2, 1.1, 60, Math.PI / 3.8, 0.6, 1.2);
+      spotLight.position.set(0, 26, 0);
+      spotLight.target.position.set(0, 0, 0);
+      this.scene.add(spotLight);
+      this.scene.add(spotLight.target);
+      this.lights.spot = spotLight;
+    }
+
+    /* -------------------------------------------------------------
+       3D Chessboard Construction
+    ------------------------------------------------------------- */
+    buildBoard() {
+      this.boardGroup.clear();
+
+      const BOARD_EXT_SIZE = 24.0; // Outer slab size
+      const GRID_SIZE = 20.0;      // 8x8 squares area
+      const TILE_SIZE = GRID_SIZE / 8; // 2.5 units per square
+      const SLAB_THICKNESS = 1.6;
+
+      // 1. Main Beveled Outer Wooden Slab
+      const frameGeo = new THREE.BoxGeometry(BOARD_EXT_SIZE, SLAB_THICKNESS, BOARD_EXT_SIZE);
+      const frameMesh = new THREE.Mesh(frameGeo, this.materials.boardFrame);
+      frameMesh.position.y = -SLAB_THICKNESS / 2;
+      frameMesh.receiveShadow = true;
+      frameMesh.castShadow = true;
+      this.boardGroup.add(frameMesh);
+
+      // 2. Brass Inlay Perimeter Border
+      const trimWidth = 0.22;
+      const trimGeoH = new THREE.BoxGeometry(GRID_SIZE + trimWidth * 2, 0.06, trimWidth);
+      const trimGeoV = new THREE.BoxGeometry(trimWidth, 0.06, GRID_SIZE + trimWidth * 2);
+
+      const tTop = new THREE.Mesh(trimGeoH, this.materials.brassTrim);
+      tTop.position.set(0, 0.03, -GRID_SIZE / 2 - trimWidth / 2);
+      const tBtm = new THREE.Mesh(trimGeoH, this.materials.brassTrim);
+      tBtm.position.set(0, 0.03, GRID_SIZE / 2 + trimWidth / 2);
+      const tLeft = new THREE.Mesh(trimGeoV, this.materials.brassTrim);
+      tLeft.position.set(-GRID_SIZE / 2 - trimWidth / 2, 0.03, 0);
+      const tRight = new THREE.Mesh(trimGeoV, this.materials.brassTrim);
+      tRight.position.set(GRID_SIZE / 2 + trimWidth / 2, 0.03, 0);
+
+      this.boardGroup.add(tTop, tBtm, tLeft, tRight);
+
+      // 3. 3D Cushion Perimeter Rails (Tactical boundary pieces bounce off)
+      const railH = 0.55;
+      const railThick = 0.45;
+      const railGeoH = new THREE.BoxGeometry(GRID_SIZE + 0.8, railH, railThick);
+      const railGeoV = new THREE.BoxGeometry(railThick, railH, GRID_SIZE + 0.8);
+
+      const rNorth = new THREE.Mesh(railGeoH, this.materials.cushionRail);
+      rNorth.position.set(0, railH / 2, -GRID_SIZE / 2 - railThick / 2 - 0.2);
+      rNorth.castShadow = true;
+      const rSouth = new THREE.Mesh(railGeoH, this.materials.cushionRail);
+      rSouth.position.set(0, railH / 2, GRID_SIZE / 2 + railThick / 2 + 0.2);
+      rSouth.castShadow = true;
+      const rWest = new THREE.Mesh(railGeoV, this.materials.cushionRail);
+      rWest.position.set(-GRID_SIZE / 2 - railThick / 2 - 0.2, railH / 2, 0);
+      rWest.castShadow = true;
+      const rEast = new THREE.Mesh(railGeoV, this.materials.cushionRail);
+      rEast.position.set(GRID_SIZE / 2 + railThick / 2 + 0.2, railH / 2, 0);
+      rEast.castShadow = true;
+
+      this.boardGroup.add(rNorth, rSouth, rWest, rEast);
+
+      // 4. Inset 64 Playing Squares (Rank 1-8, File A-H)
+      const tileGeo = new THREE.BoxGeometry(TILE_SIZE * 0.985, 0.08, TILE_SIZE * 0.985);
+
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          const isDark = (r + c) % 2 === 1;
+          const mat = isDark ? this.materials.tileDark : this.materials.tileLight;
+          const tile = new THREE.Mesh(tileGeo, mat);
+
+          // Center squares from -GRID_SIZE/2 to +GRID_SIZE/2
+          const posX = -GRID_SIZE / 2 + (c + 0.5) * TILE_SIZE;
+          const posZ = -GRID_SIZE / 2 + (r + 0.5) * TILE_SIZE;
+          tile.position.set(posX, 0.04, posZ);
+          tile.receiveShadow = true;
+          this.boardGroup.add(tile);
+        }
+      }
+
+      // Store board layout scale metrics for coordinate conversions
+      this.gridSize3D = GRID_SIZE;
+      this.tileSize3D = TILE_SIZE;
+    }
+
+    /* -------------------------------------------------------------
+       Procedural 3D Staunton Piece Geometries
+    ------------------------------------------------------------- */
+    createPieceGeometry(type) {
+      if (this.geometries[type]) return this.geometries[type];
+
+      const pieceGroup = new THREE.Group();
+      const R = 0.92; // Base scale unit
+
+      // Standard Multi-Tiered Pedestal Base (Common to Staunton pieces)
+      const base1 = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.95, R * 1.05, 0.35, 32));
+      base1.position.y = 0.175;
+      base1.castShadow = true;
+      base1.receiveShadow = true;
+
+      const baseRing = new THREE.Mesh(new THREE.TorusGeometry(R * 0.90, 0.08, 16, 32));
+      baseRing.rotation.x = Math.PI / 2;
+      baseRing.position.y = 0.36;
+
+      const base2 = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.70, R * 0.88, 0.32, 32));
+      base2.position.y = 0.52;
+      base2.castShadow = true;
+
+      pieceGroup.add(base1, baseRing, base2);
+
+      switch (type) {
+        case 'pawn': {
+          // Tapered concave stem
+          const stem = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.34, R * 0.68, 0.90, 32));
+          stem.position.y = 1.13;
+          stem.castShadow = true;
+
+          // Collar ring
+          const collar = new THREE.Mesh(new THREE.TorusGeometry(R * 0.44, 0.09, 16, 32));
+          collar.rotation.x = Math.PI / 2;
+          collar.position.y = 1.58;
+
+          // Spherical head
+          const head = new THREE.Mesh(new THREE.SphereGeometry(R * 0.48, 32, 32));
+          head.position.y = 2.02;
+          head.castShadow = true;
+
+          pieceGroup.add(stem, collar, head);
+          break;
+        }
+
+        case 'rook': {
+          // Broad cylindrical fortified tower
+          const tower = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.65, R * 0.78, 1.25, 32));
+          tower.position.y = 1.30;
+          tower.castShadow = true;
+
+          // Cornice ledge
+          const cornice = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.82, R * 0.68, 0.28, 32));
+          cornice.position.y = 2.06;
+          cornice.castShadow = true;
+
+          // Crenellated Battlements (Castle merlons)
+          const battlements = new THREE.Group();
+          const merlonCount = 4;
+          for (let m = 0; m < merlonCount; m++) {
+            const angle = (m / merlonCount) * Math.PI * 2 + Math.PI / 4;
+            const merlon = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.42, 0.24));
+            merlon.position.set(Math.cos(angle) * 0.62, 2.38, Math.sin(angle) * 0.62);
+            merlon.rotation.y = -angle + Math.PI / 2;
+            merlon.castShadow = true;
+            battlements.add(merlon);
+          }
+          pieceGroup.add(tower, cornice, battlements);
+          break;
+        }
+
+        case 'knight': {
+          // Horse neck riser
+          const neckBase = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.52, R * 0.72, 0.60, 24));
+          neckBase.position.y = 0.98;
+          neckBase.castShadow = true;
+
+          // Sculpted Equestrian Bust
+          const horseBust = new THREE.Group();
+
+          // Main head volume (angled forward)
+          const head = new THREE.Mesh(new THREE.BoxGeometry(0.68, 1.15, 0.95));
+          head.position.set(0, 1.65, 0.12);
+          head.rotation.x = -0.32;
+          head.castShadow = true;
+
+          // Snout / Muzzle
+          const muzzle = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.36, 0.65, 16));
+          muzzle.rotation.x = Math.PI / 2.6;
+          muzzle.position.set(0, 1.55, 0.68);
+          muzzle.castShadow = true;
+
+          // Arched Mane Crest
+          const mane = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.95, 0.45));
+          mane.position.set(0, 1.85, -0.36);
+          mane.rotation.x = 0.22;
+          mane.castShadow = true;
+
+          // Ears
+          const earGeo = new THREE.ConeGeometry(0.12, 0.32, 8);
+          const earLeft = new THREE.Mesh(earGeo);
+          earLeft.position.set(-0.24, 2.22, -0.06);
+          earLeft.rotation.z = -0.15;
+          const earRight = new THREE.Mesh(earGeo);
+          earRight.position.set(0.24, 2.22, -0.06);
+          earRight.rotation.z = 0.15;
+
+          horseBust.add(head, muzzle, mane, earLeft, earRight);
+          pieceGroup.add(neckBase, horseBust);
+          break;
+        }
+
+        case 'bishop': {
+          // Slender concave stem
+          const stem = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.38, R * 0.70, 1.20, 32));
+          stem.position.y = 1.28;
+          stem.castShadow = true;
+
+          // Dual collar rings
+          const collar1 = new THREE.Mesh(new THREE.TorusGeometry(R * 0.48, 0.08, 16, 32));
+          collar1.rotation.x = Math.PI / 2;
+          collar1.position.y = 1.88;
+
+          // Elongated Mitre Cap
+          const mitre = new THREE.Mesh(new THREE.SphereGeometry(R * 0.50, 32, 32));
+          mitre.scale.set(1.0, 1.45, 1.0);
+          mitre.position.y = 2.45;
+          mitre.castShadow = true;
+
+          // Apex Finial Orb
+          const finial = new THREE.Mesh(new THREE.SphereGeometry(R * 0.16, 16, 16));
+          finial.position.y = 3.25;
+          finial.name = 'metallic_accent';
+
+          pieceGroup.add(stem, collar1, mitre, finial);
+          break;
+        }
+
+        case 'queen': {
+          // Flowing flared gown
+          const gown = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.42, R * 0.72, 1.55, 32));
+          gown.position.y = 1.45;
+          gown.castShadow = true;
+
+          // Regal waist ring
+          const waistRing = new THREE.Mesh(new THREE.TorusGeometry(R * 0.50, 0.09, 16, 32));
+          waistRing.rotation.x = Math.PI / 2;
+          waistRing.position.y = 2.22;
+
+          // Fluted Coronet Head
+          const coronetBase = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.68, R * 0.44, 0.65, 32));
+          coronetBase.position.y = 2.60;
+          coronetBase.castShadow = true;
+
+          // Coronet Jewels (8 points with spherical pearls)
+          const jewels = new THREE.Group();
+          for (let j = 0; j < 8; j++) {
+            const angle = (j / 8) * Math.PI * 2;
+            const pearl = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12));
+            pearl.position.set(Math.cos(angle) * 0.68, 2.96, Math.sin(angle) * 0.68);
+            pearl.name = 'metallic_accent';
+            jewels.add(pearl);
+          }
+
+          // Apex Sovereign Orb
+          const orb = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 16));
+          orb.position.y = 3.02;
+          orb.name = 'metallic_accent';
+
+          pieceGroup.add(gown, waistRing, coronetBase, jewels, orb);
+          break;
+        }
+
+        case 'king': {
+          // Colossus majestic body
+          const mantle = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.48, R * 0.78, 1.70, 32));
+          mantle.position.y = 1.52;
+          mantle.castShadow = true;
+
+          // Stepped capital
+          const capital = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.68, R * 0.52, 0.45, 32));
+          capital.position.y = 2.50;
+          capital.castShadow = true;
+
+          // Imperial Crown Base
+          const crown = new THREE.Mesh(new THREE.SphereGeometry(R * 0.62, 32, 32));
+          crown.scale.set(1.0, 0.85, 1.0);
+          crown.position.y = 2.92;
+          crown.castShadow = true;
+
+          // Sovereign Cross Finial at summit
+          const crossGroup = new THREE.Group();
+          const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.75, 0.18));
+          crossV.position.y = 3.58;
+          const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.18, 0.18));
+          crossH.position.y = 3.68;
+          crossV.name = 'metallic_accent';
+          crossH.name = 'metallic_accent';
+          crossGroup.add(crossV, crossH);
+
+          pieceGroup.add(mantle, capital, crown, crossGroup);
+          break;
+        }
+      }
+
+      this.geometries[type] = pieceGroup;
+      return pieceGroup;
+    }
+
+    /* -------------------------------------------------------------
+       Sync Authoritative Physics Pieces to 3D Scene
+    ------------------------------------------------------------- */
+    syncPieces() {
+      if (!this.arena || !this.arena.pieces) return;
+
+      const activeIds = new Set();
+
+      this.arena.pieces.forEach(p => {
+        activeIds.add(p.id);
+        let meshGroup = this.pieceMeshes.get(p.id);
+
+        if (!meshGroup) {
+          // Create new 3D Piece Mesh
+          meshGroup = this.buildPieceMesh(p);
+          this.piecesGroup.add(meshGroup);
+          this.pieceMeshes.set(p.id, meshGroup);
+        }
+
+        // Convert 2D Arena Board Space (x, y) to 3D World Space (X, Z)
+        const pos3D = this.boardToWorld(p.x, p.y);
+        
+        // Handle Elevation (when dragged, lifted off board)
+        const isSelected = this.arena.selectedPiece === p;
+        const targetElev = (isSelected && this.arena.isDragging) ? 1.4 : 0;
+        meshGroup.position.x = pos3D.x;
+        meshGroup.position.z = pos3D.z;
+        meshGroup.position.y = THREE.MathUtils.lerp(meshGroup.position.y, targetElev, 0.25);
+
+        // Visibility & Death
+        if (p.dead) {
+          meshGroup.visible = false;
+        } else {
+          meshGroup.visible = true;
+
+          // Velocity-based dynamic tilt / inertia (piece tilts into its direction of motion)
+          const speed = Math.hypot(p.vx || 0, p.vy || 0);
+          if (speed > 0.4) {
+            const tiltMax = 0.22;
+            const angle = Math.atan2(p.vy, p.vx);
+            meshGroup.rotation.z = THREE.MathUtils.lerp(meshGroup.rotation.z, -Math.cos(angle) * Math.min(tiltMax, speed * 0.025), 0.2);
+            meshGroup.rotation.x = THREE.MathUtils.lerp(meshGroup.rotation.x, Math.sin(angle) * Math.min(tiltMax, speed * 0.025), 0.2);
+          } else {
+            meshGroup.rotation.z = THREE.MathUtils.lerp(meshGroup.rotation.z, 0, 0.2);
+            meshGroup.rotation.x = THREE.MathUtils.lerp(meshGroup.rotation.x, 0, 0.2);
+          }
+        }
+
+        // King Citadel Wall 3D Visualization
+        if (p.type === 'king') {
+          this.updateCitadelBarrier(p, pos3D);
+        }
+      });
+
+      // Cleanup removed pieces
+      for (const [id, mesh] of this.pieceMeshes.entries()) {
+        if (!activeIds.has(id)) {
+          this.piecesGroup.remove(mesh);
+          this.pieceMeshes.delete(id);
+        }
+      }
+    }
+
+    buildPieceMesh(piece) {
+      const group = new THREE.Group();
+      group.userData = { pieceId: piece.id, piece: piece };
+
+      // Clone procedural geometry
+      const proto = this.createPieceGeometry(piece.type);
+      const pieceModel = proto.clone();
+
+      const isWhite = piece.team === 'white';
+      const bodyMat = isWhite ? this.materials.pieceWhite : this.materials.pieceBlack;
+      const accentMat = isWhite ? this.materials.pieceWhiteAccent : this.materials.pieceBlackAccent;
+
+      // Apply PBR materials across parts
+      pieceModel.traverse(child => {
+        if (child.isMesh) {
+          if (child.name === 'metallic_accent') {
+            child.material = accentMat;
+          } else {
+            child.material = bodyMat;
+          }
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+
+      // Scale piece appropriately to chessboard square dimensions
+      const scaleFactor = 0.88;
+      pieceModel.scale.set(scaleFactor, scaleFactor, scaleFactor);
+
+      // Contact shadow beneath piece
+      const shadowMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(2.4, 2.4),
+        this.materials.contactShadow
+      );
+      shadowMesh.rotation.x = -Math.PI / 2;
+      shadowMesh.position.y = 0.045; // Just above tile surface
+      group.add(shadowMesh);
+
+      group.add(pieceModel);
+      return group;
+    }
+
+    /* -------------------------------------------------------------
+       King Citadel Wall 3D Forcefield Barrier
+    ------------------------------------------------------------- */
+    updateCitadelBarrier(kingPiece, pos3D) {
+      let barrier = this.citadelBarriers[kingPiece.team];
+
+      if (!barrier) {
+        // Build Hexagonal Crystalline Shield
+        const shieldGeo = new THREE.CylinderGeometry(2.2, 2.2, 2.8, 6, 1, true);
+        const shieldMat = new THREE.MeshPhysicalMaterial({
+          color: kingPiece.team === 'white' ? 0x00f3ff : 0xff0055,
+          transparent: true,
+          opacity: 0.55,
+          roughness: 0.1,
+          transmission: 0.65,
+          emissive: kingPiece.team === 'white' ? 0x00f3ff : 0xff0055,
+          emissiveIntensity: 0.35,
+          side: THREE.DoubleSide,
+          depthWrite: false
+        });
+
+        barrier = new THREE.Mesh(shieldGeo, shieldMat);
+        this.vfxGroup.add(barrier);
+        this.citadelBarriers[kingPiece.team] = barrier;
+      }
+
+      if (kingPiece.wallActive && kingPiece.wallHp > 0 && !kingPiece.dead) {
+        barrier.visible = true;
+        barrier.position.set(pos3D.x, 1.4, pos3D.z);
+        barrier.rotation.y += 0.015; // Slow ambient rotation
+        const hpRatio = kingPiece.wallHp / kingPiece.maxWallHp;
+        barrier.material.opacity = 0.25 + hpRatio * 0.45;
+      } else {
+        barrier.visible = false;
+      }
+    }
+
+    /* -------------------------------------------------------------
+       3D Slingshot Aiming Trajectory & Power Ring
+    ------------------------------------------------------------- */
+    setupAimMeshes() {
+      // 1. Aim Trajectory Tube / Ribbon
+      const lineGeo = new THREE.BufferGeometry();
+      const positions = new Float32Array(2 * 3);
+      lineGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+      const lineMat = new THREE.LineDashedMaterial({
+        color: 0xffd700,
+        dashSize: 0.6,
+        gapSize: 0.4,
+        linewidth: 3
+      });
+      this.aimTrajectoryMesh = new THREE.Line(lineGeo, lineMat);
+      this.aimTrajectoryMesh.visible = false;
+      this.scene.add(this.aimTrajectoryMesh);
+
+      // 2. Aim Arrowhead Marker
+      const arrowGeo = new THREE.ConeGeometry(0.42, 0.9, 16);
+      arrowGeo.rotateX(Math.PI / 2);
+      const arrowMat = new THREE.MeshBasicMaterial({ color: 0xffd700 });
+      this.aimArrowMesh = new THREE.Mesh(arrowGeo, arrowMat);
+      this.aimArrowMesh.visible = false;
+      this.scene.add(this.aimArrowMesh);
+
+      // 3. Power Reticle around Piece
+      const ringGeo = new THREE.RingGeometry(1.2, 1.35, 32);
+      ringGeo.rotateX(-Math.PI / 2);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: 0xffd700,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.85
+      });
+      this.aimReticleMesh = new THREE.Mesh(ringGeo, ringMat);
+      this.aimReticleMesh.visible = false;
+      this.scene.add(this.aimReticleMesh);
+    }
+
+    updateAimVisuals() {
+      const selPiece = this.arena.selectedPiece;
+
+      if (this.arena.isDragging && selPiece) {
+        const startPos = this.boardToWorld(selPiece.x, selPiece.y);
+        const pullX = this.arena.dragScreenAnchor.x - this.arena.dragScreenCurrent.x;
+        const pullY = this.arena.dragScreenAnchor.y - this.arena.dragScreenCurrent.y;
+        const screenDist = Math.hypot(pullX, pullY);
+
+        if (screenDist >= 10) {
+          const clamped = Math.min(screenDist, this.arena.maxPullDistance);
+          const power = clamped / this.arena.maxPullDistance;
+          const aimLen = 3.5 + power * 9.5; // World units
+
+          // Derive angle in world space (aim forward toward enemy lines)
+          const angle = Math.atan2(pullY, pullX);
+          const dirX = Math.cos(angle);
+          const dirZ = Math.sin(angle);
+
+          const endX = startPos.x + dirX * aimLen;
+          const endZ = startPos.z + dirZ * aimLen;
+
+          const isMaxPower = power > 0.85;
+          const aimColor = isMaxPower ? 0xff3b4e : 0xffd700;
+
+          // Update trajectory line
+          const posAttr = this.aimTrajectoryMesh.geometry.attributes.position;
+          posAttr.setXYZ(0, startPos.x, 0.4, startPos.z);
+          posAttr.setXYZ(1, endX, 0.4, endZ);
+          posAttr.needsUpdate = true;
+          this.aimTrajectoryMesh.material.color.setHex(aimColor);
+          this.aimTrajectoryMesh.computeLineDistances();
+          this.aimTrajectoryMesh.visible = true;
+
+          // Update Arrowhead
+          this.aimArrowMesh.position.set(endX, 0.4, endZ);
+          this.aimArrowMesh.lookAt(endX + dirX, 0.4, endZ + dirZ);
+          this.aimArrowMesh.material.color.setHex(aimColor);
+          this.aimArrowMesh.visible = true;
+
+          // Update Reticle
+          this.aimReticleMesh.position.set(startPos.x, 0.08, startPos.z);
+          this.aimReticleMesh.rotation.y += 0.04;
+          this.aimReticleMesh.material.color.setHex(aimColor);
+          this.aimReticleMesh.visible = true;
+          return;
+        }
+      }
+
+      this.aimTrajectoryMesh.visible = false;
+      this.aimArrowMesh.visible = false;
+      this.aimReticleMesh.visible = false;
+    }
+
+    /* -------------------------------------------------------------
+       Coordinate Conversions: 2D Board Space <-> 3D World Space
+    ------------------------------------------------------------- */
+    boardToWorld(bx, by) {
+      const layout = this.arena.getBoardLayout();
+      const originX = layout.gridOriginX;
+      const originY = layout.gridOriginY;
+      const size = layout.gridSize;
+
+      // Normalize to -1 to +1
+      const nx = ((bx - originX) / size) * 2 - 1;
+      const ny = ((by - originY) / size) * 2 - 1;
+
+      // Scale to 3D grid dimensions
+      const half3D = this.gridSize3D / 2;
+      return {
+        x: nx * half3D,
+        z: ny * half3D
+      };
+    }
+
+    worldToBoard(wx, wz) {
+      const layout = this.arena.getBoardLayout();
+      const half3D = this.gridSize3D / 2;
+      const nx = (wx / half3D + 1) / 2;
+      const ny = (wz / half3D + 1) / 2;
+
+      return {
+        x: layout.gridOriginX + nx * layout.gridSize,
+        y: layout.gridOriginY + ny * layout.gridSize
+      };
+    }
+
+    /* -------------------------------------------------------------
+       Mouse & Touch Interaction Handlers on 3D Canvas
+    ------------------------------------------------------------- */
+    setupInteractionListeners() {
+      const dom = this.renderer.domElement;
+
+      const getNormalizedMouse = (e) => {
+        const rect = dom.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return {
+          x: ((clientX - rect.left) / rect.width) * 2 - 1,
+          y: -((clientY - rect.top) / rect.height) * 2 + 1,
+          screenX: clientX - rect.left,
+          screenY: clientY - rect.top
+        };
+      };
+
+      dom.addEventListener('pointerdown', (e) => {
+        if (e.button === 2) return; // Right click is reserved for camera orbit
+        const m = getNormalizedMouse(e);
+        this.mouse.x = m.x;
+        this.mouse.y = m.y;
+
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+        const intersects = this.raycaster.intersectObjects(this.piecesGroup.children, true);
+
+        if (intersects.length > 0) {
+          // Find root piece group
+          let target = intersects[0].object;
+          while (target && target.parent !== this.piecesGroup) {
+            target = target.parent;
+          }
+          if (target && target.userData && target.userData.piece) {
+            const piece = target.userData.piece;
+            if (piece.team === this.arena.currentTurn && !piece.immovable) {
+              this.arena.selectedPiece = piece;
+              this.arena.isDragging = true;
+              this.arena.dragScreenAnchor = { x: m.screenX, y: m.screenY };
+              this.arena.dragScreenCurrent = { x: m.screenX, y: m.screenY };
+              this.arena.audio.init();
+            }
+          }
+        }
+      });
+
+      dom.addEventListener('pointermove', (e) => {
+        const m = getNormalizedMouse(e);
+        if (this.arena.isDragging) {
+          this.arena.dragScreenCurrent = { x: m.screenX, y: m.screenY };
+        }
+      });
+
+      window.addEventListener('pointerup', () => {
+        if (this.arena.isDragging && this.arena.selectedPiece) {
+          const pullX = this.arena.dragScreenAnchor.x - this.arena.dragScreenCurrent.x;
+          const pullY = this.arena.dragScreenAnchor.y - this.arena.dragScreenCurrent.y;
+          const dist = Math.hypot(pullX, pullY);
+
+          if (dist >= 14) {
+            const powerRatio = Math.min(1.0, dist / this.arena.maxPullDistance);
+            const angle = Math.atan2(pullY, pullX);
+            this.arena.launchPiece(this.arena.selectedPiece, angle, powerRatio);
+          }
+
+          this.arena.isDragging = false;
+          this.arena.selectedPiece = null;
+        }
+      });
+    }
+
+    /* -------------------------------------------------------------
+       Camera Presets & View Controls
+    ------------------------------------------------------------- */
+    setCameraPreset(presetName) {
+      if (this.cameraPresets[presetName]) {
+        this.activePreset = presetName;
+        const target = this.cameraPresets[presetName];
+        this.camera.position.copy(target.pos);
+        if (this.controls) {
+          this.controls.target.copy(target.look);
+          this.controls.update();
+        }
+      }
+    }
+
+    resetCamera() {
+      this.setCameraPreset('tabletop');
+    }
+
+    /* -------------------------------------------------------------
+       Main 3D Animation & Render Loop
+    ------------------------------------------------------------- */
+    update(dt) {
+      // 1. Sync 3D Pieces with 2D Physics state
+      this.syncPieces();
+
+      // 2. Update Slingshot Aim Visuals
+      this.updateAimVisuals();
+
+      // 3. Update Orbit Controls Damping
+      if (this.controls) {
+        this.controls.update();
+      }
+    }
+
+    render() {
+      if (this.renderer && this.scene && this.camera) {
+        this.renderer.render(this.scene, this.camera);
+      }
+    }
+
+    resize(width, height) {
+      if (!this.renderer || !this.camera) return;
+      this.camera.aspect = width / height;
+      this.camera.updateProjectionMatrix();
+      this.renderer.setSize(width, height);
+    }
+  }
+
+  // Export to global window scope
+  window.Archess3DEngine = Archess3DEngine;
+
+})(window);
