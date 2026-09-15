@@ -1599,6 +1599,7 @@ class ArchessArena {
 
     let lastTensionSoundTime = 0;
     const handlePointerMove = (e) => {
+      if (this.renderMode === '3d') return; // Handled exclusively by engine3d in 3D mode
       const screenPos = getPointerScreenPos(e);
       if (this.isDragging && this.selectedPiece) {
         this.dragScreenCurrent = screenPos;
@@ -1642,6 +1643,7 @@ class ArchessArena {
     };
 
     const handlePointerUp = () => {
+      if (this.renderMode === '3d') return; // Handled exclusively by engine3d in 3D mode
       if (!this.isDragging || !this.selectedPiece) return;
       this.isDragging = false;
 

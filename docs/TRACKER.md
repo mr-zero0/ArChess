@@ -17,6 +17,7 @@
 
 | Feature / Milestone | Category | Status | Verification Snapshot |
 | :--- | :--- | :--- | :--- |
+| **Zero-Stale-Cache & OrbitControls Pointer Isolation (v3.9.1)**| Architecture / Gameplay | ✅ COMPLETE | Service Worker upgraded to network-first (purges v2.9.7 cache), backend cache-control headers, OrbitControls left-click isolation, 2D/3D pointer decoupling, 100% tests passing |
 | **Drag Play, Vertical Dock & Hover HP (v3.9.0)**| Gameplay / UX | ✅ COMPLETE | 3D drag launch fixed, vertical emote dock located along board outside border with 0 overlap, piece HP visible on hover only, numeric collision text suppressed for physical impact effects |
 | **3-Column Triptych Cockpit (v3.8.0)**| UI / Ergonomics | ✅ COMPLETE | 3-column cockpit layout (`.play-arena-triptych-grid`), board maximized in center column with zero scrolling, controls flanking left and status/casualties flanking right, full responsive behavior |
 | **Zero-Scroll Full-Viewport Screen (v3.7.0)**| UI / Ergonomics | ✅ COMPLETE | Full-screen viewport layout (`height: 100vh; overflow: hidden;`), board auto-maximized to available square in dedicated column, all controls & info consolidated to side panel, 0 scrolling required |

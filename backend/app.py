@@ -46,6 +46,7 @@ app = Flask(
     static_url_path="/static"
 )
 app.secret_key = os.environ.get("SECRET_KEY", "archess_tactical_secret_key_2026_x9")
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 CORS(app, supports_credentials=True)
 sock = Sock(app)
 
@@ -65,6 +66,9 @@ def before_request_logging():
 def after_request_logging(response):
     response.headers["X-Request-ID"] = getattr(request, "req_id", "")
     response.headers["X-Correlation-ID"] = getattr(request, "corr_id", "")
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
     latency_ms = round((time.time() - getattr(request, "start_time", time.time())) * 1000, 2)
     
     # Don't flood logs with high-frequency polling/static file hits

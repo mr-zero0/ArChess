@@ -2,6 +2,23 @@
 
 All notable changes, architectural pivots, bugfixes, and refactorings across **ArChess** are documented in this file.
 
+## [3.9.1] - 2026-09-15
+
+### 🚀 Zero-Stale-Cache Architecture & OrbitControls Pointer Isolation
+- **PWA Service Worker Network-First Strategy (`static/sw.js`)**:
+  - Upgraded PWA Service Worker to `archess-cache-v3.9.1` and replaced stale cache-first asset routing with network-first with cache fallback.
+  - Automatically purges all outdated caches upon activation, preventing browsers from serving stale cached JS/CSS files.
+- **Authoritative Cache-Control Headers (`backend/app.py`)**:
+  - Configured `SEND_FILE_MAX_AGE_DEFAULT = 0` and injected `Cache-Control: no-cache, no-store, must-revalidate` on all responses.
+  - Updated asset version query strings to `?v=3.9.1` across `templates/base.html` and `templates/play.html`.
+- **OrbitControls Pointer Isolation (`static/js/engine3d.js`)**:
+  - Kept OrbitControls disabled by default (`this.controls.enabled = false`) so left-click dragging on pieces is never hijacked or captured by OrbitControls's `setPointerCapture`.
+  - OrbitControls dynamically enables strictly on right-click (`button === 2`), middle-click (`button === 1`), or mouse wheel zoom, and cleanly disables on release.
+- **2D/3D Pointer Handler Isolation (`static/js/game.js`)**:
+  - Added early returns in `handlePointerMove` and `handlePointerUp` when in 3D mode, completely eliminating race conditions and duplicate launch calls between `game.js` and `engine3d.js`.
+- **Automated Verification**:
+  - 84/84 tests passed with 100% statement and branch coverage strictly maintained.
+
 ## [3.9.0] - 2026-09-15
 
 ### 🎯 3D Drag Launch Fix, Vertical Emoticon Dock, Hover-Only HP & Physical Collision Effects

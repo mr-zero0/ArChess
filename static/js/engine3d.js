@@ -103,6 +103,7 @@
 
       // Clear container and append canvas
       this.container.innerHTML = '';
+      this.renderer.domElement.style.touchAction = 'none';
       this.container.appendChild(this.renderer.domElement);
 
       // 4. OrbitControls
@@ -114,6 +115,7 @@
         this.controls.minDistance = 18;
         this.controls.maxDistance = 55;
         this.controls.target.set(0, 0, 0);
+        this.controls.enabled = false; // Kept disabled by default; enabled on right/middle-click or wheel only
 
         // Map mouse buttons: Left click is aim/slingshot, Right click or Middle click is orbit
         this.controls.mouseButtons = {
@@ -930,7 +932,14 @@
       };
 
       dom.addEventListener('pointerdown', (e) => {
-        if (e.button === 2) return; // Right click is reserved for camera orbit
+        if (e.button === 2 || e.button === 1) {
+          // Right-click or middle-click is reserved for camera orbit/pan
+          if (this.controls) this.controls.enabled = true;
+          return;
+        }
+        // Left-click: keep OrbitControls disabled so it NEVER steals or captures the pointer!
+        if (this.controls) this.controls.enabled = false;
+
         if (this.arena.isGameOver) return;
         if (this.arena.gameMode === 'bot' && this.arena.currentTurn === 'black') return;
         if (this.arena.multiplayerMode && this.arena.playerRole && this.arena.playerRole !== this.arena.currentTurn) return;
@@ -961,7 +970,6 @@
               this.arena.dragScreenAnchor = { x: m.screenX, y: m.screenY };
               this.arena.dragScreenCurrent = { x: m.screenX, y: m.screenY };
               this.arena.audio.init();
-              if (this.controls) this.controls.enabled = false;
               if (e.cancelable) e.preventDefault();
             } else if (piece.type === 'king' && !piece.awakened && piece.team === this.arena.currentTurn) {
               this.arena.logTelemetry('CITADEL_STATIONARY', 'The King is anchored as Citadel until vanguard falls. Sling vanguard pieces.');
@@ -969,6 +977,18 @@
           }
         }
       });
+
+      dom.addEventListener('wheel', () => {
+        if (this.controls) {
+          this.controls.enabled = true;
+          clearTimeout(this._wheelTimeout);
+          this._wheelTimeout = setTimeout(() => {
+            if (!this.arena.isDragging && this.controls) {
+              this.controls.enabled = false;
+            }
+          }, 600);
+        }
+      }, { passive: true });
 
       const onPointerMove = (e) => {
         const m = getNormalizedMouse(e);
@@ -1011,7 +1031,7 @@
       });
 
       window.addEventListener('pointerup', () => {
-        if (this.controls) this.controls.enabled = true;
+        if (this.controls) this.controls.enabled = false;
 
         if (this.arena.isDragging && this.arena.selectedPiece) {
           const pullX = this.arena.dragScreenAnchor.x - this.arena.dragScreenCurrent.x;
@@ -1026,6 +1046,10 @@
           this.arena.isDragging = false;
           this.arena.selectedPiece = null;
         }
+
+        if (this.aimTrajectoryMesh) this.aimTrajectoryMesh.visible = false;
+        if (this.aimArrowMesh) this.aimArrowMesh.visible = false;
+        if (this.aimReticleMesh) this.aimReticleMesh.visible = false;
       });
     }
 
