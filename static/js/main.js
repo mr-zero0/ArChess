@@ -275,6 +275,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const threeCanvasContainer = document.getElementById('threeCanvasContainer');
   const reactChessRoot = document.getElementById('reactChessboardRoot');
   const cameraToolbarGroup = document.getElementById('camera3DToolbarGroup');
+  const cameraWingCard = document.getElementById('camera3DWingCard');
   const kbdHints = document.getElementById('arenaControlHints');
 
   let activeViewMode = '3d-arena';
@@ -296,6 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (archessCanvas) archessCanvas.style.display = 'none';
       if (threeCanvasContainer) threeCanvasContainer.style.display = 'none';
       if (cameraToolbarGroup) cameraToolbarGroup.style.display = 'none';
+      if (cameraWingCard) cameraWingCard.style.display = 'none';
       if (reactChessRoot) {
         reactChessRoot.style.display = 'flex';
         const currentTheme = localStorage.getItem('archess_board_theme') || 'midnight';
@@ -316,6 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (reactChessRoot) reactChessRoot.style.display = 'none';
       if (threeCanvasContainer) threeCanvasContainer.style.display = 'none';
       if (cameraToolbarGroup) cameraToolbarGroup.style.display = 'none';
+      if (cameraWingCard) cameraWingCard.style.display = 'none';
       if (archessCanvas) {
         archessCanvas.style.display = 'block';
         if (arena) {
@@ -331,6 +334,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // 3D Arena: Realistic 3D WebGL game engine with Physical Slingshot & Orbit Camera!
       if (reactChessRoot) reactChessRoot.style.display = 'none';
       if (cameraToolbarGroup) cameraToolbarGroup.style.display = 'flex';
+      if (cameraWingCard) cameraWingCard.style.display = 'flex';
       if (threeCanvasContainer && window.THREE) {
         threeCanvasContainer.style.display = 'block';
         if (archessCanvas) archessCanvas.style.display = 'none';
@@ -361,6 +365,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Game Mode Switcher (vs Bot AI, Pass & Play) & AI Difficulty Selector
   const modeBtns = document.querySelectorAll('.game-mode-btn');
   const botDiffGroup = document.getElementById('botDifficultyToolbarGroup');
+  const botDiffWingCard = document.getElementById('botDifficultyWingCard');
   const botDiffBtns = document.querySelectorAll('.bot-difficulty-btn');
 
   function updateBlackPlayerSub(mode, diff) {
@@ -427,6 +432,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (botDiffGroup) {
       botDiffGroup.style.display = mode === 'bot' ? 'flex' : 'none';
+    }
+    if (botDiffWingCard) {
+      botDiffWingCard.style.display = mode === 'bot' ? 'flex' : 'none';
     }
     const currentDiff = localStorage.getItem('archess_bot_difficulty') || 'commander';
     updateBlackPlayerSub(mode, currentDiff);

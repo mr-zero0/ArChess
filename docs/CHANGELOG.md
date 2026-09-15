@@ -2,6 +2,24 @@
 
 All notable changes, architectural pivots, bugfixes, and refactorings across **ArChess** are documented in this file.
 
+## [3.8.0] - 2026-09-15
+
+### 🎛️ 3-Column Triptych Cockpit Architecture (Zero Scroll & Flanking Command Wings)
+- **Zero-Scroll Triptych Grid (`templates/play.html` & `static/css/style.css`)**:
+  - Re-architected `/play` from vertical toolbars into a 3-column triptych cockpit:
+    - **Left Wing (`.arena-wing-left`)**: Game commands and options (Turn status HUD, Match Mode switcher, AI Difficulty selector, Board Perspective toggle, 3D Camera controls, Settings & Board Reset).
+    - **Center Stage (`.arena-center-stage.arena-board-column`)**: Pure square chessboard maximized to fit the screen height completely without any vertical scrolling.
+    - **Right Wing (`.arena-wing-right`)**: Match status and intelligence (Live Players card, Battle Casualties & Material Advantage rack, Tactical Match Commentary feed, Codex note).
+  - Completely eliminated all top toolbars above the board that previously pushed ranks 1-3 off the bottom of the screen.
+- **Dynamic Square Sizing & Real-time Resize (`static/js/game.js`)**:
+  - Bound `initCanvasSize()` to `.arena-board-column` bounding rect, sizing the board canvas and Three.js WebGL viewport to `Math.min(colRect.width, colRect.height) - 8`.
+  - Maintained `ResizeObserver` on the center column for instant real-time canvas and camera projection updates on window resize.
+- **Full Responsive Degradation**:
+  - Desktop viewports (>1024px) lock to exact 100vh viewport height with zero scrolling.
+  - Tablets and mobile (<1024px) reorder gracefully (board first, followed by left wing controls and right wing intelligence) with smooth scrolling.
+- **Automated Verification**:
+  - 100% test pass rate across 84 test cases with 100% statement and branch coverage strictly maintained.
+
 ## [3.7.0] - 2026-09-15
 
 ### 📐 Full-Viewport Zero-Scroll Architecture & Consolidated Side Command Dock

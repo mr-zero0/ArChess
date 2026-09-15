@@ -7,10 +7,109 @@
 
 {% block content %}
   <main class="play-page-container">
-    <div class="play-arena-main-grid">
+    <div class="play-arena-triptych-grid">
       
-      <!-- Left: Dedicated Full-Height Board Column -->
-      <div class="arena-board-column">
+      <!-- LEFT WING: Match Controls & Command Options -->
+      <aside class="arena-wing arena-wing-left" aria-label="Game Commands & Controls">
+        
+        <!-- 1. Turn Indicator & Status HUD Card -->
+        <div class="wing-card turn-status-card">
+          <div class="turn-badge">
+            <div class="turn-timer-wrap" title="Turn Active">
+              <svg class="turn-timer-svg" width="30" height="30" viewBox="0 0 36 36">
+                <circle class="turn-timer-bg" cx="18" cy="18" r="15.5"></circle>
+                <circle class="turn-timer-circle" id="turnTimerRing" cx="18" cy="18" r="15.5"></circle>
+              </svg>
+              <div class="turn-circle" id="arenaTurnCircle"></div>
+            </div>
+            <div class="turn-meta">
+              <div class="turn-label" id="arenaTurnLabel">WHITE'S TURN</div>
+              <div id="arenaPieceCounts" class="tabular-nums" style="font-size: 0.76rem; color: var(--muted-foreground);">White: 16 | Black: 16</div>
+            </div>
+          </div>
+
+          <div class="keyboard-hints-badge" id="arenaControlHints" title="Click &amp; drag piece to aim and launch. Tab cycles pieces. Space fires.">
+            <span class="kbd-key">Drag</span> Aim &bull; Launch
+            <span class="kbd-hint-more" style="color: var(--muted-foreground); font-size: 0.72rem; margin-left: 4px;">(Tab &bull; Space)</span>
+          </div>
+        </div>
+
+        <!-- 2. Match Mode Segmented Control -->
+        <div class="wing-card">
+          <div class="wing-card-header">
+            <span class="wing-card-title">Match Mode</span>
+          </div>
+          <div class="theme-picker-group cupertino-segmented-control wing-segmented" role="group" aria-label="Game Mode">
+            <button class="theme-pill-btn game-mode-btn active" id="modeVsBotBtn" data-mode="bot">vs AI</button>
+            <button class="theme-pill-btn game-mode-btn" id="modePvpBtn" data-mode="pvp">Pass &amp; Play</button>
+            <button class="theme-pill-btn btn-multiplayer-trigger" id="btnOpenMultiplayerModal" title="Online Multiplayer">
+              <span class="multiplayer-status-dot" id="multiplayerStatusDot"></span>
+              <span id="multiplayerBtnLabel">Online</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. AI Difficulty Selector -->
+        <div class="wing-card" id="botDifficultyWingCard">
+          <div class="wing-card-header">
+            <span class="wing-card-title">AI Difficulty</span>
+          </div>
+          <div class="arena-toolbar-group cupertino-segmented-control wing-segmented" id="botDifficultyToolbarGroup">
+            <button class="theme-pill-btn bot-difficulty-btn" data-diff="cadet" data-bot-diff="cadet">Cadet</button>
+            <button class="theme-pill-btn bot-difficulty-btn active" data-diff="commander" data-bot-diff="commander">Commander</button>
+            <button class="theme-pill-btn bot-difficulty-btn" data-diff="grandmaster" data-bot-diff="grandmaster">Grandmaster</button>
+          </div>
+        </div>
+
+        <!-- 4. Perspective View Mode -->
+        <div class="wing-card">
+          <div class="wing-card-header">
+            <span class="wing-card-title">Board Perspective</span>
+          </div>
+          <div class="view-mode-toggle cupertino-segmented-control wing-segmented" role="group" aria-label="View Mode">
+            <button class="view-btn active" id="viewMode3DArena" data-view="3d-arena">3D Realistic</button>
+            <button class="view-btn" id="viewMode2DArena" data-view="2d-arena">2D Arena</button>
+            <button class="view-btn" id="viewMode2DClassic" data-view="2d-classic">Classic</button>
+          </div>
+        </div>
+
+        <!-- 5. 3D Camera Controls -->
+        <div class="wing-card" id="camera3DWingCard">
+          <div class="wing-card-header">
+            <span class="wing-card-title">3D Camera Angle</span>
+          </div>
+          <div class="camera-picker-group cupertino-segmented-control wing-segmented" id="camera3DToolbarGroup" role="group" aria-label="Camera Perspective">
+            <button class="theme-pill-btn camera-btn active" id="camTabletopBtn" data-cam="tabletop" title="Tabletop Perspective">Tabletop</button>
+            <button class="theme-pill-btn camera-btn" id="camCinematicBtn" data-cam="cinematic" title="Dramatic Angle">Cinematic</button>
+            <button class="theme-pill-btn camera-btn" id="camTacticalBtn" data-cam="tactical" title="Top-Down Overview">Overhead</button>
+            <button class="theme-pill-btn camera-btn" id="camResetBtn" title="Reset Camera Orbit">↺ Reset</button>
+          </div>
+        </div>
+
+        <!-- 6. Quick Action Buttons -->
+        <div class="wing-card wing-card-actions">
+          <button class="btn-cupertino-action btn-customizer-trigger" id="btnOpenAppearanceModal" title="Match Settings &amp; Palettes">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            <span>Settings</span>
+          </button>
+          <button class="btn-cupertino-action" id="arenaResetBtn" title="Reset board to opening arrangement">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>
+            <span>Reset Board</span>
+          </button>
+        </div>
+
+        <!-- Board Size Control (Accessible for scaling) -->
+        <div class="board-resize-strip" style="display: none;">
+          <span class="resize-label">Board Size</span>
+          <button class="board-resize-btn" id="boardShrinkBtn" title="Shrink board">−</button>
+          <span class="board-size-indicator" id="boardSizeLabel">100%</span>
+          <button class="board-resize-btn" id="boardGrowBtn" title="Enlarge board">+</button>
+        </div>
+
+      </aside>
+
+      <!-- CENTER STAGE: Maximized Pure Square Chessboard -->
+      <section class="arena-center-stage arena-board-column" aria-label="Tactical Chessboard">
         <div class="arena-canvas-stage" id="arenaCanvasStage">
           <div id="threeCanvasContainer" class="three-canvas-stage"></div>
           <canvas id="archessCanvas" style="display: none;"></canvas>
@@ -84,98 +183,12 @@
           <!-- Floating Reactions Stage Container -->
           <div class="floating-reactions-stage" id="floatingReactionsStage"></div>
         </div>
-      </div>
+      </section>
 
-      <!-- Match Sidebar: All Information & Controls on the Side -->
-      <div class="arena-side-sidebar">
+      <!-- RIGHT WING: Match Status, Intel & Casualties -->
+      <aside class="arena-wing arena-wing-right arena-side-sidebar" aria-label="Battle Intelligence">
         
-        <!-- 1. Turn Indicator & Status HUD Card -->
-        <div class="sidebar-turn-card">
-          <div class="turn-indicator-bar-inner">
-            <div class="turn-badge">
-              <div class="turn-timer-wrap" title="Turn Active">
-                <svg class="turn-timer-svg" width="28" height="28" viewBox="0 0 36 36">
-                  <circle class="turn-timer-bg" cx="18" cy="18" r="15.5"></circle>
-                  <circle class="turn-timer-circle" id="turnTimerRing" cx="18" cy="18" r="15.5"></circle>
-                </svg>
-                <div class="turn-circle" id="arenaTurnCircle"></div>
-              </div>
-              <div class="turn-label" id="arenaTurnLabel">WHITE'S TURN</div>
-              <div id="arenaPieceCounts" class="tabular-nums" style="font-size: 0.82rem; color: var(--muted-foreground); margin-left: 10px;"></div>
-            </div>
-
-            <div class="keyboard-hints-badge" id="arenaControlHints" title="Click &amp; drag piece to aim and launch. Tab cycles pieces. Space fires.">
-              <span class="kbd-key">Drag</span> Aim &bull; Launch
-            </div>
-          </div>
-        </div>
-
-        <!-- 2. Command Strip: Modes, Perspectives & Camera Controls -->
-        <div class="sidebar-command-card">
-          <div class="sidebar-ctrl-row">
-            <!-- Game Mode -->
-            <div class="theme-picker-group cupertino-segmented-control" role="group" aria-label="Game Mode">
-              <button class="theme-pill-btn game-mode-btn active" id="modeVsBotBtn" data-mode="bot">vs AI</button>
-              <button class="theme-pill-btn game-mode-btn" id="modePvpBtn" data-mode="pvp">Pass &amp; Play</button>
-              <button class="theme-pill-btn btn-multiplayer-trigger" id="btnOpenMultiplayerModal" title="Online Multiplayer">
-                <span class="multiplayer-status-dot" id="multiplayerStatusDot"></span>
-                <span id="multiplayerBtnLabel">Online</span>
-              </button>
-            </div>
-
-            <!-- Settings & Reset -->
-            <div class="sidebar-action-btns">
-              <button class="btn-cupertino-action btn-customizer-trigger" id="btnOpenAppearanceModal" title="Match Settings &amp; Palettes">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="3"></circle>
-                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                </svg>
-                <span>Settings</span>
-              </button>
-
-              <button class="btn-cupertino-action" id="arenaResetBtn" title="Reset board to opening arrangement">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
-                </svg>
-                <span>Reset</span>
-              </button>
-            </div>
-          </div>
-
-          <div class="sidebar-ctrl-row">
-            <!-- Perspective View Switcher -->
-            <div class="view-mode-toggle cupertino-segmented-control" role="group" aria-label="View Mode">
-              <button class="view-btn active" id="viewMode3DArena" data-view="3d-arena">3D Realistic</button>
-              <button class="view-btn" id="viewMode2DArena" data-view="2d-arena">2D Arena</button>
-              <button class="view-btn" id="viewMode2DClassic" data-view="2d-classic">Classic</button>
-            </div>
-
-            <!-- 3D Camera Controls -->
-            <div class="camera-picker-group cupertino-segmented-control" id="camera3DToolbarGroup" role="group" aria-label="Camera Perspective">
-              <button class="theme-pill-btn camera-btn active" id="camTabletopBtn" data-cam="tabletop" title="Tabletop Perspective">Tabletop</button>
-              <button class="theme-pill-btn camera-btn" id="camCinematicBtn" data-cam="cinematic" title="Dramatic Angle">Cinematic</button>
-              <button class="theme-pill-btn camera-btn" id="camTacticalBtn" data-cam="tactical" title="Top-Down Overview">Overhead</button>
-              <button class="theme-pill-btn camera-btn" id="camResetBtn" title="Reset Camera">↺</button>
-            </div>
-          </div>
-
-          <!-- Abstracted AI Tier Selector (accessible for tests & synced from Settings) -->
-          <div class="arena-toolbar-group" id="botDifficultyToolbarGroup" style="display: none;">
-            <button class="theme-pill-btn bot-difficulty-btn" data-diff="cadet" data-bot-diff="cadet">Cadet</button>
-            <button class="theme-pill-btn bot-difficulty-btn active" data-diff="commander" data-bot-diff="commander">Commander</button>
-            <button class="theme-pill-btn bot-difficulty-btn" data-diff="grandmaster" data-bot-diff="grandmaster">Grandmaster</button>
-          </div>
-
-          <!-- Board Size Control (Accessible for scaling) -->
-          <div class="board-resize-strip" style="display: none;">
-            <span class="resize-label">Board Size</span>
-            <button class="board-resize-btn" id="boardShrinkBtn" title="Shrink board">−</button>
-            <span class="board-size-indicator" id="boardSizeLabel">100%</span>
-            <button class="board-resize-btn" id="boardGrowBtn" title="Enlarge board">+</button>
-          </div>
-        </div>
-
-        <!-- 3. Live Players Card -->
+        <!-- 1. Live Players Card -->
         <div class="sidebar-match-card">
           <div class="match-players-strip">
             <div class="player-strip-unit">
@@ -196,7 +209,7 @@
           </div>
         </div>
 
-        <!-- 4. Captured Casualties & Material Advantage Card -->
+        <!-- 2. Captured Casualties & Material Advantage Card -->
         <div class="sidebar-casualties-card">
           <div class="casualties-header">
             <h4>
@@ -229,7 +242,7 @@
           </div>
         </div>
 
-        <!-- 5. Tactical Match Commentary Card (v3.3.0) -->
+        <!-- 3. Tactical Match Commentary Card (v3.3.0) -->
         <div class="sidebar-commentary-card" id="sidebarCommentaryCard">
           <div class="commentary-header">
             <h4>
@@ -247,12 +260,12 @@
           </div>
         </div>
 
-        <!-- 6. Match Mode Context Note -->
+        <!-- 4. Match Mode Context Note -->
         <div class="sidebar-context-note">
           Physics Combat (3D &amp; 2D Arena) &bull; Standard FIDE (2D Classic) &bull; <a href="/arsenal" class="sidebar-context-link">View Codex &rarr;</a>
         </div>
 
-      </div>
+      </aside>
 
     </div>
   </main>
