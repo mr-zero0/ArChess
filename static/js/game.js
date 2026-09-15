@@ -657,7 +657,7 @@ class ArchessArena {
     const boardColumn = parent ? parent.closest('.arena-board-column') : null;
     if (boardColumn) {
       const colRect = boardColumn.getBoundingClientRect();
-      const maxAvailable = Math.floor(Math.min(colRect.width, colRect.height) - 8);
+      const maxAvailable = Math.floor(Math.min(colRect.width - 56, colRect.height) - 8);
       if (maxAvailable >= 200) {
         pw = maxAvailable;
         ph = maxAvailable;
@@ -1599,8 +1599,8 @@ class ArchessArena {
 
     let lastTensionSoundTime = 0;
     const handlePointerMove = (e) => {
+      const screenPos = getPointerScreenPos(e);
       if (this.isDragging && this.selectedPiece) {
-        const screenPos = getPointerScreenPos(e);
         this.dragScreenCurrent = screenPos;
         const pullScreenX = this.dragScreenAnchor.x - this.dragScreenCurrent.x;
         const pullScreenY = this.dragScreenAnchor.y - this.dragScreenCurrent.y;
@@ -1623,6 +1623,21 @@ class ArchessArena {
           }
         }
         if (e.cancelable) e.preventDefault();
+      } else {
+        // Track hovered piece so HP is only shown on hover!
+        let hovered = null;
+        for (const p of this.pieces) {
+          if (p.dead) continue;
+          const pElevation = (this.renderMode === '3d') ? 14 : 0;
+          const pScreen = this.toScreen(p.x, p.y, pElevation);
+          const hitCenterY = this.renderMode === '3d' ? (pScreen.y - p.radius * 0.3) : pScreen.y;
+          const dist = Math.hypot(screenPos.x - pScreen.x, screenPos.y - hitCenterY);
+          if (dist <= p.radius * 1.5) {
+            hovered = p;
+            break;
+          }
+        }
+        this.hoveredPiece = hovered;
       }
     };
 
@@ -1673,8 +1688,11 @@ class ArchessArena {
       this.selectedPiece = null;
     };
 
+    this.canvas.addEventListener('pointerdown', handlePointerDown);
     this.canvas.addEventListener('mousedown', handlePointerDown);
+    window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('mousemove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
     window.addEventListener('mouseup', handlePointerUp);
 
     this.canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
@@ -1925,17 +1943,16 @@ class ArchessArena {
   }
 
   addDamageNumber(x, y, amount, isCritical = false, customColor = null, customText = null) {
-    let text = isCritical ? `CRIT -${amount}!` : `-${amount}`;
-    if (customText) text = customText;
-    let color = isCritical ? '#ff3b4e' : '#ffd700';
-    if (customColor) color = customColor;
+    // User requirement: Upon collision, do NOT display any numeric text (-10 etc), just physical effect suggesting collision
+    if (!customText) return;
+    if (customText.includes('-') || customText.toLowerCase().includes('recoil') || customText.toLowerCase().includes('wall -')) return;
 
     this.damageNumbers.push({
       x: x + (Math.random() - 0.5) * 15,
       y: y - 18,
-      text: text,
-      color: color,
-      size: isCritical ? 22 : (customText ? 15 : 16),
+      text: customText,
+      color: customColor || (isCritical ? '#ff3b4e' : '#ffd700'),
+      size: isCritical ? 20 : 15,
       alpha: 1,
       life: 1.2,
       vy: -1.4
@@ -3616,43 +3633,47 @@ class ArchessArena {
     // Draw the Master Staunton Vector Silhouette
     this.drawStauntonPiece(ctx, p.type, p.team, p.radius, this.pieceTheme);
 
-    // King Fortress Wall Durability Bar & Status Badge
+    const isHovered = (this.hoveredPiece === p) || isSelected;
+
+    // King Fortress Wall Durability Bar & Status Badge (Shown when hovered, selected, or hit)
     if (p.type === 'king') {
       const isWhiteKing = p.team === 'white';
       if (p.wallActive && p.wallHp > 0) {
-        const wallRatio = Math.max(0, p.wallHp / p.maxWallHp);
-        const wallBarW = p.radius * 2.2;
-        const wallBarH = 5;
-        const wallBarY = -p.radius * 1.58;
+        if (isHovered || p.wallHitFlash > 0) {
+          const wallRatio = Math.max(0, p.wallHp / p.maxWallHp);
+          const wallBarW = p.radius * 2.2;
+          const wallBarH = 5;
+          const wallBarY = -p.radius * 1.58;
 
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.88)';
-        ctx.fillRect(-wallBarW / 2, wallBarY, wallBarW, wallBarH);
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.88)';
+          ctx.fillRect(-wallBarW / 2, wallBarY, wallBarW, wallBarH);
 
-        const wallGrad = ctx.createLinearGradient(-wallBarW / 2, 0, wallBarW / 2, 0);
-        if (isWhiteKing) {
-          wallGrad.addColorStop(0, '#ffd700');
-          wallGrad.addColorStop(1, '#00e1d9');
-        } else {
-          wallGrad.addColorStop(0, '#ff4757');
-          wallGrad.addColorStop(1, '#ff7675');
+          const wallGrad = ctx.createLinearGradient(-wallBarW / 2, 0, wallBarW / 2, 0);
+          if (isWhiteKing) {
+            wallGrad.addColorStop(0, '#ffd700');
+            wallGrad.addColorStop(1, '#00e1d9');
+          } else {
+            wallGrad.addColorStop(0, '#ff4757');
+            wallGrad.addColorStop(1, '#ff7675');
+          }
+          ctx.fillStyle = wallGrad;
+          ctx.fillRect(-wallBarW / 2, wallBarY, wallBarW * wallRatio, wallBarH);
+          ctx.strokeStyle = isWhiteKing ? 'rgba(255, 215, 0, 0.8)' : 'rgba(255, 71, 87, 0.8)';
+          ctx.lineWidth = 0.8;
+          ctx.strokeRect(-wallBarW / 2, wallBarY, wallBarW, wallBarH);
+
+          // Wall Text Badge
+          ctx.save();
+          ctx.font = `800 ${Math.max(9, Math.round(p.radius * 0.38))}px monospace`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.fillStyle = isWhiteKing ? '#ffd700' : '#ff7675';
+          ctx.shadowColor = '#000';
+          ctx.shadowBlur = 4;
+          ctx.fillText(`🛡️ FORTRESS WALL ${Math.round(p.wallHp)}/${p.maxWallHp}`, 0, wallBarY - 2);
+          ctx.restore();
         }
-        ctx.fillStyle = wallGrad;
-        ctx.fillRect(-wallBarW / 2, wallBarY, wallBarW * wallRatio, wallBarH);
-        ctx.strokeStyle = isWhiteKing ? 'rgba(255, 215, 0, 0.8)' : 'rgba(255, 71, 87, 0.8)';
-        ctx.lineWidth = 0.8;
-        ctx.strokeRect(-wallBarW / 2, wallBarY, wallBarW, wallBarH);
-
-        // Wall Text Badge
-        ctx.save();
-        ctx.font = `800 ${Math.max(9, Math.round(p.radius * 0.38))}px monospace`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
-        ctx.fillStyle = isWhiteKing ? '#ffd700' : '#ff7675';
-        ctx.shadowColor = '#000';
-        ctx.shadowBlur = 4;
-        ctx.fillText(`🛡️ FORTRESS WALL ${Math.round(p.wallHp)}/${p.maxWallHp}`, 0, wallBarY - 2);
-        ctx.restore();
-      } else if (p.awakened) {
+      } else if (p.awakened && isHovered) {
         // King is Awakened: Show Majestic Radiant Sovereign Pill
         ctx.save();
         ctx.font = `800 ${Math.max(9, Math.round(p.radius * 0.38))}px monospace`;
@@ -3663,7 +3684,7 @@ class ArchessArena {
         ctx.shadowBlur = 8;
         ctx.fillText(`👑 SOVEREIGN AWAKENED`, 0, -p.radius * 1.55);
         ctx.restore();
-      } else {
+      } else if (!p.awakened && isHovered) {
         // Wall is Broken: Show Alert Pill
         ctx.save();
         ctx.font = `800 ${Math.max(9, Math.round(p.radius * 0.36))}px monospace`;
@@ -3677,36 +3698,38 @@ class ArchessArena {
       }
     }
 
-    // Mini Health Bar & Numeric Durability Badge (Always shown in Arena mode)
-    const barW = p.radius * 1.8;
-    const barH = 4;
-    const barY = -p.radius * 1.25;
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
-    ctx.fillRect(-barW / 2, barY, barW, barH);
-    const hpRatio = Math.max(0, Math.min(1, p.hp / p.maxHp));
-    ctx.fillStyle = hpRatio > 0.6 ? '#10b981' : (hpRatio > 0.25 ? '#f59e0b' : '#ff3b4e');
-    ctx.fillRect(-barW / 2, barY, barW * hpRatio, barH);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-    ctx.lineWidth = 0.8;
-    ctx.strokeRect(-barW / 2, barY, barW, barH);
+    // Mini Health Bar & Numeric Durability Badge (Only visible on hover/selection per user requirement!)
+    if (isHovered) {
+      const barW = p.radius * 1.8;
+      const barH = 4;
+      const barY = -p.radius * 1.25;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+      ctx.fillRect(-barW / 2, barY, barW, barH);
+      const hpRatio = Math.max(0, Math.min(1, p.hp / p.maxHp));
+      ctx.fillStyle = hpRatio > 0.6 ? '#10b981' : (hpRatio > 0.25 ? '#f59e0b' : '#ff3b4e');
+      ctx.fillRect(-barW / 2, barY, barW * hpRatio, barH);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.lineWidth = 0.8;
+      ctx.strokeRect(-barW / 2, barY, barW, barH);
 
-    // HP Numeric Pill at top-right of piece
-    ctx.save();
-    ctx.font = `800 ${Math.max(9, Math.round(p.radius * 0.42))}px monospace`;
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'top';
-    const hpText = `${Math.round(p.hp)}`;
-    const textW = ctx.measureText(hpText).width;
-    const pillX = p.radius * 0.95;
-    const pillY = -p.radius * 1.15;
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-    ctx.fillRect(pillX - textW - 4, pillY, textW + 4, 11);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-    ctx.lineWidth = 0.6;
-    ctx.strokeRect(pillX - textW - 4, pillY, textW + 4, 11);
-    ctx.fillStyle = hpRatio > 0.6 ? '#6ee7b7' : (hpRatio > 0.25 ? '#fcd34d' : '#fca5a5');
-    ctx.fillText(hpText, pillX - 2, pillY + 1);
-    ctx.restore();
+      // HP Numeric Pill at top-right of piece
+      ctx.save();
+      ctx.font = `800 ${Math.max(9, Math.round(p.radius * 0.42))}px monospace`;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'top';
+      const hpText = `${Math.round(p.hp)}`;
+      const textW = ctx.measureText(hpText).width;
+      const pillX = p.radius * 0.95;
+      const pillY = -p.radius * 1.15;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+      ctx.fillRect(pillX - textW - 4, pillY, textW + 4, 11);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.lineWidth = 0.6;
+      ctx.strokeRect(pillX - textW - 4, pillY, textW + 4, 11);
+      ctx.fillStyle = hpRatio > 0.6 ? '#6ee7b7' : (hpRatio > 0.25 ? '#fcd34d' : '#fca5a5');
+      ctx.fillText(hpText, pillX - 2, pillY + 1);
+      ctx.restore();
+    }
 
     ctx.restore();
   }

@@ -110,68 +110,75 @@
 
       <!-- CENTER STAGE: Maximized Pure Square Chessboard -->
       <section class="arena-center-stage arena-board-column" aria-label="Tactical Chessboard">
-        <div class="arena-canvas-stage" id="arenaCanvasStage">
-          <div id="threeCanvasContainer" class="three-canvas-stage"></div>
-          <canvas id="archessCanvas" style="display: none;"></canvas>
-          <div id="reactChessboardRoot" class="react-chessboard-stage" style="display: none;"></div>
+        <div class="arena-stage-composite">
+          <div class="arena-canvas-stage" id="arenaCanvasStage">
+            <div id="threeCanvasContainer" class="three-canvas-stage">
+              <div class="three-piece-hover-badge" id="threePieceHoverBadge" style="display: none;"></div>
+            </div>
+            <canvas id="archessCanvas" style="display: none;"></canvas>
+            <div id="reactChessboardRoot" class="react-chessboard-stage" style="display: none;"></div>
 
-          <!-- Interactive Tactical Combat Replay HUD Bar -->
-          <div class="tactical-replay-bar" id="tacticalReplayBar" style="display: none;">
-            <div class="replay-head-row">
-              <div class="replay-status-pill">
-                <span class="replay-pulse-dot"></span>
-                <span id="replayMatchTitle">REPLAY MODE: Turn 0 / 0</span>
+            <!-- Interactive Tactical Combat Replay HUD Bar -->
+            <div class="tactical-replay-bar" id="tacticalReplayBar" style="display: none;">
+              <div class="replay-head-row">
+                <div class="replay-status-pill">
+                  <span class="replay-pulse-dot"></span>
+                  <span id="replayMatchTitle">REPLAY MODE: Turn 0 / 0</span>
+                </div>
+                <div class="replay-event-ticker" id="replayEventTicker">
+                  <span class="ticker-label">INTEL:</span>
+                  <span class="ticker-text" id="replayEventText">Scrub through combat timeline or press Play.</span>
+                </div>
+                <button class="btn-ghost btn-sm" id="btnExitReplay" title="Exit replay and return to live battle">
+                  <span>✕ Exit Replay</span>
+                </button>
               </div>
-              <div class="replay-event-ticker" id="replayEventTicker">
-                <span class="ticker-label">INTEL:</span>
-                <span class="ticker-text" id="replayEventText">Scrub through combat timeline or press Play.</span>
+
+              <div class="replay-control-row">
+                <button class="replay-ctrl-btn" id="btnReplayPrev" title="Previous Tactical Event">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
+                </button>
+                <button class="replay-ctrl-btn replay-play-btn" id="btnReplayPlayPause" title="Play / Pause Replay">
+                  <svg id="replayPlayIcon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                </button>
+                <button class="replay-ctrl-btn" id="btnReplayNext" title="Next Tactical Event">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+                </button>
+                <div class="replay-slider-wrap">
+                  <input type="range" class="replay-scrubber-slider" id="replayTurnScrubber" min="0" max="0" value="0" step="1">
+                </div>
+                <div class="replay-speed-toggle">
+                  <button class="replay-speed-btn active" data-speed="1">1x</button>
+                  <button class="replay-speed-btn" data-speed="2">2x</button>
+                  <button class="replay-speed-btn" data-speed="4">4x</button>
+                </div>
               </div>
-              <button class="btn-ghost btn-sm" id="btnExitReplay" title="Exit replay and return to live battle">
-                <span>✕ Exit Replay</span>
-              </button>
             </div>
 
-            <div class="replay-control-row">
-              <button class="replay-ctrl-btn" id="btnReplayPrev" title="Previous Tactical Event">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
-              </button>
-              <button class="replay-ctrl-btn replay-play-btn" id="btnReplayPlayPause" title="Play / Pause Replay">
-                <svg id="replayPlayIcon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-              </button>
-              <button class="replay-ctrl-btn" id="btnReplayNext" title="Next Tactical Event">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
-              </button>
-              <div class="replay-slider-wrap">
-                <input type="range" class="replay-scrubber-slider" id="replayTurnScrubber" min="0" max="0" value="0" step="1">
+            <!-- Real-Time Multiplayer Active HUD Bar -->
+            <div class="active-multiplayer-bar" id="activeMultiplayerBar" style="display: none;">
+              <div class="mp-bar-left">
+                <span class="mp-pulse-dot"></span>
+                <span class="mp-room-title" id="mpRoomTitle">ROOM: ARC-000</span>
+                <span class="mp-role-pill" id="mpRolePill">YOU: WHITE</span>
               </div>
-              <div class="replay-speed-toggle">
-                <button class="replay-speed-btn active" data-speed="1">1x</button>
-                <button class="replay-speed-btn" data-speed="2">2x</button>
-                <button class="replay-speed-btn" data-speed="4">4x</button>
+              <div class="mp-bar-center">
+                <span class="mp-intel-text" id="mpStatusText">Waiting for challenger to connect...</span>
+              </div>
+              <div class="mp-bar-right">
+                <span class="mp-ping-pill" id="mpPingPill">Ping: --ms</span>
+                <button class="btn-ghost btn-sm" id="btnLeaveMultiplayer" title="Leave room and return to solo arena">
+                  <span>✕ Exit Room</span>
+                </button>
               </div>
             </div>
+
+            <!-- Floating Reactions Stage Container -->
+            <div class="floating-reactions-stage" id="floatingReactionsStage"></div>
           </div>
 
-          <!-- Real-Time Multiplayer Active HUD Bar -->
-          <div class="active-multiplayer-bar" id="activeMultiplayerBar" style="display: none;">
-            <div class="mp-bar-left">
-              <span class="mp-pulse-dot"></span>
-              <span class="mp-room-title" id="mpRoomTitle">ROOM: ARC-000</span>
-              <span class="mp-role-pill" id="mpRolePill">YOU: WHITE</span>
-            </div>
-            <div class="mp-bar-center">
-              <span class="mp-intel-text" id="mpStatusText">Waiting for challenger to connect...</span>
-            </div>
-            <div class="mp-bar-right">
-              <span class="mp-ping-pill" id="mpPingPill">Ping: --ms</span>
-              <button class="btn-ghost btn-sm" id="btnLeaveMultiplayer" title="Leave room and return to solo arena">
-                <span>✕ Exit Room</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Dynamic Combat Emote Reaction Dock (v3.2.0) -->
-          <div class="combat-emote-dock" id="combatEmoteDock" role="toolbar" aria-label="Tactical Combat Emotes">
+          <!-- Dynamic Combat Emote Reaction Dock: Positioned vertically along the board just outside the border -->
+          <div class="combat-emote-dock vertical-emote-dock" id="combatEmoteDock" role="toolbar" aria-label="Tactical Combat Emotes">
             <button type="button" class="btn-combat-emote" data-emote="⚔️" title="Duel / Attack">⚔️</button>
             <button type="button" class="btn-combat-emote" data-emote="🔥" title="On Fire / Brilliant">🔥</button>
             <button type="button" class="btn-combat-emote" data-emote="👑" title="Sovereign / Checkmate">👑</button>
@@ -179,9 +186,6 @@
             <button type="button" class="btn-combat-emote" data-emote="💀" title="Shattered / Defeat">💀</button>
             <button type="button" class="btn-combat-emote" data-emote="⚡" title="Shockwave / Kinetic">⚡</button>
           </div>
-
-          <!-- Floating Reactions Stage Container -->
-          <div class="floating-reactions-stage" id="floatingReactionsStage"></div>
         </div>
       </section>
 

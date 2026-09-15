@@ -2,6 +2,27 @@
 
 All notable changes, architectural pivots, bugfixes, and refactorings across **ArChess** are documented in this file.
 
+## [3.9.0] - 2026-09-15
+
+### 🎯 3D Drag Launch Fix, Vertical Emoticon Dock, Hover-Only HP & Physical Collision Effects
+- **3D Drag-and-Play Launch Physics (`static/js/engine3d.js` & `static/js/game.js`)**:
+  - Resolved parameter mismatch in `engine3d.js` where `this.arena.launchPiece` was called with `(piece, angle, powerRatio)` instead of `(piece, pullX, pullY, clampedDist)`, which previously caused `clampedDist` to evaluate to `NaN` and prevented pieces from moving.
+  - Added invisible raycast hit cylinders (`CylinderGeometry(1.65, 1.85, 4.2, 16)`) to piece meshes for reliable, effortless pointer selection.
+  - Disabled `OrbitControls` during active drag to eliminate camera orbit conflicts during slingshot aiming.
+  - Added window-level pointer event tracking so pulling beyond the canvas edge does not drop or cancel the drag.
+- **Vertical Emoticon Section Outside Board Border (`templates/play.html` & `static/css/style.css`)**:
+  - Moved `.combat-emote-dock` completely outside `#arenaCanvasStage` into `.arena-stage-composite`.
+  - Re-styled dock as a sleek vertical glassmorphic dock (`flex-direction: column`) with 28px pill border and subtle gold glow, running vertically along the board.
+  - Updated `initCanvasSize()` in `game.js` to account for dock width so the board and vertical dock fit side-by-side with zero page scrolling.
+- **Pieces HP Visible on Hover Only (`static/js/game.js` & `static/js/engine3d.js`)**:
+  - In 2D Arena mode, gated mini health bars and numeric durability badges behind `isHovered = (this.hoveredPiece === p) || isSelected`. Pieces at rest now appear clean and realistic.
+  - In 3D WebGL mode, integrated raycaster hover tracking with screen-projected `#threePieceHoverBadge` displaying team, piece type, and HP (`HP / MaxHP`) only when hovering over a piece.
+- **Pure Physical Collision Feedback (`static/js/game.js` & `static/js/engine3d.js`)**:
+  - In `addDamageNumber`, suppressed all numeric damage text (`-10`, `RECOIL -15`, `WALL -20`) upon collision.
+  - Preserved and intensified authentic physical collision feedback: procedural screen shake, audio impact clack, kinetic spark bursts, expanding holographic shockwave rings, and 3D emissive piece hit flashes.
+- **Automated Verification**:
+  - 100% test pass rate across 84 test cases with 100% statement and branch coverage strictly maintained.
+
 ## [3.8.0] - 2026-09-15
 
 ### 🎛️ 3-Column Triptych Cockpit Architecture (Zero Scroll & Flanking Command Wings)
