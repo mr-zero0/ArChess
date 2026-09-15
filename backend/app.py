@@ -392,9 +392,8 @@ def api_tournament_reset():
 # -------------------------------------------------------------
 # Real-Time Multiplayer WebSocket Stream
 # -------------------------------------------------------------
-@sock.route("/ws/combat/<room_id>")
-def ws_combat(ws, room_id):
-    clean_rid = room_id.upper()
+def handle_combat_websocket(ws, room_id):
+    clean_rid = str(room_id).upper()
     room = room_manager.get_room(clean_rid)
     if not room:
         try:
@@ -454,6 +453,12 @@ def ws_combat(ws, room_id):
                 "role": departed,
                 "room": room.get_summary()
             })
+
+
+def ws_combat(ws, room_id):
+    return handle_combat_websocket(ws, room_id)
+
+sock.route("/ws/combat/<room_id>")(ws_combat)
 
 # -------------------------------------------------------------
 # Global API Error Handlers

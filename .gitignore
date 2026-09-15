@@ -33,6 +33,9 @@ yarn-debug.log*
 yarn-error.log*
 
 # Test artifacts & scratch tools
+.coverage
+.coverage.*
+htmlcov/
 scratch/
 test_*.png
 test_snap.png

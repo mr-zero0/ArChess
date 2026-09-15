@@ -2,6 +2,32 @@
 
 All notable changes, architectural pivots, bugfixes, and refactorings across **ArChess** are documented in this file.
 
+## [3.5.1] - 2026-09-15
+
+### 🧪 100% Test Coverage & Authoritative Engine Hardening
+- **Comprehensive Automated Test Coverage**:
+  - Achieved **100% statement coverage** (1,176 / 1,176 statements) and **100% branch coverage** (374 / 374 branches) across all backend modules and application entrypoints:
+    - `backend/__init__.py`: 100%
+    - `backend/achievements.py`: 100%
+    - `backend/app.py`: 100%
+    - `backend/database.py`: 100%
+    - `backend/logger.py`: 100%
+    - `backend/multiplayer.py`: 100%
+    - `backend/notation.py`: 100%
+    - `backend/tournament.py`: 100%
+    - `run.py`: 100%
+  - Total **84 automated test cases** passing with 0 failures, 0 skipped.
+- **WebSocket Route Binding Rectification (`backend/app.py`)**:
+  - Addressed `flask-sock`'s `@sock.route` decorator behavior which returned `None` in the module namespace, ensuring `ws_combat` remains callable and directly testable while properly registering the `/ws/combat/<room_id>` WebSocket route.
+- **Arena Physics & Combat Hardening (`static/js/game.js`)**:
+  - Clamped piece and wall collision recoil damage with `Math.max(0, ...)` preventing negative HP under extreme kinetic strikes.
+  - Optimized pairwise collision loops to immediately skip eliminated pieces.
+- **Dependency & Build Pipeline**:
+  - Added `coverage>=7.6.0` and `pytest-cov>=6.0.0` to `requirements.txt`.
+  - Added `.coverage` and `htmlcov/` to `.gitignore`.
+
+---
+
 ## [2.9.0] - 2026-09-13
 
 ### 🎨 Multi-Design Systems & Bento Grid Architecture

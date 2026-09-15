@@ -1889,6 +1889,7 @@ class ArchessArena {
       color: color,
       size: isCritical ? 22 : (customText ? 15 : 16),
       alpha: 1,
+      life: 1.2,
       vy: -1.4
     });
   }
@@ -2072,7 +2073,7 @@ class ArchessArena {
 
                 // Attacker takes balanced recoil self-damage from ramming into reinforced stone/energy fortress
                 const recoilDmg = Math.max(2, Math.round(wallDamage * 0.12 + hitSpeed * 0.5));
-                attacker.hp -= recoilDmg;
+                attacker.hp = Math.max(0, attacker.hp - recoilDmg);
                 attacker.hitFlash = 1.0;
 
                 this.audio.playImpact(hitSpeed / 4.5);
@@ -2127,10 +2128,11 @@ class ArchessArena {
 
     // Pairwise Piece-to-Piece Collisions
     for (let i = 0; i < this.pieces.length; i++) {
+      const p1 = this.pieces[i];
+      if (p1.dead) continue;
       for (let j = i + 1; j < this.pieces.length; j++) {
-        const p1 = this.pieces[i];
         const p2 = this.pieces[j];
-        if (p1.dead || p2.dead) continue;
+        if (p2.dead) continue;
 
         // While a King's wall is active, piece collisions with that King are handled by the wall perimeter solver above
         if ((p1.type === 'king' && p1.wallActive && p1.wallHp > 0) || (p2.type === 'king' && p2.wallActive && p2.wallHp > 0)) {
@@ -2283,8 +2285,8 @@ class ArchessArena {
                 }
 
                 const isCritical = relativeSpeed > 6.0 || damageMulti > 1.5;
-                defender.hp -= primaryDamage;
-                striker.hp -= recoilDamage;
+                defender.hp = Math.max(0, defender.hp - primaryDamage);
+                striker.hp = Math.max(0, striker.hp - recoilDamage);
                 defender.hitFlash = 1;
                 striker.hitFlash = 1;
 

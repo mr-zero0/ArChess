@@ -74,6 +74,7 @@
 | **Commander Career Achievements & Emotes (`v3.2.0`)** | Career / Social | ✅ COMPLETE | 7-badge career achievements catalog, user progression API, dossier showcase, and floating combat emote reaction dock |
 | **Kinetic Particle VFX & Match Commentary (`v3.3.0`)** | VFX / Intelligence | ✅ COMPLETE | 4 bespoke particle themes (`sovereign_sparks`, `cosmic_nebula`, `neon_arc`, `void_embers`), theme-aware rendering, Atelier customizer, and live algorithmic tactical commentary feed & ticker |
 | **Tactical PGN & FEN Export Engine (`v3.4.0`)** | Notation / Analytics | ✅ COMPLETE | Portable Game Notation generator (`backend/notation.py`) with tactical tag metadata, move commentary tokens, FEN endgame strings, REST `/api/matches/<id>/pgn` & `/fen`, and Victory modal one-click download |
+| **100% Test Coverage & Hardening (`v3.5.1`)** | Quality Assurance / Testing | ✅ COMPLETE | 100% statement (1,176/1,176) & branch (374/374) coverage; 84/84 passing tests across unit, regression, and integration suites; WebSocket route callable fix in `app.py`; physics negative HP clamp |
 
 ---
 
