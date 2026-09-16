@@ -101,10 +101,22 @@
       this.renderer.domElement.style.display = 'block';
       this.renderer.domElement.style.outline = 'none';
 
-      // Clear container and append canvas
+      // Clear container and append canvas (preserve or restore threePieceHoverBadge)
+      let hoverBadge = document.getElementById('threePieceHoverBadge');
+      if (hoverBadge && hoverBadge.parentElement === this.container) {
+        this.container.removeChild(hoverBadge);
+      }
       this.container.innerHTML = '';
       this.renderer.domElement.style.touchAction = 'none';
       this.container.appendChild(this.renderer.domElement);
+
+      if (!hoverBadge) {
+        hoverBadge = document.createElement('div');
+        hoverBadge.id = 'threePieceHoverBadge';
+        hoverBadge.className = 'three-piece-hover-badge';
+        hoverBadge.style.display = 'none';
+      }
+      this.container.appendChild(hoverBadge);
 
       // 4. OrbitControls
       if (THREE.OrbitControls) {
@@ -115,11 +127,11 @@
         this.controls.minDistance = 18;
         this.controls.maxDistance = 55;
         this.controls.target.set(0, 0, 0);
-        this.controls.enabled = false; // Kept disabled by default; enabled on right/middle-click or wheel only
+        this.controls.enabled = true; // Enabled for right-click and middle-wheel; LEFT is disabled below
 
-        // Map mouse buttons: Left click is aim/slingshot, Right click or Middle click is orbit
+        // Map mouse buttons: LEFT is disabled (-1) so OrbitControls NEVER intercepts or steals slingshot drag!
         this.controls.mouseButtons = {
-          LEFT: -1, // Disable left-drag in controls so it doesn't fight piece dragging
+          LEFT: -1,
           MIDDLE: THREE.MOUSE.DOLLY,
           RIGHT: THREE.MOUSE.ROTATE
         };
@@ -747,11 +759,14 @@
       shadowMesh.position.y = 0.045; // Just above tile surface
       group.add(shadowMesh);
 
-      // Invisible Raycast Hit Cylinder (makes piece clicking smooth, responsive & generous)
-      const hitGeo = new THREE.CylinderGeometry(1.65, 1.85, 4.2, 16);
-      const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+      // Precision Raycast Hit Cylinder: sized tailored to square bounds to ensure vanguard pawns are never blocked by back-rank pieces
+      const hH = piece.type === 'pawn' ? 2.0 : (piece.type === 'king' || piece.type === 'queen' ? 3.0 : 2.5);
+      const hitRadiusTop = piece.type === 'pawn' ? 0.80 : 0.88;
+      const hitRadiusBottom = piece.type === 'pawn' ? 0.90 : 0.98;
+      const hitGeo = new THREE.CylinderGeometry(hitRadiusTop, hitRadiusBottom, hH, 16);
+      const hitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
       const hitMesh = new THREE.Mesh(hitGeo, hitMat);
-      hitMesh.position.y = 2.1;
+      hitMesh.position.y = hH / 2;
       hitMesh.userData = { pieceId: piece.id, piece: piece };
       group.add(hitMesh);
 
@@ -930,11 +945,13 @@
     setupInteractionListeners() {
       const dom = this.renderer.domElement;
       this._lastTensionTime = 0;
+      this._capturedPointerId = undefined;
+      const boardPlanePt = new THREE.Vector3();
 
       const getNormalizedMouse = (e) => {
         const rect = dom.getBoundingClientRect();
-        const clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches && e.touches.length > 0 ? e.touches[0].clientY : e.clientY;
+        const clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : (e.clientX !== undefined ? e.clientX : 0);
+        const clientY = e.touches && e.touches.length > 0 ? e.touches[0].clientY : (e.clientY !== undefined ? e.clientY : 0);
         return {
           x: ((clientX - rect.left) / (rect.width || 1)) * 2 - 1,
           y: -((clientY - rect.top) / (rect.height || 1)) * 2 + 1,
@@ -943,29 +960,19 @@
         };
       };
 
-      dom.addEventListener('pointerdown', (e) => {
-        if (e.button === 2 || e.button === 1) {
-          // Right-click or middle-click is reserved for camera orbit/pan
-          if (this.controls) this.controls.enabled = true;
-          return;
-        }
-        // Left-click: keep OrbitControls disabled so it NEVER steals or captures the pointer!
-        if (this.controls) this.controls.enabled = false;
-
-        if (this.arena.isGameOver) return;
-        if (this.arena.gameMode === 'bot' && this.arena.currentTurn === 'black') return;
-        if (this.arena.multiplayerMode && this.arena.playerRole && this.arena.playerRole !== this.arena.currentTurn) return;
-
-        const m = getNormalizedMouse(e);
+      const findPieceAtPointer = (m) => {
         this.mouse.x = m.x;
         this.mouse.y = m.y;
-
         this.raycaster.setFromCamera(this.mouse, this.camera);
-        const intersects = this.raycaster.intersectObjects(this.piecesGroup.children, true);
 
-        if (intersects.length > 0) {
-          // Find root piece
-          let target = intersects[0].object;
+        const intersects = this.raycaster.intersectObjects(this.piecesGroup.children, true);
+        let eligibleMobilePiece = null;
+        let anchoredKing = null;
+        let hoveredOther = null;
+
+        // 1. Direct 3D mesh raycast: scan hits with smart priority
+        for (const hit of intersects) {
+          let target = hit.object;
           let piece = null;
           while (target && target !== this.piecesGroup && target !== this.scene) {
             if (target.userData && target.userData.piece) {
@@ -974,36 +981,103 @@
             }
             target = target.parent;
           }
+          if (!piece || piece.dead) continue;
 
-          if (piece) {
-            if (piece.team === this.arena.currentTurn && !piece.immovable && (piece.type !== 'king' || piece.awakened)) {
-              this.arena.selectedPiece = piece;
-              this.arena.isDragging = true;
-              this.arena.dragScreenAnchor = { x: m.screenX, y: m.screenY };
-              this.arena.dragScreenCurrent = { x: m.screenX, y: m.screenY };
-              this.arena.audio.init();
-              if (e.cancelable) e.preventDefault();
-            } else if (piece.type === 'king' && !piece.awakened && piece.team === this.arena.currentTurn) {
-              this.arena.logTelemetry('CITADEL_STATIONARY', 'The King is anchored as Citadel until vanguard falls. Sling vanguard pieces.');
+          if (piece.team === this.arena.currentTurn) {
+            if (!piece.immovable && (piece.type !== 'king' || piece.awakened)) {
+              eligibleMobilePiece = piece;
+              break; // Found top eligible movable vanguard piece
+            } else if (piece.type === 'king' && !piece.awakened) {
+              if (!anchoredKing) anchoredKing = piece;
             }
+          } else if (!hoveredOther) {
+            hoveredOther = piece;
           }
         }
-      });
 
-      dom.addEventListener('wheel', () => {
-        if (this.controls) {
-          this.controls.enabled = true;
-          clearTimeout(this._wheelTimeout);
-          this._wheelTimeout = setTimeout(() => {
-            if (!this.arena.isDragging && this.controls) {
-              this.controls.enabled = false;
-            }
-          }, 600);
+        if (eligibleMobilePiece) {
+          return { piece: eligibleMobilePiece, isAnchoredKing: false };
         }
-      }, { passive: true });
 
-      const onPointerMove = (e) => {
+        // 2. Proximity Fallback: Intersect ray with board plane (Y = 0)
+        // Snaps to the nearest eligible piece if user clicks near piece base or on tile
+        const planeHit = this.raycaster.ray.intersectPlane(this.boardPlane, boardPlanePt);
+        if (planeHit && this.arena.pieces) {
+          let closestPiece = null;
+          let minDistance = Infinity;
+          const maxSnapDistance = (this.tileSize3D || 2.5) * 1.35; // Generous square radius
+
+          for (const p of this.arena.pieces) {
+            if (p.dead || p.team !== this.arena.currentTurn || p.immovable) continue;
+            if (p.type === 'king' && !p.awakened) continue;
+
+            const pos3D = this.boardToWorld(p.x, p.y);
+            const dist = Math.hypot(boardPlanePt.x - pos3D.x, boardPlanePt.z - pos3D.z);
+            if (dist <= maxSnapDistance && dist < minDistance) {
+              minDistance = dist;
+              closestPiece = p;
+            }
+          }
+
+          if (closestPiece) {
+            return { piece: closestPiece, isAnchoredKing: false };
+          }
+        }
+
+        if (anchoredKing) {
+          return { piece: anchoredKing, isAnchoredKing: true };
+        }
+
+        return { piece: hoveredOther, isAnchoredKing: false };
+      };
+
+      const handlePointerDown = (e) => {
+        // Right-click or middle-click: reserved for OrbitControls camera pan/rotate
+        if (e.button === 2 || e.button === 1) return;
+
+        if (this.arena.isGameOver) return;
+        if (this.arena.gameMode === 'bot' && this.arena.currentTurn === 'black') return;
+        if (this.arena.multiplayerMode) {
+          if (this.arena.playerRole === 'spectator') return;
+          if (this.arena.playerRole && this.arena.playerRole !== this.arena.currentTurn) {
+            if (window.ArchessToast) window.ArchessToast.show("Waiting for opponent's turn", 'warning', 1800, 'MULTIPLAYER');
+            return;
+          }
+        }
+
         const m = getNormalizedMouse(e);
+        const { piece, isAnchoredKing } = findPieceAtPointer(m);
+
+        if (piece && !isAnchoredKing && piece.team === this.arena.currentTurn && !piece.immovable && (piece.type !== 'king' || piece.awakened)) {
+          this.arena.selectedPiece = piece;
+          this.arena.isDragging = true;
+          this.arena.dragScreenAnchor = { x: m.screenX, y: m.screenY };
+          this.arena.dragScreenCurrent = { x: m.screenX, y: m.screenY };
+          this.arena.dragStart = { x: piece.x, y: piece.y };
+          this.arena.dragCurrent = { x: piece.x, y: piece.y };
+          this.arena.audio.init();
+
+          // Set pointer capture so dragging stays locked to canvas even outside viewport
+          if (dom.setPointerCapture && e.pointerId !== undefined) {
+            try {
+              dom.setPointerCapture(e.pointerId);
+              this._capturedPointerId = e.pointerId;
+            } catch (err) {}
+          }
+
+          this.arena.logTelemetry('PIECE_SELECTED', `3D Selected ${piece.team.toUpperCase()} ${piece.type.toUpperCase()} at [${Math.round(piece.x)}, ${Math.round(piece.y)}]`);
+          if (e.cancelable) e.preventDefault();
+        } else if (isAnchoredKing) {
+          this.arena.logTelemetry('CITADEL_STATIONARY', 'The King is anchored as Citadel until vanguard falls. Sling vanguard pieces.');
+          if (this.arena.addDamageNumber) {
+            this.arena.addDamageNumber(piece.x, piece.y - piece.radius * 1.5, 0, false, '#ffd700', 'ANCHORED CITADEL');
+          }
+        }
+      };
+
+      const handlePointerMove = (e) => {
+        const m = getNormalizedMouse(e);
+
         if (this.arena.isDragging && this.arena.selectedPiece) {
           this.arena.dragScreenCurrent = { x: m.screenX, y: m.screenY };
           const pullX = this.arena.dragScreenAnchor.x - this.arena.dragScreenCurrent.x;
@@ -1011,39 +1085,42 @@
           const dist = Math.hypot(pullX, pullY);
           const powerRatio = Math.min(dist, this.arena.maxPullDistance) / this.arena.maxPullDistance;
           const now = performance.now();
+
           if (now - this._lastTensionTime > 90) {
             this.arena.audio.playTension(powerRatio);
             this._lastTensionTime = now;
           }
-        } else {
-          this.mouse.x = m.x;
-          this.mouse.y = m.y;
-          this.raycaster.setFromCamera(this.mouse, this.camera);
-          const intersects = this.raycaster.intersectObjects(this.piecesGroup.children, true);
-          let hovered = null;
-          if (intersects.length > 0) {
-            let target = intersects[0].object;
-            while (target && target !== this.piecesGroup && target !== this.scene) {
-              if (target.userData && target.userData.piece) {
-                hovered = target.userData.piece;
-                break;
-              }
-              target = target.parent;
+
+          // Multiplayer aim synchronization
+          if (this.arena.multiplayerMode && typeof this.arena.onAimUpdate === 'function') {
+            if (!this._lastAimEmit || now - this._lastAimEmit > 33) {
+              this._lastAimEmit = now;
+              this.arena.onAimUpdate({
+                pieceId: this.arena.selectedPiece.id,
+                pullScreenX: pullX,
+                pullScreenY: pullY,
+                powerRatio
+              });
             }
           }
-          this.arena.hoveredPiece = hovered;
+
+          if (e.cancelable) e.preventDefault();
+        } else {
+          const { piece } = findPieceAtPointer(m);
+          this.arena.hoveredPiece = piece;
         }
       };
 
-      dom.addEventListener('pointermove', onPointerMove);
-      window.addEventListener('pointermove', (e) => {
-        if (this.arena.isDragging) {
-          onPointerMove(e);
+      const handlePointerUp = (e) => {
+        // Release pointer capture cleanly
+        if (dom.releasePointerCapture && this._capturedPointerId !== undefined) {
+          try {
+            if (dom.hasPointerCapture && dom.hasPointerCapture(this._capturedPointerId)) {
+              dom.releasePointerCapture(this._capturedPointerId);
+            }
+          } catch (err) {}
+          this._capturedPointerId = undefined;
         }
-      });
-
-      window.addEventListener('pointerup', () => {
-        if (this.controls) this.controls.enabled = false;
 
         if (this.arena.isDragging && this.arena.selectedPiece) {
           const pullX = this.arena.dragScreenAnchor.x - this.arena.dragScreenCurrent.x;
@@ -1052,7 +1129,26 @@
 
           if (dist >= 14) {
             const clampedDist = Math.min(dist, this.arena.maxPullDistance);
-            this.arena.launchPiece(this.arena.selectedPiece, pullX, pullY, clampedDist);
+            const powerRatio = clampedDist / this.arena.maxPullDistance;
+            const pieceToLaunch = this.arena.selectedPiece;
+
+            this.arena.launchPiece(pieceToLaunch, pullX, pullY, clampedDist);
+
+            if (this.arena.multiplayerMode && typeof this.arena.onPieceLaunchBroadcast === 'function') {
+              const impulse = clampedDist * 0.15 * pieceToLaunch.speedMulti;
+              const angle = Math.atan2(pullY, pullX);
+              this.arena.onPieceLaunchBroadcast({
+                pieceId: pieceToLaunch.id,
+                vx: Math.cos(angle) * impulse,
+                vy: Math.sin(angle) * impulse,
+                dist: clampedDist,
+                powerRatio
+              });
+            }
+          } else {
+            if (this.arena.multiplayerMode && typeof this.arena.onAimCancel === 'function') {
+              this.arena.onAimCancel();
+            }
           }
 
           this.arena.isDragging = false;
@@ -1062,7 +1158,42 @@
         if (this.aimTrajectoryMesh) this.aimTrajectoryMesh.visible = false;
         if (this.aimArrowMesh) this.aimArrowMesh.visible = false;
         if (this.aimReticleMesh) this.aimReticleMesh.visible = false;
-      });
+      };
+
+      const handlePointerCancel = () => {
+        if (dom.releasePointerCapture && this._capturedPointerId !== undefined) {
+          try {
+            if (dom.hasPointerCapture && dom.hasPointerCapture(this._capturedPointerId)) {
+              dom.releasePointerCapture(this._capturedPointerId);
+            }
+          } catch (err) {}
+          this._capturedPointerId = undefined;
+        }
+        if (this.arena.isDragging) {
+          if (this.arena.multiplayerMode && typeof this.arena.onAimCancel === 'function') {
+            this.arena.onAimCancel();
+          }
+          this.arena.isDragging = false;
+          this.arena.selectedPiece = null;
+        }
+        if (this.aimTrajectoryMesh) this.aimTrajectoryMesh.visible = false;
+        if (this.aimArrowMesh) this.aimArrowMesh.visible = false;
+        if (this.aimReticleMesh) this.aimReticleMesh.visible = false;
+      };
+
+      // Pointer event bindings
+      dom.addEventListener('pointerdown', handlePointerDown);
+      dom.addEventListener('pointermove', handlePointerMove);
+      window.addEventListener('pointermove', handlePointerMove);
+      dom.addEventListener('pointerup', handlePointerUp);
+      window.addEventListener('pointerup', handlePointerUp);
+      dom.addEventListener('pointercancel', handlePointerCancel);
+      window.addEventListener('pointercancel', handlePointerCancel);
+
+      // Touch fallbacks
+      dom.addEventListener('touchstart', handlePointerDown, { passive: false });
+      window.addEventListener('touchmove', handlePointerMove, { passive: false });
+      window.addEventListener('touchend', handlePointerUp);
     }
 
     /* -------------------------------------------------------------

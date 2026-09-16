@@ -17,6 +17,9 @@
 
 | Feature / Milestone | Category | Status | Verification Snapshot |
 | :--- | :--- | :--- | :--- |
+| **Live Matchmaking Queue (v4.0.0)** | Multiplayer Engine | ✅ COMPLETE | Thread-safe `MatchmakingQueue`, dynamic Elo bracket expansion ($\pm 100 \to 600$), sonar radar HUD, ticket lifecycle, 100% tests passing |
+| **Commander Account Management (v4.0.0)** | Account / Security | ✅ COMPLETE | 4-tab glassmorphic modal, 8 tactical avatars, secure password hash updating, career stats matrix, danger zone account purging |
+| **Google Sign-In Authentication (v4.0.0)**| Auth / Identity | ✅ COMPLETE | GIS client script, `#btnGoogleAuth` button, db `auth_provider`/`google_id`, instant local/demo fallback support |
 | **3D Studio Illumination & Black Piece Clarity (v3.9.2)**| 3D Graphics / Engine | ✅ COMPLETE | Ambient raised to 1.40, key to 1.85, dedicated rear rim light 1.85, exposure 1.42, titanium obsidian Black army with ruby accents, rich contrast tiles |
 | **Zero-Stale-Cache & OrbitControls Pointer Isolation (v3.9.1)**| Architecture / Gameplay | ✅ COMPLETE | Service Worker upgraded to network-first (purges v2.9.7 cache), backend cache-control headers, OrbitControls left-click isolation, 2D/3D pointer decoupling, 100% tests passing |
 | **Drag Play, Vertical Dock & Hover HP (v3.9.0)**| Gameplay / UX | ✅ COMPLETE | 3D drag launch fixed, vertical emote dock located along board outside border with 0 overlap, piece HP visible on hover only, numeric collision text suppressed for physical impact effects |

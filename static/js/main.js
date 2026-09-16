@@ -1961,29 +1961,148 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // 1. Quick Match Action
-  if (btnQuickMatch) {
-    btnQuickMatch.addEventListener('click', async () => {
-      if (quickMatchBtnText) quickMatchBtnText.textContent = 'Searching...';
-      btnQuickMatch.disabled = true;
+  // 1. Live Matchmaking Action & Sonar Radar HUD
+  const matchmakingRadarModal = document.getElementById('matchmakingRadarModal');
+  const radarTimerDisplay = document.getElementById('radarTimerDisplay');
+  const radarBracketDisplay = document.getElementById('radarBracketDisplay');
+  const radarVariantDisplay = document.getElementById('radarVariantDisplay');
+  const matchFoundBanner = document.getElementById('matchFoundBanner');
+  const foundOpponentName = document.getElementById('foundOpponentName');
+  const foundCountdownText = document.getElementById('foundCountdownText');
+  const btnCancelMatchmaking = document.getElementById('btnCancelMatchmaking');
 
-      try {
-        const res = await fetch('/api/multiplayer/quick_match', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: getCurrentUsername() })
-        });
-        const data = await res.json();
-        if (data.success && data.room_id) {
-          connectToCombatRoom(data.room_id, data.role);
-        } else {
-          window.ArchessToast?.show('Could not match with opponent.', 'error', 3000, 'MATCH ERROR');
-        }
-      } catch(err) {
-        window.ArchessToast?.show('Network error during quick match.', 'error', 3000, 'NETWORK ERROR');
-      } finally {
-        if (quickMatchBtnText) quickMatchBtnText.textContent = 'Find Opponent';
-        btnQuickMatch.disabled = false;
+  let activeMatchmakingTicketId = null;
+  let matchmakingTimerInterval = null;
+  let matchmakingPollInterval = null;
+  let matchmakingStartTime = 0;
+
+  const stopMatchmaking = (cancelledByUser = true) => {
+    if (matchmakingTimerInterval) {
+      clearInterval(matchmakingTimerInterval);
+      matchmakingTimerInterval = null;
+    }
+    if (matchmakingPollInterval) {
+      clearInterval(matchmakingPollInterval);
+      matchmakingPollInterval = null;
+    }
+    if (cancelledByUser && activeMatchmakingTicketId) {
+      fetch(`/api/matchmaking/ticket/${activeMatchmakingTicketId}`, { method: 'DELETE' }).catch(() => {});
+    }
+    activeMatchmakingTicketId = null;
+    if (matchmakingRadarModal) matchmakingRadarModal.style.display = 'none';
+    if (btnQuickMatch) btnQuickMatch.disabled = false;
+    if (quickMatchBtnText) quickMatchBtnText.textContent = 'Find Opponent';
+  };
+
+  if (btnCancelMatchmaking) {
+    btnCancelMatchmaking.addEventListener('click', () => {
+      stopMatchmaking(true);
+      window.ArchessToast?.show('Matchmaking search cancelled.', 'info', 2000, 'QUEUE CANCELLED');
+    });
+  }
+
+  const startLiveMatchmaking = async () => {
+    const currentUsername = getCurrentUsername();
+    const currentElo = (window.ArchessAuth && window.ArchessAuth.currentUser && window.ArchessAuth.currentUser.elo_rating) || 1200;
+    const currentMode = (window.archessGame && window.archessGame.viewMode) || '3d';
+
+    if (multiplayerModalBackdrop) multiplayerModalBackdrop.style.display = 'none';
+    if (matchmakingRadarModal) matchmakingRadarModal.style.display = 'flex';
+    if (matchFoundBanner) matchFoundBanner.style.display = 'none';
+    if (btnCancelMatchmaking) btnCancelMatchmaking.style.display = 'inline-flex';
+
+    if (radarVariantDisplay) {
+      radarVariantDisplay.textContent = currentMode === '3d' ? '3D Arena' : (currentMode === '2d-arena' ? '2D Arena' : 'Classic');
+    }
+    if (radarBracketDisplay) radarBracketDisplay.textContent = `±100 ELO (${currentElo - 100} - ${currentElo + 100})`;
+
+    matchmakingStartTime = Date.now();
+    if (radarTimerDisplay) radarTimerDisplay.textContent = '00:00';
+
+    matchmakingTimerInterval = setInterval(() => {
+      const elapsedSec = Math.floor((Date.now() - matchmakingStartTime) / 1000);
+      const mins = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
+      const secs = String(elapsedSec % 60).padStart(2, '0');
+      if (radarTimerDisplay) radarTimerDisplay.textContent = `${mins}:${secs}`;
+
+      // Dynamic bracket widening: expands by 50 every 3s
+      const windowElo = Math.min(600, 100 + Math.floor(elapsedSec / 3) * 50);
+      if (radarBracketDisplay) radarBracketDisplay.textContent = `±${windowElo} ELO (${Math.max(100, currentElo - windowElo)} - ${currentElo + windowElo})`;
+    }, 1000);
+
+    try {
+      const res = await fetch('/api/matchmaking/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: currentUsername,
+          elo: currentElo,
+          mode: currentMode
+        })
+      });
+      const data = await res.json();
+      if (!data.success || !data.ticket) {
+        throw new Error(data.error || 'Failed to enter queue');
       }
+
+      activeMatchmakingTicketId = data.ticket.ticket_id;
+
+      // Start polling status
+      const pollTicket = async () => {
+        if (!activeMatchmakingTicketId) return;
+        try {
+          const tRes = await fetch(`/api/matchmaking/ticket/${activeMatchmakingTicketId}`);
+          const tData = await tRes.json();
+          if (tData.success && tData.ticket) {
+            const ticket = tData.ticket;
+            if (ticket.status === 'matched') {
+              if (matchmakingPollInterval) clearInterval(matchmakingPollInterval);
+              if (matchmakingTimerInterval) clearInterval(matchmakingTimerInterval);
+
+              if (btnCancelMatchmaking) btnCancelMatchmaking.style.display = 'none';
+              if (matchFoundBanner) matchFoundBanner.style.display = 'flex';
+              if (foundOpponentName) {
+                foundOpponentName.textContent = `${ticket.matched_opponent || 'Opponent'} (${ticket.matched_opponent_elo || 1200} ELO)`;
+              }
+
+              // Sound cue
+              if (window.archessGame && window.archessGame.audio && window.archessGame.audio.playImpact) {
+                window.archessGame.audio.playImpact(80, 0.9);
+              }
+
+              let countdown = 3;
+              if (foundCountdownText) foundCountdownText.textContent = `Launching Combat Arena in ${countdown}s...`;
+              const cdInterval = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                  if (foundCountdownText) foundCountdownText.textContent = `Launching Combat Arena in ${countdown}s...`;
+                } else {
+                  clearInterval(cdInterval);
+                  stopMatchmaking(false);
+                  connectToCombatRoom(ticket.matched_room_id, ticket.assigned_role);
+                }
+              }, 1000);
+            } else if (ticket.status === 'timeout' || ticket.status === 'cancelled') {
+              stopMatchmaking(false);
+              window.ArchessToast?.show('Matchmaking timed out. Try again or host a private duel.', 'warning', 4000, 'QUEUE TIMEOUT');
+            }
+          }
+        } catch(err) {}
+      };
+
+      await pollTicket();
+      if (activeMatchmakingTicketId) {
+        matchmakingPollInterval = setInterval(pollTicket, 900);
+      }
+    } catch (e) {
+      stopMatchmaking(false);
+      window.ArchessToast?.show(e.message || 'Error entering matchmaking queue.', 'error', 3000, 'QUEUE ERROR');
+    }
+  };
+
+  if (btnQuickMatch) {
+    btnQuickMatch.addEventListener('click', () => {
+      startLiveMatchmaking();
     });
   }
 

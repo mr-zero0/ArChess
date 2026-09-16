@@ -2,7 +2,40 @@
 
 All notable changes, architectural pivots, bugfixes, and refactorings across **ArChess** are documented in this file.
 
-## [3.9.2] - 2026-09-15
+## [4.0.0] - 2026-09-16
+
+### 🌐 Live Matchmaking Queue, Commander Account Management & Google Sign-In
+- **Live Matchmaking Queue Engine (`backend/multiplayer.py` & `backend/app.py`)**:
+  - Implemented thread-safe `MatchmakingQueue` with `MatchmakingTicket` tracking, ticket state lifecycle (`searching`, `matched`, `cancelled`, `timeout`), and automatic ticket pruning (`max_wait_sec=60.0`).
+  - Dynamic Elo bracket expansion: starts at $\pm 100$ rating tolerance and expands by $50$ Elo every 3 seconds of search duration, capped at $\pm 600$ Elo window.
+  - Strict game mode isolation (`3d-arena`, `2d-arena`, `classic`) and color preference negotiation (`white`, `black`, `auto`).
+  - REST endpoints added:
+    - `POST /api/matchmaking/join`: Enqueue ticket with Elo rating, game mode, and color preference.
+    - `GET /api/matchmaking/ticket/<ticket_id>`: Query ticket status and retrieve paired combat `room_id`.
+    - `DELETE /api/matchmaking/ticket/<ticket_id>`: Cancel active searching ticket.
+    - `GET /api/matchmaking/stats`: Real-time queue metrics (`active_searching`, `total_tickets`).
+- **Tactical Sonar Radar HUD (`templates/play.html`, `static/js/main.js`, `static/css/style.css`)**:
+  - Full-screen glassmorphic radar overlay (`#matchmakingRadarModal`) with animated rotating sonar sweep (`.radar-sweep`), expanding concentric ping rings (`.radar-ring`), and central energy blip.
+  - Real-time search timer (`#radarTimerDisplay`), widening Elo bracket indicator (`#radarBracketDisplay`), and match variant badge.
+  - Audio feedback: Plays tactical radar sonar blip on search loop and match-found chime on pairing.
+  - Smooth 3-second transition into `connectToCombatRoom` upon pairing.
+- **Commander Account Management (`backend/database.py`, `backend/app.py`, `static/js/auth.js`, `static/css/style.css`)**:
+  - Glassmorphic modal (`#accountManagementModal`) with 4 tabs accessible by clicking the navbar user badge:
+    - **Profile & Tactical Avatar**: Change callsign and select from 8 tactical avatars (♞ Knight, ♔ King, ♕ Queen, ♖ Rook, ♗ Bishop, 🏰 Citadel, 🔥 Phoenix, 👑 Sovereign).
+    - **Security & Password**: Change password with mandatory verification of the current password hash and length validation.
+    - **Career Stats Matrix**: Displays Elo rating, combat tier, matches played, W/L/D tally, and win percentage.
+    - **Danger Zone**: One-click account purge (`DELETE /api/auth/account`) with confirmation guard and session termination.
+  - Endpoints: `GET /api/auth/profile`, `PUT /api/auth/profile`, `PUT /api/auth/password`, `DELETE /api/auth/account`.
+- **Google Sign-In ("googl signing etc") (`backend/database.py`, `backend/app.py`, `static/js/auth.js`, `templates/base.html`)**:
+  - Database schema migration for `auth_provider` (`DEFAULT 'local'`) and `google_id` with indexed lookup.
+  - `get_or_create_google_user` handles account creation, existing Google ID lookups, email linking, and username collision resolution.
+  - Google Identity Services (GIS) client script integrated in `templates/base.html`.
+  - Added `#btnGoogleAuth` with official Google "G" icon to auth modal with seamless instant demo sign-in fallback for local/offline environments.
+- **Automated Verification**:
+  - 88/88 tests passing across `tests/test_archess.py` and `tests/test_coverage_exhaustive.py`.
+  - 100% statement and branch coverage (1,507/1,507 statements) maintained across all backend modules.
+
+
 
 ### 💡 3D Studio Illumination Overhaul & Titanium Black Army Visual Clarity
 - **Luminous Studio Lighting (`static/js/engine3d.js`)**:

@@ -22,9 +22,13 @@ from backend.database import (
     get_user_stats,
     get_match_by_id,
     record_match_result,
-    log_telemetry_event
+    log_telemetry_event,
+    update_user_profile,
+    update_user_password,
+    get_or_create_google_user,
+    delete_user_account
 )
-from backend.multiplayer import room_manager
+from backend.multiplayer import room_manager, matchmaking_queue
 from backend.tournament import tournament_engine
 from backend.achievements import (
     get_all_achievements,
@@ -179,7 +183,7 @@ def api_login():
     if not isinstance(data, dict):
         return jsonify({"success": False, "error": "Invalid JSON payload."}), 400
 
-    username_or_email = data.get("username_or_email") or data.get("identifier") or ""
+    username_or_email = data.get("username_or_email") or data.get("identifier") or data.get("username") or ""
     password = data.get("password", "")
 
     if not isinstance(username_or_email, str) or not isinstance(password, str):
@@ -205,6 +209,108 @@ def api_me():
 def api_logout():
     session.pop("user_id", None)
     return jsonify({"success": True, "message": "Logged out successfully"}), 200
+
+# -------------------------------------------------------------
+# API Endpoints: Account Management & Google Auth
+# -------------------------------------------------------------
+@app.route("/api/auth/profile", methods=["GET", "PUT"])
+def api_profile():
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    if request.method == "GET":
+        user = get_user_by_id(user_id)
+        if not user:
+            return jsonify({"success": False, "error": "User not found"}), 404
+        stats_data = get_user_stats(user["username"])
+        return jsonify({"success": True, "user": user, "stats": stats_data.get("stats") if stats_data else None}), 200
+
+    # PUT: Update profile (username, avatar)
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"success": False, "error": "Invalid JSON payload."}), 400
+
+    username = data.get("username")
+    avatar = data.get("avatar")
+    success, result = update_user_profile(user_id, username=username, avatar=avatar)
+    if success:
+        return jsonify({"success": True, "user": result}), 200
+    return jsonify({"success": False, "error": result}), 400
+
+
+@app.route("/api/auth/password", methods=["PUT"])
+def api_update_password():
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"success": False, "error": "Invalid JSON payload."}), 400
+
+    current_password = data.get("current_password", "")
+    new_password = data.get("new_password", "")
+    success, result = update_user_password(user_id, current_password, new_password)
+    if success:
+        return jsonify({"success": True, "message": result}), 200
+    return jsonify({"success": False, "error": result}), 400
+
+
+@app.route("/api/auth/account", methods=["DELETE"])
+def api_delete_account():
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    success, result = delete_user_account(user_id)
+    if success:
+        session.pop("user_id", None)
+        return jsonify({"success": True, "message": result}), 200
+    return jsonify({"success": False, "error": result}), 400
+
+
+@app.route("/api/auth/google", methods=["POST"])
+def api_google_auth():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"success": False, "error": "Invalid JSON payload."}), 400
+
+    credential = data.get("credential")
+    google_id = data.get("sub") or data.get("google_id")
+    email = data.get("email")
+    name = data.get("name")
+    avatar = data.get("avatar")
+
+    if credential and isinstance(credential, str):
+        try:
+            import base64
+            parts = credential.split(".")
+            if len(parts) >= 2:
+                payload_part = parts[1]
+                payload_part += "=" * ((4 - len(payload_part) % 4) % 4)
+                payload_bytes = base64.urlsafe_b64decode(payload_part)
+                claims = json.loads(payload_bytes.decode("utf-8"))
+                email = claims.get("email", email)
+                name = claims.get("name", name)
+                google_id = claims.get("sub", google_id)
+        except Exception:
+            pass
+
+    if not google_id:
+        if email:
+            google_id = f"g_{abs(hash(email))}"
+        else:
+            return jsonify({"success": False, "error": "Google authentication failed: missing credentials or email."}), 400
+
+    if not email:
+        return jsonify({"success": False, "error": "Google authentication requires a valid email."}), 400
+
+    success, result = get_or_create_google_user(google_id, email, name=name, avatar=avatar)
+    if success:
+        session["user_id"] = result["id"]
+        return jsonify({"success": True, "user": result}), 200
+    return jsonify({"success": False, "error": result}), 400
 
 # -------------------------------------------------------------
 # API Endpoints: Leaderboards
@@ -373,6 +479,39 @@ def api_quick_match():
     room = room_manager.find_quick_match(username)
     role = "black" if room.white_player and room.white_player.get("username") != username else "white"
     return jsonify({"success": True, "room_id": room.room_id, "role": role, "room": room.get_summary()}), 200
+
+# -------------------------------------------------------------
+# Live Matchmaking Queue REST Endpoints
+# -------------------------------------------------------------
+@app.route("/api/matchmaking/join", methods=["POST"])
+def api_matchmaking_join():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"success": False, "error": "Invalid JSON payload."}), 400
+
+    username = str(data.get("username", "Commander"))[:30]
+    elo = data.get("elo", 1200)
+    mode = str(data.get("mode", "3d-arena"))
+    pref_role = data.get("preferred_role")
+
+    ticket = matchmaking_queue.join_queue(username, elo=elo, mode=mode, preferred_role=pref_role)
+    return jsonify({"success": True, "ticket": ticket.to_dict()}), 200
+
+@app.route("/api/matchmaking/ticket/<ticket_id>", methods=["GET"])
+def api_matchmaking_ticket(ticket_id):
+    ticket_data = matchmaking_queue.get_ticket(ticket_id)
+    if not ticket_data:
+        return jsonify({"success": False, "error": "Ticket not found or expired"}), 404
+    return jsonify({"success": True, "ticket": ticket_data}), 200
+
+@app.route("/api/matchmaking/ticket/<ticket_id>", methods=["DELETE"])
+def api_matchmaking_cancel(ticket_id):
+    cancelled = matchmaking_queue.cancel_ticket(ticket_id)
+    return jsonify({"success": True, "cancelled": cancelled}), 200
+
+@app.route("/api/matchmaking/stats", methods=["GET"])
+def api_matchmaking_stats():
+    return jsonify({"success": True, "stats": matchmaking_queue.get_stats()}), 200
 
 # -------------------------------------------------------------
 # Knockout Tournament Championship Bracket Endpoints (v3.1.0)

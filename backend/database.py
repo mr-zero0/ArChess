@@ -38,6 +38,8 @@ def init_db():
             wins INTEGER DEFAULT 0,
             losses INTEGER DEFAULT 0,
             avatar TEXT DEFAULT 'knight',
+            auth_provider TEXT DEFAULT 'local',
+            google_id TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """)
@@ -84,6 +86,15 @@ def init_db():
             cursor.execute("ALTER TABLE matches ADD COLUMN turns INTEGER DEFAULT 0;")
         if "duration_sec" not in existing_cols:
             cursor.execute("ALTER TABLE matches ADD COLUMN duration_sec INTEGER DEFAULT 0;")
+        
+        # Schema migration: ensure users table has auth_provider and google_id
+        cursor.execute("PRAGMA table_info(users);")
+        user_cols = [c[1] for c in cursor.fetchall()]
+        if "auth_provider" not in user_cols:
+            cursor.execute("ALTER TABLE users ADD COLUMN auth_provider TEXT DEFAULT 'local';")
+        if "google_id" not in user_cols:
+            cursor.execute("ALTER TABLE users ADD COLUMN google_id TEXT;")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_google ON users (google_id);")
         conn.commit()
 
         # Seed Grandmasters if table is empty
@@ -172,7 +183,7 @@ def get_user_by_id(user_id):
     conn = get_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT id, username, email, elo_rating, matches_played, wins, losses, avatar FROM users WHERE id = ?", (user_id,))
+        cursor.execute("SELECT id, username, email, elo_rating, matches_played, wins, losses, avatar, auth_provider, google_id FROM users WHERE id = ?", (user_id,))
         user = cursor.fetchone()
         if user:
             return dict(user)
@@ -376,5 +387,160 @@ def get_match_by_id(match_id):
         return match
     finally:
         conn.close()
+
+VALID_AVATARS = {"knight", "king", "queen", "rook", "bishop", "citadel", "phoenix", "sovereign", "pawn"}
+
+def update_user_profile(user_id, username=None, avatar=None):
+    if not user_id:
+        return False, "Invalid user identifier."
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+        user = cursor.fetchone()
+        if not user:
+            return False, "User not found."
+
+        new_username = user["username"]
+        if username is not None:
+            if not isinstance(username, str):
+                return False, "Username must be a valid string."
+            username_clean = username.strip()
+            if len(username_clean) < 3 or len(username_clean) > 50:
+                return False, "Username must be between 3 and 50 characters."
+            if not re.match(r"^[\w\.\-]+$", username_clean):
+                return False, "Username contains invalid characters."
+            new_username = username_clean
+
+        new_avatar = user["avatar"]
+        if avatar is not None:
+            if not isinstance(avatar, str):
+                return False, "Avatar must be a valid string."
+            avatar_clean = avatar.strip().lower()
+            if avatar_clean not in VALID_AVATARS:
+                return False, f"Invalid avatar. Must be one of: {', '.join(sorted(VALID_AVATARS))}."
+            new_avatar = avatar_clean
+
+        cursor.execute(
+            "UPDATE users SET username = ?, avatar = ? WHERE id = ?",
+            (new_username, new_avatar, user_id)
+        )
+        conn.commit()
+        return True, {
+            "id": user_id,
+            "username": new_username,
+            "email": user["email"],
+            "elo_rating": user["elo_rating"],
+            "matches_played": user["matches_played"],
+            "wins": user["wins"],
+            "losses": user["losses"],
+            "avatar": new_avatar,
+            "auth_provider": user["auth_provider"] if "auth_provider" in user.keys() else "local"
+        }
+    except sqlite3.IntegrityError:
+        return False, "Username already taken."
+    finally:
+        conn.close()
+
+def update_user_password(user_id, current_password, new_password):
+    if not user_id or not isinstance(current_password, str) or not isinstance(new_password, str):
+        return False, "Invalid password format."
+    if len(new_password) < 6 or len(new_password) > 128:
+        return False, "New password must be between 6 and 128 characters."
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+        user = cursor.fetchone()
+        if not user:
+            return False, "User not found."
+
+        if not check_password_hash(user["password_hash"], current_password):
+            return False, "Current password is incorrect."
+
+        cursor.execute(
+            "UPDATE users SET password_hash = ? WHERE id = ?",
+            (generate_password_hash(new_password), user_id)
+        )
+        conn.commit()
+        return True, "Password updated successfully."
+    finally:
+        conn.close()
+
+def get_or_create_google_user(google_id, email, name=None, avatar=None):
+    if not google_id or not email:
+        return False, "Google ID and email are required."
+
+    email = str(email).strip().lower()
+    google_id = str(google_id).strip()
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        # Check if user exists by google_id
+        cursor.execute("SELECT * FROM users WHERE google_id = ?", (google_id,))
+        user = cursor.fetchone()
+        if user:
+            return True, dict(user)
+
+        # Check if user exists by email (link Google ID)
+        cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+        user = cursor.fetchone()
+        if user:
+            cursor.execute("UPDATE users SET google_id = ?, auth_provider = 'google' WHERE id = ?", (google_id, user["id"]))
+            conn.commit()
+            cursor.execute("SELECT * FROM users WHERE id = ?", (user["id"],))
+            return True, dict(cursor.fetchone())
+
+        # Derive clean unique username
+        base_name = name or email.split("@")[0]
+        base_username = re.sub(r"[^\w\.\-]", "_", str(base_name).strip())[:30] or "Commander"
+        if len(base_username) < 3:
+            base_username = f"Commander_{base_username}"
+
+        candidate_username = base_username
+        counter = 1
+        while True:
+            cursor.execute("SELECT id FROM users WHERE username = ?", (candidate_username,))
+            if not cursor.fetchone():
+                break
+            candidate_username = f"{base_username}_{counter}"
+            counter += 1
+
+        chosen_avatar = avatar if avatar in VALID_AVATARS else "knight"
+        dummy_password = generate_password_hash(f"google_auth_{google_id}_{os.urandom(8).hex()}")
+
+        cursor.execute("""
+            INSERT INTO users (username, email, password_hash, elo_rating, matches_played, wins, losses, avatar, auth_provider, google_id)
+            VALUES (?, ?, ?, 1200, 0, 0, 0, ?, 'google', ?)
+        """, (candidate_username, email, dummy_password, chosen_avatar, google_id))
+        conn.commit()
+        user_id = cursor.lastrowid
+
+        cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+        return True, dict(cursor.fetchone())
+    except sqlite3.IntegrityError as e:
+        return False, f"Failed to register Google account: {str(e)}"
+    finally:
+        conn.close()
+
+def delete_user_account(user_id):
+    if not user_id:
+        return False, "Invalid user identifier."
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT id, username FROM users WHERE id = ?", (user_id,))
+        user = cursor.fetchone()
+        if not user:
+            return False, "User not found."
+
+        cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        conn.commit()
+        return True, f"Account '{user['username']}' deleted successfully."
+    finally:
+        conn.close()
+
 
 

@@ -772,6 +772,57 @@
       </div>
     </div>
   </div>
+
+  <!-- Live Matchmaking Radar Modal -->
+  <div class="modal-backdrop" id="matchmakingRadarModal" role="dialog" aria-modal="true" style="display: none;">
+    <div class="modal-dialog radar-modal-dialog">
+      <div class="radar-sonar-card">
+        <!-- Radar Scanning Animation -->
+        <div class="radar-sonar-wrap">
+          <div class="radar-ring ring-1"></div>
+          <div class="radar-ring ring-2"></div>
+          <div class="radar-ring ring-3"></div>
+          <div class="radar-sweep"></div>
+          <div class="radar-core-blip">⚡</div>
+        </div>
+
+        <div class="radar-status-details">
+          <span class="radar-eyebrow" id="radarStatusEyebrow">AUTHORITATIVE ELO QUEUE</span>
+          <h3 class="radar-heading" id="radarStatusHeading">Searching for Opponent...</h3>
+          <p class="radar-subtext" id="radarStatusSubtext">Scanning active commanders in the global queue matching your combat rating.</p>
+
+          <div class="radar-meta-strip">
+            <div class="radar-meta-item">
+              <span class="meta-label">Elapsed Time</span>
+              <span class="meta-val" id="radarTimerDisplay">00:00</span>
+            </div>
+            <div class="radar-meta-item">
+              <span class="meta-label">Rating Bracket</span>
+              <span class="meta-val" id="radarBracketDisplay">±100 ELO</span>
+            </div>
+            <div class="radar-meta-item">
+              <span class="meta-label">Game Variant</span>
+              <span class="meta-val" id="radarVariantDisplay">3D Arena</span>
+            </div>
+          </div>
+
+          <!-- Match Found Banner (Hidden initially) -->
+          <div class="match-found-banner" id="matchFoundBanner" style="display: none;">
+            <div class="found-icon">⚔️</div>
+            <div class="found-text">
+              <div class="found-title">OPPONENT LOCATED!</div>
+              <div class="found-opponent-name" id="foundOpponentName">Commander (1200 ELO)</div>
+              <div class="found-countdown" id="foundCountdownText">Launching Combat Arena in 3s...</div>
+            </div>
+          </div>
+
+          <button class="btn btn-outline btn-md radar-cancel-btn" id="btnCancelMatchmaking">
+            <span>Cancel Search</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 {% endblock %}
 
 {% block footer %}
@@ -779,10 +830,10 @@
 {% endblock %}
 
 {% block extra_scripts %}
-  <script src="/static/js/three.min.js?v=3.9.1"></script>
-  <script src="/static/js/engine3d.js?v=3.9.1"></script>
-  <script src="/static/js/react-chessboard-bundle.js?v=3.9.1"></script>
-  <script src="/static/js/game.js?v=3.9.1"></script>
+  <script src="/static/js/three.min.js?v=3.9.3"></script>
+  <script src="/static/js/engine3d.js?v=3.9.3"></script>
+  <script src="/static/js/react-chessboard-bundle.js?v=3.9.3"></script>
+  <script src="/static/js/game.js?v=3.9.3"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       // Sync current logged in user name with White player card

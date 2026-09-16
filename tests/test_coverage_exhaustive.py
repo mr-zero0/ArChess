@@ -33,6 +33,10 @@ from backend.database import (
     log_telemetry_event,
     get_user_stats,
     get_match_by_id,
+    update_user_profile,
+    update_user_password,
+    get_or_create_google_user,
+    delete_user_account,
 )
 from backend.achievements import (
     init_achievements_schema,
@@ -52,6 +56,9 @@ from backend.multiplayer import (
     RoomManager,
     room_manager,
     generate_room_id,
+    MatchmakingTicket,
+    MatchmakingQueue,
+    matchmaking_queue,
 )
 from backend.notation import (
     get_pgn_result,
@@ -311,9 +318,24 @@ def test_database_schema_migration():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        cursor.execute("DROP TABLE users")
+        cursor.execute("""
+            CREATE TABLE users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                email TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                elo_rating INTEGER DEFAULT 1200,
+                matches_played INTEGER DEFAULT 0,
+                wins INTEGER DEFAULT 0,
+                losses INTEGER DEFAULT 0,
+                avatar TEXT DEFAULT 'knight',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
         fresh_conn.commit()
 
-        # Re-run init_db — this should trigger ALTER TABLE for turns and duration_sec (lines 84, 86)
+        # Re-run init_db — this should trigger ALTER TABLE for turns, duration_sec, auth_provider, and google_id
         init_db()
 
         # Verify columns now exist
@@ -321,6 +343,11 @@ def test_database_schema_migration():
         cols = [c[1] for c in cursor.fetchall()]
         assert "turns" in cols
         assert "duration_sec" in cols
+
+        cursor.execute("PRAGMA table_info(users)")
+        u_cols = [c[1] for c in cursor.fetchall()]
+        assert "auth_provider" in u_cols
+        assert "google_id" in u_cols
 
     fresh_conn.close()
 
@@ -1555,3 +1582,360 @@ def test_logger_exhaustive_edge_cases(tmp_path):
         with patch("backend.logger.cleanup_old_logs", side_effect=RuntimeError("Disk corrupted")):
             l, rd = setup_logging("ExhaustiveTestApp2", force_new=True)
             mock_log.warning.assert_any_call('{"event":"logs_cleanup_warning", "error":"Disk corrupted"}')
+
+
+# =========================================================================
+# 11. ACCOUNT MANAGEMENT EXHAUSTIVE SUITE
+# =========================================================================
+def test_database_account_management_exhaustive():
+    ts = int(time.time() * 1000)
+    # 1. update_user_profile
+    assert update_user_profile(None)[0] is False
+    assert update_user_profile(999999)[0] is False
+
+    ok, u1 = register_user(f"AccMgmtUser_1_{ts}", f"accmgmt1_{ts}@test.com", "securepass123")
+    assert ok is True
+    uid1 = u1["id"]
+
+    assert update_user_profile(uid1, username=123)[0] is False
+    assert update_user_profile(uid1, username="ab")[0] is False
+    assert update_user_profile(uid1, username="a" * 51)[0] is False
+    assert update_user_profile(uid1, username="invalid space!")[0] is False
+    assert update_user_profile(uid1, avatar=123)[0] is False
+    assert update_user_profile(uid1, avatar="invalid_dragon")[0] is False
+
+    ok2, u2 = register_user(f"AccMgmtUser_2_{ts}", f"accmgmt2_{ts}@test.com", "securepass123")
+    assert ok2 is True
+    # Conflict
+    assert update_user_profile(uid1, username=f"AccMgmtUser_2_{ts}")[0] is False
+
+    # Valid profile updates
+    renamed1 = f"AccRenamed1_{ts}"
+    s_ok, s_data = update_user_profile(uid1, username=renamed1, avatar="sovereign")
+    assert s_ok is True
+    assert s_data["username"] == renamed1
+    assert s_data["avatar"] == "sovereign"
+
+    # Only username
+    renamed2 = f"AccRenamed2_{ts}"
+    s_ok2, s_data2 = update_user_profile(uid1, username=renamed2)
+    assert s_ok2 is True
+    assert s_data2["username"] == renamed2
+
+    # Only avatar
+    s_ok3, s_data3 = update_user_profile(uid1, avatar="phoenix")
+    assert s_ok3 is True
+    assert s_data3["avatar"] == "phoenix"
+
+    # 2. update_user_password
+    assert update_user_password(None, "curr", "newpass")[0] is False
+    assert update_user_password(uid1, 123, "newpass")[0] is False
+    assert update_user_password(uid1, "curr", 123)[0] is False
+    assert update_user_password(uid1, "curr", "short")[0] is False
+    assert update_user_password(uid1, "curr", "a" * 129)[0] is False
+    assert update_user_password(999999, "curr", "validpass")[0] is False
+    assert update_user_password(uid1, "wrongcurrpass", "newvalidpass123")[0] is False
+
+    up_ok, up_msg = update_user_password(uid1, "securepass123", "brandnewpass123")
+    assert up_ok is True
+    # Check that new password authenticates
+    assert authenticate_user(renamed2, "brandnewpass123")[0] is True
+
+    # 3. get_or_create_google_user
+    assert get_or_create_google_user("", "test@google.com")[0] is False
+    assert get_or_create_google_user("gid_1", "")[0] is False
+
+    # New google user
+    g_ok, g_u = get_or_create_google_user(f"gid_abc_1_{ts}", f"guser1_{ts}@gmail.com", name="G Commander", avatar="sovereign")
+    assert g_ok is True
+    assert g_u["google_id"] == f"gid_abc_1_{ts}"
+    assert g_u["auth_provider"] == "google"
+    assert g_u["avatar"] == "sovereign"
+
+    # Existing user by google_id
+    g_ok_again, g_u_again = get_or_create_google_user(f"gid_abc_1_{ts}", f"guser1_{ts}@gmail.com")
+    assert g_ok_again is True
+    assert g_u_again["id"] == g_u["id"]
+
+    # Existing user by email without google_id -> links google_id
+    ok_local, u_local = register_user(f"LocalUserForLink_{ts}", f"local_link_{ts}@gmail.com", "pass12345")
+    assert ok_local is True
+    g_link_ok, g_link_u = get_or_create_google_user(f"gid_link_99_{ts}", f"local_link_{ts}@gmail.com")
+    assert g_link_ok is True
+    assert g_link_u["id"] == u_local["id"]
+    assert g_link_u["google_id"] == f"gid_link_99_{ts}"
+    assert g_link_u["auth_provider"] == "google"
+
+    # Name normalization and collision
+    g_col1_ok, g_col1 = get_or_create_google_user(f"gid_col_1_{ts}", f"col1_{ts}@gmail.com", name=f"ShortName_{ts}")
+    assert g_col1_ok is True
+    g_col2_ok, g_col2 = get_or_create_google_user(f"gid_col_2_{ts}", f"col2_{ts}@gmail.com", name=f"ShortName_{ts}")
+    assert g_col2_ok is True
+    assert g_col2["username"] != g_col1["username"]
+
+    # Short name < 3 chars fallback
+    g_short_ok, g_short = get_or_create_google_user(f"gid_short_{ts}", f"short_{ts}@gmail.com", name="x")
+    assert g_short_ok is True
+    assert "Commander_" in g_short["username"]
+
+    # Default avatar fallback
+    g_def_ok, g_def = get_or_create_google_user(f"gid_def_{ts}", f"def_{ts}@gmail.com", avatar="invalid_glyph")
+    assert g_def_ok is True
+    assert g_def["avatar"] == "knight"
+
+    # IntegrityError mock
+    mock_bad_conn = MagicMock()
+    mock_bad_cursor = MagicMock()
+    mock_bad_cursor.execute.side_effect = sqlite3.IntegrityError("Unique violation")
+    mock_bad_conn.cursor.return_value = mock_bad_cursor
+    with patch("backend.database.get_connection", return_value=mock_bad_conn):
+        assert get_or_create_google_user("gid_err_1", "err1@gmail.com")[0] is False
+
+    # 4. delete_user_account
+    assert delete_user_account(None)[0] is False
+    assert delete_user_account(999999)[0] is False
+    del_ok, del_msg = delete_user_account(uid1)
+    assert del_ok is True
+    assert get_user_by_id(uid1) is None
+
+
+# =========================================================================
+# 12. MULTIPLAYER MATCHMAKING QUEUE EXHAUSTIVE SUITE
+# =========================================================================
+def test_multiplayer_matchmaking_queue_exhaustive():
+    rm = RoomManager()
+    mq = MatchmakingQueue(rm)
+
+    # 1. MatchmakingTicket.to_dict
+    t = MatchmakingTicket("TICKET-1", "CommanderTest", elo=1350, mode="3d-arena")
+    t_dict = t.to_dict()
+    assert t_dict["ticket_id"] == "TICKET-1"
+    assert t_dict["username"] == "CommanderTest"
+    assert t_dict["elo"] == 1350
+    assert t_dict["mode"] == "3d-arena"
+    assert t_dict["status"] == "searching"
+    assert "wait_time" in t_dict
+
+    # 2. join_queue with clean handling and fallback elo
+    t1 = mq.join_queue("PlayerAlpha", elo="invalid_elo", mode="3d-arena", preferred_role="white")
+    assert t1.elo == 1200
+    assert t1.status == "searching"
+
+    # Joining again with same username cancels previous ticket
+    t1_again = mq.join_queue("PlayerAlpha", elo=1250, mode="3d-arena")
+    assert t1.status == "cancelled"
+    assert t1_again.status == "searching"
+
+    # 3. get_ticket
+    assert mq.get_ticket("NON_EXISTENT_TICKET") is None
+    fetched = mq.get_ticket(t1_again.ticket_id)
+    assert fetched is not None
+    assert fetched["ticket_id"] == t1_again.ticket_id
+
+    # 4. cancel_ticket
+    assert mq.cancel_ticket("NON_EXISTENT_TICKET") is False
+    assert mq.cancel_ticket(t1_again.ticket_id) is True
+    assert mq.cancel_ticket(t1_again.ticket_id) is False  # Already cancelled
+
+    # 5. evaluate_matches
+    # Case < 2 searching tickets
+    assert mq.evaluate_matches() == 0
+
+    # 2 tickets with mode mismatch
+    t_3d = mq.join_queue("User3D", elo=1200, mode="3d-arena")
+    t_2d = mq.join_queue("User2D", elo=1200, mode="2d-arena")
+    assert mq.evaluate_matches() == 0
+    mq.cancel_ticket(t_3d.ticket_id)
+    mq.cancel_ticket(t_2d.ticket_id)
+
+    # 2 tickets with elo diff > window (e.g. 1200 vs 2800, window is 100)
+    t_low = mq.join_queue("UserLow", elo=1200, mode="3d-arena")
+    t_high = mq.join_queue("UserHigh", elo=2800, mode="3d-arena")
+    assert mq.evaluate_matches() == 0
+    mq.cancel_ticket(t_low.ticket_id)
+    mq.cancel_ticket(t_high.ticket_id)
+
+    # 2 matching tickets
+    t_p1 = mq.join_queue("Duelist1", elo=1200, mode="3d-arena", preferred_role="black")
+    t_p2 = mq.join_queue("Duelist2", elo=1240, mode="3d-arena", preferred_role="white")
+    # join_queue automatically evaluates matches!
+    assert t_p1.status == "matched"
+    assert t_p2.status == "matched"
+    assert t_p1.matched_room_id == t_p2.matched_room_id
+    assert t_p1.assigned_role == "black"
+    assert t_p2.assigned_role == "white"
+    assert t_p1.matched_opponent == "Duelist2"
+    assert t_p2.matched_opponent == "Duelist1"
+
+    # Test same username in queue (line 391) and paired/non-searching ticket in inner loop (line 389)
+    same1 = MatchmakingTicket("T-SAME-1", "SameUser", elo=1200, mode="3d-arena")
+    same2 = MatchmakingTicket("T-SAME-2", "SameUser", elo=1200, mode="3d-arena")
+    mq.tickets[same1.ticket_id] = same1
+    mq.tickets[same2.ticket_id] = same2
+    assert mq.evaluate_matches() == 0  # skips same user!
+
+    # Test paired/non-searching ticket in inner loop (line 389)
+    paired_t = MatchmakingTicket("T-PAIRED-1", "PairedUser", elo=1200, mode="3d-arena")
+    paired_t.status = "matched"
+    other_t = MatchmakingTicket("T-OTHER-1", "OtherUser", elo=1200, mode="3d-arena")
+    mq.tickets[paired_t.ticket_id] = paired_t
+    mq.tickets[other_t.ticket_id] = other_t
+    mq.evaluate_matches()
+    mq.cancel_ticket(same1.ticket_id)
+    mq.cancel_ticket(same2.ticket_id)
+    mq.cancel_ticket(other_t.ticket_id)
+
+    # Alternating roles when no specific preference
+    t_p3 = mq.join_queue("Duelist3", elo=1300, mode="3d-arena")
+    t_p4 = mq.join_queue("Duelist4", elo=1320, mode="3d-arena")
+    assert t_p3.status == "matched"
+    assert t_p4.status == "matched"
+    assert t_p3.assigned_role == "white"
+    assert t_p4.assigned_role == "black"
+
+    # 6. prune_expired_tickets
+    t_stale = mq.join_queue("StaleUser", elo=1500, mode="3d-arena")
+    t_stale.created_at = time.time() - 100  # Older than 60s
+    assert mq.prune_expired_tickets(max_wait_sec=60.0) >= 1
+    assert t_stale.status == "timeout"
+
+    # Very old tickets (> 600s) deleted
+    t_stale.created_at = time.time() - 700
+    mq.prune_expired_tickets(max_wait_sec=60.0)
+    assert t_stale.ticket_id not in mq.tickets
+
+    # 7. get_stats
+    stats = mq.get_stats()
+    assert "active_searching" in stats
+    assert "total_tickets" in stats
+
+
+# =========================================================================
+# 13. APP ACCOUNT & MATCHMAKING ROUTES EXHAUSTIVE SUITE
+# =========================================================================
+def test_app_account_and_matchmaking_routes_exhaustive(client):
+    ts = int(time.time() * 1000)
+    # Register dedicated user for testing profile and password routes
+    reg = client.post("/api/auth/register", json={"username": f"RouteUser_{ts}", "email": f"route_{ts}@archess.gg", "password": "password123"})
+    assert reg.status_code == 201
+
+    # Unauthenticated GET
+    client.post("/api/auth/logout")
+    res = client.get("/api/auth/profile")
+    assert res.status_code == 401
+
+    # Login
+    auth_res = client.post("/api/auth/login", json={"username_or_email": f"RouteUser_{ts}", "password": "password123"})
+    assert auth_res.status_code == 200
+
+    # Authenticated GET
+    res_get = client.get("/api/auth/profile")
+    assert res_get.status_code == 200
+    assert res_get.json["user"]["username"] == f"RouteUser_{ts}"
+
+    # GET when user_id not found in DB
+    with client.session_transaction() as sess:
+        sess["user_id"] = 999999
+    assert client.get("/api/auth/profile").status_code == 404
+
+    # Logout and test PUT unauthenticated
+    client.post("/api/auth/logout")
+    assert client.put("/api/auth/profile", json={"username": "NewName"}).status_code == 401
+
+    # Re-login
+    client.post("/api/auth/login", json={"username_or_email": f"RouteUser_{ts}", "password": "password123"})
+
+    # PUT invalid JSON
+    assert client.put("/api/auth/profile", data="not-json", content_type="text/plain").status_code == 400
+
+    # PUT invalid username
+    res_inv = client.put("/api/auth/profile", json={"username": "ab"})
+    assert res_inv.status_code == 400
+
+    # PUT valid username and avatar
+    res_valid = client.put("/api/auth/profile", json={"username": f"RouteUser_{ts}", "avatar": "sovereign"})
+    assert res_valid.status_code == 200
+    assert res_valid.json["user"]["avatar"] == "sovereign"
+
+    # 2. /api/auth/password
+    client.post("/api/auth/logout")
+    assert client.put("/api/auth/password", json={"current_password": "p", "new_password": "p2"}).status_code == 401
+
+    # Re-login with RouteUser
+    client.post("/api/auth/login", json={"username_or_email": f"RouteUser_{ts}", "password": "password123"})
+
+    # PUT invalid JSON
+    assert client.put("/api/auth/password", data="bad", content_type="text/plain").status_code == 400
+
+    # PUT incorrect current password
+    assert client.put("/api/auth/password", json={"current_password": "wrongpassword", "new_password": "newpass123"}).status_code == 400
+
+    # PUT successful password update
+    assert client.put("/api/auth/password", json={"current_password": "password123", "new_password": "routenewpass123"}).status_code == 200
+
+    # 3. /api/auth/account
+    client.post("/api/auth/logout")
+    assert client.delete("/api/auth/account").status_code == 401
+
+    # Re-login with RouteUser and DELETE
+    client.post("/api/auth/login", json={"username_or_email": f"RouteUser_{ts}", "password": "routenewpass123"})
+    del_res = client.delete("/api/auth/account")
+    assert del_res.status_code == 200
+    assert del_res.json["success"] is True
+
+    # DELETE when user_id not found
+    with client.session_transaction() as sess:
+        sess["user_id"] = 999999
+    assert client.delete("/api/auth/account").status_code == 400
+
+    # 4. /api/auth/google
+    assert client.post("/api/auth/google", data="bad", content_type="text/plain").status_code == 400
+    assert client.post("/api/auth/google", json={"sub": "gid_123"}).status_code == 400
+    assert client.post("/api/auth/google", json={}).status_code == 400
+
+    g_res1 = client.post("/api/auth/google", json={"email": f"route_g1_{ts}@gmail.com", "name": "Google One"})
+    assert g_res1.status_code == 200
+    assert g_res1.json["success"] is True
+
+    # JWT credential token simulation
+    import base64
+    header_b64 = base64.urlsafe_b64encode(b'{"alg":"HS256","typ":"JWT"}').decode().rstrip("=")
+    payload_b64 = base64.urlsafe_b64encode(f'{{"sub":"gid_jwt_{ts}","email":"jwt_{ts}@gmail.com","name":"JWT Commander"}}'.encode()).decode().rstrip("=")
+    fake_jwt = f"{header_b64}.{payload_b64}.fake_signature"
+
+    g_jwt_res = client.post("/api/auth/google", json={"credential": fake_jwt})
+    assert g_jwt_res.status_code == 200
+    assert g_jwt_res.json["user"]["google_id"] == f"gid_jwt_{ts}"
+
+    # Malformed JWT credential (triggers lines 297-298 except Exception in app.py)
+    bad_jwt_res = client.post("/api/auth/google", json={"credential": "invalid.jwt.token", "email": f"fallback_{ts}@gmail.com"})
+    assert bad_jwt_res.status_code == 200
+
+    # Google error branch
+    with patch("backend.app.get_or_create_google_user", return_value=(False, "Database error")):
+        assert client.post("/api/auth/google", json={"email": "fail@gmail.com"}).status_code == 400
+
+    # 5. /api/matchmaking/join
+    assert client.post("/api/matchmaking/join", data="bad", content_type="text/plain").status_code == 400
+    join_res = client.post("/api/matchmaking/join", json={"username": f"MMP_{ts}", "elo": 1400, "mode": "3d-arena"})
+    assert join_res.status_code == 200
+    assert join_res.json["success"] is True
+    tid = join_res.json["ticket"]["ticket_id"]
+
+    # 6. /api/matchmaking/ticket/<ticket_id>
+    assert client.get("/api/matchmaking/ticket/NON_EXISTENT").status_code == 404
+    t_get_res = client.get(f"/api/matchmaking/ticket/{tid}")
+    assert t_get_res.status_code == 200
+    assert t_get_res.json["ticket"]["ticket_id"] == tid
+
+    # 7. /api/matchmaking/ticket/<ticket_id> (DELETE)
+    cancel_res = client.delete(f"/api/matchmaking/ticket/{tid}")
+    assert cancel_res.status_code == 200
+    assert cancel_res.json["cancelled"] is True
+
+    # 8. /api/matchmaking/stats
+    stats_res = client.get("/api/matchmaking/stats")
+    assert stats_res.status_code == 200
+    assert "active_searching" in stats_res.json["stats"]
+
+

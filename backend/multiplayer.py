@@ -283,3 +283,173 @@ class RoomManager:
 
 # Global Singleton Room Manager
 room_manager = RoomManager()
+
+
+class MatchmakingTicket:
+    def __init__(self, ticket_id: str, username: str, elo: int = 1200, mode: str = "3d-arena", preferred_role: Optional[str] = None):
+        self.ticket_id = ticket_id
+        self.username = username
+        self.elo = elo
+        self.mode = mode
+        self.preferred_role = preferred_role
+        self.created_at = time.time()
+        self.status = "searching"  # "searching", "matched", "cancelled", "timeout"
+        self.matched_room_id: Optional[str] = None
+        self.assigned_role: Optional[str] = None
+        self.matched_opponent: Optional[str] = None
+        self.matched_opponent_elo: Optional[int] = None
+        self.matched_at: Optional[float] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "ticket_id": self.ticket_id,
+            "username": self.username,
+            "elo": self.elo,
+            "mode": self.mode,
+            "status": self.status,
+            "matched_room_id": self.matched_room_id,
+            "assigned_role": self.assigned_role,
+            "matched_opponent": self.matched_opponent,
+            "matched_opponent_elo": self.matched_opponent_elo,
+            "wait_time": round(time.time() - self.created_at, 1)
+        }
+
+
+class MatchmakingQueue:
+    def __init__(self, room_mgr: RoomManager):
+        self.room_mgr = room_mgr
+        self.tickets: Dict[str, MatchmakingTicket] = {}
+        self.lock = threading.RLock()
+
+    def join_queue(self, username: str, elo: int = 1200, mode: str = "3d-arena", preferred_role: Optional[str] = None) -> MatchmakingTicket:
+        clean_user = str(username or "Commander").strip()[:30]
+        try:
+            clean_elo = int(elo)
+        except (ValueError, TypeError):
+            clean_elo = 1200
+        clean_mode = str(mode or "3d-arena").strip().lower()
+
+        with self.lock:
+            # Cancel any existing active searching ticket for this user
+            for t in list(self.tickets.values()):
+                if t.username == clean_user and t.status == "searching":
+                    t.status = "cancelled"
+
+            tid = f"MM-{int(time.time() * 1000) % 1000000}-{random.randint(100, 999)}"
+            ticket = MatchmakingTicket(tid, clean_user, clean_elo, clean_mode, preferred_role)
+            self.tickets[tid] = ticket
+
+            # Evaluate matches immediately
+            self.evaluate_matches()
+            return ticket
+
+    def get_ticket(self, ticket_id: str) -> Optional[Dict[str, Any]]:
+        with self.lock:
+            self.evaluate_matches()
+            self.prune_expired_tickets()
+            ticket = self.tickets.get(ticket_id)
+            if ticket:
+                return ticket.to_dict()
+            return None
+
+    def cancel_ticket(self, ticket_id: str) -> bool:
+        with self.lock:
+            ticket = self.tickets.get(ticket_id)
+            if ticket and ticket.status == "searching":
+                ticket.status = "cancelled"
+                return True
+            return False
+
+    def evaluate_matches(self) -> int:
+        matched_count = 0
+        now = time.time()
+        with self.lock:
+            searching = [t for t in self.tickets.values() if t.status == "searching"]
+            if len(searching) < 2:
+                return 0
+
+            # Sort searching tickets by wait time descending (longest waiting first)
+            searching.sort(key=lambda t: t.created_at)
+
+            paired = set()
+            for i, t1 in enumerate(searching):
+                if t1.ticket_id in paired or t1.status != "searching":
+                    continue
+
+                wait_sec = now - t1.created_at
+                # Elo tolerance starts at 100 and widens by 50 every 3 seconds, capped at 600
+                elo_window = min(600, 100 + int(wait_sec / 3.0) * 50)
+
+                best_match = None
+                min_elo_diff = float("inf")
+
+                for j in range(i + 1, len(searching)):
+                    t2 = searching[j]
+                    if t2.ticket_id in paired or t2.status != "searching":
+                        continue
+                    if t2.username == t1.username:
+                        continue  # Avoid self-matching
+                    if t2.mode != t1.mode:
+                        continue  # Ensure same game mode
+
+                    elo_diff = abs(t1.elo - t2.elo)
+                    if elo_diff <= elo_window and elo_diff < min_elo_diff:
+                        min_elo_diff = elo_diff
+                        best_match = t2
+
+                if best_match:
+                    t2 = best_match
+                    paired.add(t1.ticket_id)
+                    paired.add(t2.ticket_id)
+
+                    room = self.room_mgr.create_room(host_username=t1.username)
+
+                    # Role assignment based on preference or alternating
+                    if t1.preferred_role == "black" or t2.preferred_role == "white":
+                        role_1, role_2 = "black", "white"
+                    else:
+                        role_1, role_2 = "white", "black"
+
+                    t1.status = "matched"
+                    t1.matched_room_id = room.room_id
+                    t1.assigned_role = role_1
+                    t1.matched_opponent = t2.username
+                    t1.matched_opponent_elo = t2.elo
+                    t1.matched_at = now
+
+                    t2.status = "matched"
+                    t2.matched_room_id = room.room_id
+                    t2.assigned_role = role_2
+                    t2.matched_opponent = t1.username
+                    t2.matched_opponent_elo = t1.elo
+                    t2.matched_at = now
+
+                    matched_count += 1
+
+        return matched_count
+
+    def prune_expired_tickets(self, max_wait_sec: float = 60.0) -> int:
+        now = time.time()
+        count = 0
+        with self.lock:
+            for t in self.tickets.values():
+                if t.status == "searching" and (now - t.created_at) > max_wait_sec:
+                    t.status = "timeout"
+                    count += 1
+            to_del = [tid for tid, t in self.tickets.items() if (now - t.created_at) > 600 and t.status != "searching"]
+            for tid in to_del:
+                del self.tickets[tid]
+        return count
+
+    def get_stats(self) -> Dict[str, Any]:
+        with self.lock:
+            searching = [t for t in self.tickets.values() if t.status == "searching"]
+            return {
+                "active_searching": len(searching),
+                "total_tickets": len(self.tickets)
+            }
+
+
+# Global Singleton Matchmaking Queue
+matchmaking_queue = MatchmakingQueue(room_manager)
+

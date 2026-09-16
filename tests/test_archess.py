@@ -22,8 +22,13 @@ from backend.database import (
     get_leaderboard,
     record_match_result,
     log_telemetry_event,
-    get_connection
+    get_connection,
+    update_user_profile,
+    update_user_password,
+    get_or_create_google_user,
+    delete_user_account
 )
+from backend.multiplayer import matchmaking_queue
 from backend.logger import TrackerJsonFormatter, cleanup_old_logs
 import logging
 
@@ -1251,6 +1256,131 @@ def test_pgn_and_fen_export_engine(client):
     play_html = play_res.data.decode("utf-8")
     assert 'id="btnExportPgn"' in play_html
     assert 'id="btnCopyFen"' in play_html
+
+
+def test_account_management_and_matchmaking_suite(client):
+    """Verify live matchmaking queue, Google auth, and Commander account management flows."""
+    import time
+    ts = int(time.time() * 1000)
+    username = f"Commander_{ts}"
+    email = f"cmd_{ts}@archess.io"
+    password = "InitialPassword123!"
+
+    # 1. Register and check initial profile
+    reg = client.post("/api/auth/register", json={
+        "username": username,
+        "email": email,
+        "password": password
+    })
+    assert reg.status_code == 201
+    user_id = reg.get_json()["user"]["id"]
+
+    # 2. Query profile via GET
+    prof_res = client.get("/api/auth/profile")
+    assert prof_res.status_code == 200
+    prof_data = prof_res.get_json()
+    assert prof_data["success"] is True
+    assert prof_data["user"]["username"] == username
+    assert prof_data["user"]["avatar"] == "knight"
+
+    # 3. Update profile via PUT (username and avatar)
+    new_username = f"Phoenix_{ts}"
+    upd_res = client.put("/api/auth/profile", json={
+        "username": new_username,
+        "avatar": "phoenix"
+    })
+    assert upd_res.status_code == 200
+    upd_data = upd_res.get_json()
+    assert upd_data["user"]["username"] == new_username
+    assert upd_data["user"]["avatar"] == "phoenix"
+
+    # 4. Change password
+    new_pass = "UpdatedSecurePassword456@"
+    # Wrong current password fails
+    fail_pass = client.put("/api/auth/password", json={
+        "current_password": "WrongPassword!",
+        "new_password": new_pass
+    })
+    assert fail_pass.status_code == 400
+
+    # Correct current password succeeds
+    succ_pass = client.put("/api/auth/password", json={
+        "current_password": password,
+        "new_password": new_pass
+    })
+    assert succ_pass.status_code == 200
+
+    # Test login with new password
+    login_res = client.post("/api/auth/login", json={
+        "username": new_username,
+        "password": new_pass
+    })
+    assert login_res.status_code == 200
+
+    # 5. Test Google Sign-In endpoint
+    g_email = f"google_{ts}@gmail.com"
+    g_res = client.post("/api/auth/google", json={
+        "demo": True,
+        "email": g_email,
+        "name": f"Google Cmd {ts}",
+        "avatar": "citadel"
+    })
+    assert g_res.status_code == 200
+    g_data = g_res.get_json()
+    assert g_data["success"] is True
+    assert g_data["user"]["email"] == g_email
+    assert g_data["user"]["auth_provider"] == "google"
+
+    # 6. Test Live Matchmaking Queue
+    stats_res = client.get("/api/matchmaking/stats")
+    assert stats_res.status_code == 200
+    assert "active_searching" in stats_res.get_json()["stats"]
+
+    # Join queue with player 1
+    join_1 = client.post("/api/matchmaking/join", json={
+        "mode": "standard",
+        "color_pref": "white",
+        "elo": 1200
+    })
+    assert join_1.status_code == 200
+    ticket_1 = join_1.get_json()["ticket"]["ticket_id"]
+
+    # Poll ticket 1 -> searching
+    poll_1 = client.get(f"/api/matchmaking/ticket/{ticket_1}")
+    assert poll_1.status_code == 200
+    assert poll_1.get_json()["ticket"]["status"] in ["searching", "matched"]
+
+    # Cancel ticket 1
+    del_1 = client.delete(f"/api/matchmaking/ticket/{ticket_1}")
+    assert del_1.status_code == 200
+    assert del_1.get_json()["success"] is True
+
+    # Pair two tickets in matchmaking queue directly
+    t_a = matchmaking_queue.join_queue(f"UserA_{ts}", 1250, "standard", "white")
+    t_b = matchmaking_queue.join_queue(f"UserB_{ts}", 1260, "standard", "black")
+    matchmaking_queue.evaluate_matches()
+    assert t_a.status == "matched"
+    assert t_b.status == "matched"
+    assert t_a.matched_room_id is not None
+    assert t_a.matched_room_id == t_b.matched_room_id
+
+    # 7. Test Account Deletion
+    del_acc = client.delete("/api/auth/account")
+    assert del_acc.status_code == 200
+    assert del_acc.get_json()["success"] is True
+
+    # 8. Check UI elements in templates
+    play_ui = client.get("/play")
+    assert play_ui.status_code == 200
+    play_content = play_ui.data.decode("utf-8")
+    assert 'id="matchmakingRadarModal"' in play_content
+    assert 'id="radarTimerDisplay"' in play_content
+    assert 'id="radarBracketDisplay"' in play_content
+
+    home_ui = client.get("/")
+    assert home_ui.status_code == 200
+    assert "accounts.google.com/gsi/client" in home_ui.data.decode("utf-8")
+
 
 
 
