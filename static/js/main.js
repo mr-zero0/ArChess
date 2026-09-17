@@ -118,24 +118,39 @@ document.addEventListener('DOMContentLoaded', () => {
   const bgCanvas = document.getElementById('bgMotionCanvas');
   if (bgCanvas) {
     const bgCtx = bgCanvas.getContext('2d');
-    let bgWidth = bgCanvas.width = window.innerWidth;
-    let bgHeight = bgCanvas.height = window.innerHeight;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let bgWidth = window.innerWidth;
+    let bgHeight = window.innerHeight;
 
-    window.addEventListener('resize', () => {
-      bgWidth = bgCanvas.width = window.innerWidth;
-      bgHeight = bgCanvas.height = window.innerHeight;
-    });
+    function resizeBg() {
+      bgWidth = window.innerWidth;
+      bgHeight = window.innerHeight;
+      bgCanvas.width = bgWidth * dpr;
+      bgCanvas.height = bgHeight * dpr;
+      bgCanvas.style.width = bgWidth + 'px';
+      bgCanvas.style.height = bgHeight + 'px';
+      bgCtx.scale(dpr, dpr);
+    }
+    resizeBg();
+    window.addEventListener('resize', resizeBg);
+
+    let mouseX = -999;
+    let mouseY = -999;
+    window.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    }, { passive: true });
 
     const particles = [];
-    const particleCount = 45;
+    const particleCount = 42;
     for (let i = 0; i < particleCount; i++) {
       particles.push({
         x: Math.random() * bgWidth,
         y: Math.random() * bgHeight,
-        vx: (Math.random() - 0.5) * 0.4,
-        vy: (Math.random() - 0.5) * 0.4,
-        radius: Math.random() * 2 + 0.8,
-        alpha: Math.random() * 0.5 + 0.2
+        vx: (Math.random() - 0.5) * 0.35,
+        vy: (Math.random() - 0.5) * 0.35,
+        radius: Math.random() * 1.8 + 0.8,
+        alpha: Math.random() * 0.4 + 0.15
       });
     }
 
@@ -145,13 +160,28 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       bgCtx.clearRect(0, 0, bgWidth, bgHeight);
-      bgCtx.fillStyle = 'rgba(212, 175, 55, 0.25)';
+      
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      const particleRgba = isLight ? 'rgba(71, 85, 105, 0.22)' : 'rgba(212, 175, 55, 0.22)';
+      const filamentColor = isLight ? '71, 85, 105' : '212, 175, 55';
+
+      bgCtx.fillStyle = particleRgba;
 
       for (let i = 0; i < particleCount; i++) {
         const p = particles[i];
         p.x += p.vx;
-
         p.y += p.vy;
+
+        // Subtle interactive mouse repulsion
+        if (mouseX > 0 && mouseY > 0) {
+          const dx = p.x - mouseX;
+          const dy = p.y - mouseY;
+          const mouseDist = Math.hypot(dx, dy);
+          if (mouseDist < 120 && mouseDist > 1) {
+            p.x += (dx / mouseDist) * 0.5;
+            p.y += (dy / mouseDist) * 0.5;
+          }
+        }
 
         if (p.x < 0) p.x = bgWidth;
         if (p.x > bgWidth) p.x = 0;
@@ -162,14 +192,14 @@ document.addEventListener('DOMContentLoaded', () => {
         bgCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
         bgCtx.fill();
 
-        // Connect nearby particles with subtle filaments
+        // Connect nearby particles with subtle celestial filaments
         for (let j = i + 1; j < particleCount; j++) {
           const p2 = particles[j];
           const dist = Math.hypot(p2.x - p.x, p2.y - p.y);
           if (dist < 110) {
             bgCtx.beginPath();
-            bgCtx.strokeStyle = `rgba(212, 175, 55, ${0.08 * (1 - dist / 110)})`;
-            bgCtx.lineWidth = 0.8;
+            bgCtx.strokeStyle = `rgba(${filamentColor}, ${0.07 * (1 - dist / 110)})`;
+            bgCtx.lineWidth = 0.75;
             bgCtx.moveTo(p.x, p.y);
             bgCtx.lineTo(p2.x, p2.y);
             bgCtx.stroke();
@@ -280,6 +310,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let activeViewMode = '3d-arena';
 
+  const THEME_FRAME_STYLES = {
+    midnight: { bg: '#0f141c', border: '#d4af37' },
+    woodland: { bg: '#3d2514', border: '#c68a4c' },
+    ivory: { bg: '#1e2229', border: '#98a6bd' },
+    emerald: { bg: '#133520', border: '#73b088' },
+    cyberpunk: { bg: '#090317', border: '#00f3ff' },
+    bloodstone: { bg: '#1a0408', border: '#e84158' },
+    oceanic: { bg: '#0b1d30', border: '#38d9a9' }
+  };
+
+  function update2DFrameTheme(themeKey) {
+    const frame = document.getElementById('archess2DFrame');
+    if (!frame) return;
+    const t = THEME_FRAME_STYLES[themeKey] || THEME_FRAME_STYLES.midnight;
+    frame.style.background = t.bg;
+    frame.style.borderColor = t.border;
+  }
+
   function applyViewMode(rawMode, userTriggered = false) {
     let mode = rawMode || '3d-arena';
     if (mode === '3d' || mode === '3d-arena') mode = '3d-arena';
@@ -292,8 +340,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (btn) btn.classList.toggle('active', btn.getAttribute('data-view') === mode);
     });
 
+    const archess2DContainer = document.getElementById('archess2DContainer');
+
     if (mode === '2d-classic') {
       // 2D Classic: Mount react-chessboard for standard FIDE chess
+      if (archess2DContainer) archess2DContainer.style.display = 'none';
       if (archessCanvas) archessCanvas.style.display = 'none';
       if (threeCanvasContainer) threeCanvasContainer.style.display = 'none';
       if (cameraToolbarGroup) cameraToolbarGroup.style.display = 'none';
@@ -314,24 +365,27 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (userTriggered) showToast('View: 2D Classic (Standard FIDE Chess)');
     } else if (mode === '2d-arena') {
-      // 2D Arena: Top-down physical canvas with Drag & Launch Slingshot Impulse!
+      // 2D Arena: Exact same Slingshot Drag & Launch Physics Engine as 3D Arena, presented in clean Classic 2D UI!
       if (reactChessRoot) reactChessRoot.style.display = 'none';
       if (threeCanvasContainer) threeCanvasContainer.style.display = 'none';
       if (cameraToolbarGroup) cameraToolbarGroup.style.display = 'none';
       if (cameraWingCard) cameraWingCard.style.display = 'none';
-      if (archessCanvas) {
-        archessCanvas.style.display = 'block';
-        if (arena) {
-          arena.setRenderMode('2d');
-          arena.initCanvasSize();
-        }
+      if (archess2DContainer) archess2DContainer.style.display = 'flex';
+      if (archessCanvas) archessCanvas.style.display = 'block';
+      const currentTheme = localStorage.getItem('archess_board_theme') || 'midnight';
+      update2DFrameTheme(currentTheme);
+      if (arena) {
+        arena.setRenderMode('2d');
+        arena.setBoardTheme(currentTheme);
+        arena.initCanvasSize();
       }
       if (kbdHints) {
-        kbdHints.innerHTML = '<span>Controls:</span> <span class="kbd-key">Drag &amp; Launch</span> <span class="kbd-key">Slingshot Aim</span> <span style="color: var(--gold-light); font-size: 0.72rem; margin-left: 6px;">(King: Citadel &bull; 👑 Awakens When Alone)</span>';
+        kbdHints.innerHTML = '<span>Controls:</span> <span class="kbd-key">Drag</span> Slingshot <span class="kbd-key">Release</span> Launch <span style="color: var(--gold-light); font-size: 0.72rem; margin-left: 6px;">(Kinetic Combat Physics Active)</span>';
       }
-      if (userTriggered) showToast('View: 2D Arena (Drag & Launch Kinetic Combat)');
+      if (userTriggered) showToast('View: 2D Arena (Kinetic Slingshot Combat)');
     } else {
       // 3D Arena: Realistic 3D WebGL game engine with Physical Slingshot & Orbit Camera!
+      if (archess2DContainer) archess2DContainer.style.display = 'none';
       if (reactChessRoot) reactChessRoot.style.display = 'none';
       if (cameraToolbarGroup) cameraToolbarGroup.style.display = 'flex';
       if (cameraWingCard) cameraWingCard.style.display = 'flex';
@@ -518,6 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.Archess2DChess && window.Archess2DChess.setTheme) {
       window.Archess2DChess.setTheme(themeKey);
     }
+    update2DFrameTheme(themeKey);
     window.dispatchEvent(new CustomEvent('archess_appearance_change', {
       detail: { boardTheme: themeKey }
     }));
@@ -614,12 +669,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const resetBtn = document.getElementById('arenaResetBtn');
   if (resetBtn) {
     resetBtn.addEventListener('click', () => {
-      if ((activeViewMode === '2d-classic' || activeViewMode === '2d-arena') && window.Archess2DChess && window.Archess2DChess.reset) {
+      if (activeViewMode === '2d-classic' && window.Archess2DChess && window.Archess2DChess.reset) {
         window.Archess2DChess.reset();
-        showToast(activeViewMode === '2d-arena' ? '2D Arena Combat Board Reset' : '2D Classic Chessboard Reset');
+        showToast('2D Classic Chessboard Reset');
       } else if (arena) {
         arena.resetBoard();
-        showToast('Board Re-racked to Standard 32-Piece Setup');
+        showToast(activeViewMode === '2d-arena' ? '2D Arena Combat Board Reset' : 'Board Re-racked to Standard 32-Piece Setup');
       }
     });
   }
@@ -1015,7 +1070,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (playAgainBtn && victoryModal) {
     playAgainBtn.addEventListener('click', () => {
       victoryModal.classList.remove('active');
-      if ((activeViewMode === '2d-arena' || activeViewMode === '2d-classic') && window.Archess2DChess && window.Archess2DChess.reset) {
+      if (activeViewMode === '2d-classic' && window.Archess2DChess && window.Archess2DChess.reset) {
         window.Archess2DChess.reset();
       } else if (arena) {
         arena.resetBoard();

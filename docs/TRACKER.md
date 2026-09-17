@@ -16,7 +16,7 @@
 - **Gameplay Engine:** 32-Piece Physics, 6 Codex Signature Abilities, Autonomous Bot AI, Victory Settlement Modal
 
 | Feature / Milestone | Category | Status | Verification Snapshot |
-| :--- | :--- | :--- | :--- |
+| **2D Arena Kinetic Slingshot Combat & Classic UI Parity (v4.2.0)** | Gameplay / UI | ✅ COMPLETE | Restored authentic slingshot kinetic combat engine (`game.js`) in 2D Arena enclosed in identical Classic UI luxury frame, status pill, dynamic theme colors, cache-busting v4.2.0, 100% tests passing |
 | **Live Matchmaking Queue (v4.0.0)** | Multiplayer Engine | ✅ COMPLETE | Thread-safe `MatchmakingQueue`, dynamic Elo bracket expansion ($\pm 100 \to 600$), sonar radar HUD, ticket lifecycle, 100% tests passing |
 | **Commander Account Management (v4.0.0)** | Account / Security | ✅ COMPLETE | 4-tab glassmorphic modal, 8 tactical avatars, secure password hash updating, career stats matrix, danger zone account purging |
 | **Google Sign-In Authentication (v4.0.0)**| Auth / Identity | ✅ COMPLETE | GIS client script, `#btnGoogleAuth` button, db `auth_provider`/`google_id`, instant local/demo fallback support |

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Chessboard } from 'react-chessboard';
+import { Chessboard, defaultPieces } from 'react-chessboard';
 import { Chess } from 'chess.js';
 
 // Piece value mapping for material calculation and Bot heuristics
@@ -69,13 +69,15 @@ function getCustomPieces(style) {
             height: squareWidth,
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            pointerEvents: 'none',
+            userSelect: 'none'
           }}>
             <svg
               width={squareWidth * 0.88}
               height={squareWidth * 0.88}
               viewBox="0 0 45 45"
-              style={{ filter, overflow: 'visible' }}
+              style={{ filter, overflow: 'visible', pointerEvents: 'none', userSelect: 'none' }}
             >
               <path
                 d={pathD}
@@ -210,7 +212,15 @@ function playChessSound(type) {
     gain.connect(ctx.destination);
     const now = ctx.currentTime;
 
-    if (type === 'strike' || type === 'capture') {
+    if (type === 'launch') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(220, now);
+      osc.frequency.exponentialRampToValueAtTime(740, now + 0.16);
+      gain.gain.setValueAtTime(0.32, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      osc.start(now);
+      osc.stop(now + 0.18);
+    } else if (type === 'strike' || type === 'capture') {
       osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(320, now);
       osc.frequency.exponentialRampToValueAtTime(80, now + 0.16);
@@ -254,6 +264,26 @@ function playChessSound(type) {
       osc.stop(now + 0.08);
     }
   } catch (e) {}
+}
+
+function getSquareCenter(sq, boardWidth) {
+  if (!sq || sq.length < 2) return { x: 0, y: 0 };
+  const file = sq.charCodeAt(0) - 97; // 0..7
+  const rank = parseInt(sq[1], 10);   // 1..8
+  const sqSize = boardWidth / 8;
+  return {
+    x: (file + 0.5) * sqSize,
+    y: (8 - rank + 0.5) * sqSize
+  };
+}
+
+function getSquareFromCoords(x, y, boardWidth) {
+  if (x < 0 || x >= boardWidth || y < 0 || y >= boardWidth) return null;
+  const sqSize = boardWidth / 8;
+  const file = Math.floor(x / sqSize);
+  const rank = 8 - Math.floor(y / sqSize);
+  if (file < 0 || file > 7 || rank < 1 || rank > 8) return null;
+  return `${String.fromCharCode(97 + file)}${rank}`;
 }
 
 function calcMaterialDiff(game) {
@@ -491,8 +521,15 @@ export function Archess2DChess({ boardTheme = 'midnight', gameMode = 'bot', vari
   const [activeBuffs, setActiveBuffs] = useState({});
   const [abilityUsedTurn, setAbilityUsedTurn] = useState(-1);
   const [damageTexts, setDamageTexts] = useState([]);
+  const [aimingState, setAimingState] = useState(null);
+  const [flyingProjectile, setFlyingProjectile] = useState(null);
+  const [shockwaves, setShockwaves] = useState([]);
+  const [boardShake, setBoardShake] = useState(false);
+  const [dragSourceSq, setDragSourceSq] = useState(null);
+  const [hoveredTargetSq, setHoveredTargetSq] = useState(null);
 
   const containerRef = useRef(null);
+  const boardWrapperRef = useRef(null);
   const matchStartRef = useRef(Date.now());
   const gameRef = useRef(game);
   gameRef.current = game;
@@ -657,6 +694,107 @@ export function Archess2DChess({ boardTheme = 'midnight', gameMode = 'bot', vari
     }
   }, [activeMode, triggerDamageText, turnCount]);
 
+  // Kinetic Slingshot Launch & Hit Animation Engine
+  const launchAndHit = useCallback((sourceSq, targetSq) => {
+    if (!sourceSq || !targetSq || sourceSq === targetSq) return;
+    const currentGame = gameRef.current;
+    const attacker = currentGame.get(sourceSq);
+    const defender = currentGame.get(targetSq);
+    if (!attacker || !defender || defender.color === attacker.color) return;
+
+    const sourcePos = getSquareCenter(sourceSq, boardWidth);
+    const targetPos = getSquareCenter(targetSq, boardWidth);
+
+    const attackerInfo = pieceHpRef.current[sourceSq] || {
+      hp: INITIAL_HP[attacker.type] || 50,
+      maxHp: INITIAL_HP[attacker.type] || 50
+    };
+    const defenderInfo = pieceHpRef.current[targetSq] || {
+      hp: INITIAL_HP[defender.type] || 50,
+      maxHp: INITIAL_HP[defender.type] || 50
+    };
+
+    const baseDmg = DAMAGE_TABLE[attacker.type] || 35;
+    const buff = activeBuffsRef.current[sourceSq] || 0;
+    const isCrit = Math.random() < 0.25;
+    const totalDamage = Math.round((baseDmg + buff) * (isCrit ? 1.45 : 1.0) + Math.random() * 6);
+    const willKill = (defenderInfo.hp - totalDamage) <= 0;
+
+    playChessSound('launch');
+
+    const startTime = performance.now();
+    const duration = 240;
+
+    const animateFlight = (now) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      // Ease out cubic
+      const ease = 1 - Math.pow(1 - progress, 3);
+      const currX = sourcePos.x + (targetPos.x - sourcePos.x) * ease;
+      const currY = sourcePos.y + (targetPos.y - sourcePos.y) * ease;
+
+      setFlyingProjectile({
+        fromSq: sourceSq,
+        toSq: targetSq,
+        piece: attacker,
+        x: currX,
+        y: currY,
+        progress,
+        phase: 'flight'
+      });
+
+      if (progress < 1) {
+        requestAnimationFrame(animateFlight);
+      } else {
+        // KINETIC IMPACT / HIT!
+        setBoardShake(true);
+        setTimeout(() => setBoardShake(false), 180);
+
+        const shockId = Date.now() + Math.random();
+        setShockwaves(prev => [...prev, { id: shockId, x: targetPos.x, y: targetPos.y }]);
+        setTimeout(() => {
+          setShockwaves(prev => prev.filter(s => s.id !== shockId));
+        }, 500);
+
+        executeArenaStrike(sourceSq, targetSq);
+
+        if (!willKill) {
+          // Recoil bounce back to starting square
+          const recoilStart = performance.now();
+          const recoilDuration = 170;
+          const animateRecoil = (rNow) => {
+            const rElapsed = rNow - recoilStart;
+            const rProg = Math.min(1, rElapsed / recoilDuration);
+            const rEase = 1 - Math.pow(1 - rProg, 2);
+            const recoilX = targetPos.x + (sourcePos.x - targetPos.x) * rEase;
+            const recoilY = targetPos.y + (sourcePos.y - targetPos.y) * rEase;
+
+            setFlyingProjectile({
+              fromSq: sourceSq,
+              toSq: targetSq,
+              piece: attacker,
+              x: recoilX,
+              y: recoilY,
+              progress: 1 - rProg,
+              phase: 'recoil'
+            });
+
+            if (rProg < 1) {
+              requestAnimationFrame(animateRecoil);
+            } else {
+              setFlyingProjectile(null);
+            }
+          };
+          requestAnimationFrame(animateRecoil);
+        } else {
+          setFlyingProjectile(null);
+        }
+      }
+    };
+
+    requestAnimationFrame(animateFlight);
+  }, [boardWidth, executeArenaStrike]);
+
   // Standard Chess Move (2D Classic or Non-Combat Move)
   const makeAMove = useCallback((move) => {
     try {
@@ -664,12 +802,13 @@ export function Archess2DChess({ boardTheme = 'midnight', gameMode = 'bot', vari
       const sourceSq = move.from;
       const targetSq = move.to;
 
-      // Check if this move is an Arena Strike
+      // Check if this move is an Arena Strike against an enemy piece -> LAUNCH & HIT!
       if (activeVariantRef.current === 'arena') {
         const attacker = currentGame.get(sourceSq);
         const defender = currentGame.get(targetSq);
         if (attacker && defender && defender.color !== currentGame.turn()) {
-          return executeArenaStrike(sourceSq, targetSq);
+          launchAndHit(sourceSq, targetSq);
+          return null;
         }
       }
 
@@ -685,7 +824,10 @@ export function Archess2DChess({ boardTheme = 'midnight', gameMode = 'bot', vari
           return updated;
         });
 
-        setGamePosition(currentGame.fen());
+        const newGame = new Chess(currentGame.fen());
+        setGame(newGame);
+        gameRef.current = newGame;
+        setGamePosition(newGame.fen());
         setLastMove({ from: result.from, to: result.to });
         setSelectedSquare(null);
         setPossibleMoves([]);
@@ -718,7 +860,7 @@ export function Archess2DChess({ boardTheme = 'midnight', gameMode = 'bot', vari
     } catch (e) {
       return null;
     }
-  }, [activeMode, executeArenaStrike, turnCount]);
+  }, [activeMode, launchAndHit, turnCount]);
 
   // Bot AI Turn
   const triggerBotMove = useCallback(() => {
@@ -729,9 +871,15 @@ export function Archess2DChess({ boardTheme = 'midnight', gameMode = 'bot', vari
     updateArenaTurn('b', true);
 
     setTimeout(() => {
-      // 1. In 2D Arena, check if Bot has any high-priority strike targets
+      const activeGame = gameRef.current;
+      if (activeGame.isGameOver() || activeGame.turn() !== 'b') {
+        setBotThinking(false);
+        return;
+      }
+
+      // 1. In 2D Arena, Bot evaluates strikes on White pieces and launches!
       if (activeVariantRef.current === 'arena') {
-        const board = currentGame.board();
+        const board = activeGame.board();
         const availableStrikes = [];
 
         for (let r = 0; r < 8; r++) {
@@ -739,35 +887,39 @@ export function Archess2DChess({ boardTheme = 'midnight', gameMode = 'bot', vari
             const p = board[r][c];
             if (p && p.color === 'b') {
               const fromSq = `${String.fromCharCode(97 + c)}${8 - r}`;
-              const targets = getTacticalAttackTargets(currentGame, fromSq, p);
-              targets.forEach(toSq => {
-                const targetPiece = currentGame.get(toSq);
-                if (targetPiece && targetPiece.color === 'w') {
-                  const targetHp = pieceHpRef.current[toSq]?.hp || 50;
-                  const myDmg = DAMAGE_TABLE[p.type] || 35;
-                  const canKill = myDmg >= targetHp;
-                  availableStrikes.push({
-                    from: fromSq,
-                    to: toSq,
-                    score: (canKill ? 50 : 20) + (PIECE_VALUES[targetPiece.type] || 1) * 8
-                  });
+              for (let tr = 0; tr < 8; tr++) {
+                for (let tc = 0; tc < 8; tc++) {
+                  const targetPiece = board[tr][tc];
+                  if (targetPiece && targetPiece.color === 'w') {
+                    const toSq = `${String.fromCharCode(97 + tc)}${8 - tr}`;
+                    const targetHp = pieceHpRef.current[toSq]?.hp || 50;
+                    const myDmg = DAMAGE_TABLE[p.type] || 35;
+                    const canKill = myDmg >= targetHp;
+                    const dist = Math.abs(r - tr) + Math.abs(c - tc);
+                    const score = (canKill ? 60 : 20) + (PIECE_VALUES[targetPiece.type] || 1) * 8 - dist * 1.5 + Math.random() * 5;
+                    availableStrikes.push({
+                      from: fromSq,
+                      to: toSq,
+                      score
+                    });
+                  }
                 }
-              });
+              }
             }
           }
         }
 
-        if (availableStrikes.length > 0) {
+        if (availableStrikes.length > 0 && Math.random() < 0.65) {
           availableStrikes.sort((a, b) => b.score - a.score);
           const chosen = availableStrikes[0];
-          executeArenaStrike(chosen.from, chosen.to);
+          launchAndHit(chosen.from, chosen.to);
           setBotThinking(false);
           return;
         }
       }
 
       // 2. Standard Bot positional chess move
-      const legalMoves = currentGame.moves({ verbose: true });
+      const legalMoves = activeGame.moves({ verbose: true });
       if (legalMoves.length === 0) {
         setBotThinking(false);
         return;
@@ -794,8 +946,8 @@ export function Archess2DChess({ boardTheme = 'midnight', gameMode = 'bot', vari
       });
 
       setBotThinking(false);
-    }, 650);
-  }, [activeMode, executeArenaStrike, makeAMove]);
+    }, 600);
+  }, [activeMode, launchAndHit, makeAMove]);
 
   useEffect(() => {
     if (game.turn() === 'b' && activeMode === 'bot' && !game.isGameOver() && !botThinking) {
@@ -803,53 +955,147 @@ export function Archess2DChess({ boardTheme = 'midnight', gameMode = 'bot', vari
     }
   }, [gamePosition, activeMode, botThinking, triggerBotMove, game]);
 
-  // Drag & Drop
-  const onPieceDrop = useCallback(({ piece, sourceSquare, targetSquare }) => {
-    if (!targetSquare || sourceSquare === targetSquare) return false;
+  // Piece Drag Handlers for Drag & Drop Kinetic Combat
+  const handlePieceDrag = useCallback((args) => {
+    const sq = args?.square || (typeof args === 'string' ? args : null);
+    if (!sq) return;
+    const currentGame = gameRef.current;
+    if (currentGame.isGameOver() || botThinking) return;
+    if (activeMode === 'bot' && currentGame.turn() === 'b') return;
+
+    setDragSourceSq(sq);
+
+    if (activeVariantRef.current === 'arena') {
+      const board = currentGame.board();
+      const enemySquares = [];
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          const p = board[r][c];
+          if (p && p.color !== currentGame.turn()) {
+            enemySquares.push(`${String.fromCharCode(97 + c)}${8 - r}`);
+          }
+        }
+      }
+      setAttackTargets(enemySquares);
+    }
+  }, [activeMode, botThinking]);
+
+  const handleMouseOverSquare = useCallback((args) => {
+    const sq = args?.square || (typeof args === 'string' ? args : null);
+    if (!sq) return;
+    if (dragSourceSq) {
+      const currentGame = gameRef.current;
+      const targetPiece = currentGame.get(sq);
+      if (targetPiece && targetPiece.color !== currentGame.turn()) {
+        setHoveredTargetSq(sq);
+      } else {
+        setHoveredTargetSq(null);
+      }
+    }
+  }, [dragSourceSq]);
+
+  const handleMouseOutSquare = useCallback((args) => {
+    const sq = args?.square || (typeof args === 'string' ? args : null);
+    if (sq && hoveredTargetSq === sq) {
+      setHoveredTargetSq(null);
+    }
+  }, [hoveredTargetSq]);
+
+  const handlePieceDragCancel = useCallback(() => {
+    setDragSourceSq(null);
+    setHoveredTargetSq(null);
+    setAttackTargets([]);
+  }, []);
+
+  // Drag & Drop Handler (supports both object and positional argument signatures)
+  const onPieceDrop = useCallback((arg1, arg2, arg3) => {
+    let sourceSquare = null;
+    let targetSquare = null;
+    let piece = null;
+
+    if (typeof arg1 === 'string') {
+      sourceSquare = arg1;
+      targetSquare = arg2;
+      piece = arg3;
+    } else if (arg1 && typeof arg1 === 'object') {
+      sourceSquare = arg1.sourceSquare;
+      targetSquare = arg1.targetSquare;
+      piece = arg1.piece;
+    }
+
+    const effectiveTarget = targetSquare || hoveredTargetSq;
+    setDragSourceSq(null);
+    setHoveredTargetSq(null);
+
+    if (!sourceSquare || !effectiveTarget || sourceSquare === effectiveTarget) return false;
     const currentGame = gameRef.current;
     if (currentGame.isGameOver() || botThinking) return false;
     if (activeMode === 'bot' && currentGame.turn() === 'b') return false;
 
-    // Check if dropping onto an Arena attack target
+    // Check if dropping onto an enemy piece in Arena mode -> LAUNCH & HIT!
     if (activeVariantRef.current === 'arena') {
       const attacker = currentGame.get(sourceSquare);
-      const defender = currentGame.get(targetSquare);
+      const defender = currentGame.get(effectiveTarget);
       if (attacker && defender && defender.color !== currentGame.turn()) {
-        const targets = getTacticalAttackTargets(currentGame, sourceSquare, attacker);
-        if (targets.includes(targetSquare)) {
-          const defenderKilled = executeArenaStrike(sourceSquare, targetSquare);
-          return defenderKilled; // Return true only if defender died and attacker took square
-        }
+        launchAndHit(sourceSquare, effectiveTarget);
+        return false; // Let kinetic projectile handle the visual flight, impact shockwave & board placement
       }
     }
 
     const move = makeAMove({
       from: sourceSquare,
-      to: targetSquare,
+      to: effectiveTarget,
       promotion: 'q'
     });
 
     return move !== null;
-  }, [activeMode, botThinking, executeArenaStrike, makeAMove]);
+  }, [activeMode, botThinking, hoveredTargetSq, launchAndHit, makeAMove]);
 
-  const canDragPiece = useCallback(({ piece }) => {
+  // canDragPiece: safely extracts piece color from any argument format
+  const canDragPiece = useCallback((args) => {
     const currentGame = gameRef.current;
     if (botThinking || currentGame.isGameOver()) return false;
     if (activeMode === 'bot' && currentGame.turn() === 'b') return false;
-    const pieceColor = piece?.pieceType?.[0];
-    return pieceColor === currentGame.turn();
+
+    let pieceStr = '';
+    if (typeof args === 'string') pieceStr = args;
+    else if (args?.piece?.pieceType) pieceStr = args.piece.pieceType;
+    else if (args?.pieceType) pieceStr = args.pieceType;
+    else if (typeof args?.piece === 'string') pieceStr = args.piece;
+
+    if (pieceStr) {
+      const colorChar = pieceStr[0].toLowerCase();
+      return colorChar === currentGame.turn();
+    }
+    return true; // Fallback: allow drag, let onPieceDrop validate
   }, [activeMode, botThinking]);
 
-  // Click-to-Move and Attack Selection
-  const onSquareClick = useCallback(({ piece, square }) => {
+  // Click handler (supports both object and positional argument signatures)
+  const onSquareClick = useCallback((arg1, arg2) => {
+    let square = null;
+    let piece = null;
+
+    if (typeof arg1 === 'string') {
+      square = arg1;
+      piece = arg2;
+    } else if (arg1 && typeof arg1 === 'object') {
+      square = arg1.square;
+      piece = arg1.piece;
+    }
+
+    if (!square) return;
     const currentGame = gameRef.current;
     if (botThinking || currentGame.isGameOver()) return;
     if (activeMode === 'bot' && currentGame.turn() === 'b') return;
 
-    // 1. If clicking on an attack target in Arena mode -> STRIKE!
-    if (activeVariantRef.current === 'arena' && selectedSquare && attackTargets.includes(square)) {
-      executeArenaStrike(selectedSquare, square);
-      return;
+    // 1. If clicking on an enemy piece while having a friendly piece selected in Arena mode -> LAUNCH & HIT!
+    if (activeVariantRef.current === 'arena' && selectedSquare) {
+      const attacker = currentGame.get(selectedSquare);
+      const defender = currentGame.get(square);
+      if (attacker && defender && defender.color !== currentGame.turn()) {
+        launchAndHit(selectedSquare, square);
+        return;
+      }
     }
 
     // 2. If clicking on one of the possible movement destination squares -> MOVE!
@@ -867,17 +1113,22 @@ export function Archess2DChess({ boardTheme = 'midnight', gameMode = 'bot', vari
     if (currentPiece && currentPiece.color === currentGame.turn()) {
       setSelectedSquare(square);
 
+      const moves = currentGame.moves({ square: square, verbose: true });
+      setPossibleMoves(moves.map(m => m.to));
+
       if (activeVariantRef.current === 'arena') {
-        // Calculate non-capture movement squares
-        const moves = currentGame.moves({ square: square, verbose: true });
-        setPossibleMoves(moves.filter(m => !m.captured).map(m => m.to));
-        // Calculate expanded tactical attack targets
-        const targets = getTacticalAttackTargets(currentGame, square, currentPiece);
-        setAttackTargets(targets);
+        const board = currentGame.board();
+        const enemySquares = [];
+        for (let r = 0; r < 8; r++) {
+          for (let c = 0; c < 8; c++) {
+            const p = board[r][c];
+            if (p && p.color !== currentGame.turn()) {
+              enemySquares.push(`${String.fromCharCode(97 + c)}${8 - r}`);
+            }
+          }
+        }
+        setAttackTargets(enemySquares);
       } else {
-        // 2D Classic: standard chess moves and captures
-        const moves = currentGame.moves({ square: square, verbose: true });
-        setPossibleMoves(moves.map(m => m.to));
         setAttackTargets([]);
       }
     } else {
@@ -885,7 +1136,105 @@ export function Archess2DChess({ boardTheme = 'midnight', gameMode = 'bot', vari
       setPossibleMoves([]);
       setAttackTargets([]);
     }
-  }, [activeMode, attackTargets, botThinking, executeArenaStrike, makeAMove, possibleMoves, selectedSquare]);
+  }, [activeMode, botThinking, launchAndHit, makeAMove, possibleMoves, selectedSquare]);
+
+  // Pointer drag-to-aim & slingshot launch handlers for interactive kinetic combat
+  const handleBoardPointerDown = useCallback((e) => {
+    if (activeVariantRef.current !== 'arena' || botThinking) return;
+    const currentGame = gameRef.current;
+    if (currentGame.isGameOver()) return;
+    if (activeMode === 'bot' && currentGame.turn() === 'b') return;
+
+    const boardEl = boardWrapperRef.current;
+    if (!boardEl) return;
+    const rect = boardEl.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const sq = getSquareFromCoords(x, y, boardWidth);
+    if (!sq) return;
+
+    const p = currentGame.get(sq);
+    if (p && p.color === currentGame.turn()) {
+      setAimingState({
+        sourceSq: sq,
+        currentX: x,
+        currentY: y,
+        targetSq: null
+      });
+    }
+  }, [activeMode, boardWidth, botThinking]);
+
+  const handleBoardPointerMove = useCallback((e) => {
+    if (!aimingState) return;
+    const boardEl = boardWrapperRef.current;
+    if (!boardEl) return;
+    const rect = boardEl.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const currentGame = gameRef.current;
+    const sourceCenter = getSquareCenter(aimingState.sourceSq, boardWidth);
+    const dx = x - sourceCenter.x;
+    const dy = y - sourceCenter.y;
+
+    // Direct hover check on enemy square
+    const directSq = getSquareFromCoords(x, y, boardWidth);
+    let targetSq = null;
+    if (directSq && directSq !== aimingState.sourceSq) {
+      const p = currentGame.get(directSq);
+      if (p && p.color !== currentGame.turn()) {
+        targetSq = directSq;
+      }
+    }
+
+    // Slingshot pull backwards check (vector pointing away from target)
+    if (!targetSq && Math.hypot(dx, dy) > 22) {
+      const board = currentGame.board();
+      let bestSq = null;
+      let bestDot = 0.35;
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          const piece = board[r][c];
+          if (piece && piece.color !== currentGame.turn()) {
+            const sq = `${String.fromCharCode(97 + c)}${8 - r}`;
+            const enemyCenter = getSquareCenter(sq, boardWidth);
+            const toEnemyX = enemyCenter.x - sourceCenter.x;
+            const toEnemyY = enemyCenter.y - sourceCenter.y;
+            const enemyDist = Math.hypot(toEnemyX, toEnemyY);
+            if (enemyDist > 10) {
+              const pullDist = Math.hypot(dx, dy);
+              const launchVx = -dx / pullDist;
+              const launchVy = -dy / pullDist;
+              const enemyVx = toEnemyX / enemyDist;
+              const enemyVy = toEnemyY / enemyDist;
+              const dot = launchVx * enemyVx + launchVy * enemyVy;
+              if (dot > bestDot) {
+                bestDot = dot;
+                bestSq = sq;
+              }
+            }
+          }
+        }
+      }
+      if (bestSq) targetSq = bestSq;
+    }
+
+    setAimingState(prev => prev ? ({
+      ...prev,
+      currentX: x,
+      currentY: y,
+      targetSq
+    }) : null);
+  }, [aimingState, boardWidth]);
+
+  const handleBoardPointerUp = useCallback(() => {
+    if (aimingState) {
+      if (aimingState.targetSq && aimingState.targetSq !== aimingState.sourceSq) {
+        launchAndHit(aimingState.sourceSq, aimingState.targetSq);
+      }
+      setAimingState(null);
+    }
+  }, [aimingState, launchAndHit]);
 
   // Activate Piece Signature Ability (2D Arena Only)
   const handleActivateAbility = useCallback(() => {
@@ -1090,6 +1439,32 @@ export function Archess2DChess({ boardTheme = 'midnight', gameMode = 'bot', vari
     };
   });
 
+  // Arena Tactical Attack Target Indicators (Clean Target Rings)
+  if (activeVariant === 'arena') {
+    attackTargets.forEach(sq => {
+      customSquareStyles[sq] = {
+        background: 'radial-gradient(circle, transparent 56%, rgba(255, 59, 78, 0.75) 58%)',
+        borderRadius: '50%',
+        boxShadow: 'inset 0 0 10px rgba(255, 59, 78, 0.45)'
+      };
+    });
+  }
+
+  // Hide or dim piece during kinetic projectile launch flight
+  if (flyingProjectile && flyingProjectile.fromSq) {
+    customSquareStyles[flyingProjectile.fromSq] = {
+      ...(customSquareStyles[flyingProjectile.fromSq] || {}),
+      opacity: 0.12,
+      filter: 'brightness(0.4)'
+    };
+  }
+  if (flyingProjectile && flyingProjectile.toSq) {
+    customSquareStyles[flyingProjectile.toSq] = {
+      ...(customSquareStyles[flyingProjectile.toSq] || {}),
+      boxShadow: '0 0 22px #ff3b4e, inset 0 0 16px rgba(255, 59, 78, 0.7)'
+    };
+  }
+
   // Selected Piece Metadata for Tactical HUD
   let selectedPieceInfo = null;
   if (selectedSquare && activeVariant === 'arena') {
@@ -1146,86 +1521,43 @@ export function Archess2DChess({ boardTheme = 'midnight', gameMode = 'bot', vari
           boxSizing: 'border-box'
         }}
       >
-        {/* Top Tactical Banner */}
-        {activeVariant === 'arena' ? (
-          <div className="arena-combat-hud-bar" style={{
-            width: '100%',
-            padding: '6px 12px',
-            marginBottom: '8px',
-            background: 'linear-gradient(90deg, rgba(20, 26, 36, 0.95), rgba(30, 40, 56, 0.95))',
-            border: '1px solid rgba(255, 215, 0, 0.4)',
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            fontSize: '0.78rem',
-            color: '#fff',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
-            boxSizing: 'border-box'
-          }}>
-            {selectedPieceInfo ? (
-              <>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '1.2rem', filter: 'drop-shadow(0 0 4px gold)' }}>{selectedPieceInfo.glyph}</span>
-                  <div>
-                    <div style={{ fontWeight: '800', color: 'var(--gold-bright)', letterSpacing: '0.04em' }}>
-                      {selectedPieceInfo.color.toUpperCase()} {selectedPieceInfo.name.toUpperCase()} • {selectedPieceInfo.role.toUpperCase()}
-                    </div>
-                    <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.75)' }}>
-                      HP: <span style={{ color: selectedPieceInfo.hp > selectedPieceInfo.maxHp * 0.5 ? '#10b981' : '#ef4444', fontWeight: '700' }}>{selectedPieceInfo.hp}/{selectedPieceInfo.maxHp}</span> | ATK: <span style={{ color: '#f59e0b', fontWeight: '700' }}>{selectedPieceInfo.atk}</span>
-                    </div>
-                  </div>
-                </div>
-                <button 
-                  onClick={handleActivateAbility}
-                  disabled={abilityUsedTurn === turnCount}
-                  style={{
-                    background: abilityUsedTurn === turnCount ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #d4af37, #aa820a)',
-                    color: abilityUsedTurn === turnCount ? 'rgba(255,255,255,0.4)' : '#000',
-                    fontWeight: '800',
-                    fontSize: '0.72rem',
-                    padding: '5px 12px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    cursor: abilityUsedTurn === turnCount ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    boxShadow: abilityUsedTurn === turnCount ? 'none' : '0 2px 8px rgba(212, 175, 55, 0.4)'
-                  }}
-                >
-                  <span>⚡</span>
-                  <span>{selectedPieceInfo.ability} ({selectedPieceInfo.bonus})</span>
-                </button>
-              </>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', justifyContent: 'center' }}>
-                <span style={{ color: 'var(--gold-bright)', fontWeight: '800' }}>⚔️ 2D ARENA • TACTICAL COMBAT VARIANT</span>
-                <span style={{ color: 'rgba(255,255,255,0.65)', fontSize: '0.72rem' }}>— Always-visible HP, piece strikes &amp; signature abilities active</span>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="classic-fide-bar" style={{
-            width: '100%',
-            padding: '6px 12px',
-            marginBottom: '8px',
-            background: 'rgba(15, 20, 28, 0.85)',
-            border: '1px solid rgba(255, 255, 255, 0.14)',
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '0.75rem',
-            color: 'var(--text-secondary)',
-            boxSizing: 'border-box'
-          }}>
-            <span>♟️ 2D CLASSIC • OFFICIAL FIDE CHESS (STANDARD TOURNAMENT RULES)</span>
-          </div>
-        )}
+        {/* Top Status Bar (Unified Classic & Arena Clean Aesthetic) */}
+        <div className="classic-fide-bar" style={{
+          width: '100%',
+          padding: '6px 14px',
+          marginBottom: '8px',
+          background: 'rgba(15, 20, 28, 0.85)',
+          border: '1px solid rgba(255, 255, 255, 0.14)',
+          borderRadius: '8px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '0.75rem',
+          color: 'var(--text-secondary)',
+          boxSizing: 'border-box',
+          gap: '8px'
+        }}>
+          <span>
+            {activeVariant === 'arena' 
+              ? '⚔️ 2D ARENA • TACTICAL COMBAT (DRAG TO STRIKE ENEMY OR MOVE)' 
+              : '♟️ 2D CLASSIC • OFFICIAL FIDE CHESS (STANDARD TOURNAMENT RULES)'}
+          </span>
+        </div>
 
-        {/* Board Container */}
-        <div style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1' }}>
+        {/* Board Container with Kinetic Micro-Shake & Pointer Handlers */}
+        <div 
+          ref={boardWrapperRef}
+          onPointerDown={handleBoardPointerDown}
+          onPointerMove={handleBoardPointerMove}
+          onPointerUp={handleBoardPointerUp}
+          style={{ 
+            position: 'relative', 
+            width: '100%', 
+            aspectRatio: '1 / 1',
+            transform: boardShake ? 'translate(-3px, 2px) rotate(0.35deg)' : 'none',
+            transition: boardShake ? 'none' : 'transform 0.12s ease-out'
+          }}
+        >
           <Chessboard
             options={{
               id: 'Archess2D',
@@ -1241,138 +1573,289 @@ export function Archess2DChess({ boardTheme = 'midnight', gameMode = 'bot', vari
               numericNotationStyle: { color: 'rgba(255, 255, 255, 0.75)', fontWeight: '600' },
               allowDragging: !botThinking && !game.isGameOver(),
               canDragPiece,
+              onPieceDrag: handlePieceDrag,
+              onPieceDragCancel: handlePieceDragCancel,
+              onMouseOverSquare: handleMouseOverSquare,
+              onMouseOutSquare: handleMouseOutSquare,
               onPieceDrop,
               onSquareClick,
-              ...(customPieces ? { customPieces } : {})
+              ...(customPieces ? { pieces: customPieces } : {})
             }}
           />
 
-          {/* 2D ARENA ONLY: Always-Visible Health Bars, HP Numbers & Attack Target Reticles */}
-          {activeVariant === 'arena' && (
-            <div 
-              className="combat-overlay-grid"
+          {/* Aiming Trajectory Laser & Reticle Overlay (Drag or Slingshot Aim) */}
+          {((dragSourceSq && hoveredTargetSq) || (aimingState && aimingState.targetSq)) && (() => {
+            const src = dragSourceSq || aimingState?.sourceSq;
+            const tgt = hoveredTargetSq || aimingState?.targetSq;
+            if (!src || !tgt || src === tgt) return null;
+            const p1 = getSquareCenter(src, boardWidth);
+            const p2 = getSquareCenter(tgt, boardWidth);
+            const atkPiece = game.get(src);
+            const defPiece = game.get(tgt);
+            const estDmg = atkPiece ? (DAMAGE_TABLE[atkPiece.type] || 35) + (activeBuffs[src] || 0) : 35;
+            const defHp = defPiece ? (pieceHp[tgt]?.hp || 50) : 50;
+            const isLethal = estDmg >= defHp;
+
+            return (
+              <svg 
+                style={{ 
+                  position: 'absolute', 
+                  inset: 0, 
+                  width: '100%', 
+                  height: '100%', 
+                  pointerEvents: 'none', 
+                  zIndex: 35 
+                }}
+              >
+                <defs>
+                  <linearGradient id="kineticAimGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#ffd700" stopOpacity="0.9" />
+                    <stop offset="100%" stopColor="#ff3b4e" stopOpacity="0.95" />
+                  </linearGradient>
+                  <marker id="aimArrowhead" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#ff3b4e" />
+                  </marker>
+                </defs>
+                {/* Aiming Dash Line */}
+                <line
+                  x1={p1.x}
+                  y1={p1.y}
+                  x2={p2.x}
+                  y2={p2.y}
+                  stroke="url(#kineticAimGrad)"
+                  strokeWidth="3.5"
+                  strokeDasharray="8,6"
+                  markerEnd="url(#aimArrowhead)"
+                  style={{ filter: 'drop-shadow(0 0 6px rgba(255, 59, 78, 0.8))' }}
+                />
+                {/* Target Reticle at p2 */}
+                <circle
+                  cx={p2.x}
+                  cy={p2.y}
+                  r={boardWidth / 16 * 0.82}
+                  fill="none"
+                  stroke={isLethal ? '#ff003c' : '#ff3b4e'}
+                  strokeWidth="2.5"
+                  strokeDasharray="5,4"
+                  style={{ filter: 'drop-shadow(0 0 8px rgba(255, 0, 60, 0.9))' }}
+                />
+                {/* Tactical Forecast Badge */}
+                <g transform={`translate(${p2.x}, ${p2.y - (boardWidth / 16) - 10})`}>
+                  <rect
+                    x="-45"
+                    y="-11"
+                    width="90"
+                    height="20"
+                    rx="6"
+                    fill="rgba(10, 15, 25, 0.92)"
+                    stroke={isLethal ? '#ff3b4e' : '#ffd700'}
+                    strokeWidth="1.2"
+                  />
+                  <text
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fill={isLethal ? '#ff4d6d' : '#ffd700'}
+                    fontSize="10"
+                    fontWeight="700"
+                    fontFamily="Outfit, sans-serif"
+                  >
+                    {isLethal ? '☠️ LETHAL' : `⚔️ ~${estDmg} DMG`}
+                  </text>
+                </g>
+              </svg>
+            );
+          })()}
+
+          {/* Kinetic Flying Projectile Piece Overlay */}
+          {flyingProjectile && (() => {
+            const p = flyingProjectile.piece;
+            const pieceKey = `${p.color}${p.type.toUpperCase()}`;
+            const PieceComponent = defaultPieces ? defaultPieces[pieceKey] : null;
+            const sqSize = boardWidth / 8;
+            const isRecoil = flyingProjectile.phase === 'recoil';
+
+            return (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: `${flyingProjectile.x}px`,
+                  top: `${flyingProjectile.y}px`,
+                  width: `${sqSize}px`,
+                  height: `${sqSize}px`,
+                  transform: `translate(-50%, -50%) scale(${isRecoil ? 0.95 : 1.18})`,
+                  pointerEvents: 'none',
+                  zIndex: 50,
+                  filter: isRecoil 
+                    ? 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' 
+                    : 'drop-shadow(0 8px 18px rgba(255, 215, 0, 0.75)) drop-shadow(0 0 14px rgba(255, 60, 70, 0.8))',
+                  transition: 'none'
+                }}
+              >
+                {PieceComponent ? <PieceComponent /> : null}
+              </div>
+            );
+          })()}
+
+          {/* Expanding Kinetic Shockwaves */}
+          {shockwaves.map(s => (
+            <div
+              key={s.id}
               style={{
                 position: 'absolute',
-                inset: '0',
-                display: 'grid',
-                gridTemplateColumns: 'repeat(8, 1fr)',
-                gridTemplateRows: 'repeat(8, 1fr)',
+                left: `${s.x}px`,
+                top: `${s.y}px`,
+                width: `${boardWidth / 8 * 1.8}px`,
+                height: `${boardWidth / 8 * 1.8}px`,
+                borderRadius: '50%',
+                border: '3px solid #ffd700',
+                boxShadow: '0 0 25px #ff9900, inset 0 0 18px #ffd700',
+                transform: 'translate(-50%, -50%)',
                 pointerEvents: 'none',
-                zIndex: 10
+                zIndex: 45,
+                animation: 'shockwavePulse 0.48s ease-out forwards'
               }}
-            >
-              {Array.from({ length: 64 }).map((_, idx) => {
-                const row = Math.floor(idx / 8);
-                const col = idx % 8;
-                const sq = `${String.fromCharCode(97 + col)}${8 - row}`;
-                const hpData = pieceHp[sq];
-                const pieceOnBoard = game.get(sq);
-                const isTarget = attackTargets.includes(sq);
-                const dmgItems = damageTexts.filter(d => d.square === sq);
+            />
+          ))}
 
-                const hpRatio = hpData ? Math.max(0, Math.min(1, hpData.hp / hpData.maxHp)) : 1;
+          {/* Floating Damage Text & Piece HP Overlay (2D Arena) */}
+          <div 
+            className="combat-damage-overlay"
+            style={{
+              position: 'absolute',
+              inset: '0',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(8, 1fr)',
+              gridTemplateRows: 'repeat(8, 1fr)',
+              pointerEvents: 'none',
+              zIndex: 10
+            }}
+          >
+            {Array.from({ length: 64 }).map((_, idx) => {
+              const row = Math.floor(idx / 8);
+              const col = idx % 8;
+              const sq = `${String.fromCharCode(97 + col)}${8 - row}`;
+              const dmgItems = damageTexts.filter(d => d.square === sq);
+              const pieceAtSq = game.get(sq);
+              const hpInfo = (activeVariant === 'arena' && pieceAtSq) ? pieceHp[sq] : null;
 
-                return (
-                  <div key={sq} style={{ position: 'relative', width: '100%', height: '100%' }}>
-                    
-                    {/* Always-Visible HP Bar for Living Pieces */}
-                    {pieceOnBoard && hpData && (
-                      <>
-                        {/* Numeric HP Pill */}
-                        <div style={{
-                          position: 'absolute',
-                          top: '2px',
-                          right: '3px',
-                          fontSize: '0.62rem',
-                          fontWeight: '800',
-                          fontFamily: 'monospace',
-                          color: hpRatio > 0.6 ? '#6ee7b7' : (hpRatio > 0.25 ? '#fcd34d' : '#fca5a5'),
-                          background: 'rgba(0, 0, 0, 0.8)',
-                          padding: '1px 3px',
-                          borderRadius: '3px',
-                          lineHeight: '1',
-                          border: '1px solid rgba(255, 255, 255, 0.2)',
-                          pointerEvents: 'none',
-                          zIndex: 6
-                        }}>
-                          {hpData.hp}
-                        </div>
-
-                        {/* Bottom HP Bar */}
-                        <div style={{
-                          position: 'absolute',
-                          bottom: '2px',
-                          left: '10%',
-                          width: '80%',
-                          height: '4px',
-                          background: 'rgba(0, 0, 0, 0.85)',
-                          borderRadius: '2px',
-                          overflow: 'hidden',
-                          border: '1px solid rgba(255, 255, 255, 0.25)',
-                          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.8)',
-                          pointerEvents: 'none',
-                          zIndex: 6
-                        }}>
-                          <div style={{
-                            width: `${hpRatio * 100}%`,
-                            height: '100%',
-                            background: hpRatio > 0.6 ? '#10b981' : (hpRatio > 0.25 ? '#f59e0b' : '#ef4444'),
-                            transition: 'width 0.25s ease, background 0.25s ease'
-                          }} />
-                        </div>
-                      </>
-                    )}
-
-                    {/* Crimson Attack Reticle on Enemy Targets in Range */}
-                    {isTarget && (
-                      <div style={{
+              return (
+                <div key={sq} style={{ position: 'relative', width: '100%', height: '100%' }}>
+                  {/* Floating Damage Numbers */}
+                  {dmgItems.map(d => (
+                    <div 
+                      key={d.id}
+                      className="floating-dmg-text"
+                      style={{
                         position: 'absolute',
-                        inset: '2px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: 'rgba(239, 68, 68, 0.35)',
-                        border: '2px solid #ff3b4e',
-                        borderRadius: '6px',
-                        boxShadow: 'inset 0 0 14px rgba(255, 59, 78, 0.75)',
-                        pointerEvents: 'none',
-                        zIndex: 8
-                      }}>
-                        <span style={{
-                          fontSize: '1.25rem',
-                          filter: 'drop-shadow(0 0 5px #ff3b4e)'
-                        }}>⚔️</span>
-                      </div>
-                    )}
+                        top: '15%',
+                        left: '50%',
+                        color: d.isHeal ? '#10b981' : (d.isCrit ? '#ff3b4e' : '#ffd700'),
+                        fontWeight: '800',
+                        fontSize: d.isCrit ? '1.05rem' : '0.9rem',
+                        fontFamily: 'Outfit, sans-serif',
+                        whiteSpace: 'nowrap',
+                        textShadow: '0 2px 6px #000, 0 0 10px rgba(0, 0, 0, 0.9)',
+                        animation: 'floatUpFade 1.2s forwards'
+                      }}
+                    >
+                      {d.text}
+                    </div>
+                  ))}
 
-                    {/* Floating Damage Text */}
-                    {dmgItems.map(d => (
-                      <div 
-                        key={d.id}
-                        className="floating-dmg-text"
-                        style={{
-                          position: 'absolute',
-                          top: '15%',
-                          left: '50%',
-                          color: d.isHeal ? '#10b981' : (d.isCrit ? '#ff3b4e' : '#ffd700'),
-                          fontWeight: '800',
-                          fontSize: d.isCrit ? '1.05rem' : '0.9rem',
-                          fontFamily: 'Outfit, sans-serif',
-                          whiteSpace: 'nowrap',
-                          textShadow: '0 2px 6px #000, 0 0 10px rgba(0, 0, 0, 0.9)',
-                          animation: 'floatUpFade 1.2s forwards'
-                        }}
-                      >
-                        {d.text}
-                      </div>
-                    ))}
-
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  {/* Micro HP Bar for Damaged Pieces in Arena Mode */}
+                  {hpInfo && hpInfo.hp < hpInfo.maxHp && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '2px',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      width: '65%',
+                      height: '3px',
+                      backgroundColor: 'rgba(0, 0, 0, 0.75)',
+                      borderRadius: '2px',
+                      overflow: 'hidden',
+                      border: '0.5px solid rgba(255, 255, 255, 0.25)'
+                    }}>
+                      <div style={{
+                        width: `${Math.max(0, Math.min(100, (hpInfo.hp / hpInfo.maxHp) * 100))}%`,
+                        height: '100%',
+                        backgroundColor: (hpInfo.hp / hpInfo.maxHp) > 0.5 ? '#10b981' : ((hpInfo.hp / hpInfo.maxHp) > 0.25 ? '#f59e0b' : '#ef4444')
+                      }} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
+
+        {/* Tactical Unit Card & Ability Launcher (2D Arena Only) */}
+        {activeVariant === 'arena' && selectedPieceInfo && (
+          <div 
+            className="arena-tactical-hud"
+            style={{
+              width: '100%',
+              marginTop: '8px',
+              padding: '8px 12px',
+              background: 'rgba(15, 20, 28, 0.92)',
+              border: '1px solid rgba(212, 175, 55, 0.45)',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              boxSizing: 'border-box',
+              gap: '10px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '1.5rem', lineHeight: '1' }}>{selectedPieceInfo.glyph}</span>
+              <div>
+                <div style={{ fontWeight: '700', fontSize: '0.84rem', color: '#fff', textTransform: 'capitalize' }}>
+                  {selectedPieceInfo.color} {selectedPieceInfo.name} <span style={{ fontSize: '0.70rem', color: 'var(--gold-light)', marginLeft: '4px' }}>({selectedPieceInfo.role})</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '3px' }}>
+                  <div style={{
+                    width: '75px',
+                    height: '5px',
+                    background: 'rgba(255, 255, 255, 0.15)',
+                    borderRadius: '3px',
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{
+                      width: `${Math.max(0, Math.min(100, (selectedPieceInfo.hp / selectedPieceInfo.maxHp) * 100))}%`,
+                      height: '100%',
+                      background: (selectedPieceInfo.hp / selectedPieceInfo.maxHp) > 0.5 ? '#10b981' : ((selectedPieceInfo.hp / selectedPieceInfo.maxHp) > 0.25 ? '#f59e0b' : '#ef4444')
+                    }} />
+                  </div>
+                  <span style={{ fontSize: '0.70rem', color: '#94a3b8' }}>
+                    HP: <strong style={{ color: '#fff' }}>{selectedPieceInfo.hp}</strong>/{selectedPieceInfo.maxHp} &bull; ATK: <strong style={{ color: '#ffd700' }}>{selectedPieceInfo.atk}</strong>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {selectedPieceInfo.color.toLowerCase() === (game.turn() === 'w' ? 'white' : 'black') && (
+              <button
+                type="button"
+                onClick={handleActivateAbility}
+                disabled={abilityUsedTurn === turnCount}
+                style={{
+                  padding: '5px 12px',
+                  background: abilityUsedTurn === turnCount ? 'rgba(71, 85, 105, 0.4)' : 'linear-gradient(135deg, #d4af37, #aa820a)',
+                  border: '1px solid rgba(255, 215, 0, 0.5)',
+                  borderRadius: '6px',
+                  color: abilityUsedTurn === turnCount ? '#94a3b8' : '#000',
+                  fontWeight: '700',
+                  fontSize: '0.72rem',
+                  cursor: abilityUsedTurn === turnCount ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                {abilityUsedTurn === turnCount ? 'Buff Used' : `${selectedPieceInfo.ability} (${selectedPieceInfo.bonus})`}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

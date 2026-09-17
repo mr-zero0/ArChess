@@ -115,7 +115,22 @@
             <div id="threeCanvasContainer" class="three-canvas-stage">
               <div class="three-piece-hover-badge" id="threePieceHoverBadge" style="display: none;"></div>
             </div>
-            <canvas id="archessCanvas" style="display: none;"></canvas>
+
+            <!-- 2D Arena Kinetic Stage Container (Luxury Frame & Status Pill matching Classic UI) -->
+            <div id="archess2DContainer" class="archess-2d-stage" style="display: none;">
+              <div class="react-chessboard-wrapper" id="archess2DWrapper">
+                <div class="react-chessboard-frame archess-2d-frame" id="archess2DFrame">
+                  <div class="classic-fide-bar" id="arena2DFideBar">
+                    <span>⚔️ 2D ARENA • KINETIC COMBAT (DRAG &amp; DROP TO LAUNCH)</span>
+                  </div>
+                  <div class="archess-2d-canvas-box" id="archess2DCanvasBox">
+                    <canvas id="archessCanvas"></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2D Classic FIDE Chessboard Root -->
             <div id="reactChessboardRoot" class="react-chessboard-stage" style="display: none;"></div>
 
             <!-- Interactive Tactical Combat Replay HUD Bar -->
@@ -830,10 +845,10 @@
 {% endblock %}
 
 {% block extra_scripts %}
-  <script src="/static/js/three.min.js?v=4.0.0"></script>
-  <script src="/static/js/engine3d.js?v=4.0.0"></script>
-  <script src="/static/js/react-chessboard-bundle.js?v=4.0.0"></script>
-  <script src="/static/js/game.js?v=4.0.0"></script>
+  <script src="/static/js/three.min.js?v=4.2.0"></script>
+  <script src="/static/js/engine3d.js?v=4.2.0"></script>
+  <script src="/static/js/react-chessboard-bundle.js?v=4.2.0"></script>
+  <script src="/static/js/game.js?v=4.2.0"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       // Sync current logged in user name with White player card

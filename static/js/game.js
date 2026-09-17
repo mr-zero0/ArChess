@@ -553,6 +553,16 @@ class ArchessAudio {
   }
 }
 
+// Canonical Staunton Vector Piece Paths (viewBox 0 0 45 45, aligned with React Chess Classic)
+const STAUNTON_2D_PATHS = {
+  pawn: "M 22.5 9 C 19.5 9 17.5 11 17.5 14 C 17.5 16 19 17.5 20.5 18.5 C 17 21 16 26 16 31 L 29 31 C 29 26 28 21 24.5 18.5 C 26 17.5 27.5 16 27.5 14 C 27.5 11 25.5 9 22.5 9 z M 13 33 L 32 33 L 32 36 L 13 36 z",
+  rook: "M 11 10 L 11 16 L 14 16 L 14 12 L 19 12 L 19 16 L 26 16 L 26 12 L 31 12 L 31 16 L 34 16 L 34 10 z M 14 18 L 31 18 L 29 29 L 16 29 z M 11 31 L 34 31 L 34 35 L 11 35 z",
+  knight: "M 22 10 C 22 10 16 12 14 16 C 12 20 12 26 15 28 C 16 29 18 28 18 28 C 17 31 14 32 11 32 L 11 35 L 34 35 C 34 32 33 28 31 24 C 28 18 26 14 26 10 z M 18 16 C 18 16 19 14 20 15 C 21 16 20 18 19 18 z",
+  bishop: "M 22.5 8 C 21.5 8 21 9 21 10 C 19 12 17 16 17 20 C 17 25 19 28 20.5 29 L 24.5 29 C 26 28 28 25 28 20 C 28 16 26 12 24 10 C 24 9 23.5 8 22.5 8 z M 14 31 L 31 31 L 31 35 L 14 35 z M 21.5 14 L 23.5 14 M 22.5 13 L 22.5 17",
+  queen: "M 11 16 L 15 28 L 30 28 L 34 16 L 27 21 L 22.5 12 L 18 21 z M 12 30 L 33 30 L 33 34 L 12 34 z M 11 13 A 2 2 0 1 1 11 17 A 2 2 0 1 1 11 13 M 18 10 A 2 2 0 1 1 18 14 A 2 2 0 1 1 18 10 M 22.5 7 A 2 2 0 1 1 22.5 11 A 2 2 0 1 1 22.5 7 M 27 10 A 2 2 0 1 1 27 14 A 2 2 0 1 1 27 10 M 34 13 A 2 2 0 1 1 34 17 A 2 2 0 1 1 34 13",
+  king: "M 22.5 6 L 22.5 11 M 20 8.5 L 25 8.5 M 22.5 11 C 18 11 15 14 15 18 C 15 22 17 25 19 27 L 26 27 C 28 25 30 22 30 18 C 30 14 27 11 22.5 11 z M 13 29 L 32 29 L 32 33 L 13 33 z"
+};
+
 class ArchessArena {
   constructor(canvasId) {
     this.canvas = document.getElementById(canvasId);
@@ -654,30 +664,52 @@ class ArchessArena {
     let pw = 0;
     let ph = 0;
 
-    const boardColumn = parent ? parent.closest('.arena-board-column') : null;
-    if (boardColumn) {
-      const colRect = boardColumn.getBoundingClientRect();
-      const maxAvailable = Math.floor(Math.min(colRect.width - 56, colRect.height) - 8);
-      if (maxAvailable >= 200) {
-        pw = maxAvailable;
-        ph = maxAvailable;
-        parent.style.width = maxAvailable + 'px';
-        parent.style.height = maxAvailable + 'px';
-      }
-    } else if (parent) {
-      const rect = parent.getBoundingClientRect();
-      pw = rect.width;
-      ph = rect.height;
-      if (!pw || pw < 50) pw = parent.clientWidth;
-      if (!ph || ph < 50) ph = parent.clientHeight;
-    }
-    if (!pw || pw < 50) pw = window.innerWidth > 900 ? 760 : Math.max(320, window.innerWidth - 40);
-    if (!ph || ph < 50) ph = pw;
+    const canvasBox = document.getElementById('archess2DCanvasBox');
+    const archessFrame = document.getElementById('archess2DFrame');
+    const stage = document.getElementById('arenaCanvasStage');
 
-    // Enforce square proportions
-    const squareSize = Math.round(Math.min(pw, ph));
-    pw = squareSize;
-    ph = squareSize;
+    if (this.renderMode === '2d' && archessFrame && stage) {
+      const stageRect = stage.getBoundingClientRect();
+      const available = Math.min(stageRect.width || 600, stageRect.height || 600);
+      const frameDim = Math.max(280, Math.min(960, available - 16));
+      archessFrame.style.width = frameDim + 'px';
+
+      // Inner square accounts for 20px padding and ~46px classic-fide-bar
+      const innerSquare = Math.max(220, frameDim - 56);
+      if (canvasBox) {
+        canvasBox.style.width = innerSquare + 'px';
+        canvasBox.style.height = innerSquare + 'px';
+      }
+      pw = innerSquare;
+      ph = innerSquare;
+    } else {
+      const boardColumn = parent ? parent.closest('.arena-board-column') : null;
+      if (boardColumn) {
+        const colRect = boardColumn.getBoundingClientRect();
+        const maxAvailable = Math.floor(Math.min(colRect.width - 56, colRect.height) - 8);
+        if (maxAvailable >= 200) {
+          pw = maxAvailable;
+          ph = maxAvailable;
+          if (parent && parent.id === 'arenaCanvasStage') {
+            parent.style.width = maxAvailable + 'px';
+            parent.style.height = maxAvailable + 'px';
+          }
+        }
+      } else if (parent) {
+        const rect = parent.getBoundingClientRect();
+        pw = rect.width;
+        ph = rect.height;
+        if (!pw || pw < 50) pw = parent.clientWidth;
+        if (!ph || ph < 50) ph = parent.clientHeight;
+      }
+      if (!pw || pw < 50) pw = window.innerWidth > 900 ? 760 : Math.max(320, window.innerWidth - 40);
+      if (!ph || ph < 50) ph = pw;
+
+      // Enforce square proportions
+      const squareSize = Math.round(Math.min(pw, ph));
+      pw = squareSize;
+      ph = squareSize;
+    }
 
     const oldLayout = (this.width && this.height) ? this.getBoardLayout() : null;
 
@@ -686,6 +718,8 @@ class ArchessArena {
     this.dpr = window.devicePixelRatio || 1;
     this.canvas.width = Math.round(this.width * this.dpr);
     this.canvas.height = Math.round(this.height * this.dpr);
+    this.canvas.style.width = this.width + 'px';
+    this.canvas.style.height = this.height + 'px';
     if (this.ctx.resetTransform) {
       this.ctx.resetTransform();
     } else {
@@ -760,6 +794,26 @@ class ArchessArena {
 
   getBoardLayout() {
     const minDim = Math.min(this.width, this.height);
+    if (this.renderMode === '2d') {
+      const boardSize = minDim;
+      const borderSize = 0;
+      const originX = (this.width - boardSize) / 2;
+      const originY = (this.height - boardSize) / 2;
+      const gridOriginX = originX;
+      const gridOriginY = originY;
+      const gridSize = boardSize;
+      const sqSize = gridSize / 8;
+      return {
+        boardSize,
+        originX,
+        originY,
+        borderSize,
+        gridOriginX,
+        gridOriginY,
+        gridSize,
+        sqSize
+      };
+    }
     const boardSize = Math.max(300, minDim - 36);
     const originX = (this.width - boardSize) / 2;
     const originY = (this.height - boardSize) / 2;
@@ -901,9 +955,15 @@ class ArchessArena {
   setRenderMode(mode) {
     this.renderMode = mode;
     const threeContainer = document.getElementById('threeCanvasContainer');
+    const archess2DContainer = document.getElementById('archess2DContainer');
     if (mode === '3d' && this.engine3d && threeContainer) {
       threeContainer.style.display = 'block';
+      if (archess2DContainer) archess2DContainer.style.display = 'none';
       if (this.canvas) this.canvas.style.display = 'none';
+    } else if (mode === '2d') {
+      if (threeContainer) threeContainer.style.display = 'none';
+      if (archess2DContainer) archess2DContainer.style.display = 'flex';
+      if (this.canvas) this.canvas.style.display = 'block';
     } else if (threeContainer) {
       threeContainer.style.display = 'none';
       if (this.canvas) this.canvas.style.display = 'block';
@@ -1690,16 +1750,18 @@ class ArchessArena {
       this.selectedPiece = null;
     };
 
-    this.canvas.addEventListener('pointerdown', handlePointerDown);
-    this.canvas.addEventListener('mousedown', handlePointerDown);
-    window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('mousemove', handlePointerMove);
-    window.addEventListener('pointerup', handlePointerUp);
-    window.addEventListener('mouseup', handlePointerUp);
-
-    this.canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
-    window.addEventListener('touchmove', handlePointerMove, { passive: false });
-    window.addEventListener('touchend', handlePointerUp);
+    if (window.PointerEvent) {
+      this.canvas.addEventListener('pointerdown', handlePointerDown);
+      window.addEventListener('pointermove', handlePointerMove);
+      window.addEventListener('pointerup', handlePointerUp);
+    } else {
+      this.canvas.addEventListener('mousedown', handlePointerDown);
+      window.addEventListener('mousemove', handlePointerMove);
+      window.addEventListener('mouseup', handlePointerUp);
+      this.canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
+      window.addEventListener('touchmove', handlePointerMove, { passive: false });
+      window.addEventListener('touchend', handlePointerUp);
+    }
 
     // Keyboard Gameplay Listeners (Tracker Parity)
     window.addEventListener('keydown', (e) => {
@@ -2743,25 +2805,53 @@ class ArchessArena {
       ctx.stroke();
     }
 
-    // 3. Outer Frame (Wood/Obsidian Bevel)
+    // 3. Board Grid & Squares
     if (this.renderMode === '2d') {
-      // Outer shadow
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
-      ctx.shadowBlur = 25;
-      ctx.fillStyle = pal.borderBg;
-      ctx.fillRect(originX, originY, boardSize, boardSize);
-      ctx.shadowBlur = 0;
+      // Clear stage in 2D mode
+      ctx.fillStyle = pal.borderBg || '#0f141c';
+      ctx.fillRect(0, 0, this.width, this.height);
 
-      // Outer bezel stroke
-      ctx.strokeStyle = pal.borderColor;
-      ctx.lineWidth = 2.5;
-      ctx.strokeRect(originX, originY, boardSize, boardSize);
+      // 8x8 Board Squares (Edge-to-edge, matching Classic UI)
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          const isDark = (r + c) % 2 === 1;
+          const color = isDark ? pal.darkSq : pal.lightSq;
+          const sqX = gridOriginX + c * sqSize;
+          const sqY = gridOriginY + r * sqSize;
 
-      // Inlay stringing
-      ctx.strokeStyle = pal.inlayColor;
+          ctx.fillStyle = color;
+          ctx.fillRect(sqX, sqY, sqSize, sqSize);
+        }
+      }
+
+      // Board perimeter accent line
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
       ctx.lineWidth = 1;
-      ctx.strokeRect(originX + 5, originY + 5, boardSize - 10, boardSize - 10);
-      ctx.strokeRect(gridOriginX - 3, gridOriginY - 3, gridSize + 6, gridSize + 6);
+      ctx.strokeRect(gridOriginX, gridOriginY, gridSize, gridSize);
+
+      // Alphanumeric Coordinates rendered inside edge squares (Exact Classic / React Chessboard style)
+      const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+      const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
+      const coordFontSize = Math.max(10, Math.round(sqSize * 0.16));
+      ctx.font = `700 ${coordFontSize}px Outfit, sans-serif`;
+
+      // File labels (a-h on rank 1 / row 7, bottom-right of each square)
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
+      for (let c = 0; c < 8; c++) {
+        const isDark = (7 + c) % 2 === 1;
+        ctx.fillStyle = isDark ? pal.lightSq : pal.darkSq;
+        ctx.fillText(files[c], gridOriginX + (c + 1) * sqSize - 4, gridOriginY + 8 * sqSize - 3);
+      }
+
+      // Rank labels (8-1 on file a / col 0, top-left of each square)
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      for (let r = 0; r < 8; r++) {
+        const isDark = r % 2 === 1;
+        ctx.fillStyle = isDark ? pal.lightSq : pal.darkSq;
+        ctx.fillText(ranks[r], gridOriginX + 4, gridOriginY + r * sqSize + 3);
+      }
     } else {
       // 3D Top Frame Quad
       const t1 = this.toScreen(originX, originY);
@@ -2780,24 +2870,15 @@ class ArchessArena {
       ctx.strokeStyle = pal.borderColor;
       ctx.lineWidth = 2.5;
       ctx.stroke();
-    }
 
-    // 4. 8x8 Board Squares
-    for (let r = 0; r < 8; r++) {
-      for (let c = 0; c < 8; c++) {
-        const isDark = (r + c) % 2 === 1;
-        const color = isDark ? pal.darkSq : pal.lightSq;
-        const sqX = gridOriginX + c * sqSize;
-        const sqY = gridOriginY + r * sqSize;
+      // 3D 8x8 Board Squares Projection
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          const isDark = (r + c) % 2 === 1;
+          const color = isDark ? pal.darkSq : pal.lightSq;
+          const sqX = gridOriginX + c * sqSize;
+          const sqY = gridOriginY + r * sqSize;
 
-        if (this.renderMode === '2d') {
-          ctx.fillStyle = color;
-          ctx.fillRect(sqX, sqY, sqSize, sqSize);
-          ctx.strokeStyle = pal.gridLine;
-          ctx.lineWidth = 0.8;
-          ctx.strokeRect(sqX, sqY, sqSize, sqSize);
-        } else {
-          // 3D Quad Projection
           const p1 = this.toScreen(sqX, sqY);
           const p2 = this.toScreen(sqX + sqSize, sqY);
           const p3 = this.toScreen(sqX + sqSize, sqY + sqSize);
@@ -2816,14 +2897,8 @@ class ArchessArena {
           ctx.stroke();
         }
       }
-    }
 
-    // 5. Cushion Perimeter Border
-    if (this.renderMode === '2d') {
-      ctx.strokeStyle = pal.borderColor;
-      ctx.lineWidth = 2.2;
-      ctx.strokeRect(gridOriginX, gridOriginY, gridSize, gridSize);
-    } else {
+      // 3D Cushion Perimeter Border
       const g1 = this.toScreen(gridOriginX, gridOriginY);
       const g2 = this.toScreen(gridOriginX + gridSize, gridOriginY);
       const g3 = this.toScreen(gridOriginX + gridSize, gridOriginY + gridSize);
@@ -2838,31 +2913,29 @@ class ArchessArena {
       ctx.strokeStyle = pal.borderColor;
       ctx.lineWidth = 2.2;
       ctx.stroke();
-    }
 
-    // 6. Alphanumeric Rank & File Coordinates (Standard Bottom a-h and Left 1-8 only)
-    const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-    const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
-    const coordFontSize = Math.max(10, Math.round(sqSize * (this.renderMode === '3d' ? 0.20 : 0.22)));
-    ctx.font = `700 ${coordFontSize}px Outfit, sans-serif`;
-    ctx.fillStyle = pal.coordText;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+      // 3D Alphanumeric Rank & File Coordinates (Standard Bottom a-h and Left 1-8 border)
+      const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+      const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
+      const coordFontSize = Math.max(10, Math.round(sqSize * 0.20));
+      ctx.font = `700 ${coordFontSize}px Outfit, sans-serif`;
+      ctx.fillStyle = pal.coordText;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
 
-    const borderOffset = borderSize * 0.44;
+      const borderOffset = borderSize * 0.44;
 
-    // File labels (standard bottom border only)
-    for (let c = 0; c < 8; c++) {
-      const fx = gridOriginX + c * sqSize + sqSize / 2;
-      const btmPos = this.toScreen(fx, originY + boardSize - borderOffset);
-      ctx.fillText(files[c], btmPos.x, btmPos.y);
-    }
+      for (let c = 0; c < 8; c++) {
+        const fx = gridOriginX + c * sqSize + sqSize / 2;
+        const btmPos = this.toScreen(fx, originY + boardSize - borderOffset);
+        ctx.fillText(files[c], btmPos.x, btmPos.y);
+      }
 
-    // Rank labels (standard left border only)
-    for (let r = 0; r < 8; r++) {
-      const fy = gridOriginY + r * sqSize + sqSize / 2;
-      const leftPos = this.toScreen(originX + borderOffset, fy);
-      ctx.fillText(ranks[r], leftPos.x, leftPos.y);
+      for (let r = 0; r < 8; r++) {
+        const fy = gridOriginY + r * sqSize + sqSize / 2;
+        const leftPos = this.toScreen(originX + borderOffset, fy);
+        ctx.fillText(ranks[r], leftPos.x, leftPos.y);
+      }
     }
   }
 
@@ -3034,6 +3107,43 @@ class ArchessArena {
      Authentic Staunton Vector Piece Renderer
   ------------------------------------------------------------- */
   drawStauntonPiece(ctx, type, team, radius, theme) {
+    // 2D Vector Silhouette Mode: Canonical Staunton Shapes matching React Chess Classic
+    if (this.renderMode === '2d' && STAUNTON_2D_PATHS[type]) {
+      const isWhite = team === 'white';
+      const path = new Path2D(STAUNTON_2D_PATHS[type]);
+      const pieceScale = (radius * 2.15) / 45;
+
+      ctx.save();
+
+      // Soft ambient ground shadow beneath piece
+      ctx.beginPath();
+      ctx.ellipse(0, radius * 0.72, radius * 0.78, radius * 0.26, 0, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.42)';
+      ctx.fill();
+
+      // Center and scale Staunton vector path
+      ctx.scale(pieceScale, pieceScale);
+      ctx.translate(-22.5, -22.5);
+
+      // Subtle drop shadow for piece depth
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+      ctx.shadowBlur = 6;
+      ctx.shadowOffsetY = 2;
+
+      ctx.fillStyle = isWhite ? '#ffffff' : '#1e293b';
+      ctx.fill(path);
+
+      ctx.shadowColor = 'transparent';
+      ctx.strokeStyle = isWhite ? '#0f172a' : '#d4af37';
+      ctx.lineWidth = 2.4 / pieceScale;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.stroke(path);
+
+      ctx.restore();
+      return;
+    }
+
     const isWhite = team === 'white';
     const R = radius;
 
