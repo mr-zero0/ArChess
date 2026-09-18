@@ -394,7 +394,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (arena) {
         arena.setRenderMode('2d');
         arena.setBoardTheme(currentTheme);
-        arena.initCanvasSize();
       }
       if (kbdHints) {
         kbdHints.innerHTML = '<span>Controls:</span> <span class="kbd-key">Drag</span> Slingshot <span class="kbd-key">Release</span> Launch <span style="color: var(--gold-light); font-size: 0.72rem; margin-left: 6px;">(Kinetic Combat Physics Active)</span>';
@@ -414,7 +413,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (arena) {
         arena.setRenderMode('3d');
-        arena.initCanvasSize();
       }
       if (kbdHints) {
         kbdHints.innerHTML = '<span>Controls:</span> <span class="kbd-key">Drag</span> Slingshot <span class="kbd-key">Right-Click Drag</span> Orbit Camera <span style="color: var(--gold-light); font-size: 0.72rem; margin-left: 6px;">(King: Citadel &bull; 👑 Awakens When Alone)</span>';

@@ -93,7 +93,7 @@
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      this.renderer.toneMappingExposure = 1.42;
+      this.renderer.toneMappingExposure = 1.0;
 
       this.renderer.domElement.id = 'archess3DCanvas';
       this.renderer.domElement.style.width = '100%';
@@ -164,6 +164,12 @@
       // 11. Wire Input Events
       this.setupInteractionListeners();
 
+      // 12. Apply Active Board Theme
+      try {
+        const savedTheme = localStorage.getItem('archess_board_theme') || 'midnight';
+        this.setBoardTheme(savedTheme);
+      } catch (e) {}
+
       console.log('[Archess3D] Realistic 3D WebGL Game Engine initialized successfully.');
     }
 
@@ -172,70 +178,70 @@
     ------------------------------------------------------------- */
     initMaterials() {
       // 1. Procedural Noise / Wood / Marble Textures via Canvas
-      const darkWoodTex = this.createWoodTexture('#4e3729', '#38251a', 256, 256);
-      const lightWoodTex = this.createWoodTexture('#fdf8f0', '#ebdcc9', 256, 256);
-      const frameWoodTex = this.createWoodTexture('#3a2418', '#22150e', 512, 512);
+      const darkWoodTex = this.createWoodTexture('#382518', '#22150c', 256, 256);
+      const lightWoodTex = this.createWoodTexture('#cfc1a8', '#b8a88d', 256, 256);
+      const frameWoodTex = this.createWoodTexture('#24150c', '#150c07', 512, 512);
       const marbleTex = this.createMarbleTexture(256, 256);
 
-      // 2. Board Frame (Polished Mahogany / Dark Walnut with warm gold trim)
+      // 2. Board Frame (Polished Dark Walnut / Mahogany with warm gold trim)
       this.materials.boardFrame = new THREE.MeshStandardMaterial({
-        color: 0x3a2418,
+        color: 0x24150c,
         map: frameWoodTex,
-        roughness: 0.30,
-        metalness: 0.12
+        roughness: 0.38,
+        metalness: 0.10
       });
 
       this.materials.brassTrim = new THREE.MeshStandardMaterial({
-        color: 0xf59e0b,
-        roughness: 0.18,
-        metalness: 0.95
+        color: 0xd4af37,
+        roughness: 0.28,
+        metalness: 0.85
       });
 
       this.materials.cushionRail = new THREE.MeshStandardMaterial({
-        color: 0x1e293b,
-        roughness: 0.60,
-        metalness: 0.18
+        color: 0x141c2b,
+        roughness: 0.55,
+        metalness: 0.15
       });
 
-      // 3. Board Tiles (Clear contrast between warm cream ivory and rich walnut espresso)
+      // 3. Board Tiles (Warm maple/birch cream vs rich walnut espresso - high contrast without glare)
       this.materials.tileLight = new THREE.MeshStandardMaterial({
-        color: 0xfffaf2,
+        color: 0xdcd0bb,
         map: lightWoodTex,
-        roughness: 0.28,
-        metalness: 0.04
+        roughness: 0.44,
+        metalness: 0.02
       });
 
       this.materials.tileDark = new THREE.MeshStandardMaterial({
-        color: 0x5a4436,
+        color: 0x483526,
         map: darkWoodTex,
-        roughness: 0.38,
-        metalness: 0.06
+        roughness: 0.46,
+        metalness: 0.04
       });
 
-      // 4. White Army: Luminous Alabaster Ivory & Polished Maple
+      // 4. White Army: Polished Alabaster Ivory (Clear visible contours and bevels)
       this.materials.pieceWhite = new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        roughness: 0.20,
+        color: 0xe8e2d5,
+        roughness: 0.30,
         metalness: 0.06
       });
 
       this.materials.pieceWhiteAccent = new THREE.MeshStandardMaterial({
-        color: 0xfbbf24, // Burnished imperial gold finials
-        roughness: 0.18,
-        metalness: 0.92
+        color: 0xd4af37, // Burnished imperial gold finials
+        roughness: 0.26,
+        metalness: 0.88
       });
 
-      // 5. Black Army: Polished Titanium Obsidian (Distinct form, contours & specular sheen)
+      // 5. Black Army: Polished Obsidian Onyx (Clear form, satin sheen, deep contrast)
       this.materials.pieceBlack = new THREE.MeshStandardMaterial({
-        color: 0x3b4354,
-        roughness: 0.22,
-        metalness: 0.40
+        color: 0x222a36,
+        roughness: 0.32,
+        metalness: 0.24
       });
 
       this.materials.pieceBlackAccent = new THREE.MeshStandardMaterial({
-        color: 0xf43f5e, // Radiant ruby crimson crest
-        roughness: 0.18,
-        metalness: 0.88
+        color: 0xe11d48, // Radiant ruby crimson crest
+        roughness: 0.24,
+        metalness: 0.85
       });
 
       // 6. Contact Shadows beneath pieces
@@ -257,6 +263,23 @@
         opacity: 0.7,
         depthWrite: false
       });
+    }
+
+    setBoardTheme(themeKey) {
+      const themes = {
+        midnight:   { light: 0x3a485a, dark: 0x1b232e, frame: 0x0f141c, trim: 0xd4af37 },
+        woodland:   { light: 0xdcd0bb, dark: 0x483526, frame: 0x24150c, trim: 0xc68a4c },
+        ivory:      { light: 0xd4dae2, dark: 0x455268, frame: 0x1a1e26, trim: 0x98a6bd },
+        emerald:    { light: 0xd4cba9, dark: 0x235235, frame: 0x0f2617, trim: 0x73b088 },
+        cyberpunk:  { light: 0x2a144e, dark: 0x120826, frame: 0x070212, trim: 0x00f3ff },
+        bloodstone: { light: 0x3d2028, dark: 0x4a0e19, frame: 0x180307, trim: 0xe84158 },
+        oceanic:    { light: 0x5a85a4, dark: 0x163450, frame: 0x091726, trim: 0x38d9a9 }
+      };
+      const t = themes[themeKey] || themes.midnight;
+      if (this.materials.tileLight) this.materials.tileLight.color.setHex(t.light);
+      if (this.materials.tileDark) this.materials.tileDark.color.setHex(t.dark);
+      if (this.materials.boardFrame) this.materials.boardFrame.color.setHex(t.frame);
+      if (this.materials.brassTrim) this.materials.brassTrim.color.setHex(t.trim);
     }
 
     createWoodTexture(col1, col2, w, h) {
@@ -304,13 +327,13 @@
        Studio Lighting (Key Light, Fill Light, Rear Rim Light, Spotlight)
     ------------------------------------------------------------- */
     setupLights() {
-      // 1. Luminous Ambient Light (Illuminates shadow crevices across the entire board)
-      const ambientLight = new THREE.AmbientLight(0xfffbf0, 1.40);
+      // 1. Soft Warm Ambient Light (Illuminates shadow crevices with natural contrast)
+      const ambientLight = new THREE.AmbientLight(0xfff8ed, 0.42);
       this.scene.add(ambientLight);
       this.lights.ambient = ambientLight;
 
-      // 2. Main Key Directional Light (Warm sunlight, casts crisp soft shadows)
-      const keyLight = new THREE.DirectionalLight(0xfffaeb, 1.85);
+      // 2. Main Key Directional Light (Warm sunlight, crisp realistic soft shadows)
+      const keyLight = new THREE.DirectionalLight(0xfffaed, 1.05);
       keyLight.position.set(18, 34, 22);
       keyLight.castShadow = true;
       keyLight.shadow.mapSize.width = 2048;
@@ -327,26 +350,26 @@
       this.scene.add(keyLight);
       this.lights.key = keyLight;
 
-      // 3. Cool Accent Fill Light (Prevents flat shadows on opposite flank)
-      const fillLight = new THREE.DirectionalLight(0xe2e8f0, 1.30);
+      // 3. Cool Accent Fill Light (Softens opposite flank without overexposure)
+      const fillLight = new THREE.DirectionalLight(0xdbe4ee, 0.40);
       fillLight.position.set(-20, 18, -16);
       this.scene.add(fillLight);
       this.lights.fill = fillLight;
 
-      // 4. Dedicated Rear Rim Light (Crucial: Highlights Black Army silhouettes, crowns & bevels)
-      const rimLight = new THREE.DirectionalLight(0xdbeafe, 1.85);
+      // 4. Rear Rim Light (Gives crisp rim definition to piece silhouettes & crowns)
+      const rimLight = new THREE.DirectionalLight(0xbfdbfe, 0.55);
       rimLight.position.set(0, 26, -26);
       this.scene.add(rimLight);
       this.lights.rim = rimLight;
 
-      // 5. Warm Front Fill Light (Enhances White Army specular depth)
-      const frontFill = new THREE.DirectionalLight(0xfff3e0, 0.95);
+      // 5. Warm Front Fill Light (Gentle frontal specular depth)
+      const frontFill = new THREE.DirectionalLight(0xfef3c7, 0.30);
       frontFill.position.set(0, 14, 26);
       this.scene.add(frontFill);
       this.lights.front = frontFill;
 
-      // 6. Broad Center Spotlight (Even, dramatic illumination across active 64 tiles)
-      const spotLight = new THREE.SpotLight(0xfff7ed, 1.6, 70, Math.PI / 3.0, 0.5, 1.0);
+      // 6. Broad Center Spotlight (Subtle focus on active 64 tiles)
+      const spotLight = new THREE.SpotLight(0xfffbeb, 0.55, 60, Math.PI / 3.2, 0.4, 1.0);
       spotLight.position.set(0, 32, 0);
       spotLight.target.position.set(0, 0, 0);
       this.scene.add(spotLight);

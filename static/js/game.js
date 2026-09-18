@@ -593,7 +593,12 @@ class ArchessArena {
     window.archessGame = this;
 
     // Mode States
-    this.renderMode = '3d'; // '2d' or '3d'
+    let initialMode = '3d';
+    try {
+      const savedView = localStorage.getItem('archess_view_mode');
+      if (savedView === '2d' || savedView === '2d-arena') initialMode = '2d';
+    } catch (e) {}
+    this.renderMode = initialMode;
     this.boardTheme = localStorage.getItem('archess_board_theme') || 'midnight';
     this.pieceTheme = localStorage.getItem('archess_piece_theme') || 'classic';
     this.gameMode = 'bot'; // 'bot' (vs AI) or 'pvp' (local pass & play)
@@ -696,8 +701,9 @@ class ArchessArena {
     this.addCommentary('Vanguard units mobilized on tactical grid. Engagement initiated.', 'info', '⚔️');
   }
 
-  initCanvasSize() {
+  initCanvasSize(passedOldLayout = null) {
     if (!this.canvas) return;
+    const oldLayout = passedOldLayout || this.currentLayout || ((this.width && this.height) ? this.getBoardLayout() : null);
     const parent = this.canvas.parentElement;
     let pw = 0;
     let ph = 0;
@@ -749,8 +755,6 @@ class ArchessArena {
       ph = squareSize;
     }
 
-    const oldLayout = (this.width && this.height) ? this.getBoardLayout() : null;
-
     this.width = Math.round(pw);
     this.height = Math.round(ph);
     this.dpr = window.devicePixelRatio || 1;
@@ -765,12 +769,19 @@ class ArchessArena {
     }
     this.ctx.scale(this.dpr, this.dpr);
 
+    const newLayout = this.getBoardLayout();
+
     // Proportional coordinate scaling without resetting active game
-    if (oldLayout && oldLayout.gridSize > 0 && this.pieces && this.pieces.length > 0) {
-      const newLayout = this.getBoardLayout();
-      if (newLayout && newLayout.gridSize > 0) {
-        const scaleRatio = newLayout.gridSize / oldLayout.gridSize;
-        this.pieces.forEach(p => {
+    if (newLayout && newLayout.gridSize > 0 && this.pieces && this.pieces.length > 0) {
+      const scaleRatio = (oldLayout && oldLayout.gridSize > 0) ? (newLayout.gridSize / oldLayout.gridSize) : 1;
+      this.pieces.forEach(p => {
+        if (!p.hasMoved && p.col !== undefined && p.row !== undefined && (!p.vx || p.vx === 0) && (!p.vy || p.vy === 0)) {
+          // Stationary piece: lock exactly to square center
+          p.x = newLayout.gridOriginX + p.col * newLayout.sqSize + newLayout.sqSize / 2;
+          p.y = newLayout.gridOriginY + p.row * newLayout.sqSize + newLayout.sqSize / 2;
+          p.originX = p.x;
+          p.originY = p.y;
+        } else if (oldLayout && oldLayout.gridSize > 0) {
           const relX = (p.x - oldLayout.gridOriginX) / oldLayout.gridSize;
           const relY = (p.y - oldLayout.gridOriginY) / oldLayout.gridSize;
           p.x = newLayout.gridOriginX + relX * newLayout.gridSize;
@@ -780,15 +791,19 @@ class ArchessArena {
           const origRelY = (p.originY - oldLayout.gridOriginY) / oldLayout.gridSize;
           p.originX = newLayout.gridOriginX + origRelX * newLayout.gridSize;
           p.originY = newLayout.gridOriginY + origRelY * newLayout.gridSize;
+        }
 
-          p.radius = Math.max(8, Math.round(p.radius * scaleRatio));
-          if (p.wallHalf) p.wallHalf = Math.round(p.wallHalf * scaleRatio);
-          if (p.wallRadius) p.wallRadius = Math.round(p.wallRadius * scaleRatio);
-        });
-      }
+        const radiusMulti = (p.type === 'queen' || p.type === 'king') ? 0.40 : p.type === 'rook' ? 0.37 : p.type === 'knight' ? 0.36 : p.type === 'bishop' ? 0.35 : 0.32;
+        p.radius = Math.max(8, Math.round(newLayout.sqSize * radiusMulti));
+        if (p.wallHalf !== undefined) p.wallHalf = p.type === 'king' ? Math.round(newLayout.sqSize * 0.47) : 0;
+        if (p.wallRadius !== undefined) p.wallRadius = p.type === 'king' ? Math.round(newLayout.sqSize * 0.47) : 0;
+      });
     }
+    this.currentLayout = newLayout;
+
     if (this.engine3d) {
       this.engine3d.resize(this.width, this.height);
+      this.engine3d.syncPieces();
     }
   }
 
@@ -913,6 +928,7 @@ class ArchessArena {
     this.pieces = [];
     this.capturedPieces = { white: [], black: [] };
     const layout = this.getBoardLayout();
+    this.currentLayout = layout;
     const sqSize = layout.sqSize;
 
     const backRankOrder = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook'];
@@ -941,6 +957,9 @@ class ArchessArena {
         id: id,
         team: team,
         type: type,
+        col: col,
+        row: row,
+        hasMoved: false,
         x: x,
         y: y,
         originX: x,
@@ -991,6 +1010,8 @@ class ArchessArena {
   }
 
   setRenderMode(mode) {
+    if (this.renderMode === mode) return;
+    const oldLayout = this.currentLayout || this.getBoardLayout();
     this.renderMode = mode;
     const threeContainer = document.getElementById('threeCanvasContainer');
     const archess2DContainer = document.getElementById('archess2DContainer');
@@ -1006,13 +1027,16 @@ class ArchessArena {
       threeContainer.style.display = 'none';
       if (this.canvas) this.canvas.style.display = 'block';
     }
-    this.initCanvasSize();
+    this.initCanvasSize(oldLayout);
     this.logTelemetry('MODE_CHANGE', `Renderer set to ${mode.toUpperCase()} view.`);
   }
 
   setBoardTheme(theme) {
     this.boardTheme = theme;
     localStorage.setItem('archess_board_theme', theme);
+    if (this.engine3d && typeof this.engine3d.setBoardTheme === 'function') {
+      this.engine3d.setBoardTheme(theme);
+    }
     this.logTelemetry('THEME_CHANGE', `Board palette updated to ${theme.toUpperCase()}.`);
   }
 
@@ -1898,6 +1922,7 @@ class ArchessArena {
       piece.vy = (piece.vy / speed) * maxSpeed;
     }
     piece.inMotion = true;
+    piece.hasMoved = true;
 
     this.spawnLaunchSparks(piece.x, piece.y, angle);
     this.spawnShockwave(piece.x, piece.y, piece.team === 'white' ? '#ffd700' : '#ff4757', 36, 2.5);
@@ -2102,6 +2127,7 @@ class ArchessArena {
         const speed = Math.hypot(p.vx, p.vy);
         if (speed > 0.15) {
           anyInMotion = true;
+          p.hasMoved = true;
           p.x += p.vx;
           p.y += p.vy;
 
