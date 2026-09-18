@@ -46,6 +46,8 @@ STATIC_DIR = os.path.join(BASE_DIR, "static")
 
 logger, run_dir = setup_logging("ArChess")
 
+SERVER_START_TIME = time.time()
+
 app = Flask(
     __name__,
     template_folder=TEMPLATES_DIR,
@@ -57,14 +59,29 @@ if not _configured_secret:
     _configured_secret = secrets.token_hex(32)
     logger.warning('{"event":"security_warning", "message":"SECRET_KEY not set — using ephemeral random key. Sessions will not persist across restarts. Set SECRET_KEY env var for production."}')
 app.secret_key = _configured_secret
-app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+
+def configure_production_settings(application=app):
+    """Configure security flags, cookie policies, and cache headers based on environment."""
+    is_prod = os.environ.get("FLASK_ENV") == "production" or os.environ.get("PRODUCTION") in ("1", "true")
+    application.config['SESSION_COOKIE_HTTPONLY'] = True
+    application.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    if is_prod or os.environ.get("SESSION_COOKIE_SECURE") in ("1", "true"):
+        application.config['SESSION_COOKIE_SECURE'] = True
+    if is_prod:
+        application.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000
+    else:
+        application.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+
+configure_production_settings(app)
+
 CORS(app, supports_credentials=True)
 sock = Sock(app)
+
 
 # Initialize database schema and seeds
 init_db()
 
-# Request correlation and logging middleware
+# Request correlation, security headers, and logging middleware
 @app.before_request
 def before_request_logging():
     request.start_time = time.time()
@@ -77,9 +94,26 @@ def before_request_logging():
 def after_request_logging(response):
     response.headers["X-Request-ID"] = getattr(request, "req_id", "")
     response.headers["X-Correlation-ID"] = getattr(request, "corr_id", "")
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
+    
+    # Production Security Headers
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    
+    # HSTS when served over HTTPS / TLS reverse proxy
+    if request.is_secure or request.headers.get("X-Forwarded-Proto") == "https":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    
+    # Differentiate static asset vs dynamic API caching
+    if request.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        response.headers.pop("Pragma", None)
+        response.headers.pop("Expires", None)
+    else:
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        
     latency_ms = round((time.time() - getattr(request, "start_time", time.time())) * 1000, 2)
     
     # Don't flood logs with high-frequency polling/static file hits
@@ -155,12 +189,30 @@ def serve_service_worker():
 # -------------------------------------------------------------
 @app.route("/api/health", methods=["GET"])
 def health_check():
+    """Liveness & readiness probe for load balancers, orchestrators, and monitoring."""
+    db_ok = False
+    db_err = None
+    try:
+        from backend.database import get_connection
+        conn = get_connection()
+        row = conn.execute("SELECT 1").fetchone()
+        conn.close()
+        if row and row[0] == 1:
+            db_ok = True
+    except Exception as e:
+        db_err = str(e)
+
+    uptime_sec = round(time.time() - SERVER_START_TIME, 2)
+    status_code = 200 if db_ok else 503
     return jsonify({
-        "status": "healthy",
+        "status": "healthy" if db_ok else "unhealthy",
         "service": "ArChess Authoritative Backend",
         "version": "2.0.0",
-        "active_run": run_dir.replace(os.sep, "/")
-    })
+        "database": "connected" if db_ok else f"disconnected: {db_err}",
+        "uptime_seconds": uptime_sec,
+        "active_run": run_dir.replace(os.sep, "/") if run_dir else "",
+        "timestamp": time.time()
+    }), status_code
 
 # -------------------------------------------------------------
 # API Endpoints: Authentication & Account Management

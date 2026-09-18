@@ -1969,4 +1969,114 @@ def test_unauthenticated_match_rate_limiting(client):
         assert "Rate limit exceeded" in res.json["error"]
 
 
+class TestProductionReadiness:
+    """Comprehensive tests for production features: health check, security headers, caching, backups, and config."""
+
+    def test_health_check_healthy(self, client):
+        res = client.get("/api/health")
+        assert res.status_code == 200
+        data = res.get_json()
+        assert data["status"] == "healthy"
+        assert data["database"] == "connected"
+        assert data["version"] == "2.0.0"
+        assert "uptime_seconds" in data
+        assert data["uptime_seconds"] >= 0
+
+    def test_health_check_db_failure(self, client):
+        with patch("backend.database.get_connection", side_effect=sqlite3.OperationalError("Disk I/O failure")):
+            res = client.get("/api/health")
+            assert res.status_code == 503
+            data = res.get_json()
+            assert data["status"] == "unhealthy"
+            assert "disconnected" in data["database"]
+
+    def test_production_security_headers_and_caching(self, client):
+        # 1. API endpoint gets strict security headers and no-store caching
+        api_res = client.get("/api/leaderboard")
+        assert api_res.headers.get("X-Content-Type-Options") == "nosniff"
+        assert api_res.headers.get("X-Frame-Options") == "SAMEORIGIN"
+        assert api_res.headers.get("Referrer-Policy") == "strict-origin-when-cross-origin"
+        assert "no-store" in api_res.headers.get("Cache-Control", "")
+
+        # 2. HSTS header present when forwarded over HTTPS
+        https_res = client.get("/api/health", headers={"X-Forwarded-Proto": "https"})
+        assert "max-age=31536000" in https_res.headers.get("Strict-Transport-Security", "")
+
+        # 3. Static asset gets long-lived immutable cache header
+        static_res = client.get("/static/css/style.css")
+        assert "public" in static_res.headers.get("Cache-Control", "")
+        assert "max-age=31536000" in static_res.headers.get("Cache-Control", "")
+
+    def test_database_custom_path_and_env(self, tmp_path):
+        custom_db = str(tmp_path / "custom_test.db")
+        conn = get_connection(custom_path=custom_db)
+        try:
+            conn.execute("CREATE TABLE test_tbl (id INT);")
+            conn.commit()
+            row = conn.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchone()
+            assert row[0] == "test_tbl"
+        finally:
+            conn.close()
+
+    def test_backup_utility_and_rotation(self, tmp_path):
+        from backend.backup import perform_backup
+        backup_dir = str(tmp_path / "backups")
+
+        # 1. Test default backup directory
+        res_default = perform_backup(retention_count=20)
+        assert res_default["status"] == "success"
+        assert os.path.exists(res_default["backup_path"])
+
+        # 2. Test rotation in custom directory
+        res1 = perform_backup(backup_dir=backup_dir, retention_count=2)
+        assert res1["status"] == "success"
+        assert os.path.exists(res1["backup_path"])
+        assert res1["size_bytes"] > 0
+
+        time.sleep(0.01)
+        res2 = perform_backup(backup_dir=backup_dir, retention_count=2)
+        assert res2["status"] == "success"
+
+        time.sleep(0.01)
+        res3 = perform_backup(backup_dir=backup_dir, retention_count=2)
+        assert res3["status"] == "success"
+        assert res3["total_backups_retained"] == 2
+
+        # 3. Test exception handling during old backup removal
+        with patch("os.remove", side_effect=OSError("Permission denied")):
+            res4 = perform_backup(backup_dir=backup_dir, retention_count=1)
+            assert res4["status"] == "success"
+
+        # Verify retention policy kept 2 backups
+        backups = [f for f in os.listdir(backup_dir) if f.endswith(".db")]
+        assert len(backups) >= 2
+
+    def test_configure_production_settings_branches(self):
+        from backend.app import configure_production_settings
+        mock_app = MagicMock()
+        mock_app.config = {}
+
+        # 1. Test production mode
+        with patch.dict(os.environ, {"PRODUCTION": "1", "SESSION_COOKIE_SECURE": "1"}):
+            configure_production_settings(mock_app)
+            assert mock_app.config["SESSION_COOKIE_SECURE"] is True
+            assert mock_app.config["SEND_FILE_MAX_AGE_DEFAULT"] == 31536000
+
+        # 2. Test development / non-production mode
+        with patch.dict(os.environ, {"PRODUCTION": "0", "FLASK_ENV": "development", "SESSION_COOKIE_SECURE": "0"}):
+            mock_app.config = {}
+            configure_production_settings(mock_app)
+            assert "SESSION_COOKIE_SECURE" not in mock_app.config
+            assert mock_app.config["SEND_FILE_MAX_AGE_DEFAULT"] == 0
+
+    def test_backup_cli_main(self):
+        import runpy
+        with patch("backend.backup.perform_backup", return_value={"backup_filename": "test.db", "size_bytes": 1024}):
+            res = runpy.run_module("backend.backup", run_name="__main__")
+            assert "main" in res
+
+
+
+
+
 

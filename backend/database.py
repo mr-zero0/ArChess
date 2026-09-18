@@ -13,12 +13,14 @@ from werkzeug.security import generate_password_hash, check_password_hash
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 os.makedirs(DATA_DIR, exist_ok=True)
-DB_PATH = os.path.join(DATA_DIR, "archess.db")
+DB_PATH = os.environ.get("ARCHESS_DB_PATH", os.path.join(DATA_DIR, "archess.db"))
+os.makedirs(os.path.dirname(os.path.abspath(DB_PATH)), exist_ok=True)
 
 # Thread-safe connection factory with extended busy timeout for concurrent Flask requests
-def get_connection():
+def get_connection(custom_path=None):
     """Create a new SQLite connection with WAL mode and extended busy timeout for concurrency."""
-    conn = sqlite3.connect(DB_PATH, timeout=30.0, check_same_thread=False)
+    target_path = custom_path or os.environ.get("ARCHESS_DB_PATH", DB_PATH)
+    conn = sqlite3.connect(target_path, timeout=30.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA foreign_keys = ON;")
