@@ -236,8 +236,32 @@ def api_register():
         return jsonify({"success": True, "user": result}), 201
     return jsonify({"success": False, "error": result}), 400
 
+# Rate limiting for authentication attempts (15 attempts/minute per IP)
+_login_rate_limiter = {}
+_login_rate_limit_lock = threading.Lock()
+LOGIN_ATTEMPTS_LIMIT_PER_MINUTE = 15
+
+def _is_login_rate_limited(ip: str) -> bool:
+    if app.config.get("TESTING") and not getattr(app, "_force_login_rate_limit_test", False):
+        return False
+    now = time.time()
+    cutoff = now - 60.0
+    with _login_rate_limit_lock:
+        timestamps = _login_rate_limiter.get(ip, [])
+        valid_ts = [t for t in timestamps if t > cutoff]
+        if len(valid_ts) >= LOGIN_ATTEMPTS_LIMIT_PER_MINUTE:
+            _login_rate_limiter[ip] = valid_ts
+            return True
+        valid_ts.append(now)
+        _login_rate_limiter[ip] = valid_ts
+        return False
+
 @app.route("/api/auth/login", methods=["POST"])
 def api_login():
+    client_ip = request.remote_addr or "127.0.0.1"
+    if _is_login_rate_limited(client_ip):
+        return jsonify({"success": False, "error": "Too many login attempts. Please wait 1 minute."}), 429
+
     data = request.get_json(silent=True) or {}
     if not isinstance(data, dict):
         return jsonify({"success": False, "error": "Invalid JSON payload."}), 400
@@ -253,6 +277,7 @@ def api_login():
         session["user_id"] = result["id"]
         return jsonify({"success": True, "user": result}), 200
     return jsonify({"success": False, "error": result}), 401
+
 
 @app.route("/api/auth/me", methods=["GET"])
 def api_me():

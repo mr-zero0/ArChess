@@ -2075,6 +2075,36 @@ class TestProductionReadiness:
             res = runpy.run_module("backend.backup", run_name="__main__")
             assert "main" in res
 
+    def test_login_rate_limiting(self, client):
+        from backend.app import _is_login_rate_limited, _login_rate_limiter, LOGIN_ATTEMPTS_LIMIT_PER_MINUTE
+        test_ip = "203.0.113.42"
+        try:
+            app.config["TESTING"] = False
+            assert _is_login_rate_limited(test_ip) is False
+
+            # Fill up limiter
+            _login_rate_limiter[test_ip] = [time.time()] * LOGIN_ATTEMPTS_LIMIT_PER_MINUTE
+            assert _is_login_rate_limited(test_ip) is True
+
+            # Trigger 429 response via client
+            with patch("backend.app._is_login_rate_limited", return_value=True):
+                res = client.post("/api/auth/login", json={"username": "user", "password": "pwd"})
+                assert res.status_code == 429
+                assert "Too many login attempts" in res.json["error"]
+        finally:
+            app.config["TESTING"] = True
+            _login_rate_limiter.pop(test_ip, None)
+
+    def test_oversized_websocket_message(self):
+        from backend.multiplayer import CombatRoom
+        room = CombatRoom("ARC-SEC-01", "Admin")
+        mock_ws = MagicMock()
+        huge_payload = "x" * 70000
+        # Should cleanly return without crashing or processing
+        room.handle_message(mock_ws, "white", huge_payload)
+        room.handle_message(mock_ws, "white", "")
+
+
 
 
 

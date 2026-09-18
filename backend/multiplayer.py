@@ -8,16 +8,19 @@ import time
 import json
 import random
 import string
+import secrets
 import threading
 from typing import Dict, List, Optional, Any
+
 
 
 def generate_room_id(length: int = 6) -> str:
     """Generate a clean 6-character room identifier, e.g. ARC-729."""
     chars = string.ascii_uppercase + string.digits
     chars = chars.replace('O', '').replace('0', '').replace('I', '').replace('1', '')
-    suffix = ''.join(random.choices(chars, k=3)) + '-' + ''.join(random.choices(chars, k=3))
+    suffix = ''.join(secrets.choice(chars) for _ in range(3)) + '-' + ''.join(secrets.choice(chars) for _ in range(3))
     return f"ARC-{suffix}"
+
 
 
 class CombatRoom:
@@ -125,10 +128,13 @@ class CombatRoom:
 
     def handle_message(self, ws: Any, role: str, raw_data: str) -> None:
         self.last_activity = time.time()
+        if not raw_data or len(raw_data) > 65536:
+            return
         try:
             msg = json.loads(raw_data)
         except Exception:
             return
+
 
         mtype = msg.get("type")
 
