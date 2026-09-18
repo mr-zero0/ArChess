@@ -8,6 +8,9 @@ import os
 import uuid
 import time
 import json
+import secrets
+import hashlib
+import threading
 from flask import Flask, request, jsonify, session, render_template, send_from_directory, Response
 from flask_cors import CORS
 from flask_sock import Sock
@@ -49,7 +52,11 @@ app = Flask(
     static_folder=STATIC_DIR,
     static_url_path="/static"
 )
-app.secret_key = os.environ.get("SECRET_KEY", "archess_tactical_secret_key_2026_x9")
+_configured_secret = os.environ.get("SECRET_KEY")
+if not _configured_secret:
+    _configured_secret = secrets.token_hex(32)
+    logger.warning('{"event":"security_warning", "message":"SECRET_KEY not set — using ephemeral random key. Sessions will not persist across restarts. Set SECRET_KEY env var for production."}')
+app.secret_key = _configured_secret
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 CORS(app, supports_credentials=True)
 sock = Sock(app)
@@ -299,7 +306,7 @@ def api_google_auth():
 
     if not google_id:
         if email:
-            google_id = f"g_{abs(hash(email))}"
+            google_id = f"g_{hashlib.sha256(email.encode('utf-8')).hexdigest()[:16]}"
         else:
             return jsonify({"success": False, "error": "Google authentication failed: missing credentials or email."}), 400
 
@@ -336,6 +343,27 @@ def api_user_stats(username):
     return jsonify({"success": True, **stats_data}), 200
 
 
+# Rate limiting state for unauthenticated match recording (60 requests/min per IP)
+_unauth_match_rate_limiter = {}
+_unauth_rate_limit_lock = threading.Lock()
+UNAUTH_MATCH_LIMIT_PER_MINUTE = 60
+
+def _is_unauth_rate_limited(ip: str) -> bool:
+    if app.config.get("TESTING"):
+        return False
+    now = time.time()
+    with _unauth_rate_limit_lock:
+        timestamps = _unauth_match_rate_limiter.get(ip, [])
+        cutoff = now - 60
+        timestamps = [t for t in timestamps if t > cutoff]
+        if len(timestamps) >= UNAUTH_MATCH_LIMIT_PER_MINUTE:
+            _unauth_match_rate_limiter[ip] = timestamps
+            return True
+        timestamps.append(now)
+        _unauth_match_rate_limiter[ip] = timestamps
+        return False
+
+
 # -------------------------------------------------------------
 # API Endpoints: Match Settlement
 # -------------------------------------------------------------
@@ -360,16 +388,24 @@ def api_record_match():
     except (ValueError, TypeError):
         return jsonify({"success": False, "error": "Damage, turns, and duration must be non-negative integers."}), 400
 
-    # Authorization check: prevent unauthorized tampering with third-party registered ratings
+    # Rate limiting & authorization check
+    guest_white_names = {"Player1", "Guest", "Local"}
+    guest_black_names = {"Player2", "ArChess Bot", "Bot", "Local"}
+    is_guest_match = (white in guest_white_names or black in guest_black_names)
+
     user_id = session.get("user_id")
     if user_id:
         current_user = get_user_by_id(user_id)
         if current_user:
             logged_username = current_user["username"]
             is_participant = (logged_username in (white, black))
-            is_guest_match = (white in ("Player1", "Guest", "Local") or black in ("Player2", "ArChess Bot", "Bot", "Local"))
             if not is_participant and not is_guest_match:
                 return jsonify({"success": False, "error": "Unauthorized: Cannot record match results on behalf of other players."}), 403
+    else:
+        # Rate limit unauthenticated submissions to prevent automated leaderboard manipulation
+        client_ip = request.remote_addr or "unknown"
+        if _is_unauth_rate_limited(client_ip):
+            return jsonify({"success": False, "error": "Rate limit exceeded. Please log in or wait before recording more matches."}), 429
 
     settlement = record_match_result(white, black, winner, white_dmg, black_dmg, turns, duration)
 

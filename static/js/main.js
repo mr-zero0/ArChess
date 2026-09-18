@@ -27,14 +27,31 @@ window.ArchessToast = {
 
     const displayTitle = title || (type === 'success' ? 'SUCCESS' : (type === 'error' ? 'ALERT' : 'INTEL'));
 
-    toast.innerHTML = `
-      <div class="toast-icon-wrap">${iconChar}</div>
-      <div class="toast-content-col">
-        <div class="toast-title-text">${displayTitle}</div>
-        <div class="toast-message-body">${message}</div>
-      </div>
-      <div class="toast-progress-drain"></div>
-    `;
+    // Build toast using safe DOM APIs to prevent XSS from user-controlled strings
+    const iconWrap = document.createElement('div');
+    iconWrap.className = 'toast-icon-wrap';
+    iconWrap.textContent = iconChar;
+
+    const contentCol = document.createElement('div');
+    contentCol.className = 'toast-content-col';
+
+    const titleEl = document.createElement('div');
+    titleEl.className = 'toast-title-text';
+    titleEl.textContent = displayTitle;
+
+    const bodyEl = document.createElement('div');
+    bodyEl.className = 'toast-message-body';
+    bodyEl.textContent = message;
+
+    contentCol.appendChild(titleEl);
+    contentCol.appendChild(bodyEl);
+
+    const progressDrain = document.createElement('div');
+    progressDrain.className = 'toast-progress-drain';
+
+    toast.appendChild(iconWrap);
+    toast.appendChild(contentCol);
+    toast.appendChild(progressDrain);
 
     container.appendChild(toast);
 

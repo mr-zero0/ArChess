@@ -4,9 +4,12 @@ Manages milestone badges, career progression, unlock conditions,
 and live combat recognition.
 """
 
+import logging
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 from backend.database import get_connection
+
+logger = logging.getLogger("ArChess")
 
 ACHIEVEMENT_CATALOG: Dict[str, Dict[str, Any]] = {
     "first_strike": {
@@ -86,8 +89,8 @@ def init_achievements_schema():
         """)
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_user_achievements ON user_achievements (username);")
         conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Failed to initialize achievements schema: {e}")
     finally:
         if conn:
             conn.close()
@@ -128,7 +131,8 @@ def unlock_achievement(username: str, achievement_id: str) -> bool:
         fresh = cursor.rowcount > 0
         conn.commit()
         return fresh
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Failed to unlock achievement {achievement_id} for user {clean_user}: {e}")
         return False
     finally:
         if conn:
@@ -174,8 +178,8 @@ def get_user_achievements(username: str) -> List[Dict[str, Any]]:
         urow = cursor.fetchone()
         if urow:
             total_wins = urow["wins"]
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Failed to fetch achievements for user {clean_user}: {e}")
     finally:
         if conn:
             conn.close()

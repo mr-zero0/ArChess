@@ -15,11 +15,14 @@ DATA_DIR = os.path.join(BASE_DIR, "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 DB_PATH = os.path.join(DATA_DIR, "archess.db")
 
+# Thread-safe connection factory with extended busy timeout for concurrent Flask requests
 def get_connection():
-    conn = sqlite3.connect(DB_PATH, timeout=20.0)
+    """Create a new SQLite connection with WAL mode and extended busy timeout for concurrency."""
+    conn = sqlite3.connect(DB_PATH, timeout=30.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA foreign_keys = ON;")
+    conn.execute("PRAGMA busy_timeout = 30000;")
     return conn
 
 def init_db():

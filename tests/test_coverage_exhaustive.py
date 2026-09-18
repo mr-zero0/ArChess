@@ -1939,3 +1939,34 @@ def test_app_account_and_matchmaking_routes_exhaustive(client):
     assert "active_searching" in stats_res.json["stats"]
 
 
+def test_unauthenticated_match_rate_limiting(client):
+    """Test rate limiting logic for unauthenticated match recording."""
+    from backend.app import _is_unauth_rate_limited, _unauth_match_rate_limiter, UNAUTH_MATCH_LIMIT_PER_MINUTE
+
+    # 1. Test _is_unauth_rate_limited directly with TESTING=False
+    app.config["TESTING"] = False
+    test_ip = "192.168.1.100"
+    try:
+        # First call within limit
+        assert _is_unauth_rate_limited(test_ip) is False
+        # Fill up the limiter with old & new timestamps
+        _unauth_match_rate_limiter[test_ip] = [time.time() - 100] + [time.time()] * UNAUTH_MATCH_LIMIT_PER_MINUTE
+        # Should now be rate limited
+        assert _is_unauth_rate_limited(test_ip) is True
+    finally:
+        app.config["TESTING"] = True
+        _unauth_match_rate_limiter.pop(test_ip, None)
+
+    # 2. Test 429 response when rate limited on API endpoint
+    with patch("backend.app._is_unauth_rate_limited", return_value=True):
+        res = client.post("/api/matches/record", json={
+            "white_username": "Guest1",
+            "black_username": "Guest2",
+            "winner": "white"
+        })
+        assert res.status_code == 429
+        assert res.json["success"] is False
+        assert "Rate limit exceeded" in res.json["error"]
+
+
+

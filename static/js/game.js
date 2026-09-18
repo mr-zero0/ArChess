@@ -563,6 +563,27 @@ const STAUNTON_2D_PATHS = {
   king: "M 22.5 6 L 22.5 11 M 20 8.5 L 25 8.5 M 22.5 11 C 18 11 15 14 15 18 C 15 22 17 25 19 27 L 26 27 C 28 25 30 22 30 18 C 30 14 27 11 22.5 11 z M 13 29 L 32 29 L 32 33 L 13 33 z"
 };
 
+// Named physics configuration for readability and tuning
+const PHYSICS_CONFIG = {
+  FRICTION: 0.982,
+  ELASTICITY: 0.72,
+  MAX_PULL_DISTANCE: 150,
+  LAUNCH_IMPULSE: 0.15,
+  MAX_SPEED: 13,
+  MIN_MOTION_THRESHOLD: 0.15,
+  BASTION_AURA_RANGE: 85,
+  KNIGHT_SHOCKWAVE_RANGE: 95,
+  KNIGHT_SHOCKWAVE_IMPULSE: 3.5,
+  QUEEN_SUPERNOVA_THRESHOLD: 5.5,
+  QUEEN_SUPERNOVA_BONUS_DAMAGE: 35,
+  ROOK_SIEGE_MULTIPLIER: 2.5,
+  WALL_DAMAGE_MULTIPLIER: 4.2,
+  WALL_RECOIL_RATIO: 0.12,
+  BASTION_DAMAGE_REDUCTION: 0.65,
+  PHYSICS_HZ: 60,
+  MAX_SUBSTEPS: 5
+};
+
 class ArchessArena {
   constructor(canvasId) {
     this.canvas = document.getElementById(canvasId);
@@ -587,10 +608,10 @@ class ArchessArena {
     this.botThinking = false;
     this.botTimeout = null;
 
-    // Physics constants (Calibrated for weighty rolling resistance with responsive slingshot momentum)
-    this.friction = 0.982;
-    this.elasticity = 0.72;
-    this.maxPullDistance = 150;
+    // Physics constants (from named configuration)
+    this.friction = PHYSICS_CONFIG.FRICTION;
+    this.elasticity = PHYSICS_CONFIG.ELASTICITY;
+    this.maxPullDistance = PHYSICS_CONFIG.MAX_PULL_DISTANCE;
 
     // Game state
     this.pieces = [];
@@ -651,7 +672,24 @@ class ArchessArena {
     this.init32Pieces();
     this.setupListeners();
     this.lastTime = performance.now();
-    requestAnimationFrame(this.loop.bind(this));
+    this._rAFId = requestAnimationFrame(this.loop.bind(this));
+    this._boundLoop = this.loop.bind(this);
+    this._paused = false;
+
+    // Pause/Resume game loop on page visibility change to save GPU
+    this._visibilityHandler = () => {
+      if (document.hidden) {
+        this._paused = true;
+        if (this._rAFId) { cancelAnimationFrame(this._rAFId); this._rAFId = null; }
+      } else {
+        if (this._paused) {
+          this._paused = false;
+          this.lastTime = performance.now();
+          this._rAFId = requestAnimationFrame(this._boundLoop);
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', this._visibilityHandler);
 
     this.logTelemetry('SYSTEM', 'ArChess 32-Piece Physics Engine initialized. Board Mode: 3D Realistic WebGL.');
     this.logTelemetry('TURN_START', `Turn active: ${this.currentTurn.toUpperCase()} army ready.`);
@@ -1345,15 +1383,35 @@ class ArchessArena {
     if (achWrap && achList) {
       if (newlyUnlocked && newlyUnlocked.length > 0) {
         achWrap.style.display = 'block';
-        achList.innerHTML = newlyUnlocked.map(a => `
-          <div class="victory-badge-card">
-            <span class="badge-icon">${a.icon}</span>
-            <div>
-              <div class="badge-name">${a.title} &bull; <span style="font-size: 0.72rem; color: var(--gold-bright); text-transform: uppercase;">${a.tier} Tier</span></div>
-              <div class="badge-desc">${a.description}</div>
-            </div>
-          </div>
-        `).join('');
+        achList.innerHTML = '';
+        newlyUnlocked.forEach(a => {
+          const card = document.createElement('div');
+          card.className = 'victory-badge-card';
+
+          const iconSpan = document.createElement('span');
+          iconSpan.className = 'badge-icon';
+          iconSpan.textContent = a.icon || '🎖️';
+
+          const infoDiv = document.createElement('div');
+
+          const nameDiv = document.createElement('div');
+          nameDiv.className = 'badge-name';
+          nameDiv.textContent = a.title + ' \u2022 ';
+          const tierSpan = document.createElement('span');
+          tierSpan.style.cssText = 'font-size: 0.72rem; color: var(--gold-bright); text-transform: uppercase;';
+          tierSpan.textContent = (a.tier || '') + ' Tier';
+          nameDiv.appendChild(tierSpan);
+
+          const descDiv = document.createElement('div');
+          descDiv.className = 'badge-desc';
+          descDiv.textContent = a.description || '';
+
+          infoDiv.appendChild(nameDiv);
+          infoDiv.appendChild(descDiv);
+          card.appendChild(iconSpan);
+          card.appendChild(infoDiv);
+          achList.appendChild(card);
+        });
 
         newlyUnlocked.forEach((a, idx) => {
           setTimeout(() => {
@@ -1817,8 +1875,7 @@ class ArchessArena {
     if (piece.immovable || (piece.type === 'king' && !piece.awakened)) return;
     const clampedDist = Math.min(pullDist, this.maxPullDistance);
     const powerRatio = clampedDist / this.maxPullDistance;
-    // Calibrated launch impulse: 0.15 for snappy, weighted physical slingshot feel
-    const impulse = clampedDist * 0.15 * piece.speedMulti;
+    const impulse = clampedDist * PHYSICS_CONFIG.LAUNCH_IMPULSE * piece.speedMulti;
     const angle = Math.atan2(pullY, pullX);
 
     piece.vx = Math.cos(angle) * impulse;
@@ -1830,12 +1887,12 @@ class ArchessArena {
       this.logTelemetry('SOVEREIGN_LAUNCH', `👑 ${piece.team.toUpperCase()} Awakened King launched with sovereign kinetic force!`);
     } else {
       this.audio.playLaunch(powerRatio);
-      this.logTelemetry('LAUNCH', `Launched ${piece.team}_${piece.type} at power ${(powerRatio * 100).toFixed(0)}%`);
+    this.logTelemetry('LAUNCH', `Launched ${piece.team}_${piece.type} at power ${(powerRatio * 100).toFixed(0)}%`);
     }
 
-    // Cap maximum speed to 13 for fast, decisive movement
+    // Cap maximum speed
     const speed = Math.hypot(piece.vx, piece.vy);
-    const maxSpeed = 13;
+    const maxSpeed = PHYSICS_CONFIG.MAX_SPEED;
     if (speed > maxSpeed) {
       piece.vx = (piece.vx / speed) * maxSpeed;
       piece.vy = (piece.vy / speed) * maxSpeed;
@@ -1844,8 +1901,6 @@ class ArchessArena {
 
     this.spawnLaunchSparks(piece.x, piece.y, angle);
     this.spawnShockwave(piece.x, piece.y, piece.team === 'white' ? '#ffd700' : '#ff4757', 36, 2.5);
-
-    this.logTelemetry('LAUNCH', `Piece: ${piece.team.toUpperCase()}_${piece.type.toUpperCase()} | Power: ${Math.round(powerRatio * 100)}% | Speed: ${Math.hypot(piece.vx, piece.vy).toFixed(1)}`);
 
     const teamName = piece.team === 'white' ? 'White' : 'Black';
     const pieceName = piece.type.toUpperCase();
@@ -4002,7 +4057,30 @@ class ArchessArena {
       console.error('Arena render loop error:', err);
     }
 
-    requestAnimationFrame(this.loop.bind(this));
+    this._rAFId = requestAnimationFrame(this._boundLoop || this.loop.bind(this));
+  }
+
+  /**
+   * Cleanup method to prevent memory leaks on page navigation.
+   * Cancels rAF, removes global event listeners, and stops audio drones.
+   */
+  destroy() {
+    if (this._rAFId) {
+      cancelAnimationFrame(this._rAFId);
+      this._rAFId = null;
+    }
+    if (this._visibilityHandler) {
+      document.removeEventListener('visibilitychange', this._visibilityHandler);
+    }
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+    }
+    if (this.audio) {
+      this.audio.stopSuddenDeathDrone();
+    }
+    clearTimeout(this.botTimeout);
+    clearTimeout(this.botAimTimeout);
+    this._paused = true;
   }
 }
 
