@@ -9,7 +9,17 @@ import os
 # Ensure project root is in sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Load environment variables from .env file if available
+try:
+    from dotenv import load_dotenv
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    if os.path.exists(env_path):
+        load_dotenv(env_path)
+except ImportError:
+    pass
+
 from backend.app import app
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
