@@ -878,50 +878,66 @@
     updateAimVisuals() {
       const selPiece = this.arena.selectedPiece;
 
+      let active = false;
+      let power = 0;
+      let angle = 0;
+
       if (this.arena.isDragging && selPiece) {
-        const startPos = this.boardToWorld(selPiece.x, selPiece.y);
         const pullX = this.arena.dragScreenAnchor.x - this.arena.dragScreenCurrent.x;
         const pullY = this.arena.dragScreenAnchor.y - this.arena.dragScreenCurrent.y;
         const screenDist = Math.hypot(pullX, pullY);
 
         if (screenDist >= 10) {
           const clamped = Math.min(screenDist, this.arena.maxPullDistance);
-          const power = clamped / this.arena.maxPullDistance;
-          const aimLen = 3.5 + power * 9.5; // World units
-
-          // Derive angle in world space (aim forward toward enemy lines)
-          const angle = Math.atan2(pullY, pullX);
-          const dirX = Math.cos(angle);
-          const dirZ = Math.sin(angle);
-
-          const endX = startPos.x + dirX * aimLen;
-          const endZ = startPos.z + dirZ * aimLen;
-
-          const isMaxPower = power > 0.85;
-          const aimColor = isMaxPower ? 0xff3b4e : 0xffd700;
-
-          // Update trajectory line
-          const posAttr = this.aimTrajectoryMesh.geometry.attributes.position;
-          posAttr.setXYZ(0, startPos.x, 0.4, startPos.z);
-          posAttr.setXYZ(1, endX, 0.4, endZ);
-          posAttr.needsUpdate = true;
-          this.aimTrajectoryMesh.material.color.setHex(aimColor);
-          this.aimTrajectoryMesh.computeLineDistances();
-          this.aimTrajectoryMesh.visible = true;
-
-          // Update Arrowhead
-          this.aimArrowMesh.position.set(endX, 0.4, endZ);
-          this.aimArrowMesh.lookAt(endX + dirX, 0.4, endZ + dirZ);
-          this.aimArrowMesh.material.color.setHex(aimColor);
-          this.aimArrowMesh.visible = true;
-
-          // Update Reticle
-          this.aimReticleMesh.position.set(startPos.x, 0.08, startPos.z);
-          this.aimReticleMesh.rotation.y += 0.04;
-          this.aimReticleMesh.material.color.setHex(aimColor);
-          this.aimReticleMesh.visible = true;
-          return;
+          power = clamped / this.arena.maxPullDistance;
+          angle = Math.atan2(pullY, pullX);
+          active = true;
         }
+      } else if (this.arena.keyboardAiming && selPiece) {
+        active = true;
+        power = this.arena.keyboardAimPower || 0.75;
+        angle = this.arena.keyboardAimAngle || 0;
+      } else if (this.arena.opponentAim && selPiece) {
+        active = true;
+        power = this.arena.opponentAim.powerRatio || 0.75;
+        angle = Math.atan2(this.arena.opponentAim.vy || 0, this.arena.opponentAim.vx || 1);
+      }
+
+      if (active && selPiece) {
+        const startPos = this.boardToWorld(selPiece.x, selPiece.y);
+        const aimLen = 3.5 + power * 9.5; // World units
+
+        // Derive angle in world space (aim forward toward enemy lines)
+        const dirX = Math.cos(angle);
+        const dirZ = Math.sin(angle);
+
+        const endX = startPos.x + dirX * aimLen;
+        const endZ = startPos.z + dirZ * aimLen;
+
+        const isMaxPower = power > 0.85;
+        const aimColor = isMaxPower ? 0xff3b4e : 0xffd700;
+
+        // Update trajectory line
+        const posAttr = this.aimTrajectoryMesh.geometry.attributes.position;
+        posAttr.setXYZ(0, startPos.x, 0.4, startPos.z);
+        posAttr.setXYZ(1, endX, 0.4, endZ);
+        posAttr.needsUpdate = true;
+        this.aimTrajectoryMesh.material.color.setHex(aimColor);
+        this.aimTrajectoryMesh.computeLineDistances();
+        this.aimTrajectoryMesh.visible = true;
+
+        // Update Arrowhead
+        this.aimArrowMesh.position.set(endX, 0.4, endZ);
+        this.aimArrowMesh.lookAt(endX + dirX, 0.4, endZ + dirZ);
+        this.aimArrowMesh.material.color.setHex(aimColor);
+        this.aimArrowMesh.visible = true;
+
+        // Update Reticle
+        this.aimReticleMesh.position.set(startPos.x, 0.08, startPos.z);
+        this.aimReticleMesh.rotation.y += 0.04;
+        this.aimReticleMesh.material.color.setHex(aimColor);
+        this.aimReticleMesh.visible = true;
+        return;
       }
 
       this.aimTrajectoryMesh.visible = false;

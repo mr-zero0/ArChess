@@ -1052,13 +1052,16 @@ class ArchessArena {
   setGameMode(mode) {
     this.gameMode = mode;
     this.logTelemetry('MODE_CHANGE', `Match Mode set to: ${mode === 'bot' ? 'SOLO VS BOT AI' : (mode === 'ai-vs-ai' ? 'AUTONOMOUS AI VS AI SPECTATOR' : 'LOCAL PASS & PLAY')}`);
-    if (!this.isGameOver) {
+    if (mode === 'ai-vs-ai') {
+      this.pausedAiVsAi = false;
+      if (this.isGameOver) {
+        this.resetGame();
+      } else {
+        setTimeout(() => this.triggerBotTurn(), 600);
+      }
+    } else if (!this.isGameOver) {
       if (this.currentTurn === 'black' && this.gameMode === 'bot') {
         this.triggerBotTurn();
-      } else if (this.gameMode === 'ai-vs-ai') {
-        if (!this.pausedAiVsAi) {
-          setTimeout(() => this.triggerBotTurn(), 600);
-        }
       }
     }
   }
@@ -1178,8 +1181,24 @@ class ArchessArena {
     const activeTeam = this.currentTurn;
     const enemyTeam = activeTeam === 'white' ? 'black' : 'white';
 
-    const friendlyPieces = this.pieces.filter(p => !p.dead && p.team === activeTeam && (p.type !== 'king' || p.awakened));
-    const enemyPieces = this.pieces.filter(p => !p.dead && p.team === enemyTeam);
+    let friendlyPieces = this.pieces.filter(p => !p.dead && p.team === activeTeam && (p.type !== 'king' || p.awakened));
+    let enemyPieces = this.pieces.filter(p => !p.dead && p.team === enemyTeam);
+
+    if (friendlyPieces.length === 0) {
+      this.checkSovereignAwakening();
+      friendlyPieces = this.pieces.filter(p => !p.dead && p.team === activeTeam && (p.type !== 'king' || p.awakened));
+      if (friendlyPieces.length === 0) {
+        const enemyMobile = this.pieces.filter(p => !p.dead && p.team === enemyTeam && (p.type !== 'king' || p.awakened)).length;
+        if (enemyMobile > 0 && !this.isGameOver) {
+          this.currentTurn = enemyTeam;
+          this.updateHUD();
+          if (this.gameMode === 'ai-vs-ai' && !this.pausedAiVsAi) {
+            setTimeout(() => this.triggerBotTurn(), 600);
+          }
+        }
+        return;
+      }
+    }
 
     if (friendlyPieces.length === 0 || enemyPieces.length === 0) return;
 
@@ -2481,6 +2500,9 @@ class ArchessArena {
                 if (attacker.hp <= 0 && !attacker.dead) {
                   attacker.dead = true;
                   attacker.hp = 0;
+                  attacker.vx = 0;
+                  attacker.vy = 0;
+                  attacker.inMotion = false;
                   this.audio.playShatter();
                   this.spawnImpactParticles(attacker.x, attacker.y, 28, true);
                   this.spawnShockwave(attacker.x, attacker.y, '#f87171', 65, 4);
@@ -2585,6 +2607,9 @@ class ArchessArena {
             if (relativeSpeed > 0.8) {
               // Damage opposing team
               if (p1.team !== p2.team) {
+                const impactX = (p1.x + p2.x) / 2;
+                const impactY = (p1.y + p2.y) / 2;
+
                 // Rook Siege Breaker: 2.5x damage against lighter pieces
                 let damageMulti = 1.0;
                 if (p1.type === 'rook' && p2.mass < p1.mass) {
@@ -2618,7 +2643,7 @@ class ArchessArena {
                 if ((p1.type === 'queen' || p2.type === 'queen') && relativeSpeed > 5.5) {
                   primaryDamage += 35;
                   this.screenShake = 12;
-                  this.spawnImpactParticles((p1.x + p2.x) / 2, (p1.y + p2.y) / 2, 35, true);
+                  this.spawnImpactParticles(impactX, impactY, 35, true);
                   this.logTelemetry('SUPERNOVA', 'Queen discharged Supernova blast on high-velocity strike!');
                 }
 
@@ -2628,7 +2653,7 @@ class ArchessArena {
                   if (striker === sovereign) {
                     primaryDamage = Math.max(35, Math.round(primaryDamage * 1.5));
                     this.screenShake = 15;
-                    this.spawnImpactParticles((p1.x + p2.x) / 2, (p1.y + p2.y) / 2, 35, true, sovereign.team === 'white' ? ['#ffd700', '#00e1d9'] : ['#ff4757', '#ff7675']);
+                    this.spawnImpactParticles(impactX, impactY, 35, true, sovereign.team === 'white' ? ['#ffd700', '#00e1d9'] : ['#ff4757', '#ff7675']);
                     this.logTelemetry('SOVEREIGN_STRIKE', `👑 ${sovereign.team.toUpperCase()} Awakened King landed crushing Sovereign Strike (-${primaryDamage} HP)!`);
                   }
                 }
@@ -2650,16 +2675,13 @@ class ArchessArena {
 
                 // Knight Shockwave
                 if (p1.type === 'knight' || p2.type === 'knight') {
-                  const knight = p1.type === 'knight' ? p1 : p2;
                   const other = p1.type === 'knight' ? p2 : p1;
-                  const cx = (p1.x + p2.x) / 2;
-                  const cy = (p1.y + p2.y) / 2;
                   let knockbackCount = 0;
 
                   this.pieces.forEach(target => {
                     if (!target.dead && target.team === other.team && target !== other) {
-                      const tdx = target.x - cx;
-                      const tdy = target.y - cy;
+                      const tdx = target.x - impactX;
+                      const tdy = target.y - impactY;
                       const dist = Math.hypot(tdx, tdy);
                       if (dist < 95 && dist > 1) {
                         const impulse = ((95 - dist) / 95) * 3.5;
@@ -2672,7 +2694,7 @@ class ArchessArena {
 
                   if (knockbackCount > 0) {
                     this.logTelemetry('SHOCKWAVE', `Knight triggered Shockwave! Knocks back ${knockbackCount} enemy units.`);
-                    this.spawnImpactParticles(cx, cy, 18, false);
+                    this.spawnImpactParticles(impactX, impactY, 18, false);
                   }
                 }
 
@@ -2694,7 +2716,7 @@ class ArchessArena {
                 this.addDamageNumber(striker.x, striker.y, recoilDamage, false, '#f87171', `RECOIL -${recoilDamage}`);
 
                 this.screenShake = isCritical ? 7 : 3;
-                this.spawnShockwave(cx, cy, isCritical ? '#ffd700' : (striker.team === 'white' ? '#ffd700' : '#ff4757'), isCritical ? 65 : 42, isCritical ? 4 : 2.5);
+                this.spawnShockwave(impactX, impactY, isCritical ? '#ffd700' : (striker.team === 'white' ? '#ffd700' : '#ff4757'), isCritical ? 65 : 42, isCritical ? 4 : 2.5);
                 this.totalImpacts++;
                 this.audio.playImpact(relativeSpeed / 6);
 
@@ -2710,6 +2732,9 @@ class ArchessArena {
                   if (p.hp <= 0 && !p.dead) {
                     p.dead = true;
                     p.hp = 0;
+                    p.vx = 0;
+                    p.vy = 0;
+                    p.inMotion = false;
                     if (p === defender) {
                       const sKey = striker.id || `${striker.team}_${striker.type}`;
                       this.pieceKills[sKey] = (this.pieceKills[sKey] || 0) + 1;
