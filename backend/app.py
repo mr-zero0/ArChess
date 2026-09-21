@@ -30,8 +30,10 @@ from backend.database import (
     update_user_profile,
     update_user_password,
     get_or_create_google_user,
-    delete_user_account
+    delete_user_account,
+    revoke_all_user_sessions
 )
+from backend.metrics import get_metrics_engine
 from backend.multiplayer import room_manager, matchmaking_queue
 from backend.tournament import tournament_engine
 from backend.achievements import (
@@ -100,6 +102,14 @@ def before_request_logging():
     request.req_id = req_id
     request.corr_id = corr_id
 
+    # Active session revocation validation: only if user exists and token version differs
+    uid = session.get("user_id")
+    if uid:
+        u = get_user_by_id(uid)
+        session_token_ver = session.get("token_version")
+        if u and session_token_ver is not None and u.get("token_version", 1) != session_token_ver:
+            session.clear()
+
 @app.after_request
 def after_request_logging(response):
     response.headers["X-Request-ID"] = getattr(request, "req_id", "")
@@ -110,6 +120,21 @@ def after_request_logging(response):
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     
+    # Enterprise Content Security Policy & Permissions Policy
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://accounts.google.com; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com data:; "
+        "img-src 'self' data: https: blob:; "
+        "media-src 'self' data: blob:; "
+        "connect-src 'self' ws: wss: https://accounts.google.com; "
+        "frame-src 'self' https://accounts.google.com; "
+        "object-src 'none'; "
+        "base-uri 'self';"
+    )
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+
     # HSTS when served over HTTPS / TLS reverse proxy
     if request.is_secure or request.headers.get("X-Forwarded-Proto") == "https":
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
@@ -126,6 +151,10 @@ def after_request_logging(response):
         
     latency_ms = round((time.time() - getattr(request, "start_time", time.time())) * 1000, 2)
     
+    # Record Prometheus metrics
+    endpoint_name = request.endpoint or request.path
+    get_metrics_engine().record_request(request.method, endpoint_name, response.status_code, latency_ms)
+
     # Don't flood logs with high-frequency polling/static file hits
     if not request.path.startswith("/static/media/"):
         logger.info(
@@ -243,6 +272,7 @@ def api_register():
     success, result = register_user(username, email, password)
     if success:
         session["user_id"] = result["id"]
+        session["token_version"] = result.get("token_version", 1)
         return jsonify({"success": True, "user": result}), 201
     return jsonify({"success": False, "error": result}), 400
 
@@ -270,6 +300,7 @@ def _is_login_rate_limited(ip: str) -> bool:
 def api_login():
     client_ip = request.remote_addr or "127.0.0.1"
     if _is_login_rate_limited(client_ip):
+        get_metrics_engine().inc_security_event("login_rate_limited")
         return jsonify({"success": False, "error": "Too many login attempts. Please wait 1 minute."}), 429
 
     data = request.get_json(silent=True) or {}
@@ -285,6 +316,7 @@ def api_login():
     success, result = authenticate_user(username_or_email, password)
     if success:
         session["user_id"] = result["id"]
+        session["token_version"] = result.get("token_version", 1)
         return jsonify({"success": True, "user": result}), 200
     return jsonify({"success": False, "error": result}), 401
 
@@ -301,8 +333,20 @@ def api_me():
 
 @app.route("/api/auth/logout", methods=["POST"])
 def api_logout():
-    session.pop("user_id", None)
+    session.clear()
     return jsonify({"success": True, "message": "Logged out successfully"}), 200
+
+@app.route("/api/auth/revoke_sessions", methods=["POST"])
+def api_revoke_sessions():
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+    success, result = revoke_all_user_sessions(user_id)
+    if success:
+        session.clear()
+        get_metrics_engine().inc_security_event("session_revocation")
+        return jsonify({"success": True, "message": result}), 200
+    return jsonify({"success": False, "error": result}), 400
 
 # -------------------------------------------------------------
 # API Endpoints: Account Management & Google Auth
@@ -347,6 +391,9 @@ def api_update_password():
     new_password = data.get("new_password", "")
     success, result = update_user_password(user_id, current_password, new_password)
     if success:
+        u = get_user_by_id(user_id)
+        if u and "token_version" in u:
+            session["token_version"] = u["token_version"]
         return jsonify({"success": True, "message": result}), 200
     return jsonify({"success": False, "error": result}), 400
 
@@ -403,6 +450,7 @@ def api_google_auth():
     success, result = get_or_create_google_user(google_id, email, name=name, avatar=avatar)
     if success:
         session["user_id"] = result["id"]
+        session["token_version"] = result.get("token_version", 1)
         return jsonify({"success": True, "user": result}), 200
     return jsonify({"success": False, "error": result}), 400
 
@@ -475,6 +523,19 @@ def api_record_match():
     except (ValueError, TypeError):
         return jsonify({"success": False, "error": "Damage, turns, and duration must be non-negative integers."}), 400
 
+    # Authoritative Anti-Cheat & Physical Bounds Verification
+    if white_dmg > 1200 or black_dmg > 1200:
+        get_metrics_engine().inc_security_event("anti_cheat_damage")
+        return jsonify({"success": False, "error": "Damage values exceed physical simulation boundaries."}), 400
+
+    if turns == 0 and (white_dmg > 0 or black_dmg > 0):
+        get_metrics_engine().inc_security_event("anti_cheat_turns")
+        return jsonify({"success": False, "error": "Damage cannot be inflicted in zero turns."}), 400
+
+    if turns > 25 and duration < 2:
+        get_metrics_engine().inc_security_event("anti_cheat_duration")
+        return jsonify({"success": False, "error": "Match duration is too short for the recorded turns."}), 400
+
     # Rate limiting & authorization check
     guest_white_names = {"Player1", "Guest", "Local"}
     guest_black_names = {"Player2", "ArChess Bot", "Bot", "Local"}
@@ -492,9 +553,11 @@ def api_record_match():
         # Rate limit unauthenticated submissions to prevent automated leaderboard manipulation
         client_ip = request.remote_addr or "unknown"
         if _is_unauth_rate_limited(client_ip):
+            get_metrics_engine().inc_security_event("match_rate_limited")
             return jsonify({"success": False, "error": "Rate limit exceeded. Please log in or wait before recording more matches."}), 429
 
     settlement = record_match_result(white, black, winner, white_dmg, black_dmg, turns, duration)
+    get_metrics_engine().inc_matches_settled(winner)
 
     # Evaluate newly unlocked achievements for winner & participants
     white_winner = (winner == "white")
@@ -680,6 +743,7 @@ def handle_combat_websocket(ws, room_id):
         username = str(init_data.get("username", "Commander"))[:30]
         pref_role = init_data.get("preferred_role")
         assigned_role = room.add_connection(ws, username, pref_role)
+        get_metrics_engine().inc_websocket_connections()
     except Exception:
         return
 
@@ -712,6 +776,7 @@ def handle_combat_websocket(ws, room_id):
     except Exception:
         pass
     finally:
+        get_metrics_engine().dec_websocket_connections()
         departed = room.remove_connection(ws)
         if departed in ("white", "black"):
             room.broadcast({
@@ -725,6 +790,16 @@ def ws_combat(ws, room_id):
     return handle_combat_websocket(ws, room_id)
 
 sock.route("/ws/combat/<room_id>")(ws_combat)
+
+# -------------------------------------------------------------
+# Enterprise Observability & Prometheus Metrics Endpoint
+# -------------------------------------------------------------
+@app.route("/metrics", methods=["GET"])
+def serve_prometheus_metrics():
+    """Expose server performance, room, and game metrics in standard Prometheus exposition format."""
+    metrics_text = get_metrics_engine().export_metrics()
+    return Response(metrics_text, mimetype="text/plain; version=0.0.4; charset=utf-8")
+
 
 # -------------------------------------------------------------
 # Global API Error Handlers

@@ -17,9 +17,13 @@ services:
       - ARCHESS_DB_PATH=/app/data/archess.db
       - WSGI_THREADS=16
       - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
     volumes:
       - archess-data:/app/data
       - archess-logs:/app/Logs
+    depends_on:
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
       interval: 30s
@@ -27,8 +31,21 @@ services:
       retries: 3
       start_period: 10s
 
+  # Free, lightweight Open-Source Redis container for cluster state & pub/sub sync (<15MB RAM)
+  redis:
+    image: redis:7-alpine
+    container_name: archess-redis
+    restart: unless-stopped
+    command: redis-server --save "" --appendonly no --maxmemory 64mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
 volumes:
   archess-data:
     driver: local
   archess-logs:
     driver: local
+

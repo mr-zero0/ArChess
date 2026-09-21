@@ -4,6 +4,8 @@ Handles dynamic room creation, invite codes, player assignment (White vs Black v
 live aiming previews, turn-locked slingshot launch vectors, and ping latency measurement.
 """
 
+import os
+import math
 import time
 import json
 import random
@@ -11,6 +13,34 @@ import string
 import secrets
 import threading
 from typing import Dict, List, Optional, Any
+
+
+class RedisRelay:
+    """Optional Pub/Sub bridge for multi-worker / multi-container cluster state distribution."""
+    def __init__(self, redis_url: Optional[str] = None):
+        self.redis_url = redis_url if redis_url is not None else os.environ.get("REDIS_URL")
+        self.active = False
+        self._client = None
+        if self.redis_url:
+            try:
+                import redis
+                self._client = redis.from_url(self.redis_url)
+                self.active = True
+            except Exception:
+                self.active = False
+
+    def publish_room_event(self, room_id: str, payload: Dict[str, Any]) -> bool:
+        if self.active and self._client:
+            try:
+                self._client.publish(f"archess:room:{room_id}", json.dumps(payload))
+                return True
+            except Exception:
+                return False
+        return False
+
+
+redis_relay = RedisRelay()
+
 
 
 
@@ -105,6 +135,9 @@ class CombatRoom:
                 except Exception:
                     pass
 
+        # Relay to Redis Pub/Sub cluster if configured
+        redis_relay.publish_room_event(self.room_id, payload)
+
     def get_summary(self) -> Dict[str, Any]:
         with self.lock:
             return {
@@ -174,17 +207,34 @@ class CombatRoom:
                 }, exclude_ws=ws)
             return
 
-        # 4. Piece Launch
+        # 4. Piece Launch (with Anti-Cheat Physical Clamping & Sanitization)
         if mtype == "launch":
             if role == self.current_turn:
+                try:
+                    raw_vx = float(msg.get("vx", 0.0))
+                    raw_vy = float(msg.get("vy", 0.0))
+                    raw_power = float(msg.get("powerRatio", 0.0))
+                    if math.isnan(raw_vx) or math.isinf(raw_vx):
+                        raw_vx = 0.0
+                    if math.isnan(raw_vy) or math.isinf(raw_vy):
+                        raw_vy = 0.0
+                    if math.isnan(raw_power) or math.isinf(raw_power):
+                        raw_power = 0.0
+                except (ValueError, TypeError):
+                    raw_vx, raw_vy, raw_power = 0.0, 0.0, 0.0
+
+                clamped_vx = max(-150.0, min(150.0, raw_vx))
+                clamped_vy = max(-150.0, min(150.0, raw_vy))
+                clamped_power = max(0.0, min(1.0, raw_power))
+
                 self.turns_elapsed += 1
                 self.broadcast({
                     "type": "opponent_launch",
                     "role": role,
                     "pieceId": msg.get("pieceId"),
-                    "vx": msg.get("vx"),
-                    "vy": msg.get("vy"),
-                    "powerRatio": msg.get("powerRatio"),
+                    "vx": clamped_vx,
+                    "vy": clamped_vy,
+                    "powerRatio": clamped_power,
                     "turn": self.turns_elapsed
                 }, exclude_ws=ws)
             return

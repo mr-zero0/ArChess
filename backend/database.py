@@ -45,6 +45,7 @@ def init_db():
             avatar TEXT DEFAULT 'knight',
             auth_provider TEXT DEFAULT 'local',
             google_id TEXT,
+            token_version INTEGER DEFAULT 1,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """)
@@ -99,6 +100,8 @@ def init_db():
             cursor.execute("ALTER TABLE users ADD COLUMN auth_provider TEXT DEFAULT 'local';")
         if "google_id" not in user_cols:
             cursor.execute("ALTER TABLE users ADD COLUMN google_id TEXT;")
+        if "token_version" not in user_cols:
+            cursor.execute("ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 1;")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_google ON users (google_id);")
         conn.commit()
 
@@ -147,7 +150,7 @@ def register_user(username, email, password):
         )
         conn.commit()
         user_id = cursor.lastrowid
-        return True, {"id": user_id, "username": username, "email": email, "elo_rating": 1200}
+        return True, {"id": user_id, "username": username, "email": email, "elo_rating": 1200, "token_version": 1}
     except sqlite3.IntegrityError:
         return False, "Username or email already exists."
     finally:
@@ -178,7 +181,8 @@ def authenticate_user(username_or_email, password):
                 "matches_played": user["matches_played"],
                 "wins": user["wins"],
                 "losses": user["losses"],
-                "avatar": user["avatar"]
+                "avatar": user["avatar"],
+                "token_version": user["token_version"] if "token_version" in user.keys() else 1
             }
         return False, "Invalid credentials."
     finally:
@@ -188,7 +192,7 @@ def get_user_by_id(user_id):
     conn = get_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT id, username, email, elo_rating, matches_played, wins, losses, avatar, auth_provider, google_id FROM users WHERE id = ?", (user_id,))
+        cursor.execute("SELECT id, username, email, elo_rating, matches_played, wins, losses, avatar, auth_provider, google_id, token_version FROM users WHERE id = ?", (user_id,))
         user = cursor.fetchone()
         if user:
             return dict(user)
@@ -465,7 +469,7 @@ def update_user_password(user_id, current_password, new_password):
             return False, "Current password is incorrect."
 
         cursor.execute(
-            "UPDATE users SET password_hash = ? WHERE id = ?",
+            "UPDATE users SET password_hash = ?, token_version = token_version + 1 WHERE id = ?",
             (generate_password_hash(new_password), user_id)
         )
         conn.commit()
@@ -546,6 +550,21 @@ def delete_user_account(user_id):
         return True, f"Account '{user['username']}' deleted successfully."
     finally:
         conn.close()
+
+def revoke_all_user_sessions(user_id):
+    if not user_id:
+        return False, "Invalid user identifier."
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("UPDATE users SET token_version = token_version + 1 WHERE id = ?", (user_id,))
+        conn.commit()
+        if cursor.rowcount == 0:
+            return False, "User not found."
+        return True, "All active sessions have been revoked."
+    finally:
+        conn.close()
+
 
 
 

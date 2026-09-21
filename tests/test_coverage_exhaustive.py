@@ -2122,6 +2122,220 @@ class TestProductionReadiness:
         room.handle_message(mock_ws, "white", "")
 
 
+class TestEnterpriseProductionFeatures:
+    """Tests for Prometheus metrics, Anti-Cheat, CSP, Session Revocation, and Redis Pub/Sub."""
+
+    def test_prometheus_metrics_engine_full(self):
+        from backend.metrics import MetricsEngine, get_metrics_engine
+        engine = MetricsEngine()
+
+        engine.record_request("GET", "/play", 200, 15.5)
+        engine.record_request("POST", "/api/matches/record", 200, 25.0)
+
+        # WebSockets
+        assert engine.inc_websocket_connections() == 1
+        assert engine.inc_websocket_connections() == 2
+        assert engine.dec_websocket_connections() == 1
+        engine.set_websocket_connections(5)
+
+        # Rooms
+        engine.set_active_rooms(waiting=2, in_combat=3, finished=1)
+
+        # Queue
+        engine.set_matchmaking_queue_depth(4)
+
+        # Matches settled
+        engine.inc_matches_settled("white")
+        engine.inc_matches_settled("black")
+        engine.inc_matches_settled("draw")
+        engine.inc_matches_settled("unknown_winner")
+
+        # Security events
+        engine.inc_security_event("rate_limit")
+        engine.inc_security_event("anti_cheat_damage")
+
+        output = engine.export_metrics()
+        assert "archess_uptime_seconds" in output
+        assert "archess_active_websocket_connections 5" in output
+        assert 'archess_active_rooms{status="waiting"} 2' in output
+        assert "archess_matchmaking_queue_depth 4" in output
+        assert 'archess_matches_settled_total{winner="white"} 1' in output
+        assert 'archess_matches_settled_total{winner="draw"} 2' in output
+        assert 'archess_security_events_total{type="rate_limit"} 1' in output
+        assert 'archess_http_requests_total{endpoint="/play",method="GET",status="200"} 1' in output
+        assert 'archess_http_request_duration_ms_sum{endpoint="/play"} 15.5' in output
+        assert 'archess_http_request_duration_ms_count{endpoint="/play"} 1' in output
+
+        # Test singleton helper
+        assert get_metrics_engine() is not None
+
+    def test_metrics_endpoint_http(self, client):
+        res = client.get("/metrics")
+        assert res.status_code == 200
+        assert "text/plain" in res.headers.get("Content-Type", "")
+        assert "archess_uptime_seconds" in res.text
+
+    def test_csp_and_permissions_policy_headers(self, client):
+        res = client.get("/")
+        assert res.status_code == 200
+        csp = res.headers.get("Content-Security-Policy", "")
+        assert "default-src 'self'" in csp
+        assert "connect-src 'self' ws: wss:" in csp
+        perm = res.headers.get("Permissions-Policy", "")
+        assert "camera=()" in perm
+
+    def test_anti_cheat_match_settlement_rejections(self, client):
+        # 1. Damage bounds (>1200)
+        res1 = client.post("/api/matches/record", json={"white_damage": 1500, "black_damage": 20, "turns": 10, "duration_sec": 30})
+        assert res1.status_code == 400
+        assert "Damage values exceed physical simulation boundaries" in res1.json["error"]
+
+        # 2. 0 turns with positive damage
+        res2 = client.post("/api/matches/record", json={"white_damage": 100, "black_damage": 0, "turns": 0, "duration_sec": 10})
+        assert res2.status_code == 400
+        assert "Damage cannot be inflicted in zero turns" in res2.json["error"]
+
+        # 3. Turns > 25 with duration < 2s
+        res3 = client.post("/api/matches/record", json={"white_damage": 50, "black_damage": 50, "turns": 30, "duration_sec": 1})
+        assert res3.status_code == 400
+        assert "Match duration is too short" in res3.json["error"]
+
+    def test_session_revocation_full(self, client):
+        from backend.database import revoke_all_user_sessions
+        # Invalid inputs
+        assert revoke_all_user_sessions(None)[0] is False
+        assert revoke_all_user_sessions(9999999)[0] is False
+
+        # Register a user
+        ts = int(time.time() * 1000)
+        reg = client.post("/api/auth/register", json={
+            "username": f"rev_{ts}",
+            "email": f"rev_{ts}@test.io",
+            "password": "Password123!"
+        })
+        user_id = reg.json["user"]["id"]
+
+        # Test valid direct database revocation
+        ok, msg = revoke_all_user_sessions(user_id)
+        assert ok is True
+        assert "All active sessions have been revoked" in msg
+
+        # Test unauthorized POST to /api/auth/revoke_sessions
+        client.post("/api/auth/logout")
+        unauth_res = client.post("/api/auth/revoke_sessions")
+        assert unauth_res.status_code == 401
+
+        # Login and test authorized POST to /api/auth/revoke_sessions
+        login_res = client.post("/api/auth/login", json={
+            "username_or_email": f"rev_{ts}",
+            "password": "Password123!"
+        })
+        assert login_res.status_code == 200
+        auth_revoke_res = client.post("/api/auth/revoke_sessions")
+        assert auth_revoke_res.status_code == 200
+        assert "All active sessions have been revoked" in auth_revoke_res.json["message"]
+
+        # Test before_request clearing session when token_version is stale
+        # Log back in
+        client.post("/api/auth/login", json={"username_or_email": f"rev_{ts}", "password": "Password123!"})
+        # Alter session token_version to mismatched version
+        with client.session_transaction() as sess:
+            sess["token_version"] = 9999
+        # Next request triggers revocation in before_request
+        check_res = client.get("/api/auth/me")
+        assert check_res.json["authenticated"] is False
+
+        # Test revoke_sessions with non-existent user in session (returns 400)
+        with client.session_transaction() as sess:
+            sess["user_id"] = 99999999
+        fail_res = client.post("/api/auth/revoke_sessions")
+        assert fail_res.status_code == 400
+        assert fail_res.json["success"] is False
+
+    def test_anti_cheat_launch_vector_clamping(self):
+        from backend.multiplayer import CombatRoom
+        room = CombatRoom("ARC-VEC-01", "Host")
+        mock_ws = MagicMock()
+        room.current_turn = "white"
+
+        broadcast_events = []
+        room.broadcast = lambda payload, exclude_ws=None: broadcast_events.append(payload)
+
+        # 1. Extreme oversized values
+        room.handle_message(mock_ws, "white", json.dumps({
+            "type": "launch",
+            "pieceId": "pawn_1",
+            "vx": 99999.0,
+            "vy": -99999.0,
+            "powerRatio": 5.0
+        }))
+        assert len(broadcast_events) == 1
+        ev = broadcast_events[0]
+        assert ev["vx"] == 150.0
+        assert ev["vy"] == -150.0
+        assert ev["powerRatio"] == 1.0
+
+        # 2. NaN / Inf values (all valid floats, but testing nan/inf branches)
+        broadcast_events.clear()
+        room.handle_message(mock_ws, "white", json.dumps({
+            "type": "launch",
+            "pieceId": "pawn_2",
+            "vx": float("nan"),
+            "vy": float("inf"),
+            "powerRatio": float("nan")
+        }))
+        assert len(broadcast_events) == 1
+        ev2 = broadcast_events[0]
+        assert ev2["vx"] == 0.0
+        assert ev2["vy"] == 0.0
+        assert ev2["powerRatio"] == 0.0
+
+        # 3. Non-numeric values (testing ValueError/TypeError exception branch)
+        broadcast_events.clear()
+        room.handle_message(mock_ws, "white", json.dumps({
+            "type": "launch",
+            "pieceId": "pawn_3",
+            "vx": "not_a_number",
+            "vy": "invalid",
+            "powerRatio": "invalid"
+        }))
+        assert len(broadcast_events) == 1
+        ev3 = broadcast_events[0]
+        assert ev3["vx"] == 0.0
+        assert ev3["vy"] == 0.0
+        assert ev3["powerRatio"] == 0.0
+
+    def test_redis_relay_lifecycle(self):
+        from backend.multiplayer import RedisRelay
+        # Inactive relay
+        relay_none = RedisRelay(redis_url=None)
+        assert relay_none.active is False
+        assert relay_none.publish_room_event("ROOM1", {"type": "test"}) is False
+
+        # Active relay with mocked redis module
+        mock_redis_module = MagicMock()
+        mock_client = MagicMock()
+        mock_redis_module.from_url.return_value = mock_client
+        with patch.dict(sys.modules, {"redis": mock_redis_module}):
+            relay_active = RedisRelay(redis_url="redis://localhost:6379/0")
+            assert relay_active.active is True
+            assert relay_active._client is mock_client
+
+            # Successful publish
+            assert relay_active.publish_room_event("ROOM1", {"type": "aim"}) is True
+            mock_client.publish.assert_called_once()
+
+            # Exception during publish
+            mock_client.publish.side_effect = Exception("Network down")
+            assert relay_active.publish_room_event("ROOM1", {"type": "aim"}) is False
+
+            # Exception during redis.from_url
+            mock_redis_module.from_url.side_effect = Exception("Connection refused")
+            relay_fail = RedisRelay(redis_url="redis://localhost:6379/0")
+            assert relay_fail.active is False
+
+
+
 
 
 
