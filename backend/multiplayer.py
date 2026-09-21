@@ -185,8 +185,8 @@ class CombatRoom:
 
         # 2. Slingshot Live Aim Preview (relay to opponent & spectators)
         if mtype == "aim":
-            # Only allow aiming if it is currently this player's turn
-            if role == self.current_turn:
+            # Only allow aiming if it is currently this player's turn and game is not finished
+            if role == self.current_turn and self.status != "finished":
                 self.broadcast({
                     "type": "opponent_aim",
                     "role": role,
@@ -200,7 +200,7 @@ class CombatRoom:
 
         # 3. Slingshot Aim Cancelled
         if mtype == "aim_cancel":
-            if role == self.current_turn:
+            if role == self.current_turn and self.status != "finished":
                 self.broadcast({
                     "type": "opponent_aim_cancel",
                     "role": role
@@ -209,7 +209,7 @@ class CombatRoom:
 
         # 4. Piece Launch (with Anti-Cheat Physical Clamping & Sanitization)
         if mtype == "launch":
-            if role == self.current_turn:
+            if role == self.current_turn and self.status != "finished":
                 try:
                     raw_vx = float(msg.get("vx", 0.0))
                     raw_vy = float(msg.get("vy", 0.0))
@@ -241,25 +241,27 @@ class CombatRoom:
 
         # 5. Turn Complete Handshake
         if mtype == "turn_complete":
-            next_turn = "black" if self.current_turn == "white" else "white"
-            self.current_turn = next_turn
-            self.broadcast({
-                "type": "turn_update",
-                "current_turn": self.current_turn,
-                "turns_elapsed": self.turns_elapsed
-            })
+            if role in ("white", "black") and role == self.current_turn and self.status != "finished":
+                next_turn = "black" if self.current_turn == "white" else "white"
+                self.current_turn = next_turn
+                self.broadcast({
+                    "type": "turn_update",
+                    "current_turn": self.current_turn,
+                    "turns_elapsed": self.turns_elapsed
+                })
             return
 
         # 6. Match Victory / Defeat Settlement
         if mtype == "game_over":
-            self.status = "finished"
-            self.winner = msg.get("winner")
-            self.broadcast({
-                "type": "game_over",
-                "winner": self.winner,
-                "reason": msg.get("reason", "checkmate"),
-                "turns": self.turns_elapsed
-            })
+            if role in ("white", "black") and self.status != "finished":
+                self.status = "finished"
+                self.winner = msg.get("winner")
+                self.broadcast({
+                    "type": "game_over",
+                    "winner": self.winner,
+                    "reason": msg.get("reason", "checkmate"),
+                    "turns": self.turns_elapsed
+                })
             return
 
         # 7. Dynamic Combat Emote Reaction (broadcast to all room occupants)

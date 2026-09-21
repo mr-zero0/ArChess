@@ -2334,6 +2334,57 @@ class TestEnterpriseProductionFeatures:
             relay_fail = RedisRelay(redis_url="redis://localhost:6379/0")
             assert relay_fail.active is False
 
+    def test_rate_limiter_pruning_and_cache_eviction(self):
+        from backend.app import _is_unauth_rate_limited, _unauth_match_rate_limiter, _MAX_RATE_LIMIT_ENTRIES, app
+        old_testing = app.config.get("TESTING")
+        app.config["TESTING"] = False
+        try:
+            now = time.time()
+            # 1. Prune stale keys
+            _unauth_match_rate_limiter.clear()
+            for i in range(_MAX_RATE_LIMIT_ENTRIES + 10):
+                ts = now - 120 if i % 2 == 0 else now
+                _unauth_match_rate_limiter[f"10.0.0.{i}"] = [ts]
+            assert _is_unauth_rate_limited("10.0.0.9999") is False
+
+            # 2. Hard-cap FIFO eviction when all entries are fresh
+            _unauth_match_rate_limiter.clear()
+            for i in range(_MAX_RATE_LIMIT_ENTRIES + 5):
+                _unauth_match_rate_limiter[f"10.1.0.{i}"] = [now]
+            assert _is_unauth_rate_limited("10.1.0.9999") is False
+            assert len(_unauth_match_rate_limiter) <= _MAX_RATE_LIMIT_ENTRIES + 1
+        finally:
+            app.config["TESTING"] = old_testing
+            _unauth_match_rate_limiter.clear()
+
+    def test_record_match_result_rollback_on_exception(self):
+        from backend.database import record_match_result
+        with patch("backend.database.calculate_elo_change", side_effect=Exception("Simulated Math Error")):
+            try:
+                record_match_result("Player1", "Player2", "white", 10, 10, 1, 5)
+            except Exception as e:
+                assert "Simulated Math Error" in str(e)
+
+    def test_google_user_mismatched_google_id_rejected(self):
+        from backend.database import get_or_create_google_user
+        ts = int(time.time() * 1000)
+        email = f"google_conflict_{ts}@test.com"
+        success1, user1 = get_or_create_google_user(f"gid_orig_{ts}", email, name="User1")
+        assert success1 is True
+        
+        success2, err = get_or_create_google_user(f"gid_different_{ts}", email, name="Attacker")
+        assert success2 is False
+        assert "already linked to a different Google ID" in err
+
+    def test_metrics_endpoint_cardinality_cap(self):
+        from backend.metrics import get_metrics_engine
+        engine = get_metrics_engine()
+        for i in range(251):
+            engine.record_request("GET", f"/dummy/endpoint/{i}", 200, 1.0)
+        
+        engine.record_request("GET", "/brand/new/unique/endpoint", 200, 5.0)
+        assert "other" in engine._http_latency_count
+
 
 
 

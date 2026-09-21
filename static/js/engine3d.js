@@ -1205,19 +1205,25 @@
         if (this.aimReticleMesh) this.aimReticleMesh.visible = false;
       };
 
-      // Pointer event bindings
-      dom.addEventListener('pointerdown', handlePointerDown);
-      dom.addEventListener('pointermove', handlePointerMove);
-      window.addEventListener('pointermove', handlePointerMove);
-      dom.addEventListener('pointerup', handlePointerUp);
-      window.addEventListener('pointerup', handlePointerUp);
-      dom.addEventListener('pointercancel', handlePointerCancel);
-      window.addEventListener('pointercancel', handlePointerCancel);
+      // Pointer event bindings with tracked listener registry
+      this._listeners = [];
+      const addTrackedListener = (target, evt, handler, opts = false) => {
+        target.addEventListener(evt, handler, opts);
+        this._listeners.push({ target, evt, handler, opts });
+      };
+
+      addTrackedListener(dom, 'pointerdown', handlePointerDown);
+      addTrackedListener(dom, 'pointermove', handlePointerMove);
+      addTrackedListener(window, 'pointermove', handlePointerMove);
+      addTrackedListener(dom, 'pointerup', handlePointerUp);
+      addTrackedListener(window, 'pointerup', handlePointerUp);
+      addTrackedListener(dom, 'pointercancel', handlePointerCancel);
+      addTrackedListener(window, 'pointercancel', handlePointerCancel);
 
       // Touch fallbacks
-      dom.addEventListener('touchstart', handlePointerDown, { passive: false });
-      window.addEventListener('touchmove', handlePointerMove, { passive: false });
-      window.addEventListener('touchend', handlePointerUp);
+      addTrackedListener(dom, 'touchstart', handlePointerDown, { passive: false });
+      addTrackedListener(window, 'touchmove', handlePointerMove, { passive: false });
+      addTrackedListener(window, 'touchend', handlePointerUp);
     }
 
     /* -------------------------------------------------------------
@@ -1295,6 +1301,32 @@
       this.camera.aspect = width / height;
       this.camera.updateProjectionMatrix();
       this.renderer.setSize(width, height);
+    }
+
+    destroy() {
+      if (this._listeners && Array.isArray(this._listeners)) {
+        for (const item of this._listeners) {
+          try {
+            item.target.removeEventListener(item.evt, item.handler, item.opts);
+          } catch (_) {}
+        }
+        this._listeners = [];
+      }
+      if (this.controls && typeof this.controls.dispose === 'function') {
+        try {
+          this.controls.dispose();
+        } catch (_) {}
+      }
+      if (this.renderer) {
+        try {
+          if (typeof this.renderer.dispose === 'function') {
+            this.renderer.dispose();
+          }
+          if (this.renderer.domElement && this.renderer.domElement.parentElement) {
+            this.renderer.domElement.parentElement.removeChild(this.renderer.domElement);
+          }
+        } catch (_) {}
+      }
     }
   }
 

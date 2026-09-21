@@ -243,8 +243,10 @@ def record_match_result(white_username, black_username, winner, white_damage=0, 
         white_damage, black_damage, turns, duration_sec = 0, 0, 0, 0
 
     conn = get_connection()
+    conn.isolation_level = None
     cursor = conn.cursor()
     try:
+        cursor.execute("BEGIN IMMEDIATE")
         cursor.execute("""
         INSERT INTO matches (white_username, black_username, winner, white_damage, black_damage, turns, duration_sec)
         VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -299,13 +301,16 @@ def record_match_result(white_username, black_username, winner, white_damage=0, 
                 WHERE username = ?
                 """, (new_b_elo, b_wins, b_losses, black_username))
 
-        conn.commit()
+        cursor.execute("COMMIT")
         return {
             "match_id": match_id,
             "white_delta": delta_w,
             "black_delta": delta_b,
             "winner": winner
         }
+    except Exception:
+        cursor.execute("ROLLBACK")
+        raise
     finally:
         conn.close()
 
@@ -497,6 +502,8 @@ def get_or_create_google_user(google_id, email, name=None, avatar=None):
         cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
         user = cursor.fetchone()
         if user:
+            if user["google_id"] and user["google_id"] != google_id:
+                return False, "Account email is already linked to a different Google ID."
             cursor.execute("UPDATE users SET google_id = ?, auth_provider = 'google' WHERE id = ?", (google_id, user["id"]))
             conn.commit()
             cursor.execute("SELECT * FROM users WHERE id = ?", (user["id"],))

@@ -1823,7 +1823,13 @@ class ArchessArena {
      User Interaction Listeners (Mouse, Touch, Keyboard)
   ------------------------------------------------------------- */
   setupListeners() {
-    window.addEventListener('resize', () => {
+    this._arenaListeners = [];
+    const addTrackedListener = (target, evt, handler, opts = false) => {
+      target.addEventListener(evt, handler, opts);
+      this._arenaListeners.push({ target, evt, handler, opts });
+    };
+
+    addTrackedListener(window, 'resize', () => {
       this.initCanvasSize();
     });
 
@@ -2008,20 +2014,20 @@ class ArchessArena {
     };
 
     if (window.PointerEvent) {
-      this.canvas.addEventListener('pointerdown', handlePointerDown);
-      window.addEventListener('pointermove', handlePointerMove);
-      window.addEventListener('pointerup', handlePointerUp);
+      addTrackedListener(this.canvas, 'pointerdown', handlePointerDown);
+      addTrackedListener(window, 'pointermove', handlePointerMove);
+      addTrackedListener(window, 'pointerup', handlePointerUp);
     } else {
-      this.canvas.addEventListener('mousedown', handlePointerDown);
-      window.addEventListener('mousemove', handlePointerMove);
-      window.addEventListener('mouseup', handlePointerUp);
-      this.canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
-      window.addEventListener('touchmove', handlePointerMove, { passive: false });
-      window.addEventListener('touchend', handlePointerUp);
+      addTrackedListener(this.canvas, 'mousedown', handlePointerDown);
+      addTrackedListener(window, 'mousemove', handlePointerMove);
+      addTrackedListener(window, 'mouseup', handlePointerUp);
+      addTrackedListener(this.canvas, 'touchstart', handlePointerDown, { passive: false });
+      addTrackedListener(window, 'touchmove', handlePointerMove, { passive: false });
+      addTrackedListener(window, 'touchend', handlePointerUp);
     }
 
     // Keyboard Gameplay Listeners (Tracker Parity)
-    window.addEventListener('keydown', (e) => {
+    addTrackedListener(window, 'keydown', (e) => {
       // Do not intercept keystrokes when typing into input fields or modals
       const targetTag = e.target ? (e.target.tagName || '').toUpperCase() : '';
       if (targetTag === 'INPUT' || targetTag === 'TEXTAREA' || (e.target && e.target.isContentEditable)) {
@@ -4291,6 +4297,19 @@ class ArchessArena {
     }
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
+    }
+    if (this._arenaListeners && Array.isArray(this._arenaListeners)) {
+      for (const item of this._arenaListeners) {
+        try {
+          item.target.removeEventListener(item.evt, item.handler, item.opts);
+        } catch (_) {}
+      }
+      this._arenaListeners = [];
+    }
+    if (this.engine3d && typeof this.engine3d.destroy === 'function') {
+      try {
+        this.engine3d.destroy();
+      } catch (_) {}
     }
     if (this.audio) {
       this.audio.stopSuddenDeathDrone();

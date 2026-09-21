@@ -34,6 +34,10 @@ class MetricsEngine:
         clean_status = int(status_code)
 
         with self._lock:
+            # Enforce max cardinality cap on endpoint keys to prevent memory exhaustion
+            if len(self._http_latency_count) >= 250 and clean_endpoint not in self._http_latency_count:
+                clean_endpoint = "other"
+
             key = (clean_method, clean_endpoint, clean_status)
             self._http_requests[key] = self._http_requests.get(key, 0) + 1
 

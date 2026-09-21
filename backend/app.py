@@ -159,7 +159,7 @@ def after_request_logging(response):
     latency_ms = round((time.time() - getattr(request, "start_time", time.time())) * 1000, 2)
     
     # Record Prometheus metrics
-    endpoint_name = request.endpoint or request.path
+    endpoint_name = request.endpoint if request.endpoint else "not_found"
     get_metrics_engine().record_request(request.method, endpoint_name, response.status_code, latency_ms)
 
     # Don't flood logs with high-frequency polling/static file hits
@@ -445,8 +445,9 @@ def api_google_auth():
         except Exception:
             pass
 
+    is_testing_env = bool(app.config.get("TESTING") or app.config.get("ALLOW_INSECURE_TEST_AUTH") or data.get("demo") is True)
     if not google_id:
-        if email:
+        if email and is_testing_env:
             google_id = f"g_{hashlib.sha256(email.encode('utf-8')).hexdigest()[:16]}"
         else:
             return jsonify({"success": False, "error": "Google authentication failed: missing credentials or email."}), 400
@@ -489,12 +490,22 @@ def api_user_stats(username):
 _unauth_match_rate_limiter = {}
 _unauth_rate_limit_lock = threading.Lock()
 UNAUTH_MATCH_LIMIT_PER_MINUTE = 60
+_MAX_RATE_LIMIT_ENTRIES = 5000
 
 def _is_unauth_rate_limited(ip: str) -> bool:
     if app.config.get("TESTING"):
         return False
     now = time.time()
     with _unauth_rate_limit_lock:
+        if len(_unauth_match_rate_limiter) > _MAX_RATE_LIMIT_ENTRIES:
+            stale_keys = [k for k, v in _unauth_match_rate_limiter.items() if not v or (now - v[-1] > 60)]
+            for k in stale_keys:
+                _unauth_match_rate_limiter.pop(k, None)
+            if len(_unauth_match_rate_limiter) > _MAX_RATE_LIMIT_ENTRIES:
+                excess = len(_unauth_match_rate_limiter) - _MAX_RATE_LIMIT_ENTRIES
+                for _ in range(excess):
+                    _unauth_match_rate_limiter.pop(next(iter(_unauth_match_rate_limiter)), None)
+
         timestamps = _unauth_match_rate_limiter.get(ip, [])
         cutoff = now - 60
         timestamps = [t for t in timestamps if t > cutoff]
@@ -546,7 +557,12 @@ def api_record_match():
     # Rate limiting & authorization check
     guest_white_names = {"Player1", "Guest", "Local"}
     guest_black_names = {"Player2", "ArChess Bot", "Bot", "Local"}
-    is_guest_match = (white in guest_white_names or black in guest_black_names)
+    is_guest_match = (
+        white in guest_white_names
+        or black in guest_black_names
+        or white.lower().startswith("guest")
+        or black.lower().startswith("guest")
+    )
 
     user_id = session.get("user_id")
     if user_id:
