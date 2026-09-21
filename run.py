@@ -18,7 +18,7 @@ try:
 except ImportError:
     pass
 
-from backend.app import app
+from backend.app import app  # noqa: E402
 
 
 if __name__ == "__main__":

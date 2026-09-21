@@ -5,8 +5,7 @@ and live combat recognition.
 """
 
 import logging
-from typing import Dict, List, Any, Optional
-from datetime import datetime
+from typing import Dict, List, Any
 from backend.database import get_connection
 
 logger = logging.getLogger("ArChess")

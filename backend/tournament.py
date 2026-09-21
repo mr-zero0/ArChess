@@ -4,7 +4,6 @@ Manages 8-commander single-elimination tournament seasons, ELO-weighted match si
 bracket tree navigation, and live round progressions.
 """
 
-import time
 import random
 import math
 import threading
