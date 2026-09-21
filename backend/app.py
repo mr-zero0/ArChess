@@ -836,11 +836,17 @@ def api_ai_coach_recommend():
     board_state = data.get("board_state", [])
     active_turn = data.get("turn", "white")
     persona = data.get("persona", "magnus")
+    difficulty = int(data.get("difficulty", 3))
     
     if not isinstance(board_state, list):
         return jsonify({"success": False, "error": "board_state must be a list of pieces"}), 400
     
-    recommendation = global_coach_agent.recommend_move(board_state, active_turn=active_turn, persona=persona)
+    recommendation = global_coach_agent.recommend_move(
+        board_state,
+        active_turn=active_turn,
+        persona=persona,
+        difficulty=difficulty
+    )
     return jsonify(recommendation), 200 if recommendation.get("success", False) else 400
 
 

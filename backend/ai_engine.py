@@ -502,11 +502,21 @@ class TacticalCoachAgent:
         self,
         board_state: List[Dict[str, Any]],
         active_turn: str = "white",
-        persona: str = "magnus"
+        persona: str = "magnus",
+        difficulty: int = 3
     ) -> Dict[str, Any]:
         """
-        Execute the ReAct reasoning loop to determine the optimal move.
+        Execute the ReAct reasoning loop to determine the optimal move across 5 strength tiers.
         """
+        diff_clamped = max(1, min(5, int(difficulty)))
+        level_names = {
+            1: "Novice",
+            2: "Apprentice",
+            3: "Commander",
+            4: "Master",
+            5: "Sovereign"
+        }
+
         # Step 1: Tool Execution - Inspect Board
         board_analysis = self.tool_inspect_board(board_state, active_turn)
         friendly = board_analysis["friendly_pieces"]
@@ -529,11 +539,26 @@ class TacticalCoachAgent:
         max_score = -1.0
         best_sim: Dict[str, Any] = {}
 
-        # Search candidates
-        candidate_angles = [0.0, 30.0, 45.0, 60.0, 90.0, 135.0, -45.0, -90.0]
+        # Search candidate angles and power scaled by difficulty tier
+        if diff_clamped == 1:
+            candidate_angles = [0.0, 45.0, 90.0]
+            default_power = 0.60
+        elif diff_clamped == 2:
+            candidate_angles = [0.0, 30.0, 60.0, 90.0, 135.0]
+            default_power = 0.70
+        elif diff_clamped == 3:
+            candidate_angles = [0.0, 30.0, 45.0, 60.0, 90.0, 135.0, -45.0, -90.0]
+            default_power = 0.85
+        elif diff_clamped == 4:
+            candidate_angles = [-135.0, -90.0, -45.0, -20.0, 0.0, 20.0, 45.0, 60.0, 90.0, 120.0, 135.0, 180.0]
+            default_power = 0.90
+        else:  # Level 5: Sovereign
+            candidate_angles = [-150.0, -135.0, -90.0, -60.0, -45.0, -25.0, 0.0, 25.0, 45.0, 60.0, 75.0, 90.0, 120.0, 135.0, 150.0, 180.0]
+            default_power = 0.95
+
         for p in friendly:
             for angle in candidate_angles:
-                sim = self.tool_simulate_shot(p, angle, 0.85, enemy)
+                sim = self.tool_simulate_shot(p, angle, default_power, enemy)
                 # Score formula: damage + bank shot bonus if glitch persona
                 score = sim["predicted_damage"]
                 if persona == "glitch" and sim["bounces"] > 0:
@@ -545,13 +570,13 @@ class TacticalCoachAgent:
                     max_score = score
                     best_piece = p
                     best_angle = angle
-                    best_power = 0.85
+                    best_power = default_power
                     best_sim = sim
 
         # Step 4: ReAct Synthesis (Prompting + LLM / Deterministic fallback)
         system_prompt = PromptCatalog.get_coach_system_prompt(persona, context_str)
         user_prompt = (
-            f"Active Turn: {active_turn}\n"
+            f"Active Turn: {active_turn} | Difficulty: Level {diff_clamped} ({level_names[diff_clamped]})\n"
             f"Friendly pieces: {json.dumps(friendly)}\n"
             f"Enemy targets: {json.dumps(enemy)}\n"
             f"Candidate: {best_piece.get('id')} at angle {best_angle} delivers {best_sim.get('predicted_damage', 0)} damage with {best_sim.get('bounces', 0)} bounces."
@@ -564,6 +589,8 @@ class TacticalCoachAgent:
                 if "recommended_piece" in parsed:
                     parsed["success"] = True
                     parsed["source"] = "llm"
+                    parsed["difficulty_level"] = diff_clamped
+                    parsed["difficulty_tier"] = level_names[diff_clamped]
                     return parsed
             except Exception:
                 pass
@@ -575,7 +602,7 @@ class TacticalCoachAgent:
         dmg = best_sim.get("predicted_damage", 0.0)
 
         rationale = (
-            f"Launch {ptype} [{piece_id}] along vector {best_angle}° with {int(best_power * 100)}% power. "
+            f"[Tier: Level {diff_clamped} {level_names[diff_clamped]}] Launch {ptype} [{piece_id}] along vector {best_angle}° with {int(best_power * 100)}% power. "
             f"Predicted collision deals ~{dmg} HP damage with {bounces} boundary ricochet(s)."
         )
 
@@ -583,6 +610,8 @@ class TacticalCoachAgent:
             "success": True,
             "source": "deterministic_heuristic",
             "persona": persona,
+            "difficulty_level": diff_clamped,
+            "difficulty_tier": level_names[diff_clamped],
             "recommended_piece": piece_id,
             "suggested_angle_deg": best_angle,
             "suggested_power_ratio": best_power,
@@ -590,7 +619,7 @@ class TacticalCoachAgent:
             "predicted_damage": dmg,
             "bounces": bounces,
             "chain_of_thought": (
-                f"Thought 1: Identified {len(enemy)} enemy targets. "
+                f"Thought 1 (Tier: {level_names[diff_clamped]}): Identified {len(enemy)} enemy targets. "
                 f"Thought 2: RAG retrieved {len(codex_hints)} tactical principles. "
                 f"Thought 3: Evaluated physics raycast across {len(friendly) * len(candidate_angles)} trajectories. "
                 f"Final: Selected optimal damage trajectory."

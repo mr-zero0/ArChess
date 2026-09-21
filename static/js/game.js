@@ -601,8 +601,11 @@ class ArchessArena {
     this.renderMode = initialMode;
     this.boardTheme = localStorage.getItem('archess_board_theme') || 'midnight';
     this.pieceTheme = localStorage.getItem('archess_piece_theme') || 'classic';
-    this.gameMode = 'bot'; // 'bot' (vs AI) or 'pvp' (local pass & play)
-    this.botDifficulty = localStorage.getItem('archess_bot_difficulty') || 'commander'; // 'cadet', 'commander', 'grandmaster'
+    this.gameMode = 'bot'; // 'bot' (vs AI), 'pvp' (local pass & play), or 'ai-vs-ai' (spectator)
+    const savedDiffLevel = parseInt(localStorage.getItem('archess_bot_difficulty_level') || '3', 10);
+    this.botDifficultyLevel = (savedDiffLevel >= 1 && savedDiffLevel <= 5) ? savedDiffLevel : 3;
+    this.botDifficulty = localStorage.getItem('archess_bot_difficulty') || 'commander'; // 'cadet', 'apprentice', 'commander', 'master', 'grandmaster'
+    this.pausedAiVsAi = false;
     this.currentTurn = 'white'; // 'white' or 'black'
 
     // Match tracking
@@ -1048,17 +1051,71 @@ class ArchessArena {
 
   setGameMode(mode) {
     this.gameMode = mode;
-    this.logTelemetry('MODE_CHANGE', `Match Mode set to: ${mode === 'bot' ? 'SOLO VS BOT AI' : 'LOCAL PASS & PLAY'}`);
-    if (this.currentTurn === 'black' && this.gameMode === 'bot' && !this.isGameOver) {
-      this.triggerBotTurn();
+    this.logTelemetry('MODE_CHANGE', `Match Mode set to: ${mode === 'bot' ? 'SOLO VS BOT AI' : (mode === 'ai-vs-ai' ? 'AUTONOMOUS AI VS AI SPECTATOR' : 'LOCAL PASS & PLAY')}`);
+    if (!this.isGameOver) {
+      if (this.currentTurn === 'black' && this.gameMode === 'bot') {
+        this.triggerBotTurn();
+      } else if (this.gameMode === 'ai-vs-ai') {
+        if (!this.pausedAiVsAi) {
+          setTimeout(() => this.triggerBotTurn(), 600);
+        }
+      }
     }
   }
 
   setBotDifficulty(level) {
-    if (!['cadet', 'commander', 'grandmaster'].includes(level)) return;
-    this.botDifficulty = level;
-    localStorage.setItem('archess_bot_difficulty', level);
-    this.logTelemetry('AI_TIER_CHANGE', `Bot Tactical AI set to: ${level.toUpperCase()}`);
+    const levelMap = {
+      1: { name: 'novice', key: 'cadet', num: 1, title: 'Novice (Cadet)', elo: 800 },
+      2: { name: 'apprentice', key: 'apprentice', num: 2, title: 'Apprentice', elo: 1200 },
+      3: { name: 'commander', key: 'commander', num: 3, title: 'Commander', elo: 1600 },
+      4: { name: 'master', key: 'master', num: 4, title: 'Master', elo: 2000 },
+      5: { name: 'sovereign', key: 'grandmaster', num: 5, title: 'Sovereign (Grandmaster)', elo: 2400 }
+    };
+    const stringMap = {
+      'cadet': 1,
+      'novice': 1,
+      'apprentice': 2,
+      'commander': 3,
+      'master': 4,
+      'grandmaster': 5,
+      'sovereign': 5
+    };
+
+    let numericLevel = 3;
+    if (typeof level === 'number') {
+      numericLevel = Math.max(1, Math.min(5, Math.round(level)));
+    } else if (typeof level === 'string') {
+      const parsed = parseInt(level, 10);
+      if (!isNaN(parsed) && parsed >= 1 && parsed <= 5) {
+        numericLevel = parsed;
+      } else if (stringMap[level.toLowerCase()]) {
+        numericLevel = stringMap[level.toLowerCase()];
+      }
+    }
+
+    const profile = levelMap[numericLevel] || levelMap[3];
+    this.botDifficultyLevel = numericLevel;
+    this.botDifficulty = profile.key;
+    this.botDifficultyProfile = profile;
+    localStorage.setItem('archess_bot_difficulty_level', numericLevel.toString());
+    localStorage.setItem('archess_bot_difficulty', profile.key);
+    this.logTelemetry('AI_TIER_CHANGE', `Bot Tactical AI set to: L${numericLevel} ${profile.title.toUpperCase()} (~${profile.elo} ELO)`);
+  }
+
+  toggleAiVsAiPause() {
+    this.pausedAiVsAi = !this.pausedAiVsAi;
+    this.logTelemetry('AI_SPECTATOR', `AI vs AI Watch Mode: ${this.pausedAiVsAi ? 'PAUSED' : 'RESUMED'}`);
+    this.updateHUD();
+    if (!this.pausedAiVsAi && !this.isGameOver && this.gameMode === 'ai-vs-ai') {
+      this.triggerBotTurn();
+    }
+    return this.pausedAiVsAi;
+  }
+
+  stepAiVsAi() {
+    if (this.gameMode !== 'ai-vs-ai' || this.isGameOver) return;
+    this.logTelemetry('AI_SPECTATOR', `AI vs AI Watch Mode: STEPPING single turn for ${this.currentTurn.toUpperCase()}`);
+    this.triggerBotTurn(true);
   }
 
   /* -------------------------------------------------------------
@@ -1085,14 +1142,27 @@ class ArchessArena {
     this.clearOpponentAim();
   }
 
-  triggerBotTurn() {
-    if (this.gameMode !== 'bot' || this.currentTurn !== 'black' || this.isGameOver || this.botThinking) return;
+  triggerBotTurn(force = false) {
+    if (this.isGameOver || this.botThinking) return;
+    if (!force) {
+      if (this.gameMode === 'bot' && this.currentTurn !== 'black') return;
+      if (this.gameMode !== 'bot' && this.gameMode !== 'ai-vs-ai') return;
+      if (this.gameMode === 'ai-vs-ai' && this.pausedAiVsAi) return;
+    }
 
     this.botThinking = true;
-    const diff = this.botDifficulty || 'commander';
-    this.logTelemetry('BOT_THINKING', `ArChess Bot [${diff.toUpperCase()}] calculating tactical trajectory...`);
+    const diffLevel = this.botDifficultyLevel || 3;
+    const diffKey = this.botDifficulty || 'commander';
+    const activeTeam = this.currentTurn;
+    this.logTelemetry('BOT_THINKING', `ArChess AI [L${diffLevel} • ${diffKey.toUpperCase()}] calculating tactical trajectory for ${activeTeam.toUpperCase()}...`);
 
-    const delay = diff === 'grandmaster' ? 450 : (diff === 'cadet' ? 950 : 700);
+    let delay = 650;
+    if (this.gameMode === 'ai-vs-ai') {
+      delay = 700;
+    } else {
+      delay = diffLevel === 5 ? 450 : (diffLevel <= 2 ? 850 : 650);
+    }
+
     clearTimeout(this.botTimeout);
     this.botTimeout = setTimeout(() => {
       this.executeBotTurn();
@@ -1101,15 +1171,23 @@ class ArchessArena {
 
   executeBotTurn() {
     this.botThinking = false;
-    if (this.currentTurn !== 'black' || this.isGameOver) return;
+    if (this.isGameOver) return;
+    if (this.gameMode === 'bot' && this.currentTurn !== 'black') return;
+    if (this.gameMode !== 'bot' && this.gameMode !== 'ai-vs-ai') return;
 
-    const blackPieces = this.pieces.filter(p => !p.dead && p.team === 'black' && (p.type !== 'king' || p.awakened));
-    const whitePieces = this.pieces.filter(p => !p.dead && p.team === 'white');
+    const activeTeam = this.currentTurn;
+    const enemyTeam = activeTeam === 'white' ? 'black' : 'white';
 
-    if (blackPieces.length === 0 || whitePieces.length === 0) return;
+    const friendlyPieces = this.pieces.filter(p => !p.dead && p.team === activeTeam && (p.type !== 'king' || p.awakened));
+    const enemyPieces = this.pieces.filter(p => !p.dead && p.team === enemyTeam);
 
-    const diff = this.botDifficulty || 'commander';
-    const targetWeights = { king: 220, queen: 110, rook: 70, bishop: 60, knight: 55, pawn: 25 };
+    if (friendlyPieces.length === 0 || enemyPieces.length === 0) return;
+
+    const diffLevel = this.botDifficultyLevel || 3;
+    const targetWeights = { king: 240, queen: 120, rook: 75, bishop: 65, knight: 60, pawn: 28 };
+    const layout = this.getBoardLayout();
+    const wallMinX = layout.gridOriginX;
+    const wallMaxX = layout.gridOriginX + layout.gridSize;
 
     let shooter = null;
     let target = null;
@@ -1117,53 +1195,63 @@ class ArchessArena {
     let desiredPower = 0.75;
     let trajectoryMode = 'DIRECT';
 
-    if (diff === 'cadet') {
-      // Cadet: casual aim with wide tolerance and randomized piece choice
-      shooter = blackPieces[Math.floor(Math.random() * blackPieces.length)];
-      target = whitePieces[Math.floor(Math.random() * whitePieces.length)];
+    if (diffLevel === 1) {
+      // Level 1: Novice (Cadet) - casual random targeting with wide jitter
+      shooter = friendlyPieces[Math.floor(Math.random() * friendlyPieces.length)];
+      target = enemyPieces[Math.floor(Math.random() * enemyPieces.length)];
       const dx = target.x - shooter.x;
       const dy = target.y - shooter.y;
-      aimAngle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.28;
-      desiredPower = 0.42 + Math.random() * 0.28;
-    } else if (diff === 'commander') {
-      // Commander: standard prioritized tactical direct fire
-      const offensiveShooters = blackPieces.filter(p => ['queen', 'knight', 'bishop', 'rook', 'king'].includes(p.type));
-      const candidateShooters = offensiveShooters.length > 0 ? offensiveShooters : blackPieces;
+      aimAngle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.38;
+      desiredPower = 0.40 + Math.random() * 0.30;
+      trajectoryMode = 'NOVICE_DIRECT';
+    } else if (diffLevel === 2) {
+      // Level 2: Apprentice - proximity targeting with moderate jitter
+      const sortedByProximity = [...friendlyPieces].sort((a, b) => {
+        const minDA = Math.min(...enemyPieces.map(e => Math.hypot(e.x - a.x, e.y - a.y)));
+        const minDB = Math.min(...enemyPieces.map(e => Math.hypot(e.x - b.x, e.y - b.y)));
+        return minDA - minDB;
+      });
+      shooter = sortedByProximity[Math.floor(Math.random() * Math.min(3, sortedByProximity.length))] || friendlyPieces[0];
+      const sortedTargets = [...enemyPieces].sort((a, b) => Math.hypot(a.x - shooter.x, a.y - shooter.y) - Math.hypot(b.x - shooter.x, b.y - shooter.y));
+      target = sortedTargets[Math.floor(Math.random() * Math.min(2, sortedTargets.length))] || enemyPieces[0];
+      const dx = target.x - shooter.x;
+      const dy = target.y - shooter.y;
+      const dist = Math.hypot(dx, dy);
+      aimAngle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.18;
+      desiredPower = Math.min(0.88, Math.max(0.48, (dist / (this.width * 0.65)) * 0.95));
+      trajectoryMode = 'APPRENTICE_DIRECT';
+    } else if (diffLevel === 3) {
+      // Level 3: Commander - tactical score-weighted targeting (Queen/King prioritized)
+      const offensiveShooters = friendlyPieces.filter(p => ['queen', 'knight', 'bishop', 'rook', 'king'].includes(p.type));
+      const candidateShooters = offensiveShooters.length > 0 ? offensiveShooters : friendlyPieces;
 
       let candidatePairs = [];
       candidateShooters.forEach(s => {
-        whitePieces.forEach(t => {
+        enemyPieces.forEach(t => {
           const dx = t.x - s.x;
           const dy = t.y - s.y;
           const d = Math.hypot(dx, dy);
-          const score = (targetWeights[t.type] || 25) / (d + 60);
+          const score = (targetWeights[t.type] || 28) / (d + 60);
           candidatePairs.push({ shooter: s, target: t, d, score, dx, dy });
         });
       });
 
       candidatePairs.sort((a, b) => b.score - a.score);
-      const chosen = candidatePairs[0] || { shooter: blackPieces[0], target: whitePieces[0], dx: 0, dy: 1, d: 100 };
+      const chosen = candidatePairs[0] || { shooter: friendlyPieces[0], target: enemyPieces[0], dx: 0, dy: 1, d: 100 };
       shooter = chosen.shooter;
       target = chosen.target;
-
-      const dx = target.x - shooter.x;
-      const dy = target.y - shooter.y;
-      aimAngle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.06;
+      aimAngle = Math.atan2(chosen.dy, chosen.dx) + (Math.random() - 0.5) * 0.05;
       desiredPower = Math.min(0.96, Math.max(0.52, chosen.d / (this.width * 0.7)));
-    } else {
-      // Grandmaster: Neural Evaluator with Line-Of-Sight raycasting and Cushion Bank-Shots
-      const layout = this.getBoardLayout();
-      const wallMinX = layout.gridOriginX;
-      const wallMaxX = layout.gridOriginX + layout.gridSize;
-
+      trajectoryMode = 'COMMANDER_DIRECT';
+    } else if (diffLevel === 4) {
+      // Level 4: Master - Raycast Line-Of-Sight obstacle check + 1-cushion bank-shot fallback
       let candidateMoves = [];
-      blackPieces.forEach(s => {
-        whitePieces.forEach(t => {
+      friendlyPieces.forEach(s => {
+        enemyPieces.forEach(t => {
           const directDx = t.x - s.x;
           const directDy = t.y - s.y;
           const directDist = Math.hypot(directDx, directDy);
 
-          // Raycast check for obstacles between s and t
           let isDirectBlocked = false;
           for (let p of this.pieces) {
             if (p === s || p === t || p.dead) continue;
@@ -1179,44 +1267,42 @@ class ArchessArena {
             }
           }
 
-          const baseScore = (targetWeights[t.type] || 30) * 1.5 - directDist * 0.12;
+          const baseScore = (targetWeights[t.type] || 30) * 1.5 - directDist * 0.10;
 
           if (!isDirectBlocked) {
             candidateMoves.push({
               shooter: s,
               target: t,
-              angle: Math.atan2(directDy, directDx),
-              power: Math.min(1.0, Math.max(0.72, (directDist / (this.width * 0.6)) * 1.1)),
-              score: baseScore + 50,
-              mode: 'DIRECT'
+              angle: Math.atan2(directDy, directDx) + (Math.random() - 0.5) * 0.018,
+              power: Math.min(1.0, Math.max(0.68, (directDist / (this.width * 0.6)) * 1.05)),
+              score: baseScore + 60,
+              mode: 'MASTER_DIRECT'
             });
           } else {
-            // Calculate bank-shot cushion rebounds off left & right walls
+            // Cushion bank off left wall
             const mirrorLeftX = 2 * wallMinX - t.x;
             const bankAngleLeft = Math.atan2(t.y - s.y, mirrorLeftX - s.x);
-            const tWall = (wallMinX - s.x) / Math.cos(bankAngleLeft);
-            if (tWall > 0) {
+            if ((wallMinX - s.x) / Math.cos(bankAngleLeft) > 0) {
               candidateMoves.push({
                 shooter: s,
                 target: t,
                 angle: bankAngleLeft,
                 power: 0.92,
-                score: baseScore + 25,
-                mode: 'BANK_SHOT_LEFT'
+                score: baseScore + 30,
+                mode: 'MASTER_BANK_LEFT'
               });
             }
-
+            // Cushion bank off right wall
             const mirrorRightX = 2 * wallMaxX - t.x;
             const bankAngleRight = Math.atan2(t.y - s.y, mirrorRightX - s.x);
-            const tWallR = (wallMaxX - s.x) / Math.cos(bankAngleRight);
-            if (tWallR > 0) {
+            if ((wallMaxX - s.x) / Math.cos(bankAngleRight) > 0) {
               candidateMoves.push({
                 shooter: s,
                 target: t,
                 angle: bankAngleRight,
                 power: 0.92,
-                score: baseScore + 25,
-                mode: 'BANK_SHOT_RIGHT'
+                score: baseScore + 30,
+                mode: 'MASTER_BANK_RIGHT'
               });
             }
           }
@@ -1225,13 +1311,93 @@ class ArchessArena {
 
       candidateMoves.sort((a, b) => b.score - a.score);
       const best = candidateMoves[0] || {
-        shooter: blackPieces[0],
-        target: whitePieces[0],
-        angle: Math.atan2(whitePieces[0].y - blackPieces[0].y, whitePieces[0].x - blackPieces[0].x),
+        shooter: friendlyPieces[0],
+        target: enemyPieces[0],
+        angle: Math.atan2(enemyPieces[0].y - friendlyPieces[0].y, enemyPieces[0].x - friendlyPieces[0].x),
         power: 0.85,
-        mode: 'DIRECT'
+        mode: 'MASTER_DIRECT'
       };
+      shooter = best.shooter;
+      target = best.target;
+      aimAngle = best.angle;
+      desiredPower = best.power;
+      trajectoryMode = best.mode;
+    } else {
+      // Level 5: Sovereign (Grandmaster) - Deep Multi-Angle LOS Evaluator & Lethal Bank-Shots
+      let candidateMoves = [];
+      friendlyPieces.forEach(s => {
+        enemyPieces.forEach(t => {
+          const directDx = t.x - s.x;
+          const directDy = t.y - s.y;
+          const directDist = Math.hypot(directDx, directDy);
 
+          let isDirectBlocked = false;
+          let blockerCount = 0;
+          for (let p of this.pieces) {
+            if (p === s || p === t || p.dead) continue;
+            const vX = directDx / directDist;
+            const vY = directDy / directDist;
+            const proj = (p.x - s.x) * vX + (p.y - s.y) * vY;
+            if (proj > s.radius && proj < directDist - t.radius) {
+              const perpDist = Math.abs((p.x - s.x) * -vY + (p.y - s.y) * vX);
+              if (perpDist < (s.radius + p.radius) * 0.96) {
+                isDirectBlocked = true;
+                blockerCount++;
+              }
+            }
+          }
+
+          const pieceVal = targetWeights[t.type] || 30;
+          const isLethal = t.hp <= (s.mass || 1.2) * 50;
+          const baseScore = pieceVal * 2.0 + (isLethal ? 80 : 0) - directDist * 0.08;
+
+          if (!isDirectBlocked) {
+            candidateMoves.push({
+              shooter: s,
+              target: t,
+              angle: Math.atan2(directDy, directDx),
+              power: Math.min(1.0, Math.max(0.72, (directDist / (this.width * 0.58)) * 1.12)),
+              score: baseScore + 100,
+              mode: 'SOVEREIGN_DIRECT'
+            });
+          } else {
+            const mirrorLeftX = 2 * wallMinX - t.x;
+            const bankAngleLeft = Math.atan2(t.y - s.y, mirrorLeftX - s.x);
+            if ((wallMinX - s.x) / Math.cos(bankAngleLeft) > 0) {
+              candidateMoves.push({
+                shooter: s,
+                target: t,
+                angle: bankAngleLeft,
+                power: 0.95,
+                score: baseScore + 45 - (blockerCount * 10),
+                mode: 'SOVEREIGN_BANK_LEFT'
+              });
+            }
+
+            const mirrorRightX = 2 * wallMaxX - t.x;
+            const bankAngleRight = Math.atan2(t.y - s.y, mirrorRightX - s.x);
+            if ((wallMaxX - s.x) / Math.cos(bankAngleRight) > 0) {
+              candidateMoves.push({
+                shooter: s,
+                target: t,
+                angle: bankAngleRight,
+                power: 0.95,
+                score: baseScore + 45 - (blockerCount * 10),
+                mode: 'SOVEREIGN_BANK_RIGHT'
+              });
+            }
+          }
+        });
+      });
+
+      candidateMoves.sort((a, b) => b.score - a.score);
+      const best = candidateMoves[0] || {
+        shooter: friendlyPieces[0],
+        target: enemyPieces[0],
+        angle: Math.atan2(enemyPieces[0].y - friendlyPieces[0].y, enemyPieces[0].x - friendlyPieces[0].x),
+        power: 0.90,
+        mode: 'SOVEREIGN_DIRECT'
+      };
       shooter = best.shooter;
       target = best.target;
       aimAngle = best.angle;
@@ -1239,7 +1405,7 @@ class ArchessArena {
       trajectoryMode = best.mode;
     }
 
-    this.logTelemetry('BOT_AIM', `[AI Tier: ${diff.toUpperCase()}] Aiming ${shooter.type.toUpperCase()} -> ${target.type.toUpperCase()} (${trajectoryMode}, ${Math.round(desiredPower * 100)}% power)`);
+    this.logTelemetry('BOT_AIM', `[AI Tier: L${diffLevel} • ${this.botDifficulty.toUpperCase()}] ${activeTeam.toUpperCase()} ${shooter.type.toUpperCase()} -> ${target.type.toUpperCase()} (${trajectoryMode}, ${Math.round(desiredPower * 100)}% power)`);
 
     const pullDist = desiredPower * this.maxPullDistance;
     const pullX = Math.cos(aimAngle) * pullDist;
@@ -1252,7 +1418,7 @@ class ArchessArena {
 
     clearTimeout(this.botAimTimeout);
     this.botAimTimeout = setTimeout(() => {
-      if (this.currentTurn === 'black' && !this.isGameOver) {
+      if (this.currentTurn === activeTeam && !this.isGameOver) {
         this.launchPiece(shooter, pullX, pullY, pullDist);
       }
       this.keyboardAiming = false;
@@ -1268,11 +1434,12 @@ class ArchessArena {
     this.audio.stopSuddenDeathDrone();
     this.audio.playVictory();
     this.logTelemetry('VICTORY', `CHECKMATE! ${this.winner.toUpperCase()} ARMY WINS THE MATCH!`);
-    this.addCommentary(`🏆 CHECKMATE ANNIHILATION! ${this.winner.toUpperCase()} Sovereign triumphs in Turn ${this.turns}!`, 'victory', '👑');
+    this.addCommentary(this.gameMode === 'ai-vs-ai' ? `🏆 AI VS AI CHECKMATE! ${this.winner.toUpperCase()} Sovereign triumphs in Turn ${this.turns}!` : `🏆 CHECKMATE ANNIHILATION! ${this.winner.toUpperCase()} Sovereign triumphs in Turn ${this.turns}!`, 'victory', '👑');
 
     const durationSec = Math.max(1, Math.round((Date.now() - this.matchStartTime) / 1000));
-    const whiteUser = (window.ArchessAuth && window.ArchessAuth.currentUser) ? window.ArchessAuth.currentUser.username : 'Player1';
-    const blackUser = this.opponentName || (this.gameMode === 'bot' ? 'ArChess Bot' : 'Player2');
+    const isAiVsAi = this.gameMode === 'ai-vs-ai';
+    const whiteUser = isAiVsAi ? `White AI (L${this.botDifficultyLevel || 3})` : ((window.ArchessAuth && window.ArchessAuth.currentUser) ? window.ArchessAuth.currentUser.username : 'Player1');
+    const blackUser = isAiVsAi ? `Black AI (L${this.botDifficultyLevel || 3})` : (this.opponentName || (this.gameMode === 'bot' ? 'ArChess Bot' : 'Player2'));
 
     const payload = {
       white_username: whiteUser,
@@ -1319,8 +1486,9 @@ class ArchessArena {
     this.logTelemetry('STALEMATE', `MATCH DRAWN — Insufficient kinetic material! Both Citadel Kings endure with no remaining vanguard pieces.`);
 
     const durationSec = Math.max(1, Math.round((Date.now() - this.matchStartTime) / 1000));
-    const whiteUser = (window.ArchessAuth && window.ArchessAuth.currentUser) ? window.ArchessAuth.currentUser.username : 'Player1';
-    const blackUser = this.opponentName || (this.gameMode === 'bot' ? 'ArChess Bot' : 'Player2');
+    const isAiVsAi = this.gameMode === 'ai-vs-ai';
+    const whiteUser = isAiVsAi ? `White AI (L${this.botDifficultyLevel || 3})` : ((window.ArchessAuth && window.ArchessAuth.currentUser) ? window.ArchessAuth.currentUser.username : 'Player1');
+    const blackUser = isAiVsAi ? `Black AI (L${this.botDifficultyLevel || 3})` : (this.opponentName || (this.gameMode === 'bot' ? 'ArChess Bot' : 'Player2'));
 
     const payload = {
       white_username: whiteUser,
@@ -1601,6 +1769,9 @@ class ArchessArena {
     }
     this.logTelemetry('RESET', 'Board reset to standard 32-piece tournament arrangement.');
     this.addCommentary('Combat arena re-racked. All 32 units restored to opening arrangement.', 'info', '🔄');
+    if (this.gameMode === 'ai-vs-ai' && !this.pausedAiVsAi) {
+      setTimeout(() => this.triggerBotTurn(), 650);
+    }
   }
 
   /* -------------------------------------------------------------
@@ -1685,6 +1856,7 @@ class ArchessArena {
     const handlePointerDown = (e) => {
       if (this.isGameOver) return;
       if (this.gameMode === 'bot' && this.currentTurn === 'black') return;
+      if (this.gameMode === 'ai-vs-ai') return;
       if (this.multiplayerMode) {
         if (this.playerRole === 'spectator') return;
         if (this.playerRole && this.playerRole !== this.currentTurn) {
@@ -1865,6 +2037,7 @@ class ArchessArena {
     if (this.audio) this.audio.init();
     if (this.isGameOver) return;
     if (this.gameMode === 'bot' && this.currentTurn === 'black') return;
+    if (this.gameMode === 'ai-vs-ai') return;
     const livingActivePieces = this.pieces.filter(p => !p.dead && p.team === this.currentTurn && (p.type !== 'king' || p.awakened));
     if (livingActivePieces.length === 0) return;
 
@@ -2594,8 +2767,14 @@ class ArchessArena {
         this.updateHUD();
       }
 
-      if (!this.isGameOver && this.currentTurn === 'black' && this.gameMode === 'bot') {
-        this.triggerBotTurn();
+      if (!this.isGameOver) {
+        if (this.currentTurn === 'black' && this.gameMode === 'bot') {
+          this.triggerBotTurn();
+        } else if (this.gameMode === 'ai-vs-ai') {
+          if (!this.pausedAiVsAi) {
+            setTimeout(() => this.triggerBotTurn(), 600);
+          }
+        }
       }
     } else if (anyInMotion) {
       this.simulationSettling = true;
@@ -2705,7 +2884,16 @@ class ArchessArena {
     } else {
       const activeKing = this.pieces.find(p => !p.dead && p.team === this.currentTurn && p.type === 'king');
       if (turnLabel) {
-        if (this.suddenDeathMode) {
+        if (this.gameMode === 'ai-vs-ai') {
+          const status = this.pausedAiVsAi ? '(PAUSED)' : 'AUTONOMOUS DUEL';
+          if (this.suddenDeathMode) {
+            turnLabel.textContent = `⚡ AI VS AI SUDDEN DEATH: ${this.currentTurn.toUpperCase()} KING ${status}`;
+          } else if (activeKing && activeKing.awakened) {
+            turnLabel.textContent = `👑 AI VS AI: ${this.currentTurn.toUpperCase()} SOVEREIGN STRIKE ${status}`;
+          } else {
+            turnLabel.textContent = `🤖 AI VS AI SPECTATOR: ${this.currentTurn.toUpperCase()} AI PLANNING STRIKE ${status}`;
+          }
+        } else if (this.suddenDeathMode) {
           turnLabel.textContent = `⚡ SUDDEN DEATH DUEL: ${this.currentTurn.toUpperCase()} KING — AIM & LAUNCH!`;
         } else if (activeKing && activeKing.awakened) {
           turnLabel.textContent = `👑 ${this.currentTurn.toUpperCase()}'S TURN — SOVEREIGN STRIKE! (King Mobile)`;

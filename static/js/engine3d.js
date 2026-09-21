@@ -1060,6 +1060,7 @@
 
         if (this.arena.isGameOver) return;
         if (this.arena.gameMode === 'bot' && this.arena.currentTurn === 'black') return;
+        if (this.arena.gameMode === 'ai-vs-ai') return;
         if (this.arena.multiplayerMode) {
           if (this.arena.playerRole === 'spectator') return;
           if (this.arena.playerRole && this.arena.playerRole !== this.arena.currentTurn) {

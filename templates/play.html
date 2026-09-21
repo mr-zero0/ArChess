@@ -42,6 +42,7 @@
           <div class="theme-picker-group cupertino-segmented-control wing-segmented" role="group" aria-label="Game Mode">
             <button class="theme-pill-btn game-mode-btn active" id="modeVsBotBtn" data-mode="bot">vs AI</button>
             <button class="theme-pill-btn game-mode-btn" id="modePvpBtn" data-mode="pvp">Pass &amp; Play</button>
+            <button class="theme-pill-btn game-mode-btn" id="modeAiVsAiBtn" data-mode="ai-vs-ai" title="Watch AI vs AI autonomous spectator battle">🤖 Watch AI</button>
             <button class="theme-pill-btn btn-multiplayer-trigger" id="btnOpenMultiplayerModal" title="Online Multiplayer">
               <span class="multiplayer-status-dot" id="multiplayerStatusDot"></span>
               <span id="multiplayerBtnLabel">Online</span>
@@ -49,15 +50,52 @@
           </div>
         </div>
 
-        <!-- 3. AI Difficulty Selector -->
+        <!-- 3. AI Difficulty Selector (5-Level Button + Drag and Fit Slider) -->
         <div class="wing-card" id="botDifficultyWingCard">
-          <div class="wing-card-header">
+          <div class="wing-card-header" style="display: flex; justify-content: space-between; align-items: center;">
             <span class="wing-card-title">AI Difficulty</span>
+            <span class="ai-strength-badge" id="aiLevelRatingBadge" title="AI Tactical Tier &amp; ELO Rating">L3 • 1600 ELO</span>
           </div>
-          <div class="arena-toolbar-group cupertino-segmented-control wing-segmented" id="botDifficultyToolbarGroup">
-            <button class="theme-pill-btn bot-difficulty-btn" data-diff="cadet" data-bot-diff="cadet">Cadet</button>
-            <button class="theme-pill-btn bot-difficulty-btn active" data-diff="commander" data-bot-diff="commander">Commander</button>
-            <button class="theme-pill-btn bot-difficulty-btn" data-diff="grandmaster" data-bot-diff="grandmaster">Grandmaster</button>
+
+          <!-- Drag and Fit Slider -->
+          <div class="ai-slider-container">
+            <div class="ai-slider-track-wrap">
+              <input type="range" class="ai-strength-range-slider" id="aiStrengthSlider" min="1" max="5" step="1" value="3" aria-label="AI Strength Slider">
+            </div>
+            <div class="ai-slider-scale-labels" id="aiSliderLabels">
+              <span class="scale-step-label" data-step="1">L1 Novice</span>
+              <span class="scale-step-label" data-step="2">L2 Appr</span>
+              <span class="scale-step-label active" data-step="3">L3 Cmdr</span>
+              <span class="scale-step-label" data-step="4">L4 Master</span>
+              <span class="scale-step-label" data-step="5">L5 Sov</span>
+            </div>
+          </div>
+
+          <!-- 5-Level Button Group (Drag & Fit Responsive Grid) -->
+          <div class="arena-toolbar-group cupertino-segmented-control wing-segmented bot-difficulty-pill-group" id="botDifficultyToolbarGroup" style="margin-top: 8px;">
+            <button class="theme-pill-btn bot-difficulty-btn" data-diff="1" data-bot-diff="cadet" data-level="1" title="Level 1: Novice / Cadet (~800 ELO)">L1</button>
+            <button class="theme-pill-btn bot-difficulty-btn" data-diff="2" data-bot-diff="apprentice" data-level="2" title="Level 2: Apprentice (~1200 ELO)">L2</button>
+            <button class="theme-pill-btn bot-difficulty-btn active" data-diff="3" data-bot-diff="commander" data-level="3" title="Level 3: Tactical Commander (~1600 ELO)">L3</button>
+            <button class="theme-pill-btn bot-difficulty-btn" data-diff="4" data-bot-diff="master" data-level="4" title="Level 4: Master Tactician (~2000 ELO)">L4</button>
+            <button class="theme-pill-btn bot-difficulty-btn" data-diff="5" data-bot-diff="grandmaster" data-level="5" title="Level 5: Sovereign Grandmaster (~2400 ELO)">L5</button>
+          </div>
+
+          <!-- Spectator AI vs AI Controls Row (Appears when Watch AI mode is active) -->
+          <div id="aiVsAiControlsRow" class="ai-vs-ai-controls" style="display: none; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span style="font-size: 0.72rem; color: var(--gold-light, #ffd700); font-weight: 600; display: flex; align-items: center; gap: 5px;">
+                <span class="ai-live-pulse-dot"></span> Spectator Duel
+              </span>
+              <span id="aiVsAiStatusText" style="font-size: 0.68rem; color: var(--muted-foreground, #a1a1aa);">Simulating Live</span>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <button type="button" class="theme-pill-btn" id="btnAiVsAiPause" style="flex: 1; padding: 5px 8px; font-size: 0.72rem; font-weight: 600;">
+                <span id="aiVsAiPauseIcon">⏸️</span> <span id="aiVsAiPauseLabel">Pause AI</span>
+              </button>
+              <button type="button" class="theme-pill-btn" id="btnAiVsAiStep" style="flex: 1; padding: 5px 8px; font-size: 0.72rem; font-weight: 600;">
+                <span>⏭️</span> <span>Step Turn</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -464,12 +502,14 @@
         <div class="atelier-section">
           <div class="section-label-bar">
             <h4>AI Difficulty</h4>
-            <span class="active-indicator" id="atelierAiActiveName">Tactical Commander</span>
+            <span class="active-indicator" id="atelierAiActiveName">L3 • Commander (1600 ELO)</span>
           </div>
-          <div class="theme-picker-group cupertino-segmented-control" style="margin-top: 8px; width: 100%; display: flex; padding: 4px;">
-            <button type="button" class="theme-pill-btn bot-difficulty-btn bot-diff-setting-pill" data-diff="cadet" data-bot-diff="cadet" style="flex: 1; text-align: center;">Cadet</button>
-            <button type="button" class="theme-pill-btn bot-difficulty-btn bot-diff-setting-pill active" data-diff="commander" data-bot-diff="commander" style="flex: 1; text-align: center;">Commander</button>
-            <button type="button" class="theme-pill-btn bot-difficulty-btn bot-diff-setting-pill" data-diff="grandmaster" data-bot-diff="grandmaster" style="flex: 1; text-align: center;">Grandmaster</button>
+          <div class="theme-picker-group cupertino-segmented-control bot-difficulty-pill-group" style="margin-top: 8px; width: 100%; display: flex; padding: 4px; gap: 4px;">
+            <button type="button" class="theme-pill-btn bot-difficulty-btn bot-diff-setting-pill" data-diff="1" data-bot-diff="cadet" data-level="1" style="flex: 1; text-align: center; font-size: 0.72rem; padding: 6px 4px;">L1 Novice</button>
+            <button type="button" class="theme-pill-btn bot-difficulty-btn bot-diff-setting-pill" data-diff="2" data-bot-diff="apprentice" data-level="2" style="flex: 1; text-align: center; font-size: 0.72rem; padding: 6px 4px;">L2 Appr</button>
+            <button type="button" class="theme-pill-btn bot-difficulty-btn bot-diff-setting-pill active" data-diff="3" data-bot-diff="commander" data-level="3" style="flex: 1; text-align: center; font-size: 0.72rem; padding: 6px 4px;">L3 Cmdr</button>
+            <button type="button" class="theme-pill-btn bot-difficulty-btn bot-diff-setting-pill" data-diff="4" data-bot-diff="master" data-level="4" style="flex: 1; text-align: center; font-size: 0.72rem; padding: 6px 4px;">L4 Master</button>
+            <button type="button" class="theme-pill-btn bot-difficulty-btn bot-diff-setting-pill" data-diff="5" data-bot-diff="grandmaster" data-level="5" style="flex: 1; text-align: center; font-size: 0.72rem; padding: 6px 4px;">L5 Sov</button>
           </div>
         </div>
 

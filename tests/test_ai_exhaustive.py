@@ -249,6 +249,13 @@ def test_tactical_coach_agent_deterministic_and_llm():
     assert rec_fallback["success"] is True
     assert rec_fallback["source"] == "deterministic_heuristic"
 
+    # Test all 5 difficulty levels and boundaries
+    for lvl in [1, 2, 3, 4, 5, 0, 10]:
+        rec_lvl = agent.recommend_move(board, active_turn="white", difficulty=lvl)
+        assert rec_lvl["success"] is True
+        assert rec_lvl["difficulty_level"] in [1, 2, 3, 4, 5]
+        assert "difficulty_tier" in rec_lvl
+
 
 # =========================================================================
 # 6. SHOUTCASTER & MATCH DEBRIEF AGENTS TESTS
@@ -345,12 +352,15 @@ def test_api_ai_coach_recommend(client):
             {"id": "b_p1", "type": "pawn", "color": "black", "x": 2.0, "y": 0.0}
         ],
         "turn": "white",
-        "persona": "magnus"
+        "persona": "magnus",
+        "difficulty": 4
     }
     res = client.post("/api/ai/coach/recommend", json=payload)
     assert res.status_code == 200
     assert res.json["success"] is True
     assert "suggested_angle_deg" in res.json
+    assert res.json["difficulty_level"] == 4
+    assert res.json["difficulty_tier"] == "Master"
 
     # Invalid board state (not a list)
     res_inv = client.post("/api/ai/coach/recommend", json={"board_state": "invalid_not_a_list"})
@@ -408,3 +418,54 @@ def test_api_ai_match_debrief_and_shoutcast(client):
     assert res_shout.json["success"] is True
     assert "commentary" in res_shout.json
     assert len(res_shout.json["commentary"]) > 0
+
+
+def test_ai_vs_ai_watch_mode_and_5_level_controls(client):
+    """Verify AI vs AI spectator mode and 5-level difficulty slider/button UI assets."""
+    # 1. Check template markup in /play
+    res = client.get("/play")
+    assert res.status_code == 200
+    html = res.data.decode("utf-8")
+
+    assert 'id="modeAiVsAiBtn"' in html
+    assert 'data-mode="ai-vs-ai"' in html
+    assert 'id="aiStrengthSlider"' in html
+    assert 'class="ai-strength-range-slider"' in html
+    assert 'id="aiLevelRatingBadge"' in html
+    assert 'id="aiSliderLabels"' in html
+    assert 'id="botDifficultyToolbarGroup"' in html
+    assert 'id="aiVsAiControlsRow"' in html
+    assert 'id="btnAiVsAiPause"' in html
+    assert 'id="btnAiVsAiStep"' in html
+
+    for lvl in range(1, 6):
+        assert f'data-level="{lvl}"' in html
+
+    # 2. Check CSS styles in style.css
+    with open("static/css/style.css", "r", encoding="utf-8") as f:
+        css = f.read()
+    assert ".ai-strength-badge" in css
+    assert ".ai-slider-container" in css
+    assert ".ai-strength-range-slider" in css
+    assert ".scale-step-label" in css
+    assert ".ai-vs-ai-controls" in css
+    assert ".ai-live-pulse-dot" in css
+
+    # 3. Check game.js mechanics
+    with open("static/js/game.js", "r", encoding="utf-8") as f:
+        game_js = f.read()
+    assert "botDifficultyLevel" in game_js
+    assert "toggleAiVsAiPause" in game_js
+    assert "stepAiVsAi" in game_js
+    assert "ai-vs-ai" in game_js
+    assert "pausedAiVsAi" in game_js
+
+    # 4. Check main.js orchestration
+    with open("static/js/main.js", "r", encoding="utf-8") as f:
+        main_js = f.read()
+    assert "AI_LEVEL_PROFILES" in main_js
+    assert "aiStrengthSlider" in main_js
+    assert "btnAiVsAiPause" in main_js
+    assert "btnAiVsAiStep" in main_js
+    assert "ai-vs-ai" in main_js
+

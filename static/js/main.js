@@ -431,11 +431,50 @@ document.addEventListener('DOMContentLoaded', () => {
   const savedViewMode = urlViewMode || localStorage.getItem('archess_view_mode') || '3d-arena';
   applyViewMode(savedViewMode, false);
 
-  // Game Mode Switcher (vs Bot AI, Pass & Play) & AI Difficulty Selector
+  // Game Mode Switcher (vs Bot AI, Pass & Play, AI vs AI Spectator) & 5-Level AI Selector
   const modeBtns = document.querySelectorAll('.game-mode-btn');
   const botDiffGroup = document.getElementById('botDifficultyToolbarGroup');
   const botDiffWingCard = document.getElementById('botDifficultyWingCard');
   const botDiffBtns = document.querySelectorAll('.bot-difficulty-btn');
+  const aiStrengthSlider = document.getElementById('aiStrengthSlider');
+  const aiLevelRatingBadge = document.getElementById('aiLevelRatingBadge');
+  const scaleLabels = document.querySelectorAll('.scale-step-label');
+  const aiVsAiControls = document.getElementById('aiVsAiControlsRow');
+  const btnAiVsAiPause = document.getElementById('btnAiVsAiPause');
+  const btnAiVsAiStep = document.getElementById('btnAiVsAiStep');
+  const aiVsAiPauseIcon = document.getElementById('aiVsAiPauseIcon');
+  const aiVsAiPauseLabel = document.getElementById('aiVsAiPauseLabel');
+  const aiVsAiStatusText = document.getElementById('aiVsAiStatusText');
+
+  const AI_LEVEL_PROFILES = {
+    1: { level: 1, key: 'cadet', name: 'Novice', title: 'L1 • Novice (800 ELO)', elo: 800, badge: 'L1 • 800 ELO' },
+    2: { level: 2, key: 'apprentice', name: 'Apprentice', title: 'L2 • Apprentice (1200 ELO)', elo: 1200, badge: 'L2 • 1200 ELO' },
+    3: { level: 3, key: 'commander', name: 'Commander', title: 'L3 • Commander (1600 ELO)', elo: 1600, badge: 'L3 • 1600 ELO' },
+    4: { level: 4, key: 'master', name: 'Master', title: 'L4 • Master (2000 ELO)', elo: 2000, badge: 'L4 • 2000 ELO' },
+    5: { level: 5, key: 'grandmaster', name: 'Sovereign', title: 'L5 • Sovereign (2400 ELO)', elo: 2400, badge: 'L5 • 2400 ELO' }
+  };
+  const AI_KEY_TO_LEVEL = {
+    'cadet': 1, 'novice': 1,
+    'apprentice': 2,
+    'commander': 3,
+    'master': 4,
+    'grandmaster': 5, 'sovereign': 5
+  };
+
+  function resolveAiProfile(diff) {
+    let lvl = 3;
+    if (typeof diff === 'number') {
+      lvl = Math.max(1, Math.min(5, Math.round(diff)));
+    } else if (typeof diff === 'string') {
+      const parsed = parseInt(diff, 10);
+      if (!isNaN(parsed) && parsed >= 1 && parsed <= 5) {
+        lvl = parsed;
+      } else if (AI_KEY_TO_LEVEL[diff.toLowerCase()]) {
+        lvl = AI_KEY_TO_LEVEL[diff.toLowerCase()];
+      }
+    }
+    return AI_LEVEL_PROFILES[lvl] || AI_LEVEL_PROFILES[3];
+  }
 
   function updateBlackPlayerSub(mode, diff) {
     const blackSub = document.getElementById('blackPlayerSub');
@@ -448,65 +487,177 @@ document.addEventListener('DOMContentLoaded', () => {
       blackSub.textContent = 'Black Army • Local Guest';
       return;
     }
+    if (mode === 'ai-vs-ai') {
+      blackSub.textContent = 'Black Army • Autonomous AI';
+      return;
+    }
     const titles = {
       cadet: 'Black Army • Cadet Bot AI',
+      apprentice: 'Black Army • Apprentice Bot AI',
       commander: 'Black Army • Commander Bot AI',
-      grandmaster: 'Black Army • Grandmaster Neural AI'
+      master: 'Black Army • Master Bot AI',
+      grandmaster: 'Black Army • Sovereign Neural AI'
     };
     blackSub.textContent = titles[diff] || 'Black Army • Autonomous AI';
   }
 
   function applyBotDifficulty(diff) {
+    const profile = resolveAiProfile(diff);
+    const numLevel = profile.level;
+    const legacyKey = profile.key;
+
+    // Synchronize 5-level buttons (wing card & modal)
     botDiffBtns.forEach(b => {
-      const bDiff = b.getAttribute('data-diff') || b.getAttribute('data-bot-diff');
-      b.classList.toggle('active', bDiff === diff);
+      const bDiff = b.getAttribute('data-diff');
+      const bBotDiff = b.getAttribute('data-bot-diff');
+      const bLevel = parseInt(b.getAttribute('data-level'), 10);
+      const isMatch = (bLevel === numLevel) || (bDiff === String(numLevel)) || (bDiff === legacyKey) || (bBotDiff === legacyKey);
+      b.classList.toggle('active', isMatch);
     });
+
+    // Synchronize Drag-and-Fit Slider
+    if (aiStrengthSlider && parseInt(aiStrengthSlider.value, 10) !== numLevel) {
+      aiStrengthSlider.value = numLevel;
+    }
+
+    // Synchronize Slider Scale Labels
+    scaleLabels.forEach(lbl => {
+      const step = parseInt(lbl.getAttribute('data-step'), 10);
+      lbl.classList.toggle('active', step === numLevel);
+    });
+
+    // Synchronize Live Rating Badge
+    if (aiLevelRatingBadge) {
+      aiLevelRatingBadge.textContent = profile.badge;
+    }
+
+    // Synchronize Atelier Modal Active Name
     const atelierAiActiveName = document.getElementById('atelierAiActiveName');
     if (atelierAiActiveName) {
-      const labels = {
-        cadet: 'Cadet (Casual)',
-        commander: 'Commander (Balanced)',
-        grandmaster: 'Grandmaster (Predictive)'
-      };
-      atelierAiActiveName.textContent = labels[diff] || 'Commander (Balanced)';
+      atelierAiActiveName.textContent = profile.title;
     }
+
+    // Update physical arena bot engine
     if (arena && typeof arena.setBotDifficulty === 'function') {
-      arena.setBotDifficulty(diff);
+      arena.setBotDifficulty(numLevel);
     }
+
     const currentMode = localStorage.getItem('archess_game_mode') || 'bot';
-    updateBlackPlayerSub(currentMode, diff);
-    localStorage.setItem('archess_bot_difficulty', diff);
+    updateBlackPlayerSub(currentMode, legacyKey);
+
+    // If currently watching AI vs AI, update player tags
+    if (currentMode === 'ai-vs-ai') {
+      const whiteName = document.getElementById('whitePlayerName');
+      const blackName = document.getElementById('blackPlayerName');
+      if (whiteName) whiteName.textContent = `White AI (${profile.badge.split(' • ')[0]})`;
+      if (blackName) blackName.textContent = `Black AI (${profile.badge.split(' • ')[0]})`;
+    }
+
+    localStorage.setItem('archess_bot_difficulty_level', String(numLevel));
+    localStorage.setItem('archess_bot_difficulty', legacyKey);
   }
 
-  botDiffBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const diff = btn.getAttribute('data-diff') || btn.getAttribute('data-bot-diff') || 'commander';
-      applyBotDifficulty(diff);
-      const labels = {
-        cadet: 'AI Tier: Cadet (Casual Recruit)',
-        commander: 'AI Tier: Commander (Balanced Tactical)',
-        grandmaster: 'AI Tier: Grandmaster (Predictive Bank-Shot Neural AI)'
-      };
-      window.ArchessToast?.show(labels[diff] || diff, 'info', 2800, 'AI TIER');
+  // Slider Drag-and-Fit Listener
+  if (aiStrengthSlider) {
+    aiStrengthSlider.addEventListener('input', (e) => {
+      const lvl = parseInt(e.target.value, 10);
+      applyBotDifficulty(lvl);
+      const profile = resolveAiProfile(lvl);
+      window.ArchessToast?.show(`AI Strength: ${profile.title}`, 'info', 2000, 'AI STRENGTH');
+    });
+  }
+
+  // Slider Scale Step Labels Click Listeners
+  scaleLabels.forEach(lbl => {
+    lbl.addEventListener('click', () => {
+      const step = parseInt(lbl.getAttribute('data-step'), 10);
+      if (step) {
+        applyBotDifficulty(step);
+        const profile = resolveAiProfile(step);
+        window.ArchessToast?.show(`AI Strength: ${profile.title}`, 'info', 2000, 'AI STRENGTH');
+      }
     });
   });
+
+  // 5-Level Button Click Listeners
+  botDiffBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const diff = btn.getAttribute('data-level') || btn.getAttribute('data-diff') || btn.getAttribute('data-bot-diff') || '3';
+      applyBotDifficulty(diff);
+      const profile = resolveAiProfile(diff);
+      window.ArchessToast?.show(`AI Tier: ${profile.title}`, 'info', 2600, 'AI TIER');
+    });
+  });
+
+  // AI vs AI Spectator Pause & Step Buttons
+  if (btnAiVsAiPause) {
+    btnAiVsAiPause.addEventListener('click', () => {
+      if (!arena) return;
+      const isPaused = arena.toggleAiVsAiPause();
+      if (aiVsAiPauseIcon) aiVsAiPauseIcon.textContent = isPaused ? '▶️' : '⏸️';
+      if (aiVsAiPauseLabel) aiVsAiPauseLabel.textContent = isPaused ? 'Resume AI' : 'Pause AI';
+      if (aiVsAiStatusText) aiVsAiStatusText.textContent = isPaused ? 'Match Paused' : 'Simulating Live';
+      window.ArchessToast?.show(isPaused ? '⏸️ AI vs AI duel paused' : '▶️ AI vs AI duel resumed', 'info', 1800, 'SPECTATOR');
+    });
+  }
+
+  if (btnAiVsAiStep) {
+    btnAiVsAiStep.addEventListener('click', () => {
+      if (!arena) return;
+      arena.stepAiVsAi();
+      if (aiVsAiStatusText) aiVsAiStatusText.textContent = 'Step Executed';
+      window.ArchessToast?.show('⏭️ Step: Executed single AI turn', 'info', 1600, 'SPECTATOR');
+    });
+  }
 
   function applyGameMode(mode) {
     modeBtns.forEach(b => {
       b.classList.toggle('active', b.getAttribute('data-mode') === mode);
     });
+
+    const whiteName = document.getElementById('whitePlayerName');
+    const whiteSub = document.getElementById('whitePlayerSub');
     const blackName = document.getElementById('blackPlayerName');
-    if (blackName && (!arena || !arena.opponentName)) {
-      blackName.textContent = mode === 'bot' ? 'ArChess Bot' : 'Player 2';
+    const blackSub = document.getElementById('blackPlayerSub');
+
+    const currentLvl = parseInt(localStorage.getItem('archess_bot_difficulty_level') || '3', 10);
+    const profile = resolveAiProfile(currentLvl);
+
+    if (mode === 'ai-vs-ai') {
+      if (whiteName) whiteName.textContent = `White AI (${profile.badge.split(' • ')[0]})`;
+      if (whiteSub) whiteSub.textContent = 'White Army • Autonomous AI';
+      if (blackName) blackName.textContent = `Black AI (${profile.badge.split(' • ')[0]})`;
+      if (blackSub) blackSub.textContent = 'Black Army • Autonomous AI';
+      if (aiVsAiControls) aiVsAiControls.style.display = 'block';
+      if (botDiffWingCard) botDiffWingCard.style.display = 'block';
+      if (botDiffGroup) botDiffGroup.style.display = 'flex';
+      if (aiVsAiStatusText) aiVsAiStatusText.textContent = 'Simulating Live';
+      if (aiVsAiPauseIcon) aiVsAiPauseIcon.textContent = '⏸️';
+      if (aiVsAiPauseLabel) aiVsAiPauseLabel.textContent = 'Pause AI';
+    } else if (mode === 'bot') {
+      const authUser = (window.ArchessAuth && window.ArchessAuth.currentUser) ? window.ArchessAuth.currentUser.username : 'Player 1';
+      if (whiteName) whiteName.textContent = authUser;
+      if (whiteSub) whiteSub.textContent = 'White Army • 1200 ELO';
+      if (blackName && (!arena || !arena.opponentName)) {
+        blackName.textContent = 'ArChess Bot';
+      }
+      if (aiVsAiControls) aiVsAiControls.style.display = 'none';
+      if (botDiffWingCard) botDiffWingCard.style.display = 'block';
+      if (botDiffGroup) botDiffGroup.style.display = 'flex';
+      updateBlackPlayerSub(mode, profile.key);
+    } else {
+      // pvp
+      const authUser = (window.ArchessAuth && window.ArchessAuth.currentUser) ? window.ArchessAuth.currentUser.username : 'Player 1';
+      if (whiteName) whiteName.textContent = authUser;
+      if (whiteSub) whiteSub.textContent = 'White Army • Local Guest';
+      if (blackName && (!arena || !arena.opponentName)) {
+        blackName.textContent = 'Player 2';
+      }
+      if (aiVsAiControls) aiVsAiControls.style.display = 'none';
+      if (botDiffWingCard) botDiffWingCard.style.display = 'none';
+      if (botDiffGroup) botDiffGroup.style.display = 'none';
+      updateBlackPlayerSub(mode, profile.key);
     }
-    if (botDiffGroup) {
-      botDiffGroup.style.display = mode === 'bot' ? 'flex' : 'none';
-    }
-    if (botDiffWingCard) {
-      botDiffWingCard.style.display = mode === 'bot' ? 'flex' : 'none';
-    }
-    const currentDiff = localStorage.getItem('archess_bot_difficulty') || 'commander';
-    updateBlackPlayerSub(mode, currentDiff);
 
     if (arena) {
       arena.setGameMode(mode);
@@ -521,12 +672,17 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', () => {
       const mode = btn.getAttribute('data-mode');
       applyGameMode(mode);
-      showToast(mode === 'bot' ? 'Match Mode: Solo vs Bot AI' : 'Match Mode: Local Pass & Play (2P)');
+      const toastMsgs = {
+        'bot': 'Match Mode: Solo vs Bot AI',
+        'pvp': 'Match Mode: Local Pass & Play (2P)',
+        'ai-vs-ai': '🤖 Match Mode: Autonomous AI vs AI Spectator Battle'
+      };
+      showToast(toastMsgs[mode] || `Match Mode: ${mode}`);
     });
   });
 
   const savedMode = localStorage.getItem('archess_game_mode') || 'bot';
-  const savedBotDiff = localStorage.getItem('archess_bot_difficulty') || 'commander';
+  const savedBotDiff = localStorage.getItem('archess_bot_difficulty_level') || localStorage.getItem('archess_bot_difficulty') || '3';
   applyBotDifficulty(savedBotDiff);
   if (modeBtns.length > 0) {
     applyGameMode(savedMode);
