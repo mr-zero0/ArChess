@@ -42,6 +42,13 @@ from backend.achievements import (
     evaluate_match_achievements
 )
 from backend.notation import generate_pgn, generate_fen
+from backend.ai_engine import (
+    global_rag_engine,
+    global_coach_agent,
+    global_shoutcaster_agent,
+    global_debrief_agent,
+    PromptCatalog
+)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
@@ -799,6 +806,85 @@ def serve_prometheus_metrics():
     """Expose server performance, room, and game metrics in standard Prometheus exposition format."""
     metrics_text = get_metrics_engine().export_metrics()
     return Response(metrics_text, mimetype="text/plain; version=0.0.4; charset=utf-8")
+
+
+# -------------------------------------------------------------
+# AI, Agentic AI, RAG & Prompt Engineering Routes
+# -------------------------------------------------------------
+@app.route("/api/ai/status", methods=["GET"])
+def api_ai_status():
+    return jsonify({
+        "success": True,
+        "status": "online",
+        "rag_documents_indexed": len(global_rag_engine.documents),
+        "available_personas": list(PromptCatalog.PERSONAS.keys()),
+        "active_model": global_coach_agent.llm.model_name
+    }), 200
+
+
+@app.route("/api/ai/personas", methods=["GET"])
+def api_ai_personas():
+    return jsonify({
+        "success": True,
+        "personas": PromptCatalog.PERSONAS
+    }), 200
+
+
+@app.route("/api/ai/coach/recommend", methods=["POST"])
+def api_ai_coach_recommend():
+    data = request.get_json(silent=True) or {}
+    board_state = data.get("board_state", [])
+    active_turn = data.get("turn", "white")
+    persona = data.get("persona", "magnus")
+    
+    if not isinstance(board_state, list):
+        return jsonify({"success": False, "error": "board_state must be a list of pieces"}), 400
+    
+    recommendation = global_coach_agent.recommend_move(board_state, active_turn=active_turn, persona=persona)
+    return jsonify(recommendation), 200 if recommendation.get("success", False) else 400
+
+
+@app.route("/api/ai/rag/query", methods=["POST"])
+def api_ai_rag_query():
+    data = request.get_json(silent=True) or {}
+    query = data.get("query", "").strip()
+    if not query:
+        return jsonify({"success": False, "error": "Missing or empty query parameter"}), 400
+    
+    top_k = min(10, max(1, int(data.get("top_k", 3))))
+    results = global_rag_engine.search(query, top_k=top_k)
+    return jsonify({
+        "success": True,
+        "query": query,
+        "count": len(results),
+        "results": results
+    }), 200
+
+
+@app.route("/api/ai/match/debrief", methods=["POST"])
+def api_ai_match_debrief():
+    data = request.get_json(silent=True) or {}
+    match_id = data.get("match_id")
+    match_data = None
+    if match_id:
+        match_data = get_match_by_id(match_id)
+    if not match_data:
+        match_data = data.get("match_data") or data
+    
+    persona = data.get("persona", "magnus")
+    debrief = global_debrief_agent.generate_debrief(match_data, persona=persona)
+    return jsonify(debrief), 200
+
+
+@app.route("/api/ai/shoutcast", methods=["POST"])
+def api_ai_shoutcast():
+    data = request.get_json(silent=True) or {}
+    event = data.get("event") or data
+    commentary = global_shoutcaster_agent.generate_commentary(event)
+    return jsonify({
+        "success": True,
+        "commentary": commentary
+    }), 200
 
 
 # -------------------------------------------------------------

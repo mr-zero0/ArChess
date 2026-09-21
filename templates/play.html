@@ -279,7 +279,53 @@
           </div>
         </div>
 
-        <!-- 4. Match Mode Context Note -->
+        <!-- 4. AI Agentic Tactical Advisor (v4.2.0) -->
+        <div class="sidebar-commentary-card ai-advisor-card" id="aiAdvisorCard" style="margin-top: 14px; border: 1px solid rgba(138, 92, 246, 0.3); background: rgba(15, 12, 28, 0.65); border-radius: 12px; padding: 12px;">
+          <div class="commentary-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <h4 style="margin: 0; font-size: 0.88rem; display: flex; align-items: center; gap: 6px; color: #c084fc;">
+              <span>🤖</span>
+              <span>AI Tactical Advisor</span>
+            </h4>
+            <span class="commentary-feed-badge" id="aiAdvisorStatusBadge" style="background: rgba(168, 85, 247, 0.15); color: #c084fc; font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px; border: 1px solid rgba(168, 85, 247, 0.3);">Autonomous</span>
+          </div>
+
+          <!-- Persona Selection -->
+          <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+            <select id="aiPersonaSelect" style="flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: var(--foreground); border-radius: 6px; padding: 4px 8px; font-size: 0.78rem;">
+              <option value="magnus">Grandmaster Magnus (Strategy)</option>
+              <option value="glitch">Glitch-9 (Bank Shots / Aggro)</option>
+              <option value="valkyrie">Valkyrie (Fortress Defense)</option>
+            </select>
+            <button id="btnAskAiCoach" class="btn-cupertino-action" style="background: #7c3aed; color: #fff; border: none; padding: 4px 10px; border-radius: 6px; font-size: 0.78rem; cursor: pointer; font-weight: 600;">
+              ⚡ Advise
+            </button>
+          </div>
+
+          <!-- Advice Output Container -->
+          <div id="aiAdvisorContent" style="font-size: 0.78rem; line-height: 1.4; color: var(--muted-foreground); background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; min-height: 48px;">
+            <span style="color: #94a3b8;">Click &ldquo;Advise&rdquo; on your turn to run a ReAct physics raycast and tactical evaluation.</span>
+          </div>
+        </div>
+
+        <!-- 5. Instant RAG Codex Search -->
+        <div class="sidebar-commentary-card ai-rag-card" id="aiRagCard" style="margin-top: 14px; border: 1px solid rgba(59, 130, 246, 0.25); background: rgba(10, 20, 35, 0.65); border-radius: 12px; padding: 12px;">
+          <div class="commentary-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <h4 style="margin: 0; font-size: 0.88rem; display: flex; align-items: center; gap: 6px; color: #60a5fa;">
+              <span>📖</span>
+              <span>Semantic Codex (RAG)</span>
+            </h4>
+            <span style="font-size: 0.72rem; color: #93c5fd; background: rgba(59, 130, 246, 0.15); padding: 2px 8px; border-radius: 9999px;">0ms Local</span>
+          </div>
+          <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+            <input type="text" id="ragSearchInput" placeholder="Ask rules, ricochets, stats..." style="flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: var(--foreground); border-radius: 6px; padding: 4px 8px; font-size: 0.78rem;">
+            <button id="btnRagSearch" style="background: #2563eb; color: #fff; border: none; padding: 4px 10px; border-radius: 6px; font-size: 0.78rem; cursor: pointer;">
+              🔍
+            </button>
+          </div>
+          <div id="ragSearchResults" style="font-size: 0.75rem; color: var(--muted-foreground); max-height: 120px; overflow-y: auto; display: none;"></div>
+        </div>
+
+        <!-- 6. Match Mode Context Note -->
         <div class="sidebar-context-note">
           Physics Combat (3D &amp; 2D Arena) &bull; Standard FIDE (2D Classic) &bull; <a href="/arsenal" class="sidebar-context-link">View Codex &rarr;</a>
         </div>
@@ -369,6 +415,9 @@
           <!-- Dynamically populated from match telemetry events -->
         </div>
       </div>
+
+      <!-- Autonomous AI Grandmaster Debrief Container -->
+      <div id="aiPostMatchDebrief"></div>
 
       <div class="victory-modal-actions">
         <button class="btn-gold" id="btnPlayAgain">
@@ -919,4 +968,5 @@
       if (currentScale !== 100) applyBoardScale(currentScale);
     });
   </script>
+  <script src="/static/js/ai_advisor.js?v=4.2.0"></script>
 {% endblock %}
