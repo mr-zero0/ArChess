@@ -2069,6 +2069,23 @@ class TestProductionReadiness:
             assert "SESSION_COOKIE_SECURE" not in mock_app.config
             assert mock_app.config["SEND_FILE_MAX_AGE_DEFAULT"] == 0
 
+    def test_configure_cors_custom_origins(self):
+        from backend.app import configure_cors
+        from flask import Flask
+        test_app = Flask("test_cors_app")
+        with patch.dict(os.environ, {"CORS_ORIGINS": "https://example.com, https://archess.io"}):
+            with patch("backend.app.CORS") as mock_cors:
+                configure_cors(test_app)
+                mock_cors.assert_called_once_with(
+                    test_app,
+                    origins=["https://example.com", "https://archess.io"],
+                    supports_credentials=True
+                )
+
+    def test_proxy_fix_forwarded_headers(self, client):
+        res = client.get("/api/health", headers={"X-Forwarded-For": "203.0.113.195", "X-Forwarded-Proto": "https"})
+        assert res.status_code == 200
+
     def test_backup_cli_main(self):
         import runpy
         with patch("backend.backup.perform_backup", return_value={"backup_filename": "test.db", "size_bytes": 1024}):

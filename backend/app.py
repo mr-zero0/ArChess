@@ -14,6 +14,7 @@ import threading
 from flask import Flask, request, jsonify, session, render_template, send_from_directory, Response
 from flask_cors import CORS
 from flask_sock import Sock
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from backend.logger import setup_logging
 from backend.database import (
@@ -72,9 +73,18 @@ def configure_production_settings(application=app):
     else:
         application.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
-configure_production_settings(app)
+# Mount ProxyFix to unpack X-Forwarded-For, X-Forwarded-Proto headers from reverse proxies (Nginx/Cloudflare)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
-CORS(app, supports_credentials=True)
+def configure_cors(application=app):
+    """Configure CORS allowed origins from environment."""
+    cors_origins = os.environ.get("CORS_ORIGINS", "*")
+    if cors_origins and cors_origins.strip() != "*":
+        allowed = [o.strip() for o in cors_origins.split(",") if o.strip()]
+        return CORS(application, origins=allowed, supports_credentials=True)
+    return CORS(application, supports_credentials=True)
+
+configure_cors(app)
 sock = Sock(app)
 
 

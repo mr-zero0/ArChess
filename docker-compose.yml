@@ -15,7 +15,8 @@ services:
       - PRODUCTION=1
       - SECRET_KEY=${SECRET_KEY:-change_this_to_a_secure_random_hex_key}
       - ARCHESS_DB_PATH=/app/data/archess.db
-      - WSGI_THREADS=8
+      - WSGI_THREADS=16
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
     volumes:
       - archess-data:/app/data
       - archess-logs:/app/Logs

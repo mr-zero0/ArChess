@@ -28,7 +28,7 @@ Copy `.env.example` to `.env` and configure the following parameters:
 | `HOST` | `0.0.0.0` | No | Network interface binding. |
 | `SESSION_COOKIE_SECURE`| `1` | No | Enforces `Secure` flag on cookies (set to `1` when serving behind HTTPS). |
 | `ARCHESS_DB_PATH` | `/app/data/archess.db` | No | Custom path to SQLite database (allows persistent volume mounts). |
-| `WSGI_THREADS` | `8` | No | Number of concurrent worker threads in WSGI pool. |
+| `WSGI_THREADS` | `16` | No | Number of concurrent worker threads in WSGI pool. |
 | `CORS_ORIGINS` | `*` (or unset) | No | Comma-separated list of allowed origins (e.g., `https://archess.com`). |
 | `GOOGLE_CLIENT_ID` | `None` | No | Google OAuth 2.0 Web Client ID for Google Sign-In. |
 
@@ -152,7 +152,8 @@ Environment="PATH=/opt/archess/.venv/bin"
 Environment="FLASK_ENV=production"
 Environment="PRODUCTION=1"
 EnvironmentFile=/opt/archess/.env
-ExecStart=/opt/archess/.venv/bin/gunicorn -w 2 -k gthread --threads 8 -b 127.0.0.1:5000 run:app
+# Note: 1 worker with 16 threads preserves unified in-memory multiplayer rooms & matchmaking
+ExecStart=/opt/archess/.venv/bin/gunicorn -w 1 -k gthread --threads 16 -b 127.0.0.1:5000 run:app
 Restart=always
 RestartSec=5
 

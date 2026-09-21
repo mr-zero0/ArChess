@@ -32,15 +32,12 @@ if __name__ == "__main__":
     )
 
     if is_prod and not debug_mode:
-        print(f"[*] Launching ArChess PRODUCTION Server on http://{host}:{port} via Waitress WSGI ...")
-        try:
-            from waitress import serve
-            threads = int(os.environ.get("WSGI_THREADS", 8))
-            serve(app, host=host, port=port, threads=threads, channel_timeout=120)
-        except ImportError:
-            print("[!] Waitress not installed, falling back to standard runner.")
-            app.run(host=host, port=port, debug=False)
+        print(f"[*] Launching ArChess Production Server on http://{host}:{port} ...")
+        print("[*] WebSocket & REST API routes active.")
+        print("[*] Note: In Linux container/VPS deployments, launch via Gunicorn:")
+        print("    gunicorn -w 1 -k gthread --threads 16 -b 0.0.0.0:5000 run:app")
+        app.run(host=host, port=port, debug=False)
     else:
-        print(f"[*] Launching ArChess Server on http://{host}:{port} (debug={debug_mode}) ...")
+        print(f"[*] Launching ArChess Development Server on http://{host}:{port} (debug={debug_mode}) ...")
         app.run(host=host, port=port, debug=debug_mode)
 

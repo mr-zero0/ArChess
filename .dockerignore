@@ -12,6 +12,16 @@ htmlcov
 .vscode
 .idea
 Logs/
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
 data/backups/
 scratch/
 tests/
+.env
+.env.*
+.env.local
+node_modules/
+frontend/node_modules/
+frontend/dist/

@@ -29,8 +29,16 @@ logs/
 *.swp
 *.swo
 
+# Environment & Secrets (Never commit production credentials)
+.env
+.env.*
+.env.local
+!.env.example
+
 # Node / Frontend build artifacts
 node_modules/
+frontend/node_modules/
+frontend/dist/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -42,4 +50,5 @@ htmlcov/
 scratch/
 test_*.png
 test_snap.png
+
 
