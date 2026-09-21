@@ -611,9 +611,24 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function applyGameMode(mode) {
-    modeBtns.forEach(b => {
+    const allModeButtons = document.querySelectorAll('.game-mode-btn');
+    allModeButtons.forEach(b => {
       b.classList.toggle('active', b.getAttribute('data-mode') === mode);
     });
+
+    const currentModeIndicator = document.getElementById('currentModeIndicator');
+    if (currentModeIndicator) {
+      if (mode === 'ai-vs-ai') {
+        currentModeIndicator.textContent = '🤖 Watch AI';
+        currentModeIndicator.style.color = 'var(--gold-bright, #ffd700)';
+      } else if (mode === 'pvp') {
+        currentModeIndicator.textContent = 'Pass & Play';
+        currentModeIndicator.style.color = 'var(--text-secondary, #94a3b8)';
+      } else {
+        currentModeIndicator.textContent = 'vs AI';
+        currentModeIndicator.style.color = 'var(--gold-light, #f5d061)';
+      }
+    }
 
     const whiteName = document.getElementById('whitePlayerName');
     const whiteSub = document.getElementById('whitePlayerSub');
@@ -668,17 +683,43 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('archess_game_mode', mode);
   }
 
+  // Explicit ID-mapped click bindings for 100% deterministic mode activation
+  const modeBtnConfig = [
+    { id: 'modeVsBotBtn', mode: 'bot', toast: 'Match Mode: Solo vs Bot AI' },
+    { id: 'modePvpBtn', mode: 'pvp', toast: 'Match Mode: Local Pass & Play (2P)' },
+    { id: 'modeAiVsAiBtn', mode: 'ai-vs-ai', toast: '🤖 Match Mode: Autonomous AI vs AI Spectator Battle' }
+  ];
+
+  modeBtnConfig.forEach(({ id, mode, toast }) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        applyGameMode(mode);
+        showToast(toast);
+      });
+    }
+  });
+
+  // Query selector delegation for any auxiliary mode elements
   modeBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const mode = btn.getAttribute('data-mode');
-      applyGameMode(mode);
-      const toastMsgs = {
-        'bot': 'Match Mode: Solo vs Bot AI',
-        'pvp': 'Match Mode: Local Pass & Play (2P)',
-        'ai-vs-ai': '🤖 Match Mode: Autonomous AI vs AI Spectator Battle'
-      };
-      showToast(toastMsgs[mode] || `Match Mode: ${mode}`);
-    });
+    if (!['modeVsBotBtn', 'modePvpBtn', 'modeAiVsAiBtn'].includes(btn.id)) {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const mode = btn.getAttribute('data-mode');
+        if (mode) {
+          applyGameMode(mode);
+          const toastMsgs = {
+            'bot': 'Match Mode: Solo vs Bot AI',
+            'pvp': 'Match Mode: Local Pass & Play (2P)',
+            'ai-vs-ai': '🤖 Match Mode: Autonomous AI vs AI Spectator Battle'
+          };
+          showToast(toastMsgs[mode] || `Match Mode: ${mode}`);
+        }
+      });
+    }
   });
 
   const savedMode = localStorage.getItem('archess_game_mode') || 'bot';

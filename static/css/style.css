@@ -2431,34 +2431,88 @@ body.play-screen-active .play-page-container {
   color: var(--muted-foreground);
 }
 
-.wing-segmented {
-  display: flex;
-  width: 100%;
-  gap: 3px;
-  background: rgba(0, 0, 0, 0.25);
-  padding: 3px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  box-sizing: border-box;
+.wing-segmented,
+.cupertino-segmented-control.wing-segmented {
+  display: flex !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  gap: 3px !important;
+  background: rgba(0, 0, 0, 0.35) !important;
+  padding: 3px !important;
+  border-radius: 9999px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
 }
 
 .wing-segmented button,
 .wing-segmented .theme-pill-btn,
+.wing-segmented .game-mode-btn,
 .wing-segmented .view-btn,
 .wing-segmented .bot-difficulty-btn,
-.wing-segmented .camera-btn {
-  flex: 1 1 0;
-  min-width: 0;
-  padding: 5px 6px;
-  font-size: 0.72rem;
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
+.wing-segmented .camera-btn,
+.cupertino-segmented-control.wing-segmented .theme-pill-btn,
+.cupertino-segmented-control.wing-segmented .game-mode-btn,
+.cupertino-segmented-control.wing-segmented .view-btn {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  padding: 6px 2px !important;
+  font-size: 0.73rem !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 3px !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  pointer-events: auto !important;
+  position: relative !important;
+  z-index: 2 !important;
+  border-radius: 9999px !important;
+  box-sizing: border-box !important;
+}
+
+.wing-segmented button span,
+.wing-segmented .theme-pill-btn span,
+.wing-segmented .game-mode-btn span {
+  pointer-events: none !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.multiplayer-action-strip {
+  width: 100%;
+  display: flex;
+}
+
+.full-width-mp-btn {
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 7px 12px !important;
+  font-size: 0.74rem !important;
+  border-radius: 9999px !important;
+  box-sizing: border-box !important;
+  cursor: pointer !important;
+}
+
+.multiplayer-live-chip {
+  font-size: 0.60rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(212, 175, 55, 0.2);
+  color: var(--gold-light, #f5d061);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  letter-spacing: 0.05em;
+  pointer-events: none;
 }
 
 .wing-card-actions {

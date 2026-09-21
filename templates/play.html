@@ -35,17 +35,29 @@
         </div>
 
         <!-- 2. Match Mode Segmented Control -->
-        <div class="wing-card">
+        <div class="wing-card" id="matchModeWingCard">
           <div class="wing-card-header">
             <span class="wing-card-title">Match Mode</span>
+            <span class="wing-card-subtitle" id="currentModeIndicator" style="font-size: 0.68rem; color: var(--gold-light, #ffd700); font-weight: 600;">vs AI</span>
           </div>
-          <div class="theme-picker-group cupertino-segmented-control wing-segmented" role="group" aria-label="Game Mode">
-            <button class="theme-pill-btn game-mode-btn active" id="modeVsBotBtn" data-mode="bot">vs AI</button>
-            <button class="theme-pill-btn game-mode-btn" id="modePvpBtn" data-mode="pvp">Pass &amp; Play</button>
-            <button class="theme-pill-btn game-mode-btn" id="modeAiVsAiBtn" data-mode="ai-vs-ai" title="Watch AI vs AI autonomous spectator battle">🤖 Watch AI</button>
-            <button class="theme-pill-btn btn-multiplayer-trigger" id="btnOpenMultiplayerModal" title="Online Multiplayer">
-              <span class="multiplayer-status-dot" id="multiplayerStatusDot"></span>
-              <span id="multiplayerBtnLabel">Online</span>
+          <div class="theme-picker-group cupertino-segmented-control wing-segmented match-mode-segmented" role="group" aria-label="Game Mode">
+            <button type="button" class="theme-pill-btn game-mode-btn active" id="modeVsBotBtn" data-mode="bot" title="Play solo against Adaptive Bot AI">
+              <span>vs AI</span>
+            </button>
+            <button type="button" class="theme-pill-btn game-mode-btn" id="modePvpBtn" data-mode="pvp" title="Local 2-Player Pass &amp; Play">
+              <span>Pass &amp; Play</span>
+            </button>
+            <button type="button" class="theme-pill-btn game-mode-btn" id="modeAiVsAiBtn" data-mode="ai-vs-ai" title="Watch AI vs AI autonomous spectator battle">
+              <span>🤖 Watch AI</span>
+            </button>
+          </div>
+          <div class="multiplayer-action-strip" style="margin-top: 6px;">
+            <button type="button" class="theme-pill-btn btn-multiplayer-trigger full-width-mp-btn" id="btnOpenMultiplayerModal" title="Online Multiplayer &amp; Matchmaking">
+              <span style="display: inline-flex; align-items: center; gap: 7px;">
+                <span class="multiplayer-status-dot" id="multiplayerStatusDot"></span>
+                <span id="multiplayerBtnLabel">Online Multiplayer</span>
+              </span>
+              <span class="multiplayer-live-chip">LIVE</span>
             </button>
           </div>
         </div>
