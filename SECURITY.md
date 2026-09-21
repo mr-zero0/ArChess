@@ -23,8 +23,9 @@ ArChess implements defense-in-depth security principles across all layers:
 
 ### 2. Authentication & Brute-Force Shields
 - **Cryptographic Password Hashing**: Passwords are encrypted using Werkzeug’s salted key-derivation algorithms (`scrypt` / `pbkdf2:sha256`).
+- **Google OAuth Verification**: Google Sign-In requires authentic credential tokens in production, and accounts with conflicting Google IDs cannot be linked or taken over.
 - **Login Rate Limiter**: Maximum **15 failed login attempts per minute per IP address** enforced via in-memory sliding-window limiters with thread locks.
-- **Match Settlement Limiter**: Maximum **60 match settlement requests per minute per IP address** preventing ELO ladder inflation.
+- **Match Settlement Limiter**: Maximum **60 match settlement requests per minute per IP address** preventing ELO ladder inflation, with TTL pruning and capacity bounded to 5,000 entries.
 
 ### 3. Session & Cookie Hardening
 - Session cookies enforce `HttpOnly` and `SameSite=Lax`.
@@ -35,12 +36,17 @@ ArChess implements defense-in-depth security principles across all layers:
 - Usernames and dynamic telemetry are rendered into DOM elements exclusively using `textContent` and `createElement` rather than string template `innerHTML`.
 - Jinja2 auto-escaping is active across all server-rendered HTML templates.
 
-### 5. WebSocket DoS Mitigation
+### 5. WebSocket DoS Mitigation & State Machine Verification
 - Incoming WebSocket frames have a hard payload ceiling of **64KB** in [`backend/multiplayer.py`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/backend/multiplayer.py), preventing buffer overflow and memory exhaustion attacks.
+- Authoritative role and turn validation prevents spectators or off-turn players from executing launches, skipping turns, or injecting false match endings.
 
 ### 6. Container Hardening
 - Docker containers run under an unprivileged user (`archess`, UID 10001) rather than `root`.
 - Multi-stage build isolates build tooling from the runtime attack surface.
+
+### 7. Resource & Cardinality Bounding
+- In-memory rate limiting dictionaries enforce FIFO eviction when reaching 5,000 entries.
+- Prometheus metrics cardinality is bounded at 250 distinct endpoint keys to prevent memory exhaustion under URL-fuzzing or malicious crawler sweeps.
 
 ---
 
@@ -49,7 +55,7 @@ ArChess implements defense-in-depth security principles across all layers:
 ArChess enforces automated security audits in the CI/CD pipeline:
 * **Static Analysis**: Scanned with `bandit -r backend/ run.py -ll` (0 High / 0 Medium vulnerabilities).
 * **Dependency Auditing**: Verified with `pip-audit -r requirements.txt` (0 known CVEs).
-* **Automated Test Coverage**: 122 tests covering 100% of statements across all backend modules.
+* **Automated Test Coverage**: 148 tests covering 100.0% of statements across all 11 backend modules.
 
 ---
 

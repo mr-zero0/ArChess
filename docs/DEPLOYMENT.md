@@ -64,9 +64,21 @@ docker compose ps
 # Inspect live logs
 docker compose logs -f --tail=100
 
-# Check health endpoint
+# Check health endpoint (Linux / macOS / Git Bash)
 curl -f http://localhost:5000/api/health
+
+# On Windows PowerShell, use curl.exe or Invoke-RestMethod:
+curl.exe -f http://localhost:5000/api/health
+# or:
+Invoke-RestMethod http://localhost:5000/api/health
 ```
+
+> [!TIP]
+> **Running natively without Docker?**  
+> If Docker Desktop or Docker Engine is not installed, you can launch ArChess directly using the bundled multi-threaded WSGI server:
+> ```powershell
+> python run.py --production
+> ```
 
 ### 3. Persistent Volumes
 Docker Compose manages two persistent named volumes:

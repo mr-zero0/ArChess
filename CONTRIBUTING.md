@@ -34,7 +34,7 @@ source .venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
-pip install flake8 bandit
+pip install flake8 bandit pip-audit
 ```
 
 ### 3. Start Development Server
@@ -67,9 +67,10 @@ python -m pytest tests/ --cov=backend --cov-report=term-missing -v
 ```
 
 Before pushing changes:
-1. Ensure all **122+ tests** pass.
+1. Ensure all **148+ tests** pass.
 2. Confirm coverage report shows `100%` across all backend files.
 3. Run security scan: `bandit -r backend/ run.py -ll`.
+4. Run dependency scan: `pip-audit -r requirements.txt`.
 
 ---
 

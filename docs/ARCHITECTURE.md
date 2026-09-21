@@ -93,7 +93,9 @@ This document details the architectural topology, component responsibilities, re
 | **Multiplayer Engine** | [`backend/multiplayer.py`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/backend/multiplayer.py) | In-memory battle room state, role assignment (`white`, `black`, `spectator`), live aim broadcast, and matchmaking ticket queues. |
 | **Tournament Engine** | [`backend/tournament.py`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/backend/tournament.py) | Knockout championship bracket simulation, seasonal seeding, match simulation, and history persistence with thread locks. |
 | **Achievements** | [`backend/achievements.py`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/backend/achievements.py) | 8 platform achievement criteria, match evaluation heuristics, and unlock ledger. |
-| **Notation & Telemetry**| [`backend/notation.py`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/backend/notation.py), [`backend/logger.py`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/backend/logger.py) | Dynamic PGN/FEN generation, JSON structured logging with correlation IDs, and run lifecycle management. |
+| **Tactical AI & RAG** | [`backend/ai_engine.py`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/backend/ai_engine.py) | 5-Level Adaptive AI, AI vs AI Watch Mode, ReAct Coach agent, pure-Python semantic RAG Codex, and shoutcasting. |
+| **Metrics & Telemetry**| [`backend/metrics.py`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/backend/metrics.py), [`backend/logger.py`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/backend/logger.py) | Prometheus exposition format (`/metrics`), bounded latency histograms, JSON structured logging with run rotation. |
+| **Notation & Telemetry**| [`backend/notation.py`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/backend/notation.py) | Dynamic PGN/FEN generation, standard coordinate notation mapping, and move history persistence. |
 | **2D Kinetic Arena** | [`static/js/game.js`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/static/js/game.js) | Slingshot trajectory arcs, elastic collisions, perimeter cushion rebounds, Citadel King mass, and Web Audio synthesis. |
 | **3D WebGL Studio** | [`static/js/engine3d.js`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/static/js/engine3d.js) | Three.js Staunton procedural geometries, PBR alabaster/obsidian materials, studio lighting, dynamic board themes, and orbit controls. |
 
@@ -178,16 +180,18 @@ def get_connection(custom_path=None):
 ```
 * `journal_mode=WAL`: Readers do not block writers, and writers do not block readers.
 * `busy_timeout=30000`: Queries wait up to 30 seconds if a write transaction is in progress before failing.
+* `BEGIN IMMEDIATE Write Transactions`: Write operations in `record_match_result` acquire a SQLite `RESERVED` lock immediately upon start, preventing concurrent read-to-write lock escalation deadlocks across multi-threaded WSGI workers.
 
 ---
 
 ## 🛡️ Security Architecture & Defensive Controls
 
 1. **SQL Injection Prevention**: 100% parameterization with SQLite tuples (`?`).
-2. **Brute-Force Rate Limiting**: In-memory sliding-window limiter on `/api/auth/login` (15 attempts/minute/IP) and match settlement (60 attempts/minute/IP).
+2. **Brute-Force Rate Limiting & Bounding**: In-memory sliding-window limiter on `/api/auth/login` (15 attempts/minute/IP) and match settlement (60 attempts/minute/IP) with TTL purging and a 5,000-entry capacity ceiling.
 3. **Session Cookie Isolation**: `HttpOnly`, `SameSite=Lax`, and conditional `Secure` flag.
-4. **WebSocket Memory Guard**: Rejection of all frames exceeding 64KB.
-5. **Defense-in-Depth HTTP Headers**:
+4. **WebSocket Memory Guard & Role Verification**: Rejection of all frames exceeding 64KB, with strict participant role and active turn verification on game actions (`aim`, `launch`, `turn_complete`, `game_over`).
+5. **Metric Cardinality Protection**: Prometheus endpoint tracking capped at 250 distinct keys; unexpected paths collapse to `"not_found"` or `"other"`.
+6. **Defense-in-Depth HTTP Headers**:
    * `X-Content-Type-Options: nosniff`
    * `X-Frame-Options: SAMEORIGIN`
    * `Referrer-Policy: strict-origin-when-cross-origin`

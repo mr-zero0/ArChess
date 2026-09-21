@@ -37,6 +37,16 @@ Built for competitive tactical mastery with real-time multiplayer matchmaking, b
 * **8 Unlockable Achievements**: First Blood, Precision Striker, Citadel Defender, Awakened Monarch, Speed Demon, Grandmaster Slayer, etc., with real-time HUD badge unlocks.
 * **Authoritative ELO Rating**: Server-validated ELO calculation with K-factor scaling based on match outcomes and damage dealt.
 
+### 🤖 AI vs AI Spectator Watch Mode & 5-Level Tactical Engine
+* **Autonomous AI vs AI Spectator Match**: Real-time battle simulation where White and Black AI clash autonomously with human-watchable pacing (~650ms), live pause/resume, and turn-stepping controls.
+* **5-Level Tactical AI Intelligence**:
+  * **Level 1: Novice** (~800 ELO): Casual random targeting with wide dispersion jitter ($\pm 0.38\text{ rad}$) and erratic kinetic power.
+  * **Level 2: Apprentice** (~1200 ELO): Proximity-weighted forward targeting with moderate dispersion ($\pm 0.18\text{ rad}$).
+  * **Level 3: Commander** (~1600 ELO): Value-weighted tactical fire prioritizing high-value pieces with distance-calibrated power.
+  * **Level 4: Master** (~2000 ELO): Obstacle raycasting with single-cushion bank-shot wall rebounds when direct line-of-sight is blocked.
+  * **Level 5: Sovereign (Grandmaster)** (~2400+ ELO): Deep multi-raycast obstacle detection, checkmate assassination priority, and dual-wall cushion rebound bank-shots with zero dispersion.
+* **Drag-and-Fit Responsive Controls**: Interactive range slider track paired with responsive `L1` to `L5` segmented buttons and dynamic ELO rating pill badge (`#aiLevelRatingBadge`) with live mid-game toggle.
+
 ### 🧠 Autonomous Agentic AI, RAG & Prompts (100% Free & Open-Source)
 * **Autonomous ReAct Coach (`TacticalCoachAgent`)**: Runs multi-tool reasoning (`inspect_board`, `simulate_shot`, `query_codex`) with Chain-of-Thought (CoT) tactical trajectory recommendations.
 * **Zero-Cost Semantic Codex (RAG)**: Pure-Python TF-IDF / Token Cosine & Jaccard semantic scoring engine indexing piece abilities, ricochet laws, and combat mechanics without external vector DB fees.
@@ -120,20 +130,28 @@ python run.py --production
 
 ### 3. Docker Container Deployment
 
-Run with a single command using Docker Compose:
+If you have Docker Desktop (Windows/macOS) or Docker Engine (Linux) installed:
 ```bash
 # Build and launch with persistent data and logs
 docker compose up -d
 
-# Verify container health
+# Verify container health (Linux / macOS / Git Bash)
 curl -f http://localhost:5000/api/health
+
+# On Windows PowerShell, use curl.exe or Invoke-RestMethod:
+curl.exe -f http://localhost:5000/api/health
+# or: Invoke-RestMethod http://localhost:5000/api/health
 ```
+
+> [!NOTE]
+> If Docker is not installed on your system, run locally without containers:
+> `python run.py` (development) or `python run.py --production` (production WSGI).
 
 ---
 
 ## 🧪 Verification & Test Suite
 
-The ArChess test suite provides **100% statement coverage** across all backend modules with zero external network dependencies:
+The ArChess test suite provides **100.0% statement coverage** across all 11 backend modules with zero external network dependencies:
 
 ```bash
 # Run all tests with line-by-line coverage report
@@ -141,21 +159,23 @@ python -m pytest tests/ --cov=backend --cov-report=term-missing -v
 ```
 
 ```text
--------------------------------------------------------
+=============================== tests coverage ================================
 Name                      Stmts   Miss  Cover   Missing
 -------------------------------------------------------
 backend\__init__.py           0      0   100%
-backend\achievements.py     125      0   100%
-backend\app.py              484      0   100%
+backend\achievements.py     124      0   100%
+backend\ai_engine.py        278      0   100%
+backend\app.py              592      0   100%
 backend\backup.py            36      0   100%
-backend\database.py         316      0   100%
+backend\database.py         337      0   100%
 backend\logger.py           189      0   100%
-backend\multiplayer.py      283      0   100%
+backend\metrics.py          100      0   100%
+backend\multiplayer.py      324      0   100%
 backend\notation.py         107      0   100%
-backend\tournament.py        98      0   100%
+backend\tournament.py        97      0   100%
 -------------------------------------------------------
-TOTAL                      1638      0   100%
-======================== 122 passed in 8.30s =========================
+TOTAL                      2184      0   100%
+======================= 148 passed, 1 warning in 8.91s ========================
 ```
 
 ---

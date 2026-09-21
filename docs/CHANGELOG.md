@@ -2,6 +2,42 @@
 
 All notable changes, architectural pivots, bugfixes, and refactorings across **ArChess** are documented in this file.
 
+## [4.2.0] - 2026-09-21
+
+### 🤖 Autonomous AI vs AI Spectator Watch Mode & 5-Level Adaptive AI
+- **AI vs AI Spectator Match Engine (`static/js/game.js`, `templates/play.html`, `static/css/style.css`)**:
+  - Autonomous battle simulation cycling between White and Black tactical AI with human-watchable pacing (~650ms cadence).
+  - Match controls HUD with live pause/resume (`⏸️ Pause AI` / `▶️ Resume AI`) and turn-by-turn stepping (`⏭️ Step Turn`).
+  - Active simulation dot (`.ai-live-pulse-dot`) and dedicated top player strip indicators ("White AI (L3)" / "Black AI (L3)").
+  - Complete input safety: manual dragging and keyboard interactions are disabled during AI vs AI mode in both 2D and 3D WebGL projection engines.
+- **5-Level Tactical Strength Engine (`backend/ai_engine.py`, `static/js/game.js`, `templates/play.html`)**:
+  - **Level 1: Novice** (~800 ELO): Casual random targeting with wide dispersion jitter ($\pm 0.38\text{ rad}$) and erratic kinetic power ($40\% - 70\%$).
+  - **Level 2: Apprentice** (~1200 ELO): Proximity-weighted forward targeting with moderate dispersion ($\pm 0.18\text{ rad}$).
+  - **Level 3: Commander** (~1600 ELO): Value-weighted tactical fire prioritizing high-value pieces with distance-calibrated power and tight accuracy ($\pm 0.05\text{ rad}$).
+  - **Level 4: Master** (~2000 ELO): Obstacle raycasting with single-cushion bank-shot wall rebounds when direct line-of-sight is blocked.
+  - **Level 5: Sovereign (Grandmaster)** (~2400+ ELO): Deep multi-raycast obstacle detection, checkmate assassination priority, and dual-wall cushion rebound bank-shots with zero dispersion.
+- **Drag-and-Fit Responsive UI Controls**:
+  - Bi-directionally synchronized range slider (`#aiStrengthSlider`) and 5 segmented flex buttons (`L1` to `L5`).
+  - Live ELO rating badge pill (`#aiLevelRatingBadge`) with seamless mid-game adjustment without match restarts.
+
+### 🛡️ Production Engineering, Security & Concurrency Hardening
+- **Authentication Security (`backend/app.py`, `backend/database.py`)**:
+  - Cryptographic validation required for Google OAuth credential tokens in production; unverified email-only fallback requests are strictly rejected.
+  - Existing local accounts cannot be hijacked or linked to mismatched Google IDs.
+- **Multiplayer State Machine Authority (`backend/multiplayer.py`)**:
+  - Enforced strict player role, turn verification, and active status checks (`self.status != "finished"`) on `turn_complete`, `game_over`, `aim`, `aim_cancel`, and `launch`.
+  - Spectators and off-turn players are prevented from advancing turns or injecting false match endings.
+- **Database Concurrency & Write Locking (`backend/database.py`)**:
+  - Switched `record_match_result` to autocommit mode with explicit `BEGIN IMMEDIATE` write transactions, eliminating SQLite read-to-write lock escalation deadlocks under multi-threaded WSGI workers.
+- **Unbounded Memory Ceilings (`backend/app.py`, `backend/metrics.py`)**:
+  - Rate limiting dictionary prunes expired timestamps and enforces hard FIFO capacity eviction capped at 5,000 entries.
+  - Route-less requests normalize to `"not_found"`, and Prometheus metrics cardinality is strictly capped at 250 distinct endpoint keys with overflow routed to `"other"`.
+- **Client-Side Lifecycle Cleanup (`static/js/game.js`, `static/js/engine3d.js`)**:
+  - Implemented tracked event listener registries and comprehensive `destroy()` methods on both 2D and 3D arena engines, cleaning up all window listeners, rAF animation loops, OrbitControls, and Three.js WebGL contexts.
+- **Automated Verification**:
+  - 148/148 tests passing across test suite with 100.0% statement coverage (2,184 / 2,184 statements) across all 11 backend modules.
+  - Bandit SAST: 0 High / 0 Medium issues; pip-audit: 0 vulnerabilities.
+
 ## [4.0.0] - 2026-09-16
 
 ### 🌐 Live Matchmaking Queue, Commander Account Management & Google Sign-In
