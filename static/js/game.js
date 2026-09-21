@@ -1557,6 +1557,9 @@ class ArchessArena {
 
     setTimeout(() => {
       modal.classList.add('active');
+      if (typeof window.triggerAiMatchDebrief === 'function') {
+        window.triggerAiMatchDebrief(payload);
+      }
     }, 1200);
   }
 

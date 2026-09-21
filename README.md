@@ -37,12 +37,21 @@ Built for competitive tactical mastery with real-time multiplayer matchmaking, b
 * **8 Unlockable Achievements**: First Blood, Precision Striker, Citadel Defender, Awakened Monarch, Speed Demon, Grandmaster Slayer, etc., with real-time HUD badge unlocks.
 * **Authoritative ELO Rating**: Server-validated ELO calculation with K-factor scaling based on match outcomes and damage dealt.
 
-### 🛡️ Enterprise Security & Hardening
-* **Zero Known Vulnerabilities**: 100% clean scan via `bandit` and `pip-audit`.
+### 🧠 Autonomous Agentic AI, RAG & Prompts (100% Free & Open-Source)
+* **Autonomous ReAct Coach (`TacticalCoachAgent`)**: Runs multi-tool reasoning (`inspect_board`, `simulate_shot`, `query_codex`) with Chain-of-Thought (CoT) tactical trajectory recommendations.
+* **Zero-Cost Semantic Codex (RAG)**: Pure-Python TF-IDF / Token Cosine & Jaccard semantic scoring engine indexing piece abilities, ricochet laws, and combat mechanics without external vector DB fees.
+* **Dynamic Personas (`PromptCatalog`)**: Swap between **Grandmaster Magnus** (positional mentor), **Glitch-9** (aggressive bank-shot specialist), **Valkyrie** (guardian fortress), and **Blitzcaster** (hype esports shoutcaster).
+* **Pluggable Zero-Cost Inference**: Pluggable support for local Ollama models (`llama3.2`, `qwen2.5`) or Gemini Free Tier, backed by instant 0ms offline deterministic heuristic fallback.
+* **Esports Live Shoutcasting & Post-Match Debrief**: Real-time play-by-play combat commentary and automated post-game tactical reviews.
+
+### 🛡️ Enterprise Hardening, Observability & Anti-Cheat
+* **Prometheus Exposition (`/metrics`)**: Zero-dependency metrics engine exporting uptime, HTTP latency histograms, active WebSockets, rooms, and security events.
+* **Authoritative Anti-Cheat**: Clamps launch velocities within physics thresholds, strips NaN/Infinity payloads, and validates damage plausibility.
+* **Remote Session Revocation**: Atomic `token_version` tracking allows users to instantly invalidate all active logins across devices simultaneously.
+* **Zero Known Vulnerabilities**: 100% clean scan via `bandit` SAST and `pip-audit`.
 * **Injection Immunity**: 100% parameterized SQLite queries preventing SQL injection across all database routes.
 * **Brute-Force Shields**: Sliding-window rate limiters on `/api/auth/login` (15 req/min) and match settlements (60 req/min).
-* **Defense-in-Depth Headers**: `nosniff`, `SAMEORIGIN`, `strict-origin`, HSTS, and immutable asset caching.
-* **Memory Exhaustion Guard**: WebSocket frame size ceiling enforcing a strict 64KB cap.
+* **Strict CSP & Permissions-Policy**: Defense-in-depth against XSS, clickjacking, and unauthorized camera/microphone hardware access.
 
 ---
 

@@ -16,6 +16,22 @@
       </p>
     </div>
 
+    <!-- AI Codex Semantic Search Bar -->
+    <div class="arsenal-ai-search" style="max-width: 680px; margin: 0 auto 36px auto; background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 14px; padding: 14px 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.4);">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+        <span style="font-weight: 700; font-size: 0.88rem; color: #60a5fa; display: flex; align-items: center; gap: 8px;">
+          <span>🤖</span>
+          <span>Ask AI Codex (RAG Search)</span>
+        </span>
+        <span style="font-size: 0.72rem; color: #94a3b8; background: rgba(255,255,255,0.06); padding: 2px 8px; border-radius: 9999px;">Zero-Cost Semantic Retrieval</span>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="arsenalRagInput" placeholder="Ask about kinetic mass, ricochet restitution, Queen shockwave..." style="flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); color: #fff; border-radius: 8px; padding: 8px 14px; font-size: 0.85rem; outline: none;">
+        <button id="btnArsenalRagSearch" class="btn-primary" style="padding: 8px 18px; font-size: 0.85rem; border-radius: 8px; cursor: pointer;">Search Codex</button>
+      </div>
+      <div id="arsenalRagResults" style="display: none; margin-top: 12px; font-size: 0.82rem; color: #cbd5e1; max-height: 200px; overflow-y: auto;"></div>
+    </div>
+
     <div class="arsenal-showcase">
       
       <!-- Piece Tabs List -->
@@ -450,6 +466,42 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   loop();
+
+  // AI Semantic Codex (RAG) Handler
+  const arsenalInput = document.getElementById('arsenalRagInput');
+  const btnArsenalSearch = document.getElementById('btnArsenalRagSearch');
+  const arsenalResults = document.getElementById('arsenalRagResults');
+
+  async function queryArsenalRag() {
+    if (!arsenalInput || !arsenalResults) return;
+    const q = arsenalInput.value.trim();
+    if (!q) return;
+    arsenalResults.style.display = 'block';
+    arsenalResults.innerHTML = '<span style="color: #60a5fa;">Searching ARCHESS Codex...</span>';
+    try {
+      const resp = await fetch('/api/ai/rag/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: q, top_k: 3 })
+      });
+      const data = await resp.json();
+      if (data && data.success && data.results && data.results.length > 0) {
+        arsenalResults.innerHTML = data.results.map(r => `
+          <div style="background: rgba(255,255,255,0.04); padding: 8px 12px; border-radius: 6px; margin-bottom: 6px; border-left: 3px solid #3b82f6;">
+            <strong style="color: #93c5fd; display: block; margin-bottom: 2px;">${r.title}</strong>
+            <div style="color: #cbd5e1; font-size: 0.78rem;">${r.content}</div>
+          </div>
+        `).join('');
+      } else {
+        arsenalResults.innerHTML = '<span style="color: #94a3b8;">No matching codex entries found.</span>';
+      }
+    } catch(e) {
+      arsenalResults.innerHTML = '<span style="color: #ef4444;">Codex query error.</span>';
+    }
+  }
+
+  if (btnArsenalSearch) btnArsenalSearch.addEventListener('click', queryArsenalRag);
+  if (arsenalInput) arsenalInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); queryArsenalRag(); } });
 });
 </script>
 {% endblock %}

@@ -998,6 +998,15 @@ document.addEventListener('DOMContentLoaded', () => {
   if (arena) {
     arena.onCommentary = (entry) => {
       renderCommentaryEntry(entry);
+      if (typeof window.triggerAiShoutcast === 'function' && entry && (entry.type === 'elimination' || entry.type === 'critical' || entry.type === 'victory')) {
+        window.triggerAiShoutcast({
+          event_type: entry.type,
+          attacker: entry.attacker || 'Striker',
+          target: entry.target || 'Target',
+          damage: entry.damage || 45,
+          ricochets: entry.bounces || 0
+        });
+      }
     };
   }
 

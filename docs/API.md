@@ -305,3 +305,68 @@ Returns the master catalog of all 8 unlockable platform achievements.
 
 ### `GET /api/achievements/user`
 Returns achievements currently unlocked by the authenticated player.
+
+---
+
+## 📈 Enterprise Observability & Prometheus
+
+### `GET /metrics`
+Exposes real-time server health, latency summaries, concurrent WebSockets, active combat rooms, and security events in standard Prometheus text exposition format (version 0.0.4).
+
+* **Authentication**: None.
+* **Format**: `text/plain; version=0.0.4; charset=utf-8`
+
+---
+
+## 🧠 AI, Agentic ReAct Coach, RAG & Shoutcaster (100% Free)
+
+### `GET /api/ai/status`
+Returns the status of the local AI subsystem, indexed RAG codex documents, and available personas.
+
+### `GET /api/ai/personas`
+Lists available AI agent personas (`magnus`, `glitch`, `valkyrie`, `blitz`) with strategic profiles and prompt guidelines.
+
+### `POST /api/ai/coach/recommend`
+Executes an autonomous ReAct loop (`inspect_board` -> `simulate_shot` -> `query_codex`) evaluating candidate trajectories and returning the optimal launch vector and Chain-of-Thought rationale.
+
+* **Payload**:
+```json
+{
+  "board_state": [
+    { "id": "w_pawn_1", "type": "pawn", "color": "white", "x": -2.0, "y": 0.0, "hp": 50 }
+  ],
+  "turn": "white",
+  "persona": "magnus"
+}
+```
+* **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "source": "deterministic_heuristic",
+  "recommended_piece": "w_pawn_1",
+  "suggested_angle_deg": 45.0,
+  "suggested_power_ratio": 0.85,
+  "tactical_rationale": "Launch Pawn along 45° vector dealing ~32 HP damage.",
+  "predicted_damage": 32.5,
+  "bounces": 1,
+  "chain_of_thought": "Thought 1: Identified enemy Queen at (2,0)..."
+}
+```
+
+### `POST /api/ai/rag/query`
+Performs zero-cost local semantic retrieval across the indexed ARCHESS Codex.
+
+* **Payload**:
+```json
+{
+  "query": "knight ricochet damage formula",
+  "top_k": 2
+}
+```
+
+### `POST /api/ai/match/debrief`
+Produces structured post-match tactical analysis highlighting the defining play, critical blunder, and personalized training focus.
+
+### `POST /api/ai/shoutcast`
+Generates punchy, high-energy live esports commentary for combat eliminations, bank shots, and critical collisions.
