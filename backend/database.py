@@ -129,6 +129,9 @@ def register_user(username, email, password):
     if not isinstance(username, str) or not isinstance(email, str) or not isinstance(password, str):
         return False, "Username, email, and password must be valid strings."
 
+    if "\x00" in username or "\x00" in email or "\x00" in password:
+        return False, "Input contains illegal control characters."
+
     username = username.strip()
     email = email.strip().lower()
 
@@ -158,6 +161,9 @@ def register_user(username, email, password):
 
 def authenticate_user(username_or_email, password):
     if not isinstance(username_or_email, str) or not isinstance(password, str):
+        return False, "Invalid credentials."
+
+    if "\x00" in username_or_email or "\x00" in password:
         return False, "Invalid credentials."
 
     query_param = username_or_email.strip()
@@ -459,6 +465,8 @@ def update_user_profile(user_id, username=None, avatar=None):
 def update_user_password(user_id, current_password, new_password):
     if not user_id or not isinstance(current_password, str) or not isinstance(new_password, str):
         return False, "Invalid password format."
+    if "\x00" in current_password or "\x00" in new_password:
+        return False, "Input contains illegal control characters."
     if len(new_password) < 6 or len(new_password) > 128:
         return False, "New password must be between 6 and 128 characters."
 
