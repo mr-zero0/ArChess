@@ -88,26 +88,38 @@ Docker Compose manages two persistent named volumes:
 
 ---
 
-## ☁️ Method 2: Render.com (Free Cloud PaaS)
+## ☁️ Method 2: Render.com (100% Free Cloud PaaS)
 
-Render offers **750 free instance hours/month**, automatic HTTPS (`*.onrender.com`), and automated redeployment upon git pushes to `main`.
+Render offers **750 free instance hours/month**, automatic HTTPS (`*.onrender.com`), native **WebSocket support**, and automated redeployment upon git pushes to `main`.
 
-1. Sign in to **[render.com](https://render.com)** using your GitHub account.
-2. Navigate to **New +** $\rightarrow$ **Web Service**.
-3. Link your repository: `mr-zero0/ArChess`.
+### Option A: 1-Click Automated Blueprint (Recommended)
+Because the repository includes [`render.yaml`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/render.yaml):
+1. Sign in to **[render.com](https://render.com)**.
+2. Click **New +** $\rightarrow$ **Blueprint**.
+3. Connect your repository: `mr-zero0/ArChess`.
+4. Render will read `render.yaml`, automatically configure the Python environment, auto-generate a secure `SECRET_KEY`, set health checks at `/api/health`, and start Gunicorn.
+5. Click **Apply**.
+
+### Option B: Manual Web Service Setup
+1. Sign in to **[render.com](https://render.com)**.
+2. Click **New +** $\rightarrow$ **Web Service**.
+3. Select your repository: `mr-zero0/ArChess`.
 4. Configure fields:
    * **Name**: `archess`
-   * **Language**: `Docker` (Render automatically uses the multi-stage `Dockerfile`)
+   * **Language**: `Python 3` (or `Docker`)
+   * **Build Command**: `pip install -r requirements.txt`
+   * **Start Command**: `gunicorn -w 1 -k gthread --threads 16 -b 0.0.0.0:$PORT run:app`
    * **Instance Type**: **Free** ($0 / month)
-5. Under **Environment Variables**, add:
-   * `SECRET_KEY`: *(paste your generated 64-char hex key)*
+5. Under **Advanced** $\rightarrow$ **Environment Variables**, configure:
+   * `SECRET_KEY`: *(Generate with `python -c "import secrets; print(secrets.token_hex(32))"`)*
    * `FLASK_ENV`: `production`
    * `PRODUCTION`: `1`
-   * `PORT`: `5000`
+   * `SESSION_COOKIE_SECURE`: `1`
+   * `HEALTHCHECK_PATH`: `/api/health`
 6. Click **Create Web Service**.
 
 > [!NOTE]
-> Free tier instances spin down after 15 minutes of inactivity. When a new player visits, the service wakes up in ~30 seconds.
+> Free tier instances spin down after 15 minutes of inactivity. When a new player visits, the service automatically wakes up in ~30–45 seconds. Persistent WebSockets and in-memory rooms are fully operational during active sessions.
 
 ---
 

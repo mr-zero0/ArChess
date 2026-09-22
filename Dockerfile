@@ -62,5 +62,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:5000/api/health || exit 1
 
 # Launch via Gunicorn with gthread worker pool (1 process with 16 threads ensures in-memory multiplayer rooms remain unified)
-CMD ["gunicorn", "-w", "1", "-k", "gthread", "--threads", "16", "-b", "0.0.0.0:5000", "--access-logfile", "-", "--error-logfile", "-", "run:app"]
+CMD ["sh", "-c", "gunicorn -w 1 -k gthread --threads 16 -b 0.0.0.0:${PORT:-5000} --access-logfile - --error-logfile - run:app"]
 
