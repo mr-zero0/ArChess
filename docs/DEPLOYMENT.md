@@ -90,6 +90,9 @@ Docker Compose manages two persistent named volumes:
 
 ## ☁️ Method 2: Render.com (100% Free Cloud PaaS)
 
+> 🌐 **Official Live Production Deployment**: **[https://archess.onrender.com](https://archess.onrender.com)**  
+> Hosted on Render free tier with automatic HTTPS, persistent WebSockets (`flask-sock`), and automatic continuous deployment from GitHub.
+
 Render offers **750 free instance hours/month**, automatic HTTPS (`*.onrender.com`), native **WebSocket support**, and automated redeployment upon git pushes to `main`.
 
 ### Option A: 1-Click Automated Blueprint (Recommended)

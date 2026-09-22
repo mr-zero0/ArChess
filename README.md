@@ -1,11 +1,15 @@
 # ♟️ ARCHESS — The Kinetic Chess Protocol
 
+[![Live Application](https://img.shields.io/badge/Live%20Demo-archess.onrender.com-brightgreen?logo=render&logoColor=white)](https://archess.onrender.com)
 [![CI/CD Pipeline](https://github.com/mr-zero0/ArChess/actions/workflows/ci.yml/badge.svg)](https://github.com/mr-zero0/ArChess/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen.svg)](https://github.com/mr-zero0/ArChess)
 [![Python Version](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![Security Grade](https://img.shields.io/badge/Security-Grade%20A%2B-success.svg)](SECURITY.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+> 🚀 **Live Production Deployment**: **[https://archess.onrender.com](https://archess.onrender.com)**  
+> Full-featured physical kinetic chess with persistent WebSockets, 3D/2D views, dynamic live leaderboards, and AI coaching.
 
 **ARCHESS** is an authoritative, full-stack kinetic chess platform where rigid turn-based grid constraints collide with real-time physical momentum. Aim with sub-degree vector precision, launch pieces across the battlefield, rebound off perimeter cushions, and shatter opposing army formations in a unified **2D Kinetic Arena** or a fully procedural **3D WebGL Orbit View**.
 

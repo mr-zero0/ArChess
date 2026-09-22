@@ -17,168 +17,104 @@
     </div>
 
     <!-- Top 3 Grandmasters Podium Bento Grid -->
-    <div class="bento-grid" style="margin-bottom: 32px; max-width: 1380px;">
+    <div class="bento-grid" style="margin-bottom: 32px; max-width: 1380px;" id="podiumBentoGrid">
       <!-- Rank #1 Gold Champion Spotlight -->
-      <div class="bento-card bento-col-4" style="border-color: rgba(212, 175, 55, 0.4); background: linear-gradient(145deg, rgba(212, 175, 55, 0.08) 0%, rgba(12, 17, 26, 0.9) 100%);">
+      <div class="bento-card bento-col-4" id="podiumCard1" style="border-color: rgba(212, 175, 55, 0.4); background: linear-gradient(145deg, rgba(212, 175, 55, 0.08) 0%, rgba(12, 17, 26, 0.9) 100%);">
         <div class="bento-header" style="margin-bottom: 8px;">
-          <span class="bento-eyebrow" style="color: #ffd700;">
+          <span class="bento-eyebrow" id="podium1Eyebrow" style="color: #ffd700;">
             👑 Rank #1 &bull; Reigning Champion
           </span>
           <div style="display: flex; align-items: center; gap: 14px; margin-top: 6px;">
-            <div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #ffe066 0%, #d4af37 100%); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #000; box-shadow: 0 0 16px rgba(255, 215, 0, 0.5);">
+            <div id="podium1Avatar" style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #ffe066 0%, #d4af37 100%); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #000; box-shadow: 0 0 16px rgba(255, 215, 0, 0.5);">
               ♔
             </div>
             <div>
-              <h3 class="bento-title" style="font-size: 1.3rem; margin: 0;">Magnus_Kinetic</h3>
-              <span style="font-size: 0.74rem; color: var(--gold-light); font-weight: 600;">Grandmaster Vanguard</span>
+              <h3 class="bento-title" id="podium1Name" style="font-size: 1.3rem; margin: 0;">Magnus_Kinetic</h3>
+              <span id="podium1Tier" style="font-size: 0.74rem; color: var(--gold-light); font-weight: 600;">Grandmaster Vanguard</span>
             </div>
           </div>
         </div>
 
         <div class="bento-stat-cluster" style="margin: 12px 0;">
-          <div class="bento-stat-hero tabular-nums" style="color: #ffd700; font-size: 2.5rem;">2850</div>
+          <div class="bento-stat-hero tabular-nums" id="podium1Elo" style="color: #ffd700; font-size: 2.5rem;">2850</div>
           <div class="bento-stat-meta">
             <span class="bento-stat-label">Official ELO</span>
-            <span class="bento-stat-sub">94.2% Win Rate &bull; 48W 3L 2D</span>
+            <span class="bento-stat-sub" id="podium1Sub">94.2% Win Rate &bull; 48W 3L 2D</span>
           </div>
         </div>
 
         <div class="bento-badge-row">
-          <span class="tag-badge" style="border-color: #ffd700; color: #ffd700;">Undefeated Streak (14)</span>
+          <span class="tag-badge" id="podium1Badge" style="border-color: #ffd700; color: #ffd700;">Undefeated Streak (14)</span>
         </div>
       </div>
 
       <!-- Rank #2 Silver Challenger Spotlight -->
-      <div class="bento-card bento-col-4" style="border-color: rgba(203, 213, 225, 0.3);">
+      <div class="bento-card bento-col-4" id="podiumCard2" style="border-color: rgba(203, 213, 225, 0.3);">
         <div class="bento-header" style="margin-bottom: 8px;">
-          <span class="bento-eyebrow" style="color: #cbd5e1;">
+          <span class="bento-eyebrow" id="podium2Eyebrow" style="color: #cbd5e1;">
             🥈 Rank #2 &bull; Apex Challenger
           </span>
           <div style="display: flex; align-items: center; gap: 14px; margin-top: 6px;">
-            <div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #f8fafc 0%, #94a3b8 100%); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #000;">
+            <div id="podium2Avatar" style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #f8fafc 0%, #94a3b8 100%); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #000;">
               ♚
             </div>
             <div>
-              <h3 class="bento-title" style="font-size: 1.3rem; margin: 0;">Hikaru_Impulse</h3>
-              <span style="font-size: 0.74rem; color: #cbd5e1; font-weight: 600;">Master Tactician</span>
+              <h3 class="bento-title" id="podium2Name" style="font-size: 1.3rem; margin: 0;">Hikaru_Impulse</h3>
+              <span id="podium2Tier" style="font-size: 0.74rem; color: #cbd5e1; font-weight: 600;">Master Tactician</span>
             </div>
           </div>
         </div>
 
         <div class="bento-stat-cluster" style="margin: 12px 0;">
-          <div class="bento-stat-hero tabular-nums" style="color: #cbd5e1; font-size: 2.5rem;">2780</div>
+          <div class="bento-stat-hero tabular-nums" id="podium2Elo" style="color: #cbd5e1; font-size: 2.5rem;">2780</div>
           <div class="bento-stat-meta">
             <span class="bento-stat-label">Official ELO</span>
-            <span class="bento-stat-sub">88.5% Win Rate &bull; 42W 5L 1D</span>
+            <span class="bento-stat-sub" id="podium2Sub">88.5% Win Rate &bull; 42W 5L 1D</span>
           </div>
         </div>
 
         <div class="bento-badge-row">
-          <span class="chip-tag">Ricochet Specialist</span>
+          <span class="chip-tag" id="podium2Badge">Ricochet Specialist</span>
         </div>
       </div>
 
       <!-- Rank #3 Bronze Sentinel Spotlight -->
-      <div class="bento-card bento-col-4" style="border-color: rgba(205, 127, 50, 0.3);">
+      <div class="bento-card bento-col-4" id="podiumCard3" style="border-color: rgba(205, 127, 50, 0.3);">
         <div class="bento-header" style="margin-bottom: 8px;">
-          <span class="bento-eyebrow" style="color: #cd7f32;">
+          <span class="bento-eyebrow" id="podium3Eyebrow" style="color: #cd7f32;">
             🥉 Rank #3 &bull; Master Sentinel
           </span>
           <div style="display: flex; align-items: center; gap: 14px; margin-top: 6px;">
-            <div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #e69138 0%, #a64d79 100%); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #fff;">
+            <div id="podium3Avatar" style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #e69138 0%, #a64d79 100%); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #fff;">
               ♞
             </div>
             <div>
-              <h3 class="bento-title" style="font-size: 1.3rem; margin: 0;">Prism_Sniper</h3>
-              <span style="font-size: 0.74rem; color: #e69138; font-weight: 600;">Shockwave Sniper</span>
+              <h3 class="bento-title" id="podium3Name" style="font-size: 1.3rem; margin: 0;">Prism_Sniper</h3>
+              <span id="podium3Tier" style="font-size: 0.74rem; color: #e69138; font-weight: 600;">Shockwave Sniper</span>
             </div>
           </div>
         </div>
 
         <div class="bento-stat-cluster" style="margin: 12px 0;">
-          <div class="bento-stat-hero tabular-nums" style="color: #e69138; font-size: 2.5rem;">2710</div>
+          <div class="bento-stat-hero tabular-nums" id="podium3Elo" style="color: #e69138; font-size: 2.5rem;">2710</div>
           <div class="bento-stat-meta">
             <span class="bento-stat-label">Official ELO</span>
-            <span class="bento-stat-sub">84.1% Win Rate &bull; 37W 7L 0D</span>
+            <span class="bento-stat-sub" id="podium3Sub">84.1% Win Rate &bull; 37W 7L 0D</span>
           </div>
         </div>
 
         <div class="bento-badge-row">
-          <span class="chip-tag">Wall Ricochet Expert</span>
+          <span class="chip-tag" id="podium3Badge">Wall Ricochet Expert</span>
         </div>
       </div>
     </div>
 
-    <!-- 8-Commander Knockout Tournament Championship Bracket (v3.1.0) -->
-    <div class="tournament-bracket-card" id="tournamentBracketSection" style="max-width: 1380px; width: 100%; margin: 0 auto 36px;">
-      <div class="tournament-card-header">
-        <div class="bracket-title-wrap">
-          <div class="bracket-eyebrow">
-            <span class="bracket-badge-pill" id="bracketSeasonBadge">SEASON 1 CHAMPIONSHIP</span>
-            <span class="bracket-status-tag" id="bracketStatusTag">QUARTERFINALS IN PROGRESS</span>
-          </div>
-          <h3 class="bracket-heading">Knockout Tournament Championship</h3>
-          <p class="bracket-subhead">8 seeded commanders battle in single-elimination physical chess for the Golden Sovereign Crown.</p>
-        </div>
-        <div class="bracket-controls-wrap">
-          <button class="btn btn-gold btn-sm" id="btnSimulateRound">
-            <span id="btnSimulateText">⚡ Simulate Next Round</span>
-          </button>
-          <button class="btn btn-outline btn-sm" id="btnResetTournament" title="Reset tournament and seed a new season">
-            <span>↺ New Season</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Champion Banner (Displayed when tournament is completed) -->
-      <div class="tournament-champion-banner" id="tournamentChampionBanner" style="display: none;">
-        <div class="champion-glow-disc">👑</div>
-        <div class="champion-meta">
-          <span class="champion-eyebrow">REIGNING TOURNAMENT CHAMPION</span>
-          <h2 class="champion-name" id="tournamentChampionName">Vanguard_Prime</h2>
-          <span class="champion-desc" id="tournamentChampionSub">Season 1 Golden Sovereign Champion &bull; Undefeated Run</span>
-        </div>
-        <a href="/play?opponent=Vanguard_Prime&mode=3d" class="btn btn-gold btn-md" id="btnChallengeChampion">
-          <span>⚔️ Challenge Champion</span>
-        </a>
-      </div>
-
-      <!-- 3-Column Knockout Bracket Grid -->
-      <div class="bracket-stages-grid" id="bracketStagesGrid">
-        <!-- Col 1: Quarterfinals (4 matches) -->
-        <div class="bracket-stage-col" id="stageQuarterfinals">
-          <div class="stage-col-head">
-            <h4>QUARTERFINALS</h4>
-            <span>4 Duels &bull; Best of 3</span>
-          </div>
-          <div class="stage-matches-list" id="matchesQuarterfinals"></div>
-        </div>
-
-        <!-- Col 2: Semifinals (2 matches) -->
-        <div class="bracket-stage-col" id="stageSemifinals">
-          <div class="stage-col-head">
-            <h4>SEMIFINALS</h4>
-            <span>2 Duels &bull; Best of 3</span>
-          </div>
-          <div class="stage-matches-list" id="matchesSemifinals"></div>
-        </div>
-
-        <!-- Col 3: Grand Championship Finals (1 match) -->
-        <div class="bracket-stage-col stage-finals" id="stageFinals">
-          <div class="stage-col-head">
-            <h4>GRAND FINALS</h4>
-            <span>Championship Duel</span>
-          </div>
-          <div class="stage-matches-list" id="matchesFinals"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="leaderboard-table-card" style="max-width: 1380px; width: 100%; margin: 0 auto;">
+    <!-- Official Global Ranked Ladder Table -->
+    <div class="leaderboard-table-card" style="max-width: 1380px; width: 100%; margin: 0 auto 36px;">
       <div class="table-card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
         <div>
           <h3>Season 1: Kinetic Supremacy</h3>
-          <p style="font-size: 0.88rem; color: var(--text-secondary); margin-top: 4px;">Live ratings updated dynamically from match settlements</p>
+          <p style="font-size: 0.88rem; color: var(--text-secondary); margin-top: 4px;">Live ratings updated dynamically from authoritative match settlements</p>
         </div>
         <div style="display: flex; align-items: center; gap: 12px;">
           <div style="position: relative;">
@@ -290,6 +226,74 @@
       </table>
     </div>
 
+    <!-- 8-Commander Knockout Tournament Championship Bracket (v3.1.0) -->
+    <div class="tournament-bracket-card" id="tournamentBracketSection" style="max-width: 1380px; width: 100%; margin: 0 auto 36px;">
+      <div class="tournament-card-header">
+        <div class="bracket-title-wrap">
+          <div class="bracket-eyebrow">
+            <span class="bracket-badge-pill" id="bracketSeasonBadge">SEASON 1 CHAMPIONSHIP</span>
+            <span class="bracket-status-tag" id="bracketStatusTag">QUARTERFINALS IN PROGRESS</span>
+          </div>
+          <h3 class="bracket-heading">Tactical Exhibition Championship Bracket</h3>
+          <p class="bracket-subhead">Autonomous 8-commander tournament simulation seeded from top ladder contenders and tactical AI bots.</p>
+        </div>
+        <div class="bracket-controls-wrap">
+          <button class="btn btn-gold btn-sm" id="btnSimulateRound">
+            <span id="btnSimulateText">⚡ Simulate Next Round</span>
+          </button>
+          <button class="btn btn-outline btn-sm" id="btnResetTournament" title="Reset tournament and seed a new season">
+            <span>↺ New Season</span>
+          </button>
+          <button class="btn btn-outline btn-sm" id="btnToggleTournament" title="Toggle tournament bracket visibility">
+            <span id="btnToggleTournamentText">▾ Hide Bracket</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Champion Banner (Displayed when tournament is completed) -->
+      <div class="tournament-champion-banner" id="tournamentChampionBanner" style="display: none;">
+        <div class="champion-glow-disc">👑</div>
+        <div class="champion-meta">
+          <span class="champion-eyebrow">REIGNING TOURNAMENT CHAMPION</span>
+          <h2 class="champion-name" id="tournamentChampionName">Vanguard_Prime</h2>
+          <span class="champion-desc" id="tournamentChampionSub">Season 1 Golden Sovereign Champion &bull; Undefeated Run</span>
+        </div>
+        <a href="/play?opponent=Vanguard_Prime&mode=3d" class="btn btn-gold btn-md" id="btnChallengeChampion">
+          <span>⚔️ Challenge Champion</span>
+        </a>
+      </div>
+
+      <!-- 3-Column Knockout Bracket Grid -->
+      <div class="bracket-stages-grid" id="bracketStagesGrid">
+        <!-- Col 1: Quarterfinals (4 matches) -->
+        <div class="bracket-stage-col" id="stageQuarterfinals">
+          <div class="stage-col-head">
+            <h4>QUARTERFINALS</h4>
+            <span>4 Duels &bull; Best of 3</span>
+          </div>
+          <div class="stage-matches-list" id="matchesQuarterfinals"></div>
+        </div>
+
+        <!-- Col 2: Semifinals (2 matches) -->
+        <div class="bracket-stage-col" id="stageSemifinals">
+          <div class="stage-col-head">
+            <h4>SEMIFINALS</h4>
+            <span>2 Duels &bull; Best of 3</span>
+          </div>
+          <div class="stage-matches-list" id="matchesSemifinals"></div>
+        </div>
+
+        <!-- Col 3: Grand Championship Finals (1 match) -->
+        <div class="bracket-stage-col stage-finals" id="stageFinals">
+          <div class="stage-col-head">
+            <h4>GRAND FINALS</h4>
+            <span>Championship Duel</span>
+          </div>
+          <div class="stage-matches-list" id="matchesFinals"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- Tactical Commander Dossier Modal -->
     <div class="modal-backdrop" id="playerDossierModal" role="dialog" aria-modal="true" aria-hidden="true">
       <div class="modal-dialog player-dossier-dialog">
@@ -396,6 +400,130 @@
         let activeTier = 'all';
         let searchQuery = '';
 
+        // Dynamically populate top 3 podium cards from real database leaderboard
+        function updatePodium(playersList) {
+          const p1 = playersList[0];
+          const p2 = playersList[1];
+          const p3 = playersList[2];
+
+          function getTierLabel(elo) {
+            if (elo >= 2700) return 'Grandmaster Vanguard';
+            if (elo >= 2400) return 'Master Tactician';
+            if (elo >= 1800) return 'Expert Strategist';
+            return 'Active Contender';
+          }
+
+          function getAvatarGlyph(avatar) {
+            const map = { king: '♔', queen: '♕', rook: '♖', bishop: '♗', knight: '♞', pawn: '♟' };
+            return map[avatar] || '♞';
+          }
+
+          // Rank #1
+          const el1Name = document.getElementById('podium1Name');
+          const el1Tier = document.getElementById('podium1Tier');
+          const el1Elo = document.getElementById('podium1Elo');
+          const el1Sub = document.getElementById('podium1Sub');
+          const el1Badge = document.getElementById('podium1Badge');
+          const el1Avatar = document.getElementById('podium1Avatar');
+          const card1 = document.getElementById('podiumCard1');
+
+          if (p1) {
+            const total = p1.matches_played > 0 ? p1.matches_played : (p1.wins + p1.losses);
+            const winRate = total > 0 ? Math.round((p1.wins / total) * 100) : 0;
+            const draws = Math.max(0, (p1.matches_played || 0) - (p1.wins || 0) - (p1.losses || 0));
+            if (el1Name) el1Name.textContent = p1.username;
+            if (el1Tier) el1Tier.textContent = getTierLabel(p1.elo_rating);
+            if (el1Elo) el1Elo.textContent = p1.elo_rating;
+            if (el1Sub) el1Sub.textContent = `${winRate}% Win Rate • ${p1.wins}W ${p1.losses}L ${draws}D`;
+            if (el1Badge) el1Badge.textContent = p1.wins >= 5 ? `Rank 1 Leader (${p1.wins} Wins)` : `Active Vanguard`;
+            if (el1Avatar) el1Avatar.textContent = getAvatarGlyph(p1.avatar);
+            if (card1) {
+              card1.style.cursor = 'pointer';
+              card1.onclick = () => openDossier(p1.username);
+            }
+          } else {
+            if (el1Name) el1Name.textContent = 'Open Vanguard Crown';
+            if (el1Tier) el1Tier.textContent = 'Unclaimed Rank #1';
+            if (el1Elo) el1Elo.textContent = '1200';
+            if (el1Sub) el1Sub.textContent = 'Play a match to claim Rank #1';
+            if (el1Badge) el1Badge.textContent = '⚡ Awaiting Champion';
+            if (card1) {
+              card1.style.cursor = 'pointer';
+              card1.onclick = () => window.location.href = '/play';
+            }
+          }
+
+          // Rank #2
+          const el2Name = document.getElementById('podium2Name');
+          const el2Tier = document.getElementById('podium2Tier');
+          const el2Elo = document.getElementById('podium2Elo');
+          const el2Sub = document.getElementById('podium2Sub');
+          const el2Badge = document.getElementById('podium2Badge');
+          const el2Avatar = document.getElementById('podium2Avatar');
+          const card2 = document.getElementById('podiumCard2');
+
+          if (p2) {
+            const total = p2.matches_played > 0 ? p2.matches_played : (p2.wins + p2.losses);
+            const winRate = total > 0 ? Math.round((p2.wins / total) * 100) : 0;
+            const draws = Math.max(0, (p2.matches_played || 0) - (p2.wins || 0) - (p2.losses || 0));
+            if (el2Name) el2Name.textContent = p2.username;
+            if (el2Tier) el2Tier.textContent = getTierLabel(p2.elo_rating);
+            if (el2Elo) el2Elo.textContent = p2.elo_rating;
+            if (el2Sub) el2Sub.textContent = `${winRate}% Win Rate • ${p2.wins}W ${p2.losses}L ${draws}D`;
+            if (el2Badge) el2Badge.textContent = 'Apex Challenger';
+            if (el2Avatar) el2Avatar.textContent = getAvatarGlyph(p2.avatar);
+            if (card2) {
+              card2.style.cursor = 'pointer';
+              card2.onclick = () => openDossier(p2.username);
+            }
+          } else {
+            if (el2Name) el2Name.textContent = 'Open Challenger Seat';
+            if (el2Tier) el2Tier.textContent = 'Unclaimed Rank #2';
+            if (el2Elo) el2Elo.textContent = '1200';
+            if (el2Sub) el2Sub.textContent = 'Play a match to claim Rank #2';
+            if (el2Badge) el2Badge.textContent = '⚡ Awaiting Contender';
+            if (card2) {
+              card2.style.cursor = 'pointer';
+              card2.onclick = () => window.location.href = '/play';
+            }
+          }
+
+          // Rank #3
+          const el3Name = document.getElementById('podium3Name');
+          const el3Tier = document.getElementById('podium3Tier');
+          const el3Elo = document.getElementById('podium3Elo');
+          const el3Sub = document.getElementById('podium3Sub');
+          const el3Badge = document.getElementById('podium3Badge');
+          const el3Avatar = document.getElementById('podium3Avatar');
+          const card3 = document.getElementById('podiumCard3');
+
+          if (p3) {
+            const total = p3.matches_played > 0 ? p3.matches_played : (p3.wins + p3.losses);
+            const winRate = total > 0 ? Math.round((p3.wins / total) * 100) : 0;
+            const draws = Math.max(0, (p3.matches_played || 0) - (p3.wins || 0) - (p3.losses || 0));
+            if (el3Name) el3Name.textContent = p3.username;
+            if (el3Tier) el3Tier.textContent = getTierLabel(p3.elo_rating);
+            if (el3Elo) el3Elo.textContent = p3.elo_rating;
+            if (el3Sub) el3Sub.textContent = `${winRate}% Win Rate • ${p3.wins}W ${p3.losses}L ${draws}D`;
+            if (el3Badge) el3Badge.textContent = 'Master Sentinel';
+            if (el3Avatar) el3Avatar.textContent = getAvatarGlyph(p3.avatar);
+            if (card3) {
+              card3.style.cursor = 'pointer';
+              card3.onclick = () => openDossier(p3.username);
+            }
+          } else {
+            if (el3Name) el3Name.textContent = 'Open Sentinel Seat';
+            if (el3Tier) el3Tier.textContent = 'Unclaimed Rank #3';
+            if (el3Elo) el3Elo.textContent = '1200';
+            if (el3Sub) el3Sub.textContent = 'Play a match to claim Rank #3';
+            if (el3Badge) el3Badge.textContent = '⚡ Awaiting Contender';
+            if (card3) {
+              card3.style.cursor = 'pointer';
+              card3.onclick = () => window.location.href = '/play';
+            }
+          }
+        }
+
         // Calculate counts for division filter pills
         function updateCounts() {
           const gmCount = players.filter(p => p.elo_rating >= 2700).length;
@@ -479,6 +607,7 @@
           });
         }
 
+        updatePodium(players);
         updateCounts();
         renderRows(getFilteredPlayers());
 
@@ -706,7 +835,7 @@
             return `
               <div class="bracket-player-row ${winClass}">
                 <span class="seed-badge">#${p.seed || p.id}</span>
-                <span class="player-name">${p.username}</span>
+                <span class="player-name">${p.username} ${p.is_bot ? '<span style="font-size: 0.62rem; color: #60a5fa; border: 1px solid rgba(96,165,250,0.3); padding: 1px 5px; border-radius: 4px; margin-left: 5px; font-weight: 600;">AI BOT</span>' : ''}</span>
                 <span class="player-score">${score}</span>
               </div>
             `;
@@ -794,6 +923,17 @@
                 window.ArchessToast?.show('Championship tournament reset for a new season!', 'info', 3000, 'NEW SEASON');
               }
             } catch(e) {}
+          });
+        }
+
+        const btnToggleTourney = document.getElementById('btnToggleTournament');
+        const tourneyStages = document.getElementById('bracketStagesGrid');
+        if (btnToggleTourney && tourneyStages) {
+          btnToggleTourney.addEventListener('click', () => {
+            const isHidden = tourneyStages.style.display === 'none';
+            tourneyStages.style.display = isHidden ? 'grid' : 'none';
+            const toggleText = document.getElementById('btnToggleTournamentText');
+            if (toggleText) toggleText.textContent = isHidden ? '▾ Hide Bracket' : '▸ Show Bracket';
           });
         }
 
