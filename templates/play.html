@@ -311,73 +311,56 @@
           </div>
         </div>
 
-        <!-- 3. Tactical Match Commentary Card (v3.3.0) -->
-        <div class="sidebar-commentary-card" id="sidebarCommentaryCard">
-          <div class="commentary-header">
-            <h4>
-              <span class="live-commentary-pulse"></span>
-              <span>Tactical Commentary</span>
-            </h4>
+        <!-- 3. Unified Tactical Intelligence Card (Commentary & AI Advisor) -->
+        <div class="sidebar-commentary-card unified-intel-card" id="sidebarCommentaryCard">
+          <div class="intel-tabs-header">
+            <div class="intel-tabs-nav" role="tablist">
+              <button type="button" class="intel-tab-btn active" id="tabLiveIntelBtn" role="tab" aria-selected="true">
+                <span class="live-commentary-pulse"></span>
+                <span>Commentary</span>
+              </button>
+              <button type="button" class="intel-tab-btn" id="tabAiAdvisorBtn" role="tab" aria-selected="false">
+                <span>🤖 AI Advisor</span>
+              </button>
+            </div>
             <span class="commentary-feed-badge" id="commentaryModeBadge">Live Telemetry</span>
           </div>
-          <div class="commentary-ticker-wrap" id="tacticalCommentaryTicker">
-            <span class="ticker-icon" id="commentaryTickerIcon">🎙️</span>
-            <span class="ticker-message" id="commentaryTickerText">Awaiting opening engagement...</span>
+
+          <!-- Tab Panel 1: Live Commentary -->
+          <div class="intel-tab-panel active" id="panelLiveIntel" role="tabpanel">
+            <div class="commentary-ticker-wrap" id="tacticalCommentaryTicker">
+              <span class="ticker-icon" id="commentaryTickerIcon">🎙️</span>
+              <span class="ticker-message" id="commentaryTickerText">Awaiting opening engagement...</span>
+            </div>
+            <div class="commentary-feed-scroll" id="tacticalCommentaryFeed">
+              <!-- Dynamically populated from commentary events -->
+            </div>
           </div>
-          <div class="commentary-feed-scroll" id="tacticalCommentaryFeed">
-            <!-- Dynamically populated from commentary events -->
+
+          <!-- Tab Panel 2: AI Agentic Tactical Advisor -->
+          <div class="intel-tab-panel" id="panelAiAdvisor" role="tabpanel" style="display: none;">
+            <div class="ai-advisor-container" id="aiAdvisorCard">
+              <div class="ai-advisor-controls">
+                <select id="aiPersonaSelect" class="ai-persona-select" title="Select AI Tactical Persona">
+                  <option value="magnus">GM Magnus (Strategy)</option>
+                  <option value="glitch">Glitch-9 (Aggro / Bank)</option>
+                  <option value="valkyrie">Valkyrie (Fortress)</option>
+                </select>
+                <button type="button" id="btnAskAiCoach" class="btn-advise-action">
+                  ⚡ Advise
+                </button>
+              </div>
+              <div id="aiAdvisorContent" class="ai-advisor-box">
+                <span>Click &ldquo;Advise&rdquo; on your turn to run a tactical evaluation.</span>
+              </div>
+              <span class="commentary-feed-badge" id="aiAdvisorStatusBadge" style="display: none;">Autonomous</span>
+            </div>
           </div>
         </div>
 
-        <!-- 4. AI Agentic Tactical Advisor (v4.2.0) -->
-        <div class="sidebar-commentary-card ai-advisor-card" id="aiAdvisorCard" style="margin-top: 14px; border: 1px solid rgba(138, 92, 246, 0.3); background: rgba(15, 12, 28, 0.65); border-radius: 12px; padding: 12px;">
-          <div class="commentary-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <h4 style="margin: 0; font-size: 0.88rem; display: flex; align-items: center; gap: 6px; color: #c084fc;">
-              <span>🤖</span>
-              <span>AI Tactical Advisor</span>
-            </h4>
-            <span class="commentary-feed-badge" id="aiAdvisorStatusBadge" style="background: rgba(168, 85, 247, 0.15); color: #c084fc; font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px; border: 1px solid rgba(168, 85, 247, 0.3);">Autonomous</span>
-          </div>
-
-          <!-- Persona Selection -->
-          <div style="display: flex; gap: 6px; margin-bottom: 8px;">
-            <select id="aiPersonaSelect" style="flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: var(--foreground); border-radius: 6px; padding: 4px 8px; font-size: 0.78rem;">
-              <option value="magnus">Grandmaster Magnus (Strategy)</option>
-              <option value="glitch">Glitch-9 (Bank Shots / Aggro)</option>
-              <option value="valkyrie">Valkyrie (Fortress Defense)</option>
-            </select>
-            <button id="btnAskAiCoach" class="btn-cupertino-action" style="background: #7c3aed; color: #fff; border: none; padding: 4px 10px; border-radius: 6px; font-size: 0.78rem; cursor: pointer; font-weight: 600;">
-              ⚡ Advise
-            </button>
-          </div>
-
-          <!-- Advice Output Container -->
-          <div id="aiAdvisorContent" style="font-size: 0.78rem; line-height: 1.4; color: var(--muted-foreground); background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px; min-height: 48px;">
-            <span style="color: #94a3b8;">Click &ldquo;Advise&rdquo; on your turn to run a ReAct physics raycast and tactical evaluation.</span>
-          </div>
-        </div>
-
-        <!-- 5. Instant RAG Codex Search -->
-        <div class="sidebar-commentary-card ai-rag-card" id="aiRagCard" style="margin-top: 14px; border: 1px solid rgba(59, 130, 246, 0.25); background: rgba(10, 20, 35, 0.65); border-radius: 12px; padding: 12px;">
-          <div class="commentary-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <h4 style="margin: 0; font-size: 0.88rem; display: flex; align-items: center; gap: 6px; color: #60a5fa;">
-              <span>📖</span>
-              <span>Semantic Codex (RAG)</span>
-            </h4>
-            <span style="font-size: 0.72rem; color: #93c5fd; background: rgba(59, 130, 246, 0.15); padding: 2px 8px; border-radius: 9999px;">0ms Local</span>
-          </div>
-          <div style="display: flex; gap: 6px; margin-bottom: 8px;">
-            <input type="text" id="ragSearchInput" placeholder="Ask rules, ricochets, stats..." style="flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: var(--foreground); border-radius: 6px; padding: 4px 8px; font-size: 0.78rem;">
-            <button id="btnRagSearch" style="background: #2563eb; color: #fff; border: none; padding: 4px 10px; border-radius: 6px; font-size: 0.78rem; cursor: pointer;">
-              🔍
-            </button>
-          </div>
-          <div id="ragSearchResults" style="font-size: 0.75rem; color: var(--muted-foreground); max-height: 120px; overflow-y: auto; display: none;"></div>
-        </div>
-
-        <!-- 6. Match Mode Context Note -->
+        <!-- 4. Match Mode Context Note -->
         <div class="sidebar-context-note">
-          Physics Combat (3D &amp; 2D Arena) &bull; Standard FIDE (2D Classic) &bull; <a href="/arsenal" class="sidebar-context-link">View Codex &rarr;</a>
+          Physics Combat &bull; Standard FIDE &bull; <a href="/arsenal" class="sidebar-context-link">Codex &rarr;</a>
         </div>
 
       </aside>
@@ -388,6 +371,7 @@
   <!-- Victory / Game Over Post-Match Analytics Modal -->
   <div class="modal-backdrop" id="victoryModal" role="dialog" aria-modal="true">
     <div class="modal-dialog victory-modal-dialog">
+      <button type="button" class="modal-close-icon victory-close-btn" id="btnCloseVictoryModal" aria-label="Close Victory Modal" title="Close and Review Board">✕</button>
       <div class="victory-banner-badge white-win" id="victoryBadge">MATCH SETTLED</div>
       <h2 class="victory-title" id="victoryTitle">CHECKMATE!</h2>
       <p class="victory-sub" id="victorySub">The enemy King has been shattered from the board.</p>
@@ -454,14 +438,14 @@
 
       <!-- Tactical Engagement Timeline -->
       <div class="victory-timeline-section" id="victoryTimelineSection">
-        <div class="timeline-header" id="toggleTimelineBtn">
+        <div class="timeline-header" id="toggleTimelineBtn" role="button" tabindex="0" title="Click to expand/collapse tactical timeline">
           <span class="timeline-title-wrap">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             <span>Tactical Engagement Timeline</span>
           </span>
-          <span id="timelineToggleIcon" class="timeline-toggle-chevron">▼</span>
+          <span id="timelineToggleIcon" class="timeline-toggle-chevron">▼ Expand</span>
         </div>
-        <div class="timeline-events-list" id="timelineEventsList">
+        <div class="timeline-events-list" id="timelineEventsList" style="display: none;">
           <!-- Dynamically populated from match telemetry events -->
         </div>
       </div>
@@ -470,29 +454,32 @@
       <div id="aiPostMatchDebrief"></div>
 
       <div class="victory-modal-actions">
-        <button class="btn-gold" id="btnPlayAgain">
-          <span>Play Again</span>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-        </button>
-        <button class="btn-ghost" id="btnLaunchReplay" title="Review tactical timeline in interactive replay mode">
-          <span>▶ Replay Combat</span>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-        </button>
-        <button class="btn-ghost" id="btnCopyMatchReport" title="Copy Tournament Match Report to Clipboard">
-          <span>Copy Match Report</span>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-        </button>
-        <button class="btn-ghost" id="btnExportPgn" title="Download Standard Chess PGN with Tactical Combat Annotations">
-          <span>📜 Export PGN</span>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        </button>
-        <button class="btn-ghost" id="btnCopyFen" title="Copy Endgame FEN String to Clipboard">
-          <span>♟️ Copy FEN</span>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-        </button>
-        <a href="/leaderboard" class="btn-ghost">
-          <span>Leaderboard</span>
-        </a>
+        <div class="victory-actions-primary">
+          <button type="button" class="btn-gold" id="btnPlayAgain">
+            <span>Play Again</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+          </button>
+          <button type="button" class="btn-ghost btn-review-board" id="btnReviewBoard" title="Close report and inspect final board positions">
+            <span>♟️ Review Board</span>
+          </button>
+        </div>
+        <div class="victory-actions-secondary">
+          <button type="button" class="btn-ghost-sm" id="btnLaunchReplay" title="Review tactical timeline in interactive replay mode">
+            <span>▶ Replay Combat</span>
+          </button>
+          <button type="button" class="btn-ghost-sm" id="btnCopyMatchReport" title="Copy Tournament Match Report to Clipboard">
+            <span>Copy Match Report</span>
+          </button>
+          <button type="button" class="btn-ghost-sm" id="btnExportPgn" title="Download Standard Chess PGN with Tactical Combat Annotations">
+            <span>📜 Export PGN</span>
+          </button>
+          <button type="button" class="btn-ghost-sm" id="btnCopyFen" title="Copy Endgame FEN String to Clipboard">
+            <span>♟️ Copy FEN</span>
+          </button>
+          <a href="/leaderboard" class="btn-ghost-sm">
+            <span>Leaderboard</span>
+          </a>
+        </div>
       </div>
     </div>
   </div>
@@ -1020,5 +1007,5 @@
       if (currentScale !== 100) applyBoardScale(currentScale);
     });
   </script>
-  <script src="/static/js/ai_advisor.js?v=4.3.0"></script>
+  <script src="/static/js/ai_advisor.js?v=4.3.1"></script>
 {% endblock %}

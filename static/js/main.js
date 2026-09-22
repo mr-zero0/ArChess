@@ -1285,18 +1285,89 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
 
-  // Play Again Button inside Victory Modal
-  const playAgainBtn = document.getElementById('btnPlayAgain');
+  // Victory Modal Dialog Controls (Play Again, Close, Review Board, Escape & Backdrop)
   const victoryModal = document.getElementById('victoryModal');
+  const playAgainBtn = document.getElementById('btnPlayAgain');
+  const closeVictoryBtn = document.getElementById('btnCloseVictoryModal');
+  const reviewBoardBtn = document.getElementById('btnReviewBoard');
+
+  function closeVictoryModal() {
+    if (victoryModal) {
+      victoryModal.classList.remove('active');
+    }
+  }
+
+  if (closeVictoryBtn) {
+    closeVictoryBtn.addEventListener('click', closeVictoryModal);
+  }
+  if (reviewBoardBtn) {
+    reviewBoardBtn.addEventListener('click', () => {
+      closeVictoryModal();
+      showToast('Inspecting final positions — match settled');
+    });
+  }
+  if (victoryModal) {
+    victoryModal.addEventListener('click', (e) => {
+      if (e.target === victoryModal) {
+        closeVictoryModal();
+      }
+    });
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && victoryModal && victoryModal.classList.contains('active')) {
+      closeVictoryModal();
+    }
+  });
+
   if (playAgainBtn && victoryModal) {
     playAgainBtn.addEventListener('click', () => {
-      victoryModal.classList.remove('active');
+      closeVictoryModal();
       if (activeViewMode === '2d-classic' && window.Archess2DChess && window.Archess2DChess.reset) {
         window.Archess2DChess.reset();
       } else if (arena) {
         arena.resetBoard();
       }
       showToast('Board Re-racked — Ready for Rematch');
+    });
+  }
+
+  // Toggle Match Timeline Accordion inside Victory Modal
+  const toggleTimelineBtn = document.getElementById('toggleTimelineBtn');
+  const timelineEventsList = document.getElementById('timelineEventsList');
+  const timelineToggleIcon = document.getElementById('timelineToggleIcon');
+  if (toggleTimelineBtn && timelineEventsList) {
+    toggleTimelineBtn.addEventListener('click', () => {
+      const isVisible = timelineEventsList.style.display === 'flex' || timelineEventsList.style.display === 'block';
+      timelineEventsList.style.display = isVisible ? 'none' : 'flex';
+      if (timelineToggleIcon) {
+        timelineToggleIcon.textContent = isVisible ? '▼ Expand' : '▲ Collapse';
+      }
+    });
+  }
+
+  // Unified Tactical Intel Card Tabs (Live Commentary vs AI Advisor)
+  const tabLiveIntelBtn = document.getElementById('tabLiveIntelBtn');
+  const tabAiAdvisorBtn = document.getElementById('tabAiAdvisorBtn');
+  const panelLiveIntel = document.getElementById('panelLiveIntel');
+  const panelAiAdvisor = document.getElementById('panelAiAdvisor');
+
+  if (tabLiveIntelBtn && tabAiAdvisorBtn && panelLiveIntel && panelAiAdvisor) {
+    tabLiveIntelBtn.addEventListener('click', () => {
+      tabLiveIntelBtn.classList.add('active');
+      tabLiveIntelBtn.setAttribute('aria-selected', 'true');
+      tabAiAdvisorBtn.classList.remove('active');
+      tabAiAdvisorBtn.setAttribute('aria-selected', 'false');
+      panelLiveIntel.style.display = 'block';
+      panelAiAdvisor.style.display = 'none';
+    });
+
+    tabAiAdvisorBtn.addEventListener('click', () => {
+      tabAiAdvisorBtn.classList.add('active');
+      tabAiAdvisorBtn.setAttribute('aria-selected', 'true');
+      tabLiveIntelBtn.classList.remove('active');
+      tabLiveIntelBtn.setAttribute('aria-selected', 'false');
+      panelAiAdvisor.style.display = 'block';
+      panelLiveIntel.style.display = 'none';
     });
   }
 
@@ -1345,18 +1416,6 @@ document.addEventListener('DOMContentLoaded', () => {
         '',
         'Verified on ArChess Grandmaster Ledger (https://archess.net)'
       ].join('\n');
-
-  // Toggle Match Timeline Accordion inside Victory Modal
-  const toggleTimelineBtn = document.getElementById('toggleTimelineBtn');
-  const timelineEventsList = document.getElementById('timelineEventsList');
-  const timelineToggleIcon = document.getElementById('timelineToggleIcon');
-  if (toggleTimelineBtn && timelineEventsList) {
-    toggleTimelineBtn.addEventListener('click', () => {
-      const isVisible = timelineEventsList.style.display === 'flex';
-      timelineEventsList.style.display = isVisible ? 'none' : 'flex';
-      if (timelineToggleIcon) timelineToggleIcon.textContent = isVisible ? '▼' : '▲';
-    });
-  }
 
       navigator.clipboard.writeText(reportText).then(() => {
         const originalHtml = copyMatchBtn.innerHTML;
