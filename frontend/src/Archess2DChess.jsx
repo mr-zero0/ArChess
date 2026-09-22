@@ -43,6 +43,7 @@ function getCustomPieces(style) {
       const pathD = PIECE_PATHS[type];
 
       pieces[pieceKey] = ({ squareWidth }) => {
+        const sqW = (squareWidth && !isNaN(squareWidth) && squareWidth > 0) ? squareWidth : 64;
         let fill, stroke, filter;
 
         if (style === 'neo') {
@@ -65,8 +66,8 @@ function getCustomPieces(style) {
 
         return (
           <div style={{
-            width: squareWidth,
-            height: squareWidth,
+            width: sqW,
+            height: sqW,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -74,8 +75,8 @@ function getCustomPieces(style) {
             userSelect: 'none'
           }}>
             <svg
-              width={squareWidth * 0.88}
-              height={squareWidth * 0.88}
+              width={sqW * 0.88}
+              height={sqW * 0.88}
               viewBox="0 0 45 45"
               style={{ filter, overflow: 'visible', pointerEvents: 'none', userSelect: 'none' }}
             >
@@ -493,7 +494,13 @@ function triggerArchessVictory(winner, totalTurns, durationSec, whiteUser, black
 }
 
 export function Archess2DChess({ boardTheme = 'midnight', gameMode = 'bot', variantMode = 'arena' }) {
-  const [game, setGame] = useState(() => new Chess());
+  const [game, setGame] = useState(() => {
+    try {
+      const savedFen = sessionStorage.getItem('archess_active_classic_fen');
+      if (savedFen) return new Chess(savedFen);
+    } catch (e) {}
+    return new Chess();
+  });
   const [gamePosition, setGamePosition] = useState(() => game.fen());
   const [boardWidth, setBoardWidth] = useState(580);
   const [selectedSquare, setSelectedSquare] = useState(null);
@@ -629,6 +636,7 @@ export function Archess2DChess({ boardTheme = 'midnight', gameMode = 'bot', vari
       setGame(nextGame);
       gameRef.current = nextGame;
       setGamePosition(newFen);
+      try { sessionStorage.setItem('archess_active_classic_fen', newFen); } catch(e) {}
 
       setPieceHp(prev => {
         const nextHp = { ...prev };
@@ -683,6 +691,7 @@ export function Archess2DChess({ boardTheme = 'midnight', gameMode = 'bot', vari
       setGame(nextGame);
       gameRef.current = nextGame;
       setGamePosition(newFen);
+      try { sessionStorage.setItem('archess_active_classic_fen', newFen); } catch(e) {}
 
       setLastMove({ from: sourceSq, to: targetSq });
       setSelectedSquare(null);
@@ -828,6 +837,7 @@ export function Archess2DChess({ boardTheme = 'midnight', gameMode = 'bot', vari
         setGame(newGame);
         gameRef.current = newGame;
         setGamePosition(newGame.fen());
+        try { sessionStorage.setItem('archess_active_classic_fen', newGame.fen()); } catch(e) {}
         setLastMove({ from: result.from, to: result.to });
         setSelectedSquare(null);
         setPossibleMoves([]);
@@ -1296,6 +1306,7 @@ export function Archess2DChess({ boardTheme = 'midnight', gameMode = 'bot', vari
 
   // Reset Game
   const resetGame = useCallback(() => {
+    try { sessionStorage.removeItem('archess_active_classic_fen'); } catch(e) {}
     const newGame = new Chess();
     setGame(newGame);
     gameRef.current = newGame;

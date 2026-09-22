@@ -1031,6 +1031,85 @@ class ArchessArena {
     if (this.engine3d) {
       this.engine3d.syncPieces();
     }
+    this.restoreMatchState();
+  }
+
+  saveMatchState() {
+    if (this.isGameOver) {
+      try { sessionStorage.removeItem('archess_active_arena_match'); } catch(e) {}
+      return;
+    }
+    if (!this.pieces || this.pieces.length === 0) return;
+    const hasProgress = this.turns > 0 || this.pieces.some(p => p.hasMoved || p.dead || p.hp < p.maxHp);
+    if (!hasProgress) return;
+
+    try {
+      const data = {
+        turns: this.turns,
+        currentTurn: this.currentTurn,
+        whiteDamage: this.whiteDamage,
+        blackDamage: this.blackDamage,
+        capturedPieces: this.capturedPieces,
+        pieces: this.pieces.map(p => ({
+          id: p.id,
+          col: p.col,
+          row: p.row,
+          hasMoved: p.hasMoved,
+          x: p.x,
+          y: p.y,
+          originX: p.originX,
+          originY: p.originY,
+          hp: p.hp,
+          maxHp: p.maxHp,
+          dead: p.dead,
+          awakened: p.awakened,
+          wallActive: p.wallActive,
+          wallHp: p.wallHp
+        }))
+      };
+      sessionStorage.setItem('archess_active_arena_match', JSON.stringify(data));
+    } catch(e) {}
+  }
+
+  restoreMatchState() {
+    try {
+      const raw = sessionStorage.getItem('archess_active_arena_match');
+      if (!raw) return false;
+      const data = JSON.parse(raw);
+      if (!data || !Array.isArray(data.pieces)) return false;
+
+      this.turns = data.turns || 0;
+      this.currentTurn = data.currentTurn || 'white';
+      this.whiteDamage = data.whiteDamage || 0;
+      this.blackDamage = data.blackDamage || 0;
+      if (data.capturedPieces) this.capturedPieces = data.capturedPieces;
+
+      data.pieces.forEach(sp => {
+        const lp = this.pieces.find(p => p.id === sp.id);
+        if (lp) {
+          lp.col = sp.col;
+          lp.row = sp.row;
+          lp.hasMoved = sp.hasMoved;
+          lp.x = sp.x;
+          lp.y = sp.y;
+          lp.originX = sp.originX;
+          lp.originY = sp.originY;
+          lp.hp = sp.hp;
+          lp.maxHp = sp.maxHp;
+          lp.dead = sp.dead;
+          lp.awakened = sp.awakened;
+          lp.wallActive = sp.wallActive;
+          lp.wallHp = sp.wallHp;
+        }
+      });
+      this.updateHUD();
+      if (this.engine3d && typeof this.engine3d.syncPieces === 'function') {
+        this.engine3d.syncPieces();
+      }
+      return true;
+    } catch(e) {
+      return false;
+    }
   }
 
   setRenderMode(mode) {
@@ -1060,6 +1139,9 @@ class ArchessArena {
     localStorage.setItem('archess_board_theme', theme);
     if (this.engine3d && typeof this.engine3d.setBoardTheme === 'function') {
       this.engine3d.setBoardTheme(theme);
+    }
+    if (typeof this.render === 'function') {
+      this.render();
     }
     this.logTelemetry('THEME_CHANGE', `Board palette updated to ${theme.toUpperCase()}.`);
   }
@@ -1778,6 +1860,10 @@ class ArchessArena {
   }
 
   resetBoard() {
+    try {
+      sessionStorage.removeItem('archess_active_arena_match');
+      sessionStorage.removeItem('archess_active_classic_fen');
+    } catch(e) {}
     this.init32Pieces();
     this.capturedPieces = { white: [], black: [] };
     this.particles = [];
@@ -2810,6 +2896,7 @@ class ArchessArena {
       this.currentTurn = this.currentTurn === 'white' ? 'black' : 'white';
       this.turnStartTime = performance.now();
       this.updateHUD();
+      this.saveMatchState();
       this.logTelemetry('SETTLEMENT', `Board settled at rest. Turn ${this.turns}: passed to ${this.currentTurn.toUpperCase()}.`);
 
       // Check if either King (or both Kings) should awaken into mobile combat

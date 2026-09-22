@@ -801,6 +801,13 @@ document.addEventListener('DOMContentLoaded', () => {
       detail: { boardTheme: themeKey }
     }));
     localStorage.setItem('archess_board_theme', themeKey);
+    try {
+      const u = new URL(window.location.href);
+      if (u.searchParams.get('theme') !== themeKey) {
+        u.searchParams.set('theme', themeKey);
+        window.history.replaceState(null, '', u.toString());
+      }
+    } catch(e) {}
     if (showNotice) {
       showToast(`Board Palette: ${displayName} (Live Match Preserved)`);
     }
@@ -831,6 +838,13 @@ document.addEventListener('DOMContentLoaded', () => {
       detail: { pieceTheme: pieceKey }
     }));
     localStorage.setItem('archess_piece_theme', pieceKey);
+    try {
+      const u = new URL(window.location.href);
+      if (u.searchParams.get('piece') !== pieceKey) {
+        u.searchParams.set('piece', pieceKey);
+        window.history.replaceState(null, '', u.toString());
+      }
+    } catch(e) {}
     if (showNotice) {
       showToast(`Piece Style: ${displayName} (Live Match Preserved)`);
     }
@@ -856,6 +870,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  const btnHeaderAppearance = document.getElementById('btnHeaderAppearance');
+  if (btnHeaderAppearance) {
+    btnHeaderAppearance.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openAppearanceModal();
+    });
+  }
   if (btnOpenAppearance) {
     btnOpenAppearance.addEventListener('click', (e) => {
       e.preventDefault();
@@ -870,6 +892,37 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.target === appearanceModal) closeAppearanceModal();
     });
   }
+
+  // Intercept Navbar, Drawer & Footer "Themes" links so they NEVER navigate away or reset gameplay while on /play
+  function interceptThemeNavLinks() {
+    const isPlayPage = !!document.getElementById('appearanceModalBackdrop') || window.location.pathname.includes('/play');
+    if (!isPlayPage) return;
+
+    const themeLinks = [
+      document.getElementById('navThemesLink'),
+      document.getElementById('drawerThemesLink'),
+      ...document.querySelectorAll('nav a[href*="themesSection"]'),
+      ...document.querySelectorAll('.drawer-nav-list a[href*="themesSection"]'),
+      ...document.querySelectorAll('footer a[href*="themesSection"]')
+    ].filter(Boolean);
+
+    themeLinks.forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Close side drawer if open
+        const sideDrawer = document.getElementById('sideExpansionDrawer');
+        const sideBackdrop = document.getElementById('sideDrawerBackdrop');
+        if (sideDrawer && sideDrawer.classList.contains('active')) {
+          sideDrawer.classList.remove('active');
+          if (sideBackdrop) sideBackdrop.classList.remove('active');
+        }
+        openAppearanceModal();
+        showToast('Grandmaster Atelier — Select Palette & Piece Style (Match Preserved)');
+      });
+    });
+  }
+  interceptThemeNavLinks();
 
   boardThemeBtns.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -914,13 +967,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const resetBtn = document.getElementById('arenaResetBtn');
   if (resetBtn) {
     resetBtn.addEventListener('click', () => {
-      if (activeViewMode === '2d-classic' && window.Archess2DChess && window.Archess2DChess.reset) {
+      try {
+        sessionStorage.removeItem('archess_active_arena_match');
+        sessionStorage.removeItem('archess_active_classic_fen');
+      } catch(e) {}
+      if (window.Archess2DChess && window.Archess2DChess.reset) {
         window.Archess2DChess.reset();
-        showToast('2D Classic Chessboard Reset');
-      } else if (arena) {
-        arena.resetBoard();
-        showToast(activeViewMode === '2d-arena' ? '2D Arena Combat Board Reset' : 'Board Re-racked to Standard 32-Piece Setup');
       }
+      if (arena) {
+        arena.resetBoard();
+      }
+      showToast('Board Re-racked to Standard 32-Piece Setup');
     });
   }
 
@@ -1355,6 +1412,10 @@ document.addEventListener('DOMContentLoaded', () => {
   if (playAgainBtn && victoryModal) {
     playAgainBtn.addEventListener('click', () => {
       closeVictoryModal();
+      try {
+        sessionStorage.removeItem('archess_active_arena_match');
+        sessionStorage.removeItem('archess_active_classic_fen');
+      } catch(e) {}
       if (activeViewMode === '2d-classic' && window.Archess2DChess && window.Archess2DChess.reset) {
         window.Archess2DChess.reset();
       } else if (arena) {
