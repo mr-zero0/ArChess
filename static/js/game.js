@@ -574,7 +574,12 @@ const CLASSIC_PIECE_IMAGES = {};
 if (typeof Image !== "undefined") {
   for (const [key, svg] of Object.entries(CLASSIC_PIECE_SVGS)) {
     const img = new Image();
-    img.src = "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+    img.onload = () => {
+      if (typeof window !== 'undefined' && window.archessArena && typeof window.archessArena.render === 'function') {
+        window.archessArena.render();
+      }
+    };
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
     CLASSIC_PIECE_IMAGES[key] = img;
   }
 }
@@ -3426,7 +3431,6 @@ class ArchessArena {
      Authentic Staunton Vector Piece Renderer
   ------------------------------------------------------------- */
   drawStauntonPiece(ctx, type, team, radius, theme) {
-    // 2D Vector Silhouette Mode: Canonical Staunton Shapes matching React Chess Classic
     // 2D Classic Vector Mode: 100% Identical Cburnett Staunton SVGs (matching 2D Classic)
     if (this.renderMode === '2d') {
       const pieceKey = (team === 'white' ? 'w' : 'b') + (type === 'knight' ? 'N' : type[0].toUpperCase());
@@ -3438,8 +3442,12 @@ class ArchessArena {
         ctx.save();
         ctx.drawImage(img, -pieceSize / 2, -pieceSize / 2, pieceSize, pieceSize);
         ctx.restore();
-        return;
+      } else if (img) {
+        img.onload = () => {
+          if (typeof this.render === 'function') this.render();
+        };
       }
+      return; // NEVER fall through to 3D conical shapes in 2D mode!
     }
 
     const isWhite = team === 'white';
@@ -4004,16 +4012,16 @@ class ArchessArena {
       ctx.fill();
     }
 
-    // Immovable Citadel Base Cornerstone Indicator (or Sovereign Aura if Awakened)
-    if (p.type === 'king' && !p.awakened) {
+    // Immovable Citadel Base Cornerstone Indicator (3D Mode)
+    if (this.renderMode === '3d' && p.type === 'king' && !p.awakened) {
       const isWhiteKing = p.team === 'white';
       ctx.save();
       ctx.strokeStyle = isWhiteKing ? 'rgba(212, 175, 55, 0.45)' : 'rgba(255, 71, 87, 0.45)';
       ctx.lineWidth = 1.6;
       ctx.setLineDash([4, 3]);
-      const baseRy = this.renderMode === '3d' ? p.radius * 0.36 : p.radius * 0.82;
+      const baseRy = p.radius * 0.36;
       ctx.beginPath();
-      ctx.ellipse(0, this.renderMode === '3d' ? p.radius * 0.52 : 0, p.radius * 0.86, baseRy, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, p.radius * 0.52, p.radius * 0.86, baseRy, 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.setLineDash([]);
       ctx.restore();
