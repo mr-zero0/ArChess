@@ -89,7 +89,8 @@ This document details the architectural topology, component responsibilities, re
 | Subsystem | Key Files | Responsibility |
 | :--- | :--- | :--- |
 | **Server Engine** | [`run.py`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/run.py), [`backend/app.py`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/backend/app.py) | Application entrypoint, WSGI environment selection, REST routing, WebSocket protocol handling, rate-limiting, and security headers. |
-| **Data & Storage** | [`backend/database.py`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/backend/database.py), [`backend/backup.py`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/backend/backup.py) | Thread-safe SQLite persistence, ELO calculations, user authentication, profile mutation, and zero-downtime online backup automation. |
+| **Data & Storage** | [`backend/database.py`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/backend/database.py), [`backend/backup.py`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/backend/backup.py) | Thread-safe SQLite persistence, PostgreSQL DDL compatibility, ELO calculations, user authentication, profile mutation, and zero-downtime online backup automation. |
+| **Schema Validation** | [`backend/schemas.py`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/backend/schemas.py) | Data contracts, input validation schemas, type validation, and OpenAPI 3.1.0 schema specification mapping. |
 | **Multiplayer Engine** | [`backend/multiplayer.py`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/backend/multiplayer.py) | In-memory battle room state, role assignment (`white`, `black`, `spectator`), live aim broadcast, and matchmaking ticket queues. |
 | **Tournament Engine** | [`backend/tournament.py`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/backend/tournament.py) | Knockout championship bracket simulation, seasonal seeding, match simulation, and history persistence with thread locks. |
 | **Achievements** | [`backend/achievements.py`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/backend/achievements.py) | 8 platform achievement criteria, match evaluation heuristics, and unlock ledger. |
@@ -98,6 +99,8 @@ This document details the architectural topology, component responsibilities, re
 | **Notation & Telemetry**| [`backend/notation.py`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/backend/notation.py) | Dynamic PGN/FEN generation, standard coordinate notation mapping, and move history persistence. |
 | **2D Kinetic Arena** | [`static/js/game.js`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/static/js/game.js) | Slingshot trajectory arcs, elastic collisions, perimeter cushion rebounds, Citadel King mass, and Web Audio synthesis. |
 | **3D WebGL Studio** | [`static/js/engine3d.js`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/static/js/engine3d.js) | Three.js Staunton procedural geometries, PBR alabaster/obsidian materials, studio lighting, dynamic board themes, and orbit controls. |
+| **2D Classic FIDE Mode** | [`frontend/src/Archess2DChess.jsx`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/frontend/src/Archess2DChess.jsx), [`static/js/react-chessboard-bundle.js`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/static/js/react-chessboard-bundle.js) | Official FIDE chess rules, legal move validation, FEN synchronizer, and custom responsive vector SVG piece renderers. |
+| **Grandmaster Atelier Customizer** | [`static/js/main.js`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/static/js/main.js), [`templates/play.html`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/templates/play.html) | Real-time live board palette & piece style morphing without match resets, in-place navigation link interception, and `sessionStorage` match state persistence. |
 
 ---
 

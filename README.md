@@ -1,35 +1,49 @@
 # ♟️ ARCHESS — The Kinetic Chess Protocol
 
 [![Live Application](https://img.shields.io/badge/Live%20Demo-archess.onrender.com-brightgreen?logo=render&logoColor=white)](https://archess.onrender.com)
+[![Version](https://img.shields.io/badge/Version-v4.3.1-blue.svg)](docs/CHANGELOG.md)
 [![CI/CD Pipeline](https://github.com/mr-zero0/ArChess/actions/workflows/ci.yml/badge.svg)](https://github.com/mr-zero0/ArChess/actions/workflows/ci.yml)
-[![Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen.svg)](https://github.com/mr-zero0/ArChess)
+[![Tests Passing](https://img.shields.io/badge/Tests-373%20passed-brightgreen.svg)](tests/)
 [![Python Version](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![Security Grade](https://img.shields.io/badge/Security-Grade%20A%2B-success.svg)](SECURITY.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > 🚀 **Live Production Deployment**: **[https://archess.onrender.com](https://archess.onrender.com)**  
-> Full-featured physical kinetic chess with persistent WebSockets, 3D/2D views, dynamic live leaderboards, and AI coaching.
+> Full-featured physical kinetic chess with persistent WebSockets, 3 distinct view modes, Grandmaster Atelier live customization, dynamic leaderboards, and 5-tier AI tactical coaching.
 
-**ARCHESS** is an authoritative, full-stack kinetic chess platform where rigid turn-based grid constraints collide with real-time physical momentum. Aim with sub-degree vector precision, launch pieces across the battlefield, rebound off perimeter cushions, and shatter opposing army formations in a unified **2D Kinetic Arena** or a fully procedural **3D WebGL Orbit View**.
+---
 
-Built for competitive tactical mastery with real-time multiplayer matchmaking, bi-directional WebSockets, multi-season knockout tournaments, automated ELO rating progression, and zero-dependency Web Audio synthesizers.
+**ARCHESS** is an authoritative, full-stack kinetic chess platform where rigid turn-based grid constraints collide with real-time physical momentum. Aim with sub-degree vector precision, launch pieces across the battlefield, rebound off perimeter cushions, and shatter opposing army formations in a unified **2D Kinetic Arena**, a fully procedural **3D WebGL Studio**, or standard **2D Classic FIDE Chess**.
+
+Built for competitive tactical mastery with real-time multiplayer matchmaking, bi-directional WebSockets, multi-season knockout tournaments, automated ELO rating progression, zero-dependency Web Audio synthesizers, and real-time live theme customization that preserves in-progress gameplay.
 
 ---
 
 ## 🌟 Key Features
 
-### ⚔️ Kinetic Arena Physics (2D & 3D)
-* **Momentum Conservation**: Slingshot vector launching with trajectory arcs, power metrics, and drag physics.
-* **Citadel Bastion Mechanics**: The King serves as an immovable heavy fortress (4x mass); unlocks **Awakened Mode** when the vanguard falls below 3 units.
-* **Perimeter Cushion Collisions**: Elastic rebound walls with impact shockwaves, particle sparks, and sound design.
-* **Perfect Alignment**: Unmoved pieces are mathematically anchored to exact chessboard square centroids across viewport resizes and perspective shifts.
+### 🎮 Three Authoritative Perspectives
+* **🪐 3D Realistic WebGL Studio (`Three.js`)**:
+  * Procedurally lathed Staunton geometry with soft shadow maps and studio multi-point illumination (key, rim, ambient, fill, and spot) calibrated with ACES Filmic tone mapping.
+  * Real-time dynamic PBR material swapping across 5 piece sets (`Classic`, `Neo`, `Cyber`, `Crystal`, `Mono`).
+  * Orbit, tilt, zoom bounds, and focus framing with smooth momentum damping.
+* **⚔️ 2D Arena Kinetic Combat (`game.js`)**:
+  * Authentic slingshot kinetic combat engine with momentum conservation, trajectory prediction arcs, and drag physics.
+  * Square Fortress Wall (500 HP) and Citadel Bastion Core mechanics: the King absorbs impacts with 25% Newtonian recoil self-damage back to attackers.
+  * High-elasticity perimeter cushions with wall rebounds, shockwaves, and particle spark explosions.
+  * Bespoke vector piece silhouettes with tailored drop shadows, bevels, and radial HP halos on hover.
+* **♟️ 2D Classic FIDE Mode (`react-chessboard` + `chess.js`)**:
+  * Full FIDE chess rules with turn validation, legal move highlights, check/checkmate detection, and FEN generation.
+  * Custom vector SVG piece sets (`Classic`, `Neo Modern`, `Cyber Neon`, `Crystal`, `Mono`) with defensive auto-scaling.
 
-### 🪐 3D WebGL Studio Engine (`Three.js`)
-* **Procedural Staunton Geometry**: Mathematically lathed and compound Staunton meshes for King, Queen, Rook, Bishop, Knight, and Pawn.
-* **Photometric PBR Lighting**: Balanced multi-point studio illumination (key, rim, ambient, fill, and spot) calibrated with ACES Filmic tone mapping (`exposure: 1.0`).
-* **Satin Alabaster & Obsidian Materials**: Eliminates specular washout while preserving deep tactile grain across 7 swappable board palettes (`Midnight`, `Woodland`, `Ivory`, `Emerald`, `Cyberpunk`, `Bloodstone`, `Oceanic`).
-* **Smooth Camera Controls**: Orbit, tilt, zoom bounds, and focus framing with momentum damping.
+### 🎨 Grandmaster Atelier & Live Customization (No Match Resets)
+* **7 Curated Board Palettes**: `Midnight Obsidian`, `Woodland Walnut`, `Ivory Classical`, `Tournament Emerald`, `Cyberpunk Neon`, `Imperial Bloodstone`, and `Oceanic Obsidian`.
+* **5 Bespoke Piece Styles**: `Staunton Classic`, `Neo Modernist`, `Cyberpunk Neon`, `Frosted Crystal`, and `Tournament Monochrome`.
+* **⚡ Live Mid-Game Swapping**: Change board palettes and piece sets mid-match across all 3 view modes without resetting the board, piece coordinates, HP durability, or turn order.
+* **Match State Persistence (`sessionStorage`)**:
+  * Active piece coordinates `(col, row)`, piece HP, turn count, and active FEN are automatically preserved in `sessionStorage` (`archess_active_arena_match` / `archess_active_classic_fen`).
+  * Even upon direct URL parameter navigation (e.g. `/play?theme=emerald`) or page refreshes, active gameplay is restored seamlessly.
+* **Seamless In-Place Modals**: Top navbar, mobile drawer, and footer "Themes" links open the Grandmaster Atelier modal in-place without page navigation.
 
 ### 🌐 Real-Time Multiplayer & Matchmaking
 * **Bi-directional WebSockets**: Live low-latency game room streaming via `flask-sock` / `simple-websocket` (`/ws/combat/<room_id>`).
@@ -41,30 +55,26 @@ Built for competitive tactical mastery with real-time multiplayer matchmaking, b
 * **8 Unlockable Achievements**: First Blood, Precision Striker, Citadel Defender, Awakened Monarch, Speed Demon, Grandmaster Slayer, etc., with real-time HUD badge unlocks.
 * **Authoritative ELO Rating**: Server-validated ELO calculation with K-factor scaling based on match outcomes and damage dealt.
 
-### 🤖 AI vs AI Spectator Watch Mode & 5-Level Tactical Engine
+### 🤖 5-Level Tactical Engine & AI vs AI Spectator Match
 * **Autonomous AI vs AI Spectator Match**: Real-time battle simulation where White and Black AI clash autonomously with human-watchable pacing (~650ms), live pause/resume, and turn-stepping controls.
-* **5-Level Tactical AI Intelligence**:
+* **5-Level Tactical Intelligence**:
   * **Level 1: Novice** (~800 ELO): Casual random targeting with wide dispersion jitter ($\pm 0.38\text{ rad}$) and erratic kinetic power.
   * **Level 2: Apprentice** (~1200 ELO): Proximity-weighted forward targeting with moderate dispersion ($\pm 0.18\text{ rad}$).
   * **Level 3: Commander** (~1600 ELO): Value-weighted tactical fire prioritizing high-value pieces with distance-calibrated power.
   * **Level 4: Master** (~2000 ELO): Obstacle raycasting with single-cushion bank-shot wall rebounds when direct line-of-sight is blocked.
   * **Level 5: Sovereign (Grandmaster)** (~2400+ ELO): Deep multi-raycast obstacle detection, checkmate assassination priority, and dual-wall cushion rebound bank-shots with zero dispersion.
-* **Drag-and-Fit Responsive Controls**: Interactive range slider track paired with responsive `L1` to `L5` segmented buttons and dynamic ELO rating pill badge (`#aiLevelRatingBadge`) with live mid-game toggle.
 
 ### 🧠 Autonomous Agentic AI, RAG & Prompts (100% Free & Open-Source)
 * **Autonomous ReAct Coach (`TacticalCoachAgent`)**: Runs multi-tool reasoning (`inspect_board`, `simulate_shot`, `query_codex`) with Chain-of-Thought (CoT) tactical trajectory recommendations.
 * **Zero-Cost Semantic Codex (RAG)**: Pure-Python TF-IDF / Token Cosine & Jaccard semantic scoring engine indexing piece abilities, ricochet laws, and combat mechanics without external vector DB fees.
 * **Dynamic Personas (`PromptCatalog`)**: Swap between **Grandmaster Magnus** (positional mentor), **Glitch-9** (aggressive bank-shot specialist), **Valkyrie** (guardian fortress), and **Blitzcaster** (hype esports shoutcaster).
 * **Pluggable Zero-Cost Inference**: Pluggable support for local Ollama models (`llama3.2`, `qwen2.5`) or Gemini Free Tier, backed by instant 0ms offline deterministic heuristic fallback.
-* **Esports Live Shoutcasting & Post-Match Debrief**: Real-time play-by-play combat commentary and automated post-game tactical reviews.
 
 ### 🛡️ Enterprise Hardening, Observability & Anti-Cheat
 * **Prometheus Exposition (`/metrics`)**: Zero-dependency metrics engine exporting uptime, HTTP latency histograms, active WebSockets, rooms, and security events.
 * **Authoritative Anti-Cheat**: Clamps launch velocities within physics thresholds, strips NaN/Infinity payloads, and validates damage plausibility.
 * **Remote Session Revocation**: Atomic `token_version` tracking allows users to instantly invalidate all active logins across devices simultaneously.
 * **Zero Known Vulnerabilities**: 100% clean scan via `bandit` SAST and `pip-audit`.
-* **Injection Immunity**: 100% parameterized SQLite queries preventing SQL injection across all database routes.
-* **Brute-Force Shields**: Sliding-window rate limiters on `/api/auth/login` (15 req/min) and match settlements (60 req/min).
 * **Strict CSP & Permissions-Policy**: Defense-in-depth against XSS, clickjacking, and unauthorized camera/microphone hardware access.
 
 ---
@@ -74,24 +84,27 @@ Built for competitive tactical mastery with real-time multiplayer matchmaking, b
 ```
 ARCHESS System Topology
 ├── Client Tier (Browser)
-│   ├── 2D Tactical Arena (HTML5 Canvas + Slingshot Physics)
 │   ├── 3D WebGL Studio (Three.js + PBR Shaders + Orbit Controls)
-│   ├── Procedural Audio FX (Web Audio API Synthesizer)
+│   ├── 2D Tactical Arena (HTML5 Canvas + Slingshot Physics + Cushion Rebound)
+│   ├── 2D Classic FIDE (react-chessboard + chess.js + Custom SVG Pieces)
+│   ├── Grandmaster Atelier (Live In-Match Customizer + sessionStorage Engine)
+│   ├── Procedural Audio FX (Zero-Dependency Web Audio API Synthesizer)
 │   └── WebSocket Client (Live Aiming & Vector Synchronization)
 │
-├── Reverse Proxy & Ingress Tier
-│   ├── Nginx / Cloudflare (SSL Termination, HTTP/2, Gzip, WebSocket Upgrade)
+├── Ingress & Reverse Proxy Tier
+│   ├── Render / Cloudflare / Nginx (SSL Termination, HTTP/2, Gzip, WebSocket Upgrade)
 │   └── Static Asset Offloader (Immutable 1-Year Cache Headers)
 │
-├── Application Tier (WSGI / Python 3.11+)
+├── Application Tier (WSGI / Python 3.10+)
 │   ├── Gunicorn / Waitress Multi-Threaded WSGI Worker Pool
-│   ├── Flask Authoritative REST API Engine
+│   ├── Flask Authoritative REST API Engine (12 Modular Python Subsystems)
 │   ├── Flask-Sock WebSocket Event Streamer
 │   ├── In-Memory ELO Matchmaking Queue & Room Manager
-│   └── Security & Rate Limiting Middleware
+│   └── Security, Rate Limiting & Telemetry Middleware
 │
 └── Data Tier (Persistence & Backups)
     ├── SQLite WAL Mode (check_same_thread=False, 30s busy_timeout)
+    ├── PostgreSQL DDL Compatibility (Supabase / Neon ready)
     └── Zero-Downtime Online Backup Routine (sqlite3.Connection.backup)
 ```
 
@@ -125,7 +138,7 @@ Visit **[http://127.0.0.1:5000](http://127.0.0.1:5000)** in your browser.
 
 ### 2. Local Production Mode (Waitress Multi-Threaded WSGI)
 
-Run the server with multi-threaded worker pools and zero development server warnings:
+Run the server with production multi-threaded worker pools:
 ```bash
 python run.py --production
 ```
@@ -134,7 +147,6 @@ python run.py --production
 
 ### 3. Docker Container Deployment
 
-If you have Docker Desktop (Windows/macOS) or Docker Engine (Linux) installed:
 ```bash
 # Build and launch with persistent data and logs
 docker compose up -d
@@ -142,24 +154,22 @@ docker compose up -d
 # Verify container health (Linux / macOS / Git Bash)
 curl -f http://localhost:5000/api/health
 
-# On Windows PowerShell, use curl.exe or Invoke-RestMethod:
+# On Windows PowerShell:
 curl.exe -f http://localhost:5000/api/health
-# or: Invoke-RestMethod http://localhost:5000/api/health
 ```
-
-> [!NOTE]
-> If Docker is not installed on your system, run locally without containers:
-> `python run.py` (development) or `python run.py --production` (production WSGI).
 
 ---
 
 ## 🧪 Verification & Test Suite
 
-The ArChess test suite provides **100.0% statement coverage** across all 11 backend modules with zero external network dependencies:
+The ArChess test suite provides comprehensive test coverage across all 12 backend modules with zero external network dependencies:
 
 ```bash
-# Run all tests with line-by-line coverage report
-python -m pytest tests/ --cov=backend --cov-report=term-missing -v
+# Run all tests
+python -m pytest tests/ -v
+
+# Run with line-by-line coverage report
+python -m pytest tests/ --cov=backend --cov-report=term-missing
 ```
 
 ```text
@@ -169,17 +179,19 @@ Name                      Stmts   Miss  Cover   Missing
 backend\__init__.py           0      0   100%
 backend\achievements.py     124      0   100%
 backend\ai_engine.py        278      0   100%
-backend\app.py              592      0   100%
+backend\app.py              718     25    97%
 backend\backup.py            36      0   100%
-backend\database.py         337      0   100%
-backend\logger.py           189      0   100%
+backend\database.py         467     25    95%
+backend\logger.py           205     11    95%
 backend\metrics.py          100      0   100%
 backend\multiplayer.py      324      0   100%
 backend\notation.py         107      0   100%
+backend\schemas.py          170     21    88%
 backend\tournament.py        97      0   100%
 -------------------------------------------------------
-TOTAL                      2184      0   100%
-======================= 148 passed, 1 warning in 8.91s ========================
+TOTAL                      2626     82    97%
+
+======================= 373 passed, 1 warning in 15.24s =======================
 ```
 
 ---
@@ -188,12 +200,14 @@ TOTAL                      2184      0   100%
 
 Detailed engineering and operational guides are available in the repository:
 
+* 🗺️ **[Project Status & Roadmap](docs/PROJECT_STATUS_AND_ROADMAP.md)**: Comprehensive breakdown of verified capabilities, project architecture map, and concrete future roadmap items.
+* 🏛️ **[Architecture Reference](docs/ARCHITECTURE.md)**: System blueprint, 3D WebGL PBR engine, live customization mechanics, and physics formulas.
+* 🔌 **[API Specification](docs/API.md)**: Complete REST schemas, error status codes, and WebSocket packet protocol documentation.
 * 🚀 **[Deployment Manual](docs/DEPLOYMENT.md)**: Cloud hosting guides (Render, Cloudflare Tunnel, Hugging Face, Linux VPS), Nginx reverse proxy configuration, and SSL setup.
-* 🔌 **[API Specification](docs/API.md)**: Complete REST API schemas, status codes, and WebSocket packet protocol documentation.
-* 🏛️ **[Architecture Reference](docs/ARCHITECTURE.md)**: Detailed system blueprint, state synchronization models, database schema, and physics formulas.
+* 📋 **[Changelog](docs/CHANGELOG.md)**: Chronological version history from v1.0.0 through v4.3.1.
+* 📊 **[Milestone Tracker](docs/TRACKER.md)**: Progress dashboard and feature verification matrix.
 * 🛡️ **[Security Policy](SECURITY.md)**: Threat model analysis, vulnerability disclosure, and security controls.
 * 🤝 **[Contributing Guidelines](CONTRIBUTING.md)**: Development workflow, coding style conventions, and pull request checklist.
-* 📋 **[Changelog](docs/CHANGELOG.md)**: Chronological version history.
 
 ---
 

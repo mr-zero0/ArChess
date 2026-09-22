@@ -41,10 +41,10 @@ Liveness and readiness probe for load balancers and container orchestrators.
 {
   "status": "healthy",
   "service": "ArChess Authoritative Backend",
-  "version": "2.0.0",
+  "version": "4.3.1",
   "database": "connected",
   "uptime_seconds": 1248.5,
-  "active_run": "Logs/2026/Sep/18_Logs/Run45",
+  "active_run": "Logs/2026/Sep/22_Logs/Run01",
   "timestamp": 1789721495.23
 }
 ```
@@ -370,3 +370,21 @@ Produces structured post-match tactical analysis highlighting the defining play,
 
 ### `POST /api/ai/shoutcast`
 Generates punchy, high-energy live esports commentary for combat eliminations, bank shots, and critical collisions.
+
+---
+
+## 👑 Administrator Services
+
+### `GET /api/admin/stats`
+Returns administrative cluster metrics (total registered users, active matches, database size, and memory telemetry).
+* **Authentication**: Requires authenticated session with `is_admin=1`.
+
+### `GET /api/admin/users`
+Returns paginated listing of registered users with ELO, match stats, and administrative status.
+* **Authentication**: Requires `is_admin=1`.
+
+### `POST /api/admin/promote`
+Promotes or demotes an existing user's administrative status.
+* **Authentication**: Requires `is_admin=1`.
+* **Payload**: `{"username": "TargetUser", "is_admin": 1}`
+

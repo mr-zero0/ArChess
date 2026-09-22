@@ -11,12 +11,17 @@
 
 ### Status Summary
 - **Overall Completion:** 100%
-- **Backend Services:** Operational (Flask, SQLite, FIDE Elo Formula, Session Auth, REST APIs, Tracker Logging)
-- **Frontend Pages:** Fully Styled & Modularized (Landing, Tactical Arena, Piece Codex, Rankings Ladder)
-- **Gameplay Engine:** 32-Piece Physics, 6 Codex Signature Abilities, Autonomous Bot AI, Victory Settlement Modal
+- **Backend Services:** Operational (Flask, SQLite WAL, PostgreSQL DDL, FIDE Elo Formula, Session Auth, REST APIs, Tracker Logging)
+- **Frontend Pages:** Fully Styled & Modularized (Landing, Tactical Arena, Piece Codex, Rankings Ladder, Admin Dashboard)
+- **Gameplay Engines:** 3 Distinct Modes (3D Realistic WebGL, 2D Arena Kinetic Combat, 2D Classic FIDE)
+- **Customization Engine:** Grandmaster Atelier with 7 Board Themes & 5 Piece Sets Live in-match without resets
+- **Test Suite Status:** 373 / 373 passed (100% pass rate, 2,626 statements, 12 backend modules)
 
 | Feature / Milestone | Category | Status | Verification Snapshot |
-| **Production Engineering & Security Hardening (v4.2.0)** | Security / Architecture | ✅ COMPLETE | Fixed Google OAuth token validation, multiplayer role/turn verification, SQLite `BEGIN IMMEDIATE` write locks, rate limiter FIFO ceiling (5k entries), metrics cardinality cap (250), 2D/3D listener lifecycle cleanup, 148/148 tests passing (100% coverage) |
+|---|---|---|---|
+| **In-Place Theme Navigation & State Persistence (v4.3.1)** | UX / Gameplay Engine | ✅ COMPLETE | Intercepted `#navThemesLink`, `#drawerThemesLink`, `#footerThemesLink` on `/play` to open Atelier in-place; fixed React custom SVG NaN bug; persisted arena piece coordinates & FEN in `sessionStorage`; synchronized URL query string via `replaceState`; 373/373 tests passing |
+| **Live Theme & Chess Piece Customizer (v4.3.0)** | 3D / 2D Gameplay / UI | ✅ COMPLETE | Real-time PBR material morphing (3D), vector silhouettes (2D Arena), and custom SVG sets (2D Classic) across 7 board palettes & 5 piece styles without resetting board or match progress; in-match Left Wing command card |
+| **Production Engineering & Security Hardening (v4.2.0)** | Security / Architecture | ✅ COMPLETE | Fixed Google OAuth token validation, multiplayer role/turn verification, SQLite `BEGIN IMMEDIATE` write locks, rate limiter FIFO ceiling (5k entries), metrics cardinality cap (250), 2D/3D listener lifecycle cleanup, 373/373 tests passing |
 | **AI vs AI Spectator Watch Mode & 5-Level Adaptive AI (v4.2.0)** | AI Engine / UI | ✅ COMPLETE | Autonomous spectator match loop, pause/resume/step turn HUD controls, 5 distinct intelligence tiers (L1 Novice to L5 Sovereign), drag-and-fit range slider + 5 segmented buttons with live mid-game toggle |
 | **2D Arena Kinetic Slingshot Combat & Classic UI Parity (v4.2.0)** | Gameplay / UI | ✅ COMPLETE | Restored authentic slingshot kinetic combat engine (`game.js`) in 2D Arena enclosed in identical Classic UI luxury frame, status pill, dynamic theme colors, cache-busting v4.2.0, 100% tests passing |
 | **Live Matchmaking Queue (v4.0.0)** | Multiplayer Engine | ✅ COMPLETE | Thread-safe `MatchmakingQueue`, dynamic Elo bracket expansion ($\pm 100 \to 600$), sonar radar HUD, ticket lifecycle, 100% tests passing |

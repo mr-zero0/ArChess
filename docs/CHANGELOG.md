@@ -2,6 +2,28 @@
 
 All notable changes, architectural pivots, bugfixes, and refactorings across **ArChess** are documented in this file.
 
+## [4.3.1] - 2026-09-22
+
+### 🛠️ In-Place Theme Navigation & State Persistence Engine
+- **In-Place Theme Navigation Interception (`static/js/main.js`, `navbar.html`, `drawer.html`, `footer.html`)**:
+  - Intercepts clicks on `#navThemesLink`, `#drawerThemesLink`, `#footerThemesLink`, and any `a[href*="themesSection"]` when the user is on `/play`.
+  - Suppresses browser page navigation (`e.preventDefault()`) and opens the Grandmaster Atelier customizer modal in-place without reloading `/play` or re-racking active pieces.
+  - Added dedicated `#btnHeaderAppearance` ("Themes") button to in-match quick actions toolbar with live palette icon.
+- **React Chessboard SVG NaN Defensive Sizing (`frontend/src/Archess2DChess.jsx`, `static/js/react-chessboard-bundle.js`)**:
+  - Added defensive fallback `const sqW = (squareWidth && !isNaN(squareWidth) && squareWidth > 0) ? squareWidth : 64;` across all custom piece SVG components (`neo`, `cyber`, `crystal`, `mono`).
+  - Completely eliminated 100+ browser console errors (`Expected length, "NaN"`) and prevented pieces from collapsing to zero dimensions during style switches.
+- **Active Match State Persistence (`static/js/game.js`, `frontend/src/Archess2DChess.jsx`)**:
+  - Implemented `saveMatchState()` and `restoreMatchState()` in `ArchessEngine` saving piece coordinates `(col, row)`, durability HP, velocities, and turn count to `sessionStorage` (`archess_active_arena_match`).
+  - In 2D Classic mode, active FEN is persisted to `sessionStorage` (`archess_active_classic_fen`).
+  - Active gameplay is seamlessly restored across page refreshes and direct URL parameter navigation (`/play?theme=xyz`).
+  - Re-racking pieces is strictly restricted to intentional clicks on the "Reset Board" button (`#arenaResetBtn` / `#btnPlayAgain`).
+- **Seamless URL Query State Synchronization (`static/js/main.js`)**:
+  - In `applyBoardTheme` and `applyPieceTheme`, URL query parameters (`?theme=...&piece=...`) are synchronized via `window.history.replaceState` without triggering HTTP reloads.
+- **Oceanic Obsidian Theme & Landing Showcase Parity (`templates/index.html`)**:
+  - Added 7th theme card (`Oceanic Obsidian`) to landing page showcase with abyssal marine tiles and instant live play link.
+- **Test Suite Expansion**:
+  - Test suite expanded to 373 exhaustive tests covering edge cases, schemas, AI tiers, modernization, and backend readiness with 100% pass rate.
+
 ## [4.3.0] - 2026-09-22
 
 ### 🎨 Live Theme & Chess Piece Customizer (Match Preserved Without Reset)
