@@ -269,3 +269,29 @@ class TestOpenApiEndpoint:
         assert res.status_code == 200
         data = res.get_json()
         assert data["openapi"] == "3.1.0"
+
+
+class TestVercelCompatibility:
+    """Test Vercel serverless configuration, entry point, and filesystem fallbacks."""
+
+    def test_vercel_entrypoint_export(self):
+        from api.index import app as vercel_app
+        from flask import Flask
+        assert isinstance(vercel_app, Flask)
+
+    def test_vercel_json_configuration(self):
+        vercel_json_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "vercel.json")
+        assert os.path.exists(vercel_json_path)
+        with open(vercel_json_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+        assert config.get("version") == 2
+        assert "rewrites" in config
+        assert any(r.get("source") == "/(.*)" for r in config["rewrites"])
+
+    def test_serverless_env_detection(self, monkeypatch):
+        monkeypatch.setenv("VERCEL", "1")
+        from backend.database import is_serverless_env
+        assert is_serverless_env() is True
+        monkeypatch.delenv("VERCEL", raising=False)
+        assert is_serverless_env() is False
+

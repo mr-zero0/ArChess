@@ -12,10 +12,28 @@ import math
 from werkzeug.security import generate_password_hash, check_password_hash
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(BASE_DIR, "data")
-os.makedirs(DATA_DIR, exist_ok=True)
-DB_PATH = os.environ.get("ARCHESS_DB_PATH", os.path.join(DATA_DIR, "archess.db"))
-os.makedirs(os.path.dirname(os.path.abspath(DB_PATH)), exist_ok=True)
+
+def is_serverless_env():
+    return bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
+
+is_serverless = is_serverless_env()
+default_data_dir = "/tmp/data" if is_serverless else os.path.join(BASE_DIR, "data")
+DATA_DIR = os.environ.get("ARCHESS_DATA_DIR", default_data_dir)
+try:
+    os.makedirs(DATA_DIR, exist_ok=True)
+except OSError:
+    DATA_DIR = "/tmp/data"
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+    except OSError:
+        pass
+
+default_db_path = os.path.join(DATA_DIR, "archess.db")
+DB_PATH = os.environ.get("ARCHESS_DB_PATH", default_db_path)
+try:
+    os.makedirs(os.path.dirname(os.path.abspath(DB_PATH)), exist_ok=True)
+except OSError:
+    pass
 
 # Thread-safe connection factory with extended busy timeout for concurrent Flask requests
 def get_connection(custom_path=None):

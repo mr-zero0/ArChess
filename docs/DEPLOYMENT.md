@@ -10,8 +10,9 @@ This guide covers deploying ArChess in production across diverse environments: f
 3. [Method 2: Render.com (100% Free Cloud PaaS)](#-method-2-rendercom-free-cloud-paas)
 4. [Method 3: Cloudflare Tunnel (100% Free Self-Hosted)](#-method-3-cloudflare-tunnel-free-self-hosted)
 5. [Method 4: Production Linux VPS (Gunicorn + Nginx + Systemd)](#-method-4-production-linux-vps)
-6. [Automated Database Backups](#-automated-database-backups)
-7. [Health & Monitoring Probe](#-health--monitoring-probe)
+6. [Method 5: Vercel Serverless (Web & REST API)](#-method-5-vercel-serverless-web--rest-api)
+7. [Automated Database Backups](#-automated-database-backups)
+8. [Health & Monitoring Probe](#-health--monitoring-probe)
 
 ---
 
@@ -193,6 +194,49 @@ Obtain free SSL certificate via Let's Encrypt:
 ```bash
 sudo certbot --nginx -d yourdomain.com
 ```
+
+---
+
+## ⚡ Method 5: Vercel Serverless (Web & REST API)
+
+ArChess includes a zero-config Vercel serverless entry point ([`api/index.py`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/api/index.py)) and routing manifest ([`vercel.json`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/vercel.json)).
+
+### 1. Deploying via GitHub
+1. Push your latest code to GitHub:
+   ```bash
+   git push origin main
+   ```
+2. Log into **[vercel.com](https://vercel.com)** and click **Add New...** $\rightarrow$ **Project**.
+3. Import your repository: `mr-zero0/ArChess`.
+4. In **Environment Variables**, configure:
+   * `SECRET_KEY`: *(Generate with `python -c "import secrets; print(secrets.token_hex(32))"`)*
+   * `PRODUCTION`: `1`
+   * `SESSION_COOKIE_SECURE`: `1`
+   * `GOOGLE_CLIENT_ID`: *(Optional for Google Sign-In)*
+5. Click **Deploy**.
+
+### 2. Deploying via Vercel CLI
+```bash
+npm i -g vercel
+vercel login
+vercel --prod
+```
+
+### ⚠️ Important Architectural Considerations on Vercel
+| Feature / Subsystem | Supported on Vercel? | Architectural Reason & Recommendation |
+| :--- | :---: | :--- |
+| **2D Arena & 2D Classic Play** | **YES** | Runs client-side chess rules and queries REST APIs. |
+| **3D Realistic Board View** | **YES** | Client-side Three.js rendering. |
+| **Vs AI (Levels 1 – 5)** | **YES** | Minimax / RAG / Coach API queries execute within HTTP timeouts. |
+| **Pass & Play (Local PvP)** | **YES** | 100% client-side board rotation. |
+| **Codex, Guides & Analytics** | **YES** | Served cleanly via serverless SSR / REST endpoints. |
+| **Leaderboards & Match Settlement** | **YES** | REST endpoints (`/api/match/settle`, `/api/leaderboard`). |
+| **Live Online Multiplayer (`/ws/live`)** | **NO** | **WebSockets**: Vercel Serverless Functions terminate HTTP connections and cannot sustain long-lived bidirectional WebSockets (`Flask-Sock`). Players cannot duel in live peer-to-peer rooms. |
+| **Local SQLite Persistence** | **Ephemeral** | Serverless microVMs write SQLite to `/tmp/data/archess.db`, which is wiped on cold starts and not shared across concurrent invocations. Use an external PostgreSQL database (Supabase, Neon, AWS RDS) with [`backend/schema.postgres.sql`](file:///c:/Users/mohda/Python%20Codes/ARCHESS/backend/schema.postgres.sql). |
+
+> [!TIP]
+> **Need Full Live WebSocket Multiplayer?**  
+> Use **[Render.com](#-method-2-rendercom-free-cloud-paas)** (free tier) or **Railway** / **Fly.io**, which provide continuous Docker containers, persistent disk mounts, and persistent WebSockets out of the box.
 
 ---
 

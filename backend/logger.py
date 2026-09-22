@@ -12,7 +12,9 @@ import logging
 from datetime import datetime
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LOGS_ROOT_DIR = os.path.join(BASE_DIR, "Logs")
+is_serverless = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
+default_logs_dir = "/tmp/Logs" if is_serverless else os.path.join(BASE_DIR, "Logs")
+LOGS_ROOT_DIR = os.environ.get("ARCHESS_LOGS_DIR", default_logs_dir)
 
 _ACTIVE_RUN_DIR = None
 _ACTIVE_LOGGER = None
@@ -32,8 +34,16 @@ def get_run_directory(base_logs_dir=LOGS_ROOT_DIR, force_new=False):
     month = now.strftime("%b")
     day_folder = f"{now.strftime('%d')}_Logs"
 
-    date_dir = os.path.join(base_logs_dir, year, month, day_folder)
-    os.makedirs(date_dir, exist_ok=True)
+    try:
+        date_dir = os.path.join(base_logs_dir, year, month, day_folder)
+        os.makedirs(date_dir, exist_ok=True)
+    except OSError:
+        base_logs_dir = "/tmp/Logs"
+        date_dir = os.path.join(base_logs_dir, year, month, day_folder)
+        try:
+            os.makedirs(date_dir, exist_ok=True)
+        except OSError:
+            pass
 
     # Discover existing RunXX directories to auto-increment
     existing_runs = []
@@ -47,7 +57,10 @@ def get_run_directory(base_logs_dir=LOGS_ROOT_DIR, force_new=False):
     next_index = max(existing_runs, default=0) + 1
     run_dir_name = f"Run{next_index:02d}"
     full_run_dir = os.path.join(date_dir, run_dir_name)
-    os.makedirs(full_run_dir, exist_ok=True)
+    try:
+        os.makedirs(full_run_dir, exist_ok=True)
+    except OSError:
+        pass
     _ACTIVE_RUN_DIR = full_run_dir
     return full_run_dir
 
@@ -254,10 +267,13 @@ def setup_logging(app_name="ArChess", force_new=False):
 
     # Prevent duplicate handlers
     if not logger.handlers:
-        file_handler = logging.FileHandler(log_file_path, encoding="utf-8")
-        file_handler.setLevel(logging.INFO)
-        file_handler.setFormatter(TrackerJsonFormatter())
-        logger.addHandler(file_handler)
+        try:
+            file_handler = logging.FileHandler(log_file_path, encoding="utf-8")
+            file_handler.setLevel(logging.INFO)
+            file_handler.setFormatter(TrackerJsonFormatter())
+            logger.addHandler(file_handler)
+        except OSError:
+            pass
 
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(logging.INFO)

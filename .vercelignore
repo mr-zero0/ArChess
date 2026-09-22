@@ -1,0 +1,14 @@
+.venv/
+venv/
+env/
+tests/
+scratch/
+Logs/
+logs/
+.pytest_cache/
+.coverage
+data/
+*.db
+deployment/
+.git/
+.github/
