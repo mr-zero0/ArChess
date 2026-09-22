@@ -4,6 +4,8 @@ Serves the Minimalist Multi-Page Web Application, REST APIs for Authentication,
 Leaderboards, Game Match Settlement, Telemetry, and Tracker-Compliant Structured Logging.
 """
 
+from __future__ import annotations
+
 import os
 import uuid
 import time
@@ -11,6 +13,7 @@ import json
 import secrets
 import hashlib
 import threading
+from typing import Optional, Dict, Any, Tuple, List, Union
 from flask import Flask, request, jsonify, session, render_template, send_from_directory, Response
 from flask_cors import CORS
 from flask_sock import Sock
