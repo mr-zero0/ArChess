@@ -8,6 +8,7 @@ import os
 import json
 import sqlite3
 import re
+import math
 from werkzeug.security import generate_password_hash, check_password_hash
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -46,6 +47,7 @@ def init_db():
             auth_provider TEXT DEFAULT 'local',
             google_id TEXT,
             token_version INTEGER DEFAULT 1,
+            is_admin INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """)
@@ -93,7 +95,7 @@ def init_db():
         if "duration_sec" not in existing_cols:
             cursor.execute("ALTER TABLE matches ADD COLUMN duration_sec INTEGER DEFAULT 0;")
         
-        # Schema migration: ensure users table has auth_provider and google_id
+        # Schema migration: ensure users table has auth_provider, google_id, token_version, is_admin
         cursor.execute("PRAGMA table_info(users);")
         user_cols = [c[1] for c in cursor.fetchall()]
         if "auth_provider" not in user_cols:
@@ -102,26 +104,32 @@ def init_db():
             cursor.execute("ALTER TABLE users ADD COLUMN google_id TEXT;")
         if "token_version" not in user_cols:
             cursor.execute("ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 1;")
+        if "is_admin" not in user_cols:
+            cursor.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0;")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_google ON users (google_id);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_admin ON users (is_admin);")
         conn.commit()
 
-        # Seed Grandmasters if table is empty
-        cursor.execute("SELECT COUNT(*) as count FROM users")
-        if cursor.fetchone()["count"] == 0:
-            seed_users = [
-                ("Vanguard_Prime", "vanguard@archess.io", "password123", 2840, 142, 118, 24, "king"),
-                ("Magnus_Kinetic", "magnus@archess.io", "password123", 2795, 98, 76, 22, "queen"),
-                ("Hikaru_Impulse", "hikaru@archess.io", "password123", 2760, 110, 84, 26, "knight"),
-                ("Basalt_Wall", "basalt@archess.io", "password123", 2650, 85, 62, 23, "rook"),
-                ("Prism_Sniper", "prism@archess.io", "password123", 2580, 72, 51, 21, "bishop"),
-                ("Tactical_Cadet", "cadet@archess.io", "password123", 1200, 0, 0, 0, "pawn"),
-            ]
-            for u in seed_users:
-                cursor.execute("""
-                INSERT OR IGNORE INTO users (username, email, password_hash, elo_rating, matches_played, wins, losses, avatar)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, (u[0], u[1], generate_password_hash(u[2]), u[3], u[4], u[5], u[6], u[7]))
-            conn.commit()
+        # Seed Grandmasters ONLY if explicitly enabled (SEED_DEMO_DATA=1) and not in production
+        is_prod = os.environ.get("FLASK_ENV") == "production" or os.environ.get("PRODUCTION") in ("1", "true")
+        seed_enabled = os.environ.get("SEED_DEMO_DATA") in ("1", "true")
+        if seed_enabled and not is_prod:
+            cursor.execute("SELECT COUNT(*) as count FROM users")
+            if cursor.fetchone()["count"] == 0:
+                seed_users = [
+                    ("Vanguard_Prime", "vanguard@archess.io", "password123", 2840, 142, 118, 24, "king"),
+                    ("Magnus_Kinetic", "magnus@archess.io", "password123", 2795, 98, 76, 22, "queen"),
+                    ("Hikaru_Impulse", "hikaru@archess.io", "password123", 2760, 110, 84, 26, "knight"),
+                    ("Basalt_Wall", "basalt@archess.io", "password123", 2650, 85, 62, 23, "rook"),
+                    ("Prism_Sniper", "prism@archess.io", "password123", 2580, 72, 51, 21, "bishop"),
+                    ("Tactical_Cadet", "cadet@archess.io", "password123", 1200, 0, 0, 0, "pawn"),
+                ]
+                for u in seed_users:
+                    cursor.execute("""
+                    INSERT OR IGNORE INTO users (username, email, password_hash, elo_rating, matches_played, wins, losses, avatar)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (u[0], u[1], generate_password_hash(u[2]), u[3], u[4], u[5], u[6], u[7]))
+                conn.commit()
     finally:
         conn.close()
 
@@ -147,13 +155,24 @@ def register_user(username, email, password):
     conn = get_connection()
     cursor = conn.cursor()
     try:
+        # Check if matches ADMIN_EMAIL
+        admin_email = os.environ.get("ADMIN_EMAIL", "").strip().lower()
+        is_admin_user = 1 if (admin_email and email == admin_email) else 0
+
         cursor.execute(
-            "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)",
-            (username, email, generate_password_hash(password))
+            "INSERT INTO users (username, email, password_hash, is_admin) VALUES (?, ?, ?, ?)",
+            (username, email, generate_password_hash(password), is_admin_user)
         )
         conn.commit()
         user_id = cursor.lastrowid
-        return True, {"id": user_id, "username": username, "email": email, "elo_rating": 1200, "token_version": 1}
+        return True, {
+            "id": user_id,
+            "username": username,
+            "email": email,
+            "elo_rating": 1200,
+            "token_version": 1,
+            "is_admin": is_admin_user
+        }
     except sqlite3.IntegrityError:
         return False, "Username or email already exists."
     finally:
@@ -188,7 +207,8 @@ def authenticate_user(username_or_email, password):
                 "wins": user["wins"],
                 "losses": user["losses"],
                 "avatar": user["avatar"],
-                "token_version": user["token_version"] if "token_version" in user.keys() else 1
+                "token_version": user["token_version"] if "token_version" in user.keys() else 1,
+                "is_admin": bool(user["is_admin"]) if "is_admin" in user.keys() else False
             }
         return False, "Invalid credentials."
     finally:
@@ -198,7 +218,10 @@ def get_user_by_id(user_id):
     conn = get_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT id, username, email, elo_rating, matches_played, wins, losses, avatar, auth_provider, google_id, token_version FROM users WHERE id = ?", (user_id,))
+        cursor.execute(
+            "SELECT id, username, email, elo_rating, matches_played, wins, losses, avatar, auth_provider, google_id, token_version, is_admin FROM users WHERE id = ?",
+            (user_id,)
+        )
         user = cursor.fetchone()
         if user:
             return dict(user)
@@ -500,11 +523,19 @@ def get_or_create_google_user(google_id, email, name=None, avatar=None):
     conn = get_connection()
     cursor = conn.cursor()
     try:
+        admin_email = os.environ.get("ADMIN_EMAIL", "").strip().lower()
+        should_be_admin = bool(admin_email and email.lower() == admin_email)
+
         # Check if user exists by google_id
         cursor.execute("SELECT * FROM users WHERE google_id = ?", (google_id,))
         user = cursor.fetchone()
         if user:
-            return True, dict(user)
+            u_dict = dict(user)
+            if should_be_admin and not u_dict.get("is_admin"):
+                cursor.execute("UPDATE users SET is_admin = 1 WHERE id = ?", (u_dict["id"],))
+                conn.commit()
+                u_dict["is_admin"] = 1
+            return True, u_dict
 
         # Check if user exists by email (link Google ID)
         cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
@@ -512,7 +543,8 @@ def get_or_create_google_user(google_id, email, name=None, avatar=None):
         if user:
             if user["google_id"] and user["google_id"] != google_id:
                 return False, "Account email is already linked to a different Google ID."
-            cursor.execute("UPDATE users SET google_id = ?, auth_provider = 'google' WHERE id = ?", (google_id, user["id"]))
+            admin_flag = 1 if (should_be_admin or user["is_admin"]) else 0
+            cursor.execute("UPDATE users SET google_id = ?, auth_provider = 'google', is_admin = ? WHERE id = ?", (google_id, admin_flag, user["id"]))
             conn.commit()
             cursor.execute("SELECT * FROM users WHERE id = ?", (user["id"],))
             return True, dict(cursor.fetchone())
@@ -534,11 +566,12 @@ def get_or_create_google_user(google_id, email, name=None, avatar=None):
 
         chosen_avatar = avatar if avatar in VALID_AVATARS else "knight"
         dummy_password = generate_password_hash(f"google_auth_{google_id}_{os.urandom(8).hex()}")
+        is_admin_user = 1 if should_be_admin else 0
 
         cursor.execute("""
-            INSERT INTO users (username, email, password_hash, elo_rating, matches_played, wins, losses, avatar, auth_provider, google_id)
-            VALUES (?, ?, ?, 1200, 0, 0, 0, ?, 'google', ?)
-        """, (candidate_username, email, dummy_password, chosen_avatar, google_id))
+            INSERT INTO users (username, email, password_hash, elo_rating, matches_played, wins, losses, avatar, auth_provider, google_id, is_admin)
+            VALUES (?, ?, ?, 1200, 0, 0, 0, ?, 'google', ?, ?)
+        """, (candidate_username, email, dummy_password, chosen_avatar, google_id, is_admin_user))
         conn.commit()
         user_id = cursor.lastrowid
 
@@ -577,6 +610,149 @@ def revoke_all_user_sessions(user_id):
         if cursor.rowcount == 0:
             return False, "User not found."
         return True, "All active sessions have been revoked."
+    finally:
+        conn.close()
+
+# -------------------------------------------------------------
+# Admin Management Operations
+# -------------------------------------------------------------
+def create_or_promote_admin(username, email, password):
+    """Ensure an administrator account exists, creating or updating role as needed."""
+    if not email or not password:
+        return False, "Admin email and password are required."
+    username = (username or email.split("@")[0]).strip()
+    email = email.strip().lower()
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM users WHERE email = ? OR username = ?", (email, username))
+        existing = cursor.fetchone()
+        if existing:
+            cursor.execute("""
+                UPDATE users 
+                SET password_hash = ?, is_admin = 1, token_version = token_version + 1
+                WHERE id = ?
+            """, (generate_password_hash(password), existing["id"]))
+            conn.commit()
+            cursor.execute("SELECT id, username, email, is_admin FROM users WHERE id = ?", (existing["id"],))
+            return True, dict(cursor.fetchone())
+        else:
+            cursor.execute("""
+                INSERT INTO users (username, email, password_hash, is_admin, avatar)
+                VALUES (?, ?, ?, 1, 'sovereign')
+            """, (username, email, generate_password_hash(password)))
+            conn.commit()
+            user_id = cursor.lastrowid
+            cursor.execute("SELECT id, username, email, is_admin FROM users WHERE id = ?", (user_id,))
+            return True, dict(cursor.fetchone())
+    except sqlite3.IntegrityError as e:
+        return False, f"Failed to initialize admin: {str(e)}"
+    finally:
+        conn.close()
+
+def list_users_admin(page=1, per_page=20, search=""):
+    """Query paginated user list with optional search for admin console."""
+    try:
+        page = max(1, int(page))
+        per_page = max(1, min(100, int(per_page)))
+    except (ValueError, TypeError):
+        page, per_page = 1, 20
+
+    offset = (page - 1) * per_page
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        if search:
+            query = f"%{search.strip().lower()}%"
+            cursor.execute("SELECT COUNT(*) as count FROM users WHERE LOWER(username) LIKE ? OR LOWER(email) LIKE ?", (query, query))
+            total = cursor.fetchone()["count"]
+            cursor.execute("""
+                SELECT id, username, email, elo_rating, matches_played, wins, losses, avatar, auth_provider, is_admin, created_at
+                FROM users
+                WHERE LOWER(username) LIKE ? OR LOWER(email) LIKE ?
+                ORDER BY created_at DESC
+                LIMIT ? OFFSET ?
+            """, (query, query, per_page, offset))
+        else:
+            cursor.execute("SELECT COUNT(*) as count FROM users")
+            total = cursor.fetchone()["count"]
+            cursor.execute("""
+                SELECT id, username, email, elo_rating, matches_played, wins, losses, avatar, auth_provider, is_admin, created_at
+                FROM users
+                ORDER BY created_at DESC
+                LIMIT ? OFFSET ?
+            """, (per_page, offset))
+
+        users = [dict(r) for r in cursor.fetchall()]
+        pages = math.ceil(total / per_page) if total > 0 else 1
+        return {
+            "users": users,
+            "total": total,
+            "page": page,
+            "per_page": per_page,
+            "pages": pages
+        }
+    finally:
+        conn.close()
+
+def set_user_admin_status(user_id, is_admin):
+    """Grant or revoke admin rights for a specific user ID."""
+    try:
+        uid = int(user_id)
+        admin_val = 1 if is_admin else 0
+    except (ValueError, TypeError):
+        return False, "Invalid user ID"
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("UPDATE users SET is_admin = ? WHERE id = ?", (admin_val, uid))
+        conn.commit()
+        if cursor.rowcount == 0:
+            return False, "User not found."
+        cursor.execute("SELECT id, username, email, is_admin FROM users WHERE id = ?", (uid,))
+        return True, dict(cursor.fetchone())
+    finally:
+        conn.close()
+
+def get_admin_system_stats():
+    """Aggregate executive platform metrics for admin dashboard."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT COUNT(*) as total_users FROM users")
+        total_users = cursor.fetchone()["total_users"]
+
+        cursor.execute("SELECT COUNT(*) as admin_count FROM users WHERE is_admin = 1")
+        admin_count = cursor.fetchone()["admin_count"]
+
+        cursor.execute("SELECT COUNT(*) as total_matches, SUM(white_damage + black_damage) as total_damage, SUM(turns) as total_turns FROM matches")
+        match_stats = cursor.fetchone()
+        total_matches = match_stats["total_matches"] or 0
+        total_damage = match_stats["total_damage"] or 0
+        total_turns = match_stats["total_turns"] or 0
+
+        cursor.execute("SELECT winner, COUNT(*) as count FROM matches GROUP BY winner")
+        winner_dist = {r["winner"]: r["count"] for r in cursor.fetchall()}
+
+        cursor.execute("""
+            SELECT id, white_username, black_username, winner, white_damage, black_damage, turns, duration_sec, created_at
+            FROM matches
+            ORDER BY created_at DESC
+            LIMIT 5
+        """)
+        recent_matches = [dict(m) for m in cursor.fetchall()]
+
+        return {
+            "total_users": total_users,
+            "admin_count": admin_count,
+            "total_matches": total_matches,
+            "total_damage": total_damage,
+            "total_turns": total_turns,
+            "winner_distribution": winner_dist,
+            "recent_matches": recent_matches
+        }
     finally:
         conn.close()
 

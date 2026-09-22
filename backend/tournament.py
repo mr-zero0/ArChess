@@ -47,16 +47,16 @@ class TournamentEngine:
             if conn:
                 conn.close()
 
-        # Fallback if fewer than 8 users
+        # Fallback to official Tactical AI Bots if fewer than 8 commanders in database
         default_roster = [
-            {"id": 1, "username": "Vanguard_Prime", "elo": 2840, "avatar": "king"},
-            {"id": 2, "username": "Magnus_Kinetic", "elo": 2795, "avatar": "queen"},
-            {"id": 3, "username": "Hikaru_Impulse", "elo": 2760, "avatar": "knight"},
-            {"id": 4, "username": "Basalt_Wall", "elo": 2650, "avatar": "rook"},
-            {"id": 5, "username": "Prism_Sniper", "elo": 2580, "avatar": "bishop"},
-            {"id": 6, "username": "Alpha_Zero_Kinetic", "elo": 2520, "avatar": "queen"},
-            {"id": 7, "username": "Iron_Citadel", "elo": 2440, "avatar": "rook"},
-            {"id": 8, "username": "Tactical_Cadet", "elo": 2350, "avatar": "pawn"},
+            {"id": -1, "username": "Tactical_Bot_Sovereign", "elo": 2840, "avatar": "sovereign", "is_bot": True},
+            {"id": -2, "username": "Tactical_Bot_Grandmaster", "elo": 2795, "avatar": "queen", "is_bot": True},
+            {"id": -3, "username": "Tactical_Bot_Master", "elo": 2760, "avatar": "knight", "is_bot": True},
+            {"id": -4, "username": "Tactical_Bot_Commander", "elo": 2650, "avatar": "rook", "is_bot": True},
+            {"id": -5, "username": "Tactical_Bot_Strategist", "elo": 2580, "avatar": "bishop", "is_bot": True},
+            {"id": -6, "username": "Tactical_Bot_Vanguard", "elo": 2520, "avatar": "king", "is_bot": True},
+            {"id": -7, "username": "Tactical_Bot_Apprentice", "elo": 2440, "avatar": "citadel", "is_bot": True},
+            {"id": -8, "username": "Tactical_Bot_Novice", "elo": 2350, "avatar": "pawn", "is_bot": True},
         ]
         while len(commanders) < 8:
             commanders.append(default_roster[len(commanders)])

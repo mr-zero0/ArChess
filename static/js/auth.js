@@ -52,6 +52,10 @@ window.ArchessAuth = {
 
     const glyph = this.AVATAR_GLYPHS[this.currentUser.avatar] || '♞';
 
+    const adminPill = (this.currentUser && this.currentUser.is_admin)
+      ? `<a href="/admin" class="btn-admin-nav-pill" id="navAdminDashboardLink" title="Command Center">🛡️ Admin</a>`
+      : '';
+
     authContainer.innerHTML = `
       <div class="user-profile-badge" id="userProfileBadge" title="Account Settings & Commander Dossier">
         <div class="user-avatar-disc" id="navUserAvatarDisc">${glyph}</div>
@@ -59,6 +63,7 @@ window.ArchessAuth = {
           <span class="user-name-label" id="navUserNameLabel">${this.currentUser.username}</span>
           <span class="user-elo-tag" id="navUserEloTag">${this.currentUser.elo_rating} ELO</span>
         </div>
+        ${adminPill}
         <button class="btn-logout-mini" id="navLogoutBtn" title="Log Out">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         </button>
@@ -290,40 +295,44 @@ window.ArchessAuth = {
   },
 
   setupGoogleAuthClient() {
-    // If Google Identity Services library is loaded and client ID exists
-    if (window.google && window.google.accounts && window.google.accounts.id) {
+    const clientId = window.ARCHESS_GOOGLE_CLIENT_ID;
+    if (window.google && window.google.accounts && window.google.accounts.id && clientId) {
       try {
         window.google.accounts.id.initialize({
-          client_id: window.ARCHESS_GOOGLE_CLIENT_ID || 'archess-demo.apps.googleusercontent.com',
+          client_id: clientId,
           callback: (response) => {
             if (response && response.credential) {
               this.loginWithGoogle(response.credential);
             }
           }
         });
-      } catch (e) {}
+      } catch (e) {
+        console.warn('Google Identity initialization notice:', e);
+      }
     }
   },
 
   triggerGoogleSignIn() {
-    if (window.google && window.google.accounts && window.google.accounts.id && window.ARCHESS_GOOGLE_CLIENT_ID) {
+    const clientId = window.ARCHESS_GOOGLE_CLIENT_ID;
+    if (window.google && window.google.accounts && window.google.accounts.id && clientId) {
       try {
-        window.google.accounts.id.prompt();
+        window.google.accounts.id.prompt((notification) => {
+          if (notification && notification.isNotDisplayed()) {
+            this.showToast('Please enable popups or select account in Google dialog.', 'info');
+          }
+        });
         return;
-      } catch (e) {}
+      } catch (e) {
+        console.warn('Google One-Tap prompt notice:', e);
+      }
     }
 
-    // Instant Google Demo Fallback for local development and demonstration
-    const demoEmail = prompt('Enter your Google email for instant sign-in:', 'commander.google@gmail.com');
-    if (!demoEmail) return;
+    if (!clientId) {
+      this.showToast('Google Sign-In is not configured on this server. Please use Email Sign-In.', 'warning');
+      return;
+    }
 
-    const demoName = demoEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_');
-    this.loginWithGoogle({
-      email: demoEmail,
-      name: `G_${demoName}`,
-      google_id: `g_${Math.abs(demoEmail.split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0))}`,
-      avatar: 'sovereign'
-    });
+    this.showToast('Connecting to Google Identity Services...', 'info');
   },
 
   async updateProfile(newUsername, newAvatar) {
@@ -437,7 +446,6 @@ window.ArchessAuth = {
               <span>Enter Battlefield</span>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
             </button>
-            <div class="auth-demo-hint">Demo login: <code>Magnus_Kinetic</code> / <code>password123</code></div>
           </form>
 
           <!-- Register Form -->

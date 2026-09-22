@@ -1,0 +1,401 @@
+{% extends "base.html" %}
+
+{% block title %}ARCHESS | Tactical Command Center & Platform Administration{% endblock %}
+{% block meta_description %}Authoritative administration console for ARCHESS. Real-time platform telemetry, user management, combat room oversight, and tournament seasons.{% endblock %}
+
+{% block content %}
+<main class="admin-viewport" style="padding-top: 85px; min-height: 90vh; max-width: 1440px; margin: 0 auto; padding-left: 24px; padding-right: 24px; padding-bottom: 60px;">
+  
+  <!-- Header Title & Control Bar -->
+  <header style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 20px; margin-bottom: 36px; border-bottom: 1px solid var(--border); padding-bottom: 24px;">
+    <div>
+      <div style="display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--gold-bright); margin-bottom: 8px;">
+        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981; box-shadow: 0 0 10px #10b981;"></span>
+        AUTHORITATIVE COMMAND CENTER • PROTOCOL ROOT
+      </div>
+      <h1 style="font-family: var(--font-serif); font-size: clamp(1.8rem, 3.5vw, 2.5rem); font-weight: 700; margin: 0; color: #ffffff; letter-spacing: -0.02em;">
+        Platform Administration
+      </h1>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+      <button id="adminRefreshBtn" class="btn-ghost" style="padding: 10px 18px; border-radius: 8px; font-family: var(--font-mono); font-size: 0.82rem; cursor: pointer;">
+        ↻ Refresh Telemetry
+      </button>
+      <button id="adminResetSeasonBtn" class="btn-ghost" style="padding: 10px 18px; border-radius: 8px; font-family: var(--font-mono); font-size: 0.82rem; color: #f59e0b; border-color: rgba(245, 158, 11, 0.3); cursor: pointer;">
+        ⚔️ Advance / Reset Season
+      </button>
+      <a href="/play" class="btn-gold" style="padding: 10px 20px; border-radius: 8px; font-family: var(--font-mono); font-size: 0.82rem; text-decoration: none;">
+        Enter Arena
+      </a>
+    </div>
+  </header>
+
+  <!-- Live KPI Metrics Ribbon -->
+  <section style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; margin-bottom: 36px;">
+    <div class="kpi-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 22px; backdrop-filter: blur(16px);">
+      <div style="font-family: var(--font-mono); font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 6px;">Total Commanders</div>
+      <div id="statTotalUsers" style="font-family: var(--font-mono); font-size: 2.2rem; font-weight: 700; color: #ffffff;">—</div>
+      <div id="statAdminCount" style="font-size: 0.8rem; color: #10b981; margin-top: 4px;">— Admins authorized</div>
+    </div>
+
+    <div class="kpi-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 22px; backdrop-filter: blur(16px);">
+      <div style="font-family: var(--font-mono); font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 6px;">Battles Settled</div>
+      <div id="statTotalMatches" style="font-family: var(--font-mono); font-size: 2.2rem; font-weight: 700; color: var(--gold-bright);">—</div>
+      <div id="statWinDistribution" style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">White / Black / Draw</div>
+    </div>
+
+    <div class="kpi-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 22px; backdrop-filter: blur(16px);">
+      <div style="font-family: var(--font-mono); font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 6px;">Total Kinetic Damage</div>
+      <div id="statTotalDamage" style="font-family: var(--font-mono); font-size: 2.2rem; font-weight: 700; color: #ec4899;">—</div>
+      <div id="statTotalTurns" style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">— turns simulated</div>
+    </div>
+
+    <div class="kpi-card" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 22px; backdrop-filter: blur(16px);">
+      <div style="font-family: var(--font-mono); font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 6px;">Active Combat Rooms</div>
+      <div id="statActiveRooms" style="font-family: var(--font-mono); font-size: 2.2rem; font-weight: 700; color: #3b82f6;">—</div>
+      <div id="statUptime" style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">Uptime: —</div>
+    </div>
+  </section>
+
+  <!-- Tab Navigation: Users vs Active Rooms -->
+  <div style="display: flex; gap: 12px; border-bottom: 1px solid var(--border); margin-bottom: 24px;">
+    <button id="tabUsersBtn" class="admin-tab-btn active" style="background: none; border: none; padding: 12px 20px; font-family: var(--font-mono); font-size: 0.9rem; font-weight: 600; color: var(--gold-bright); border-bottom: 2px solid var(--gold-bright); cursor: pointer;">
+      Commanders Dossier (<span id="userCountBadge">0</span>)
+    </button>
+    <button id="tabRoomsBtn" class="admin-tab-btn" style="background: none; border: none; padding: 12px 20px; font-family: var(--font-mono); font-size: 0.9rem; font-weight: 600; color: var(--text-secondary); border-bottom: 2px solid transparent; cursor: pointer;">
+      Live Combat Sockets (<span id="roomCountBadge">0</span>)
+    </button>
+  </div>
+
+  <!-- SECTION 1: Users Management Panel -->
+  <section id="adminUsersSection" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 40px; backdrop-filter: blur(16px);">
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px;">
+      <div style="position: relative; min-width: 280px; flex: 1; max-width: 450px;">
+        <input type="text" id="adminSearchInput" placeholder="Search commander username or email..." 
+               style="width: 100%; background: rgba(0,0,0,0.4); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: #fff; font-family: var(--font-sans); font-size: 0.9rem; outline: none;">
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <button id="adminPrevPageBtn" class="btn-ghost" style="padding: 8px 14px; border-radius: 6px; font-family: var(--font-mono); font-size: 0.8rem;">‹ Prev</button>
+        <span id="adminPageIndicator" style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-secondary); padding: 0 8px;">Page 1 of 1</span>
+        <button id="adminNextPageBtn" class="btn-ghost" style="padding: 8px 14px; border-radius: 6px; font-family: var(--font-mono); font-size: 0.8rem;">Next ›</button>
+      </div>
+    </div>
+
+    <div style="overflow-x: auto;">
+      <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.88rem;">
+        <thead>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.08); color: var(--text-secondary); font-family: var(--font-mono); font-size: 0.76rem; text-transform: uppercase;">
+            <th style="padding: 12px 16px;">ID</th>
+            <th style="padding: 12px 16px;">Commander</th>
+            <th style="padding: 12px 16px;">Email</th>
+            <th style="padding: 12px 16px;">ELO</th>
+            <th style="padding: 12px 16px;">Record</th>
+            <th style="padding: 12px 16px;">Provider</th>
+            <th style="padding: 12px 16px;">Role</th>
+            <th style="padding: 12px 16px; text-align: right;">Administrative Actions</th>
+          </tr>
+        </thead>
+        <tbody id="adminUsersTbody">
+          <tr>
+            <td colspan="8" style="padding: 32px; text-align: center; color: var(--text-secondary);">Loading commander database...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- SECTION 2: Live Combat Rooms Panel -->
+  <section id="adminRoomsSection" style="display: none; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 40px; backdrop-filter: blur(16px);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h2 style="font-family: var(--font-serif); font-size: 1.25rem; margin: 0; color: #fff;">Active Real-Time Socket Rooms</h2>
+      <button id="adminRefreshRoomsBtn" class="btn-ghost" style="padding: 8px 14px; font-family: var(--font-mono); font-size: 0.8rem; cursor: pointer;">↻ Refresh Rooms</button>
+    </div>
+
+    <div style="overflow-x: auto;">
+      <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.88rem;">
+        <thead>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.08); color: var(--text-secondary); font-family: var(--font-mono); font-size: 0.76rem; text-transform: uppercase;">
+            <th style="padding: 12px 16px;">Room ID</th>
+            <th style="padding: 12px 16px;">Host</th>
+            <th style="padding: 12px 16px;">White Player</th>
+            <th style="padding: 12px 16px;">Black Player</th>
+            <th style="padding: 12px 16px;">Status</th>
+            <th style="padding: 12px 16px;">Turn / Turns</th>
+            <th style="padding: 12px 16px;">Spectators</th>
+            <th style="padding: 12px 16px; text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody id="adminRoomsTbody">
+          <tr>
+            <td colspan="8" style="padding: 32px; text-align: center; color: var(--text-secondary);">Scanning active rooms...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  let currentPage = 1;
+  let totalPages = 1;
+  let currentSearch = '';
+
+  // Tab switching
+  const tabUsers = document.getElementById('tabUsersBtn');
+  const tabRooms = document.getElementById('tabRoomsBtn');
+  const secUsers = document.getElementById('adminUsersSection');
+  const secRooms = document.getElementById('adminRoomsSection');
+
+  tabUsers.addEventListener('click', () => {
+    tabUsers.style.color = 'var(--gold-bright)';
+    tabUsers.style.borderBottomColor = 'var(--gold-bright)';
+    tabRooms.style.color = 'var(--text-secondary)';
+    tabRooms.style.borderBottomColor = 'transparent';
+    secUsers.style.display = 'block';
+    secRooms.style.display = 'none';
+  });
+
+  tabRooms.addEventListener('click', () => {
+    tabRooms.style.color = 'var(--gold-bright)';
+    tabRooms.style.borderBottomColor = 'var(--gold-bright)';
+    tabUsers.style.color = 'var(--text-secondary)';
+    tabUsers.style.borderBottomColor = 'transparent';
+    secUsers.style.display = 'none';
+    secRooms.style.display = 'block';
+    fetchRooms();
+  });
+
+  // Fetch KPI statistics
+  async function fetchStats() {
+    try {
+      const res = await fetch('/api/admin/stats');
+      if (!res.ok) throw new Error('Unauthorized or network failure');
+      const data = await res.json();
+      if (data.success && data.stats) {
+        const s = data.stats;
+        document.getElementById('statTotalUsers').textContent = s.total_users;
+        document.getElementById('statAdminCount').textContent = `${s.admin_count} Authorized Admin(s)`;
+        document.getElementById('statTotalMatches').textContent = s.total_matches;
+        document.getElementById('statTotalDamage').textContent = `${(s.total_damage || 0).toLocaleString()} HP`;
+        document.getElementById('statTotalTurns').textContent = `${(s.total_turns || 0).toLocaleString()} turns simulated`;
+        document.getElementById('statActiveRooms').textContent = s.active_rooms_count;
+        document.getElementById('statUptime').textContent = `Server Uptime: ${Math.round(s.uptime_seconds / 60)} min`;
+
+        const dist = s.winner_distribution || {};
+        document.getElementById('statWinDistribution').textContent = `White: ${dist.white || 0} | Black: ${dist.black || 0} | Draw: ${dist.draw || 0}`;
+        document.getElementById('userCountBadge').textContent = s.total_users;
+        document.getElementById('roomCountBadge').textContent = s.active_rooms_count;
+      }
+    } catch (err) {
+      console.error('Failed to load stats:', err);
+    }
+  }
+
+  // Fetch user list
+  async function fetchUsers(page = 1, search = '') {
+    const tbody = document.getElementById('adminUsersTbody');
+    tbody.innerHTML = `<tr><td colspan="8" style="padding: 24px; text-align: center; color: var(--text-secondary);">Querying database...</td></tr>`;
+    try {
+      const res = await fetch(`/api/admin/users?page=${page}&search=${encodeURIComponent(search)}`);
+      if (!res.ok) throw new Error('Failed to load users');
+      const data = await res.json();
+      if (data.success) {
+        currentPage = data.page;
+        totalPages = data.pages;
+        document.getElementById('adminPageIndicator').textContent = `Page ${currentPage} of ${totalPages || 1}`;
+        document.getElementById('adminPrevPageBtn').disabled = currentPage <= 1;
+        document.getElementById('adminNextPageBtn').disabled = currentPage >= totalPages;
+
+        if (!data.users || data.users.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="8" style="padding: 24px; text-align: center; color: var(--text-secondary);">No commander profiles found.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = data.users.map(u => {
+          const isAdmin = Boolean(u.is_admin);
+          const roleBadge = isAdmin 
+            ? `<span style="display: inline-block; padding: 3px 8px; border-radius: 4px; background: rgba(16, 185, 129, 0.2); color: #10b981; font-family: var(--font-mono); font-size: 0.72rem; font-weight: 700;">ADMIN</span>`
+            : `<span style="display: inline-block; padding: 3px 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); font-family: var(--font-mono); font-size: 0.72rem;">COMMANDER</span>`;
+
+          const toggleBtnText = isAdmin ? 'Revoke Admin' : 'Grant Admin';
+          const toggleBtnColor = isAdmin ? '#ef4444' : '#10b981';
+
+          return `
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.15s;">
+              <td style="padding: 14px 16px; font-family: var(--font-mono); color: var(--text-secondary);">${u.id}</td>
+              <td style="padding: 14px 16px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 1.1rem;">${getAvatarGlyph(u.avatar)}</span>
+                  <span style="font-weight: 600; color: #fff;">${escapeHtml(u.username)}</span>
+                </div>
+              </td>
+              <td style="padding: 14px 16px; font-family: var(--font-mono); font-size: 0.82rem; color: var(--text-secondary);">${escapeHtml(u.email || '—')}</td>
+              <td style="padding: 14px 16px; font-family: var(--font-mono); font-weight: 700; color: var(--gold-bright);">${u.elo_rating}</td>
+              <td style="padding: 14px 16px; font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-secondary);">${u.wins}W / ${u.losses}L (${u.matches_played})</td>
+              <td style="padding: 14px 16px; font-family: var(--font-mono); font-size: 0.75rem; text-transform: uppercase;">
+                <span style="color: ${u.auth_provider === 'google' ? '#4285f4' : 'var(--text-secondary)'};">${u.auth_provider || 'local'}</span>
+              </td>
+              <td style="padding: 14px 16px;">${roleBadge}</td>
+              <td style="padding: 14px 16px; text-align: right;">
+                <button class="btn-ghost" onclick="toggleAdminRole(${u.id}, ${!isAdmin})" style="padding: 5px 10px; font-size: 0.75rem; font-family: var(--font-mono); color: ${toggleBtnColor}; border-color: ${toggleBtnColor}33; cursor: pointer; margin-right: 6px;">
+                  ${toggleBtnText}
+                </button>
+                <button class="btn-ghost" onclick="deleteUser(${u.id}, '${escapeHtml(u.username)}')" style="padding: 5px 10px; font-size: 0.75rem; font-family: var(--font-mono); color: #ef4444; border-color: rgba(239, 68, 68, 0.2); cursor: pointer;">
+                  Delete
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="8" style="padding: 24px; text-align: center; color: #ef4444;">Error: ${escapeHtml(err.message)}</td></tr>`;
+    }
+  }
+
+  // Fetch combat rooms
+  async function fetchRooms() {
+    const tbody = document.getElementById('adminRoomsTbody');
+    tbody.innerHTML = `<tr><td colspan="8" style="padding: 24px; text-align: center; color: var(--text-secondary);">Scanning active rooms...</td></tr>`;
+    try {
+      const res = await fetch('/api/admin/rooms');
+      const data = await res.json();
+      if (data.success) {
+        if (!data.rooms || data.rooms.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="8" style="padding: 24px; text-align: center; color: var(--text-secondary);">No active combat rooms right now.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = data.rooms.map(r => `
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <td style="padding: 14px 16px; font-family: var(--font-mono); font-weight: 700; color: var(--gold-bright);">${r.room_id}</td>
+            <td style="padding: 14px 16px; color: #fff;">${escapeHtml(r.host_username)}</td>
+            <td style="padding: 14px 16px; font-family: var(--font-mono); font-size: 0.82rem; color: ${r.white?.connected ? '#10b981' : 'var(--text-secondary)'};">
+              ${r.white?.username || '—'} ${r.white?.connected ? '●' : '○'}
+            </td>
+            <td style="padding: 14px 16px; font-family: var(--font-mono); font-size: 0.82rem; color: ${r.black?.connected ? '#10b981' : 'var(--text-secondary)'};">
+              ${r.black?.username || '—'} ${r.black?.connected ? '●' : '○'}
+            </td>
+            <td style="padding: 14px 16px; font-family: var(--font-mono); font-size: 0.78rem; text-transform: uppercase;">
+              <span style="color: ${r.status === 'in_combat' ? '#10b981' : (r.status === 'waiting' ? '#f59e0b' : '#ef4444')};">${r.status}</span>
+            </td>
+            <td style="padding: 14px 16px; font-family: var(--font-mono); font-size: 0.82rem; color: var(--text-secondary);">${r.current_turn} (${r.turns_elapsed} turns)</td>
+            <td style="padding: 14px 16px; font-family: var(--font-mono); color: var(--text-secondary);">${r.spectators_count || 0}</td>
+            <td style="padding: 14px 16px; text-align: right;">
+              <button class="btn-ghost" onclick="terminateRoom('${r.room_id}')" style="padding: 5px 10px; font-size: 0.75rem; font-family: var(--font-mono); color: #ef4444; border-color: rgba(239, 68, 68, 0.3); cursor: pointer;">
+                Terminate
+              </button>
+            </td>
+          </tr>
+        `).join('');
+      }
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="8" style="padding: 24px; text-align: center; color: #ef4444;">Failed to query rooms</td></tr>`;
+    }
+  }
+
+  // Admin user role toggle
+  window.toggleAdminRole = async (userId, targetRole) => {
+    const action = targetRole ? 'grant administrator status to' : 'revoke administrator status from';
+    if (!confirm(`Are you sure you want to ${action} User ID ${userId}?`)) return;
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/role`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_admin: targetRole })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update user role');
+      fetchUsers(currentPage, currentSearch);
+      fetchStats();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  // Admin user deletion
+  window.deleteUser = async (userId, username) => {
+    if (!confirm(`DANGER: Permanently delete commander '${username}' (ID ${userId})? This will delete match history and rankings.`)) return;
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to delete user');
+      fetchUsers(currentPage, currentSearch);
+      fetchStats();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  // Terminate room
+  window.terminateRoom = async (roomId) => {
+    if (!confirm(`Force terminate combat room '${roomId}'?`)) return;
+    try {
+      const res = await fetch(`/api/admin/rooms/${roomId}/terminate`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to terminate room');
+      fetchRooms();
+      fetchStats();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  // Advance/Reset Tournament Season
+  document.getElementById('adminResetSeasonBtn').addEventListener('click', async () => {
+    if (!confirm('Advance tournament season or initialize a new championship bracket?')) return;
+    try {
+      const res = await fetch('/api/admin/tournament/reset', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        alert(`Tournament season ${data.season} initialized successfully!`);
+      }
+    } catch (err) {
+      alert('Failed to reset tournament season.');
+    }
+  });
+
+  // Search input with debounce
+  let searchTimeout = null;
+  document.getElementById('adminSearchInput').addEventListener('input', (e) => {
+    clearTimeout(searchTimeout);
+    currentSearch = e.target.value;
+    searchTimeout = setTimeout(() => {
+      fetchUsers(1, currentSearch);
+    }, 300);
+  });
+
+  // Pagination listeners
+  document.getElementById('adminPrevPageBtn').addEventListener('click', () => {
+    if (currentPage > 1) fetchUsers(currentPage - 1, currentSearch);
+  });
+  document.getElementById('adminNextPageBtn').addEventListener('click', () => {
+    if (currentPage < totalPages) fetchUsers(currentPage + 1, currentSearch);
+  });
+
+  document.getElementById('adminRefreshBtn').addEventListener('click', () => {
+    fetchStats();
+    fetchUsers(currentPage, currentSearch);
+  });
+
+  document.getElementById('adminRefreshRoomsBtn').addEventListener('click', fetchRooms);
+
+  function getAvatarGlyph(avatar) {
+    const glyphs = { knight: '♞', king: '♔', queen: '♕', rook: '♖', bishop: '♗', citadel: '🏰', phoenix: '🔥', sovereign: '👑', pawn: '♟' };
+    return glyphs[avatar] || '♞';
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str.toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+
+  // Initial load
+  fetchStats();
+  fetchUsers(1);
+});
+</script>
+{% endblock %}

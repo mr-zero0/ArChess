@@ -31,7 +31,11 @@ from backend.database import (
     update_user_password,
     get_or_create_google_user,
     delete_user_account,
-    revoke_all_user_sessions
+    revoke_all_user_sessions,
+    create_or_promote_admin,
+    list_users_admin,
+    set_user_admin_status,
+    get_admin_system_stats
 )
 from backend.metrics import get_metrics_engine
 from backend.multiplayer import room_manager, matchmaking_queue
@@ -99,6 +103,21 @@ sock = Sock(app)
 
 # Initialize database schema and seeds
 init_db()
+
+# Auto-provision administrator if specified in environment
+_admin_email = os.environ.get("ADMIN_EMAIL")
+_admin_password = os.environ.get("ADMIN_PASSWORD")
+if _admin_email and _admin_password:
+    _admin_username = os.environ.get("ADMIN_USERNAME", "ArChess_Admin")
+    create_or_promote_admin(_admin_username, _admin_email, _admin_password)
+    logger.info(f'{{"event":"admin_initialized", "email":"{_admin_email}"}}')
+
+@app.context_processor
+def inject_global_settings():
+    return {
+        "google_client_id": os.environ.get("GOOGLE_CLIENT_ID", ""),
+        "is_production": os.environ.get("FLASK_ENV") == "production" or os.environ.get("PRODUCTION") in ("1", "true")
+    }
 
 # Request correlation, security headers, and logging middleware
 @app.before_request
@@ -314,7 +333,7 @@ def api_login():
     if not isinstance(data, dict):
         return jsonify({"success": False, "error": "Invalid JSON payload."}), 400
 
-    username_or_email = data.get("username_or_email") or data.get("identifier") or data.get("username") or ""
+    username_or_email = data.get("username_or_email") or data.get("identifier") or data.get("username") or data.get("email") or ""
     password = data.get("password", "")
 
     if not isinstance(username_or_email, str) or not isinstance(password, str):
@@ -418,6 +437,31 @@ def api_delete_account():
     return jsonify({"success": False, "error": result}), 400
 
 
+from functools import wraps
+import urllib.request
+import urllib.parse
+
+def _verify_google_id_token(credential: str, expected_client_id: str = "") -> tuple[bool, Optional[Dict[str, Any]], Optional[str]]:
+    """Cryptographically verify Google ID token against Google's public tokeninfo endpoint."""
+    if not credential:
+        return False, None, "Missing Google ID token."
+    try:
+        url = f"https://oauth2.googleapis.com/tokeninfo?id_token={urllib.parse.quote(credential)}"
+        req = urllib.request.Request(url, headers={"User-Agent": "ArChess-Production-Auth/1.0"})
+        with urllib.request.urlopen(req, timeout=5.0) as resp:
+            if resp.status == 200:
+                claims = json.loads(resp.read().decode("utf-8"))
+                if expected_client_id and claims.get("aud") != expected_client_id:
+                    return False, None, "Google token audience mismatch."
+                if claims.get("iss") not in ("accounts.google.com", "https://accounts.google.com"):
+                    return False, None, "Invalid Google token issuer."
+                if claims.get("email_verified") not in (True, "true"):
+                    return False, None, "Google email address has not been verified."
+                return True, claims, None
+            return False, None, f"Google token verification endpoint returned HTTP {resp.status}."
+    except Exception as e:
+        return False, None, f"Google token verification connection failed: {str(e)}"
+
 @app.route("/api/auth/google", methods=["POST"])
 def api_google_auth():
     data = request.get_json(silent=True)
@@ -430,22 +474,35 @@ def api_google_auth():
     name = data.get("name")
     avatar = data.get("avatar")
 
-    if credential and isinstance(credential, str):
-        try:
-            import base64
-            parts = credential.split(".")
-            if len(parts) >= 2:
-                payload_part = parts[1]
-                payload_part += "=" * ((4 - len(payload_part) % 4) % 4)
-                payload_bytes = base64.urlsafe_b64decode(payload_part)
-                claims = json.loads(payload_bytes.decode("utf-8"))
-                email = claims.get("email", email)
-                name = claims.get("name", name)
-                google_id = claims.get("sub", google_id)
-        except Exception:
-            pass
-
+    google_client_id = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
     is_testing_env = bool(app.config.get("TESTING") or app.config.get("ALLOW_INSECURE_TEST_AUTH") or data.get("demo") is True)
+
+    if credential and isinstance(credential, str):
+        # In production with GOOGLE_CLIENT_ID, enforce cryptographic verification with Google's API
+        if not is_testing_env and google_client_id:
+            valid, claims, err = _verify_google_id_token(credential, google_client_id)
+            if not valid or not claims:
+                get_metrics_engine().inc_security_event("google_auth_failed")
+                return jsonify({"success": False, "error": err or "Google credential verification failed."}), 401
+            email = claims.get("email")
+            google_id = claims.get("sub")
+            name = claims.get("name", name)
+        else:
+            # Fallback parser for testing / local sandbox environments
+            try:
+                import base64
+                parts = credential.split(".")
+                if len(parts) >= 2:
+                    payload_part = parts[1]
+                    payload_part += "=" * ((4 - len(payload_part) % 4) % 4)
+                    payload_bytes = base64.urlsafe_b64decode(payload_part)
+                    claims = json.loads(payload_bytes.decode("utf-8"))
+                    email = claims.get("email", email)
+                    name = claims.get("name", name)
+                    google_id = claims.get("sub", google_id)
+            except Exception:
+                pass
+
     if not google_id:
         if email and is_testing_env:
             google_id = f"g_{hashlib.sha256(email.encode('utf-8')).hexdigest()[:16]}"
@@ -461,6 +518,94 @@ def api_google_auth():
         session["token_version"] = result.get("token_version", 1)
         return jsonify({"success": True, "user": result}), 200
     return jsonify({"success": False, "error": result}), 400
+
+# -------------------------------------------------------------
+# Admin Access Control & Management Endpoints
+# -------------------------------------------------------------
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        uid = session.get("user_id")
+        if not uid:
+            if request.path.startswith("/api/"):
+                return jsonify({"success": False, "error": "Unauthorized: Authentication required."}), 401
+            from flask import redirect
+            return redirect("/play")
+        user = get_user_by_id(uid)
+        if not user or not user.get("is_admin"):
+            if request.path.startswith("/api/"):
+                return jsonify({"success": False, "error": "Forbidden: Administrator privileges required."}), 403
+            return render_template("index.html"), 403
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route("/admin")
+@admin_required
+def serve_admin():
+    return render_template("admin.html")
+
+@app.route("/api/admin/stats", methods=["GET"])
+@admin_required
+def api_admin_stats():
+    stats = get_admin_system_stats()
+    stats["active_rooms_count"] = len(room_manager.rooms)
+    stats["uptime_seconds"] = round(time.time() - SERVER_START_TIME, 1)
+    return jsonify({"success": True, "stats": stats}), 200
+
+@app.route("/api/admin/users", methods=["GET"])
+@admin_required
+def api_admin_users():
+    page = request.args.get("page", 1)
+    search = request.args.get("search", "")
+    data = list_users_admin(page=page, per_page=20, search=search)
+    return jsonify({"success": True, **data}), 200
+
+@app.route("/api/admin/users/<int:target_user_id>/role", methods=["POST"])
+@admin_required
+def api_admin_toggle_role(target_user_id):
+    current_uid = session.get("user_id")
+    body = request.get_json(silent=True) or {}
+    is_admin_flag = bool(body.get("is_admin", False))
+    if target_user_id == current_uid and not is_admin_flag:
+        return jsonify({"success": False, "error": "Cannot revoke your own administrative privileges."}), 400
+    ok, res = set_user_admin_status(target_user_id, is_admin_flag)
+    if ok:
+        return jsonify({"success": True, "user": res}), 200
+    return jsonify({"success": False, "error": res}), 400
+
+@app.route("/api/admin/users/<int:target_user_id>", methods=["DELETE"])
+@admin_required
+def api_admin_delete_user(target_user_id):
+    current_uid = session.get("user_id")
+    if target_user_id == current_uid:
+        return jsonify({"success": False, "error": "Cannot delete your own administrative account."}), 400
+    ok, res = delete_user_account(target_user_id)
+    if ok:
+        return jsonify({"success": True, "message": res}), 200
+    return jsonify({"success": False, "error": res}), 400
+
+@app.route("/api/admin/rooms", methods=["GET"])
+@admin_required
+def api_admin_rooms():
+    rooms = [r.get_summary() for r in room_manager.rooms.values()]
+    return jsonify({"success": True, "rooms": rooms}), 200
+
+@app.route("/api/admin/rooms/<room_id>/terminate", methods=["POST"])
+@admin_required
+def api_admin_terminate_room(room_id):
+    room = room_manager.get_room(room_id)
+    if not room:
+        return jsonify({"success": False, "error": "Room not found."}), 404
+    room.status = "finished"
+    room.winner = "draw"
+    room.broadcast({"type": "game_over", "winner": "draw", "reason": "admin_terminated"})
+    return jsonify({"success": True, "message": f"Room {room_id} terminated."}), 200
+
+@app.route("/api/admin/tournament/reset", methods=["POST"])
+@admin_required
+def api_admin_tournament_reset():
+    tournament_engine.initialize_season()
+    return jsonify({"success": True, "season": tournament_engine.season, "bracket": tournament_engine.get_summary()}), 200
 
 # -------------------------------------------------------------
 # API Endpoints: Leaderboards

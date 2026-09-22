@@ -7,6 +7,7 @@
   <meta name="description" content="{% block meta_description %}Archess is a minimalist tactical chess variant. Aim, launch pieces across the board with momentum, and shatter enemy lines in real time across 2D and 3D perspectives.{% endblock %}">
   
   <script>
+    window.ARCHESS_GOOGLE_CLIENT_ID = "{{ google_client_id or '' }}";
     (function() {
       var design = localStorage.getItem('archess_ui_design') || 'ios-native';
       document.documentElement.setAttribute('data-ui-design', design);

@@ -273,8 +273,9 @@ def test_database_exhaustive():
     assert match is not None
 
 
-def test_database_schema_migration():
+def test_database_schema_migration(monkeypatch):
     """Test schema migration paths: ALTER TABLE for missing columns (lines 84, 86)."""
+    monkeypatch.setenv("SEED_DEMO_DATA", "1")
     fresh_conn = sqlite3.connect(":memory:")
     fresh_conn.row_factory = sqlite3.Row
 

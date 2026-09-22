@@ -1104,7 +1104,7 @@ def test_case_137_bot_substitution_fallback(monkeypatch):
     seeds = te.get_seed_commanders()
     assert len(seeds) == 8
     usernames = [s["username"] for s in seeds]
-    assert "Magnus_Kinetic" in usernames
+    assert "Tactical_Bot_Grandmaster" in usernames
     assert "SoloUser" in usernames
 
 def test_case_138_tournament_bracket_to_dict():
