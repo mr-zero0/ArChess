@@ -2634,4 +2634,102 @@ document.addEventListener('DOMContentLoaded', () => {
       connectToCombatRoom(roomParam, 'black');
     }, 450);
   }
+
+  /* -------------------------------------------------------------
+     Mobile Tactical Arena & Multi-Device Responsiveness (v4.3.2)
+  ------------------------------------------------------------- */
+  const playArenaGrid = document.getElementById('playArenaGrid');
+  const mobileTabs = document.querySelectorAll('.mobile-arena-tab');
+
+  function switchMobileTab(tabKey) {
+    if (!playArenaGrid) return;
+    playArenaGrid.classList.remove('tab-view-board', 'tab-view-controls', 'tab-view-intel');
+    if (tabKey === 'board') playArenaGrid.classList.add('tab-view-board');
+    else if (tabKey === 'controls') playArenaGrid.classList.add('tab-view-controls');
+    else if (tabKey === 'intel') playArenaGrid.classList.add('tab-view-intel');
+
+    mobileTabs.forEach(t => {
+      const isActive = t.getAttribute('data-tab') === tabKey;
+      t.classList.toggle('active', isActive);
+      t.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+
+    if (tabKey === 'board') {
+      setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+        if (arena && typeof arena.initCanvasSize === 'function') {
+          arena.initCanvasSize();
+        }
+      }, 60);
+    }
+  }
+
+  mobileTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const targetTab = tab.getAttribute('data-tab');
+      switchMobileTab(targetTab);
+    });
+  });
+
+  // Mobile Cockpit HUD quick actions
+  const mobileResetBtn = document.getElementById('mobileResetBtn');
+  if (mobileResetBtn) {
+    mobileResetBtn.addEventListener('click', () => {
+      const standardReset = document.getElementById('arenaResetBtn');
+      if (standardReset) standardReset.click();
+    });
+  }
+
+  const mobileThemesBtn = document.getElementById('mobileThemesBtn');
+  if (mobileThemesBtn) {
+    mobileThemesBtn.addEventListener('click', () => {
+      const themesTrigger = document.getElementById('btnHeaderAppearance') || document.getElementById('btnOpenAppearanceModal');
+      if (themesTrigger) themesTrigger.click();
+    });
+  }
+
+  const mobileTacticalBtn = document.getElementById('mobileTacticalBtn');
+  if (mobileTacticalBtn) {
+    mobileTacticalBtn.addEventListener('click', () => {
+      switchMobileTab('controls');
+    });
+  }
+
+  // Turn HUD synchronization observer
+  const mainTurnLabel = document.getElementById('arenaTurnLabel');
+  const mobileTurnLabel = document.getElementById('mobileTurnLabel');
+  const mainTurnCircle = document.getElementById('arenaTurnCircle');
+  const mobileTurnCircle = document.getElementById('mobileTurnCircle');
+  const mainPieceCounts = document.getElementById('arenaPieceCounts');
+  const mobilePieceCounts = document.getElementById('mobilePieceCounts');
+
+  function syncMobileHud() {
+    if (mainTurnLabel && mobileTurnLabel) mobileTurnLabel.textContent = mainTurnLabel.textContent;
+    if (mainPieceCounts && mobilePieceCounts) {
+      const text = mainPieceCounts.textContent || '';
+      mobilePieceCounts.textContent = text.replace('White:', 'W:').replace('Black:', 'B:');
+    }
+    if (mainTurnCircle && mobileTurnCircle) {
+      const isBlack = mainTurnCircle.classList.contains('turn-black') || (mainTurnCircle.style.background && mainTurnCircle.style.background.includes('rgb(0,'));
+      mobileTurnCircle.style.background = isBlack ? '#1c202a' : '#ffffff';
+      mobileTurnCircle.style.boxShadow = isBlack ? '0 0 10px rgba(255,80,80,0.7)' : '0 0 10px rgba(255,255,255,0.7)';
+    }
+  }
+
+  if (window.MutationObserver && mainTurnLabel) {
+    const hudObserver = new MutationObserver(syncMobileHud);
+    hudObserver.observe(mainTurnLabel, { childList: true, characterData: true, subtree: true });
+    if (mainPieceCounts) {
+      hudObserver.observe(mainPieceCounts, { childList: true, characterData: true, subtree: true });
+    }
+    syncMobileHud();
+  }
+
+  // Touch Gesture Detection for Controls Hint
+  const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  const controlHints = document.getElementById('arenaControlHints');
+  if (isTouchDevice && controlHints) {
+    controlHints.innerHTML = '<span class="kbd-key">Touch Drag</span> Aim &bull; Launch <span class="kbd-hint-more" style="color: var(--muted-foreground); font-size: 0.72rem; margin-left: 4px;">(Drag Board: Orbit)</span>';
+    controlHints.title = 'Drag piece to aim slingshot. Drag empty board to orbit camera. Pinch to zoom.';
+  }
 });

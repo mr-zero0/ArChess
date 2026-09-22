@@ -754,8 +754,13 @@ class ArchessArena {
       const boardColumn = parent ? parent.closest('.arena-board-column') : null;
       if (boardColumn) {
         const colRect = boardColumn.getBoundingClientRect();
-        const maxAvailable = Math.floor(Math.min(colRect.width - 56, colRect.height) - 8);
-        if (maxAvailable >= 200) {
+        const isMobile = window.innerWidth <= 1024;
+        const availW = isMobile ? Math.min(window.innerWidth - 20, colRect.width > 50 ? colRect.width : (window.innerWidth - 20)) : (colRect.width - 56);
+        const availH = isMobile ? Math.min(window.innerHeight - 200, window.innerWidth - 20) : colRect.height;
+        const maxAvailable = isMobile 
+          ? Math.floor(Math.min(availW, availH))
+          : Math.floor(Math.min(colRect.width - 56, colRect.height) - 8);
+        if (maxAvailable >= 180) {
           pw = maxAvailable;
           ph = maxAvailable;
           if (parent && parent.id === 'arenaCanvasStage') {

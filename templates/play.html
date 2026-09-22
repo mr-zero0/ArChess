@@ -7,7 +7,23 @@
 
 {% block content %}
   <main class="play-page-container">
-    <div class="play-arena-triptych-grid">
+    <!-- Mobile Tactical Navigation Bar (Active on <= 1024px) -->
+    <nav class="mobile-arena-nav-bar" id="mobileArenaNavBar" role="tablist" aria-label="Mobile Navigation">
+      <button type="button" class="mobile-arena-tab active" data-tab="board" role="tab" aria-selected="true" id="tabMobileBoard">
+        <span class="tab-icon">♟️</span>
+        <span class="tab-text">Arena</span>
+      </button>
+      <button type="button" class="mobile-arena-tab" data-tab="controls" role="tab" aria-selected="false" id="tabMobileControls">
+        <span class="tab-icon">⚙️</span>
+        <span class="tab-text">Tactical</span>
+      </button>
+      <button type="button" class="mobile-arena-tab" data-tab="intel" role="tab" aria-selected="false" id="tabMobileIntel">
+        <span class="tab-icon">📊</span>
+        <span class="tab-text">Intel</span>
+      </button>
+    </nav>
+
+    <div class="play-arena-triptych-grid tab-view-board" id="playArenaGrid">
       
       <!-- LEFT WING: Match Controls & Command Options -->
       <aside class="arena-wing arena-wing-left" aria-label="Game Commands & Controls">
@@ -290,6 +306,28 @@
             <button type="button" class="btn-combat-emote" data-emote="🎯" title="Bullseye / Precision">🎯</button>
             <button type="button" class="btn-combat-emote" data-emote="💀" title="Shattered / Defeat">💀</button>
             <button type="button" class="btn-combat-emote" data-emote="⚡" title="Shockwave / Kinetic">⚡</button>
+          </div>
+        </div>
+
+        <!-- Compact Mobile Arena Cockpit HUD (Visible only on mobile/tablet <= 1024px) -->
+        <div class="mobile-arena-cockpit-hud" id="mobileArenaCockpitHud">
+          <div class="mobile-hud-row">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div class="turn-circle" id="mobileTurnCircle" style="width: 14px; height: 14px; border-radius: 50%; background: #ffffff; box-shadow: 0 0 10px rgba(255,255,255,0.7);"></div>
+              <span id="mobileTurnLabel" style="font-size: 0.8rem; font-weight: 700; letter-spacing: 0.04em; color: var(--foreground);">WHITE'S TURN</span>
+            </div>
+            <div id="mobilePieceCounts" class="tabular-nums" style="font-size: 0.74rem; color: var(--muted-foreground);">W: 16 | B: 16</div>
+          </div>
+          <div class="mobile-hud-row" style="padding: 6px 10px; font-size: 0.72rem; justify-content: center; gap: 8px;">
+            <button type="button" class="btn-cupertino-action" id="mobileResetBtn" style="flex: 1; padding: 7px 10px; font-size: 0.75rem;">
+              <span>↺ Reset</span>
+            </button>
+            <button type="button" class="btn-cupertino-action btn-customizer-trigger" id="mobileThemesBtn" style="flex: 1; padding: 7px 10px; font-size: 0.75rem;">
+              <span>🎨 Themes</span>
+            </button>
+            <button type="button" class="btn-cupertino-action" id="mobileTacticalBtn" style="flex: 1; padding: 7px 10px; font-size: 0.75rem;">
+              <span>⚙️ AI / Mode</span>
+            </button>
           </div>
         </div>
       </section>
