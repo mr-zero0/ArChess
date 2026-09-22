@@ -1,0 +1,407 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ArChess Authoritative API",
+    "version": "2.0.0",
+    "description": "Production REST & WebSocket API specification for ArChess kinetic chess platform."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:5000",
+      "description": "Local Development Server"
+    },
+    {
+      "url": "https://archess.net",
+      "description": "Production Server"
+    }
+  ],
+  "paths": {
+    "/api/health": {
+      "get": {
+        "summary": "Health & Liveness Check",
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "description": "System is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "summary": "Register Commander Account",
+        "operationId": "registerUser",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserRegisterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Account created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error or username/email taken",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "summary": "Authenticate Commander",
+        "operationId": "loginUser",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserLoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authenticated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited"
+          }
+        }
+      }
+    },
+    "/api/auth/google": {
+      "post": {
+        "summary": "Google One Tap / OAuth Sign-in",
+        "operationId": "googleAuth",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleAuthRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authenticated via Google",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid token"
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "summary": "Get Current Session User",
+        "operationId": "getAuthMe",
+        "responses": {
+          "200": {
+            "description": "Current user or null",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "summary": "Terminate Session",
+        "operationId": "logoutUser",
+        "responses": {
+          "200": {
+            "description": "Logged out"
+          }
+        }
+      }
+    },
+    "/api/matches/record": {
+      "post": {
+        "summary": "Record Match Debrief & Adjust ELO",
+        "operationId": "recordMatch",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatchRecordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Match recorded and ELO settled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchRecordResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leaderboard": {
+      "get": {
+        "summary": "Fetch Competitive Leaderboard",
+        "operationId": "getLeaderboard",
+        "responses": {
+          "200": {
+            "description": "Leaderboard standings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LeaderboardEntry"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/telemetry": {
+      "post": {
+        "summary": "Record Client Telemetry Audit Event",
+        "operationId": "postTelemetry",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TelemetryEventRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Telemetry logged"
+          }
+        }
+      }
+    },
+    "/api/achievements": {
+      "get": {
+        "summary": "List Career Badges Catalog",
+        "operationId": "getAchievements",
+        "responses": {
+          "200": {
+            "description": "Catalog of all career badges",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "achievements": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Achievement" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HealthResponse": {
+        "type": "object",
+        "required": ["status", "service", "version", "database", "uptime_seconds"],
+        "properties": {
+          "status": { "type": "string", "example": "healthy" },
+          "service": { "type": "string", "example": "ArChess Authoritative Backend" },
+          "version": { "type": "string", "example": "2.0.0" },
+          "database": { "type": "string", "example": "connected" },
+          "uptime_seconds": { "type": "number", "example": 412.5 },
+          "timestamp": { "type": "number", "example": 1790067200.12 }
+        }
+      },
+      "UserRegisterRequest": {
+        "type": "object",
+        "required": ["username", "email", "password"],
+        "properties": {
+          "username": { "type": "string", "minLength": 3, "maxLength": 30, "pattern": "^[A-Za-z0-9_]+$", "example": "Grandmaster_01" },
+          "email": { "type": "string", "format": "email", "maxLength": 100, "example": "gm@archess.net" },
+          "password": { "type": "string", "minLength": 6, "maxLength": 128, "example": "SecurePass123!" }
+        }
+      },
+      "UserLoginRequest": {
+        "type": "object",
+        "required": ["password"],
+        "properties": {
+          "username_or_email": { "type": "string", "example": "Grandmaster_01" },
+          "password": { "type": "string", "example": "SecurePass123!" }
+        }
+      },
+      "GoogleAuthRequest": {
+        "type": "object",
+        "required": ["credential"],
+        "properties": {
+          "credential": { "type": "string", "description": "Google Identity JWT ID Token" }
+        }
+      },
+      "UserResponse": {
+        "type": "object",
+        "required": ["success", "user"],
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "user": {
+            "$ref": "#/components/schemas/UserPublic"
+          }
+        }
+      },
+      "UserPublic": {
+        "type": "object",
+        "required": ["id", "username", "email", "elo_rating"],
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "username": { "type": "string", "example": "Grandmaster_01" },
+          "email": { "type": "string", "example": "gm@archess.net" },
+          "elo_rating": { "type": "integer", "example": 1200 },
+          "matches_played": { "type": "integer", "example": 0 },
+          "wins": { "type": "integer", "example": 0 },
+          "losses": { "type": "integer", "example": 0 },
+          "avatar": { "type": "string", "example": "knight" },
+          "auth_provider": { "type": "string", "example": "local" },
+          "is_admin": { "type": "boolean", "example": false }
+        }
+      },
+      "MatchRecordRequest": {
+        "type": "object",
+        "required": ["winner"],
+        "properties": {
+          "white_username": { "type": "string", "example": "Player 1" },
+          "black_username": { "type": "string", "example": "ArChess Bot" },
+          "winner": { "type": "string", "enum": ["white", "black", "draw"], "example": "white" },
+          "white_damage": { "type": "integer", "minimum": 0, "example": 320 },
+          "black_damage": { "type": "integer", "minimum": 0, "example": 180 },
+          "turns": { "type": "integer", "minimum": 0, "example": 24 },
+          "duration_sec": { "type": "integer", "minimum": 0, "example": 185 }
+        }
+      },
+      "MatchRecordResponse": {
+        "type": "object",
+        "required": ["success", "match_id", "white_delta", "black_delta"],
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "match_id": { "type": "integer", "example": 42 },
+          "white_delta": { "type": "integer", "example": 18 },
+          "black_delta": { "type": "integer", "example": -18 },
+          "winner": { "type": "string", "example": "white" }
+        }
+      },
+      "LeaderboardEntry": {
+        "type": "object",
+        "required": ["rank", "username", "elo_rating", "wins", "matches_played"],
+        "properties": {
+          "rank": { "type": "integer", "example": 1 },
+          "username": { "type": "string", "example": "Vanguard_Prime" },
+          "elo_rating": { "type": "integer", "example": 2840 },
+          "wins": { "type": "integer", "example": 118 },
+          "matches_played": { "type": "integer", "example": 142 },
+          "avatar": { "type": "string", "example": "king" }
+        }
+      },
+      "Achievement": {
+        "type": "object",
+        "required": ["id", "title", "description", "icon", "tier", "category"],
+        "properties": {
+          "id": { "type": "string", "example": "first_strike" },
+          "title": { "type": "string", "example": "First Strike" },
+          "description": { "type": "string", "example": "Secure your first tactical victory on the competitive ladder." },
+          "icon": { "type": "string", "example": "⚔️" },
+          "tier": { "type": "string", "enum": ["bronze", "silver", "gold", "platinum", "sovereign"], "example": "bronze" },
+          "category": { "type": "string", "example": "combat" }
+        }
+      },
+      "TelemetryEventRequest": {
+        "type": "object",
+        "required": ["correlation_id", "event_type"],
+        "properties": {
+          "correlation_id": { "type": "string", "example": "d54ef092-2384-4682-8419-f9c9b138d821" },
+          "event_type": { "type": "string", "example": "slingshot_release" },
+          "payload": { "type": "object", "additionalProperties": true }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["success", "error"],
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "error": { "type": "string", "example": "Invalid credentials." },
+          "field_errors": {
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

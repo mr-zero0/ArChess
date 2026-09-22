@@ -279,6 +279,17 @@ def health_check():
         "timestamp": time.time()
     }), status_code
 
+
+@app.route("/api/openapi.json", methods=["GET"])
+@app.route("/api/schemas", methods=["GET"])
+def get_openapi_schema():
+    """Return the authoritative OpenAPI 3.1.0 JSON specification for all API schemas."""
+    schema_path = os.path.join(os.path.dirname(__file__), "openapi_schema.json")
+    if os.path.exists(schema_path):
+        with open(schema_path, "r", encoding="utf-8") as f:
+            return jsonify(json.load(f)), 200
+    return jsonify({"error": "Schema specification not found."}), 404
+
 # -------------------------------------------------------------
 # API Endpoints: Authentication & Account Management
 # -------------------------------------------------------------

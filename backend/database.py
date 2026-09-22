@@ -133,6 +133,23 @@ def init_db():
     finally:
         conn.close()
 
+
+def init_db_from_schema(custom_path=None, schema_file=None):
+    """Initialize database tables and indexes directly by executing the authoritative schema.sql script."""
+    schema_path = schema_file or os.path.join(os.path.dirname(__file__), "schema.sql")
+    if not os.path.exists(schema_path):
+        schema_path = os.path.join(os.path.dirname(__file__), "..", "schema.sql")
+    
+    with open(schema_path, "r", encoding="utf-8") as f:
+        sql_script = f.read()
+
+    conn = get_connection(custom_path)
+    try:
+        conn.executescript(sql_script)
+        conn.commit()
+    finally:
+        conn.close()
+
 def register_user(username, email, password):
     if not isinstance(username, str) or not isinstance(email, str) or not isinstance(password, str):
         return False, "Username, email, and password must be valid strings."
