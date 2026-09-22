@@ -37,8 +37,8 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("GOOGLE_CLIENT_ID", "test-client-id.apps.googleusercontent.com")
 
     init_db()
-    app.config["TESTING"] = True
-    app.config["WTF_CSRF_ENABLED"] = False
+    monkeypatch.setitem(app.config, "TESTING", True)
+    monkeypatch.setitem(app.config, "WTF_CSRF_ENABLED", False)
 
     with app.test_client() as test_client:
         yield test_client
