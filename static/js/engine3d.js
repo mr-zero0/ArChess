@@ -164,10 +164,12 @@
       // 11. Wire Input Events
       this.setupInteractionListeners();
 
-      // 12. Apply Active Board Theme
+      // 12. Apply Active Board & Piece Themes
       try {
         const savedTheme = localStorage.getItem('archess_board_theme') || 'midnight';
         this.setBoardTheme(savedTheme);
+        const savedPieceTheme = localStorage.getItem('archess_piece_theme') || 'classic';
+        this.setPieceTheme(savedPieceTheme);
       } catch (e) {}
 
       console.log('[Archess3D] Realistic 3D WebGL Game Engine initialized successfully.');
@@ -280,6 +282,67 @@
       if (this.materials.tileDark) this.materials.tileDark.color.setHex(t.dark);
       if (this.materials.boardFrame) this.materials.boardFrame.color.setHex(t.frame);
       if (this.materials.brassTrim) this.materials.brassTrim.color.setHex(t.trim);
+    }
+
+    setPieceTheme(themeKey) {
+      const pKey = (themeKey || 'classic').toLowerCase();
+      const styles = {
+        classic: {
+          white: { color: 0xe8e2d5, roughness: 0.30, metalness: 0.06, emissive: 0x000000, emissiveIntensity: 0 },
+          whiteAccent: { color: 0xd4af37, roughness: 0.26, metalness: 0.88, emissive: 0x000000, emissiveIntensity: 0 },
+          black: { color: 0x222a36, roughness: 0.32, metalness: 0.24, emissive: 0x000000, emissiveIntensity: 0 },
+          blackAccent: { color: 0xe11d48, roughness: 0.24, metalness: 0.85, emissive: 0x000000, emissiveIntensity: 0 }
+        },
+        staunton: {
+          white: { color: 0xe8e2d5, roughness: 0.30, metalness: 0.06, emissive: 0x000000, emissiveIntensity: 0 },
+          whiteAccent: { color: 0xd4af37, roughness: 0.26, metalness: 0.88, emissive: 0x000000, emissiveIntensity: 0 },
+          black: { color: 0x222a36, roughness: 0.32, metalness: 0.24, emissive: 0x000000, emissiveIntensity: 0 },
+          blackAccent: { color: 0xe11d48, roughness: 0.24, metalness: 0.85, emissive: 0x000000, emissiveIntensity: 0 }
+        },
+        neo: {
+          white: { color: 0xffffff, roughness: 0.18, metalness: 0.04, emissive: 0x111111, emissiveIntensity: 0.08 },
+          whiteAccent: { color: 0x0f172a, roughness: 0.22, metalness: 0.85, emissive: 0x000000, emissiveIntensity: 0 },
+          black: { color: 0x1e293b, roughness: 0.38, metalness: 0.18, emissive: 0x000000, emissiveIntensity: 0 },
+          blackAccent: { color: 0xf59e0b, roughness: 0.20, metalness: 0.88, emissive: 0x332200, emissiveIntensity: 0.15 }
+        },
+        cyber: {
+          white: { color: 0x00f3ff, roughness: 0.22, metalness: 0.75, emissive: 0x00f3ff, emissiveIntensity: 0.45 },
+          whiteAccent: { color: 0x38bdf8, roughness: 0.15, metalness: 0.92, emissive: 0x0099ff, emissiveIntensity: 0.30 },
+          black: { color: 0xff007f, roughness: 0.22, metalness: 0.75, emissive: 0xff007f, emissiveIntensity: 0.50 },
+          blackAccent: { color: 0xff3366, roughness: 0.15, metalness: 0.92, emissive: 0xff0055, emissiveIntensity: 0.35 }
+        },
+        crystal: {
+          white: { color: 0xdbeafe, roughness: 0.10, metalness: 0.14, emissive: 0x38bdf8, emissiveIntensity: 0.28 },
+          whiteAccent: { color: 0x60a5fa, roughness: 0.12, metalness: 0.45, emissive: 0x0284c7, emissiveIntensity: 0.20 },
+          black: { color: 0x4c1d95, roughness: 0.12, metalness: 0.20, emissive: 0x7c3aed, emissiveIntensity: 0.32 },
+          blackAccent: { color: 0xa855f7, roughness: 0.14, metalness: 0.55, emissive: 0x9333ea, emissiveIntensity: 0.25 }
+        },
+        mono: {
+          white: { color: 0xf8fafc, roughness: 0.48, metalness: 0.02, emissive: 0x000000, emissiveIntensity: 0 },
+          whiteAccent: { color: 0x94a3b8, roughness: 0.40, metalness: 0.10, emissive: 0x000000, emissiveIntensity: 0 },
+          black: { color: 0x09090b, roughness: 0.52, metalness: 0.04, emissive: 0x000000, emissiveIntensity: 0 },
+          blackAccent: { color: 0x27272a, roughness: 0.40, metalness: 0.10, emissive: 0x000000, emissiveIntensity: 0 }
+        }
+      };
+
+      const s = styles[pKey] || styles.classic;
+
+      const applyMat = (mat, cfg) => {
+        if (!mat) return;
+        if (cfg.color !== undefined) mat.color.setHex(cfg.color);
+        if (cfg.roughness !== undefined) mat.roughness = cfg.roughness;
+        if (cfg.metalness !== undefined) mat.metalness = cfg.metalness;
+        if (mat.emissive) {
+          mat.emissive.setHex(cfg.emissive || 0x000000);
+          mat.emissiveIntensity = cfg.emissiveIntensity || 0;
+        }
+        mat.needsUpdate = true;
+      };
+
+      applyMat(this.materials.pieceWhite, s.white);
+      applyMat(this.materials.pieceWhiteAccent, s.whiteAccent);
+      applyMat(this.materials.pieceBlack, s.black);
+      applyMat(this.materials.pieceBlackAccent, s.blackAccent);
     }
 
     createWoodTexture(col1, col2, w, h) {

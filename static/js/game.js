@@ -1067,6 +1067,12 @@ class ArchessArena {
   setPieceTheme(theme) {
     this.pieceTheme = theme;
     localStorage.setItem('archess_piece_theme', theme);
+    if (this.engine3d && typeof this.engine3d.setPieceTheme === 'function') {
+      this.engine3d.setPieceTheme(theme);
+    }
+    if (typeof this.render === 'function') {
+      this.render();
+    }
     this.logTelemetry('THEME_CHANGE', `Piece style updated to ${theme.toUpperCase()}.`);
   }
 
@@ -3431,8 +3437,9 @@ class ArchessArena {
      Authentic Staunton Vector Piece Renderer
   ------------------------------------------------------------- */
   drawStauntonPiece(ctx, type, team, radius, theme) {
-    // 2D Classic Vector Mode: 100% Identical Cburnett Staunton SVGs (matching 2D Classic)
-    if (this.renderMode === '2d') {
+    // 2D Classic Vector Mode: If theme is classic/staunton, use 100% Identical Cburnett Staunton SVGs
+    const isClassicTheme = (!theme || theme === 'classic' || theme === 'staunton');
+    if (this.renderMode === '2d' && isClassicTheme) {
       const pieceKey = (team === 'white' ? 'w' : 'b') + (type === 'knight' ? 'N' : type[0].toUpperCase());
       const img = CLASSIC_PIECE_IMAGES[pieceKey];
       const sqSize = (this.currentLayout && this.currentLayout.sqSize) || (typeof this.getBoardLayout === 'function' ? this.getBoardLayout().sqSize : radius * 2.5);
@@ -3442,13 +3449,15 @@ class ArchessArena {
         ctx.save();
         ctx.drawImage(img, -pieceSize / 2, -pieceSize / 2, pieceSize, pieceSize);
         ctx.restore();
+        return;
       } else if (img) {
         img.onload = () => {
           if (typeof this.render === 'function') this.render();
         };
+        return;
       }
-      return; // NEVER fall through to 3D conical shapes in 2D mode!
     }
+    // If not classic (e.g. neo, cyber, crystal, mono) or classic image not ready, fall through to custom vector renderers below!
 
     const isWhite = team === 'white';
     const R = radius;

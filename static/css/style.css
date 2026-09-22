@@ -5196,6 +5196,70 @@ body.play-screen-active .play-page-container {
 }
 
 /* -------------------------------------------------------------
+   Live Appearance Wing Card (In-Game Real-Time Customizer)
+------------------------------------------------------------- */
+.live-status-chip {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #34d399;
+  display: inline-flex;
+  align-items: center;
+}
+
+.live-palette-swatch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.live-palette-swatch {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  position: relative;
+  background: linear-gradient(135deg, var(--swatch-c1) 50%, var(--swatch-c2) 50%);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.live-palette-swatch:hover {
+  transform: scale(1.22);
+  box-shadow: 0 0 10px var(--swatch-ring);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.live-palette-swatch.active {
+  border-color: #ffffff;
+  box-shadow: 0 0 0 2px var(--swatch-ring), 0 0 12px var(--swatch-ring);
+  transform: scale(1.18);
+}
+
+.live-piece-segmented {
+  display: flex;
+  gap: 3px;
+  width: 100%;
+}
+
+.live-piece-btn {
+  flex: 1;
+  text-align: center;
+  font-size: 0.68rem !important;
+  padding: 5px 2px !important;
+}
+
+/* -------------------------------------------------------------
    Tactical Soundscape & Acoustic Customizer Styles (v2.8.0)
 ------------------------------------------------------------- */
 .soundscape-volume-bar {

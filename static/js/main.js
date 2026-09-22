@@ -82,6 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (window.ArchessArena) {
     arena = new window.ArchessArena('archessCanvas');
     window.archessGame = arena;
+    window.arena = arena;
   }
 
   /* -------------------------------------------------------------
@@ -764,6 +765,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const boardThemeBtns = document.querySelectorAll('.theme-board-btn');
   const boardThemeCards = document.querySelectorAll('.theme-card-item');
   const pieceThemeCards = document.querySelectorAll('.piece-card-item');
+  const liveBoardSwatches = document.querySelectorAll('.live-palette-swatch');
+  const liveBoardActiveLabel = document.getElementById('liveBoardActiveLabel');
+  const livePieceBtns = document.querySelectorAll('.live-piece-btn');
+  const livePieceActiveLabel = document.getElementById('livePieceActiveLabel');
   const activeBoardLabel = document.getElementById('atelierBoardActiveName');
   const activePieceLabel = document.getElementById('atelierPieceActiveName');
 
@@ -775,8 +780,15 @@ document.addEventListener('DOMContentLoaded', () => {
     boardThemeCards.forEach(c => {
       c.classList.toggle('active', c.getAttribute('data-board-theme') === themeKey);
     });
+    liveBoardSwatches.forEach(s => {
+      s.classList.toggle('active', s.getAttribute('data-board-theme') === themeKey);
+    });
+    const displayName = THEME_NAMES[themeKey] || themeKey.toUpperCase();
     if (activeBoardLabel) {
-      activeBoardLabel.textContent = THEME_NAMES[themeKey] || themeKey.toUpperCase();
+      activeBoardLabel.textContent = displayName;
+    }
+    if (liveBoardActiveLabel) {
+      liveBoardActiveLabel.textContent = displayName.split(' ')[0] || displayName;
     }
     if (arena) {
       arena.setBoardTheme(themeKey);
@@ -790,7 +802,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }));
     localStorage.setItem('archess_board_theme', themeKey);
     if (showNotice) {
-      showToast(`Board Palette: ${THEME_NAMES[themeKey] || themeKey}`);
+      showToast(`Board Palette: ${displayName} (Live Match Preserved)`);
     }
   }
 
@@ -799,8 +811,15 @@ document.addEventListener('DOMContentLoaded', () => {
     pieceThemeCards.forEach(c => {
       c.classList.toggle('active', c.getAttribute('data-piece-theme') === pieceKey);
     });
+    livePieceBtns.forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-piece-theme') === pieceKey);
+    });
+    const displayName = PIECE_NAMES[pieceKey] || pieceKey.toUpperCase();
     if (activePieceLabel) {
-      activePieceLabel.textContent = PIECE_NAMES[pieceKey] || pieceKey.toUpperCase();
+      activePieceLabel.textContent = displayName;
+    }
+    if (livePieceActiveLabel) {
+      livePieceActiveLabel.textContent = displayName.split(' ')[0] || displayName;
     }
     if (arena) {
       arena.setPieceTheme(pieceKey);
@@ -813,7 +832,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }));
     localStorage.setItem('archess_piece_theme', pieceKey);
     if (showNotice) {
-      showToast(`Piece Set: ${PIECE_NAMES[pieceKey] || pieceKey}`);
+      showToast(`Piece Style: ${displayName} (Live Match Preserved)`);
     }
   }
 
@@ -867,6 +886,20 @@ document.addEventListener('DOMContentLoaded', () => {
   pieceThemeCards.forEach(card => {
     card.addEventListener('click', () => {
       applyPieceTheme(card.getAttribute('data-piece-theme'), true);
+    });
+  });
+
+  liveBoardSwatches.forEach(swatch => {
+    swatch.addEventListener('click', (e) => {
+      e.preventDefault();
+      applyBoardTheme(swatch.getAttribute('data-board-theme'), true);
+    });
+  });
+
+  livePieceBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      applyPieceTheme(btn.getAttribute('data-piece-theme'), true);
     });
   });
 

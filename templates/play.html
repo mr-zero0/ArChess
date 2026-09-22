@@ -136,7 +136,43 @@
           </div>
         </div>
 
-        <!-- 6. Quick Action Buttons -->
+        <!-- 6. Live In-Game Appearance (Real-Time Palette & Piece Set Switching Without Reset) -->
+        <div class="wing-card" id="liveAppearanceWingCard">
+          <div class="wing-card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span class="wing-card-title">Live Appearance</span>
+            <span class="live-status-chip" title="Real-time theme switching — preserves all piece positions, HP, and game turn">⚡ In-Match</span>
+          </div>
+
+          <!-- Board Palette Quick Swatches -->
+          <div class="live-customizer-sublabel" style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--muted-foreground); margin-bottom: 4px;">
+            <span>Board Palette</span>
+            <span id="liveBoardActiveLabel" style="color: var(--gold-light); font-weight: 600;">Midnight</span>
+          </div>
+          <div class="live-palette-swatch-row" id="liveBoardSwatchRow" role="group" aria-label="Board Palette">
+            <button type="button" class="live-palette-swatch active" data-board-theme="midnight" title="Midnight Obsidian" style="--swatch-c1: #364353; --swatch-c2: #1e2632; --swatch-ring: #d4af37;"></button>
+            <button type="button" class="live-palette-swatch" data-board-theme="woodland" title="Woodland Walnut" style="--swatch-c1: #e0c9a6; --swatch-c2: #8b5a2b; --swatch-ring: #c68a4c;"></button>
+            <button type="button" class="live-palette-swatch" data-board-theme="ivory" title="Ivory &amp; Platinum" style="--swatch-c1: #e8edf3; --swatch-c2: #4f5d75; --swatch-ring: #98a6bd;"></button>
+            <button type="button" class="live-palette-swatch" data-board-theme="emerald" title="Tournament Emerald" style="--swatch-c1: #e1d7b5; --swatch-c2: #2e6b47; --swatch-ring: #73b088;"></button>
+            <button type="button" class="live-palette-swatch" data-board-theme="cyberpunk" title="Cyberpunk Neon" style="--swatch-c1: #2f1559; --swatch-c2: #14092b; --swatch-ring: #00f3ff;"></button>
+            <button type="button" class="live-palette-swatch" data-board-theme="bloodstone" title="Imperial Bloodstone" style="--swatch-c1: #59111e; --swatch-c2: #2a1a1f; --swatch-ring: #e84158;"></button>
+            <button type="button" class="live-palette-swatch" data-board-theme="oceanic" title="Oceanic Abyss" style="--swatch-c1: #6896b8; --swatch-c2: #1b3f61; --swatch-ring: #38d9a9;"></button>
+          </div>
+
+          <!-- Piece Style Segmented Control -->
+          <div class="live-customizer-sublabel" style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--muted-foreground); margin-top: 8px; margin-bottom: 4px;">
+            <span>Piece Style</span>
+            <span id="livePieceActiveLabel" style="color: var(--gold-light); font-weight: 600;">Classic</span>
+          </div>
+          <div class="cupertino-segmented-control wing-segmented live-piece-segmented" id="livePieceSegmented" role="group" aria-label="Piece Style">
+            <button type="button" class="theme-pill-btn live-piece-btn active" data-piece-theme="classic" title="Staunton Prestige">Classic</button>
+            <button type="button" class="theme-pill-btn live-piece-btn" data-piece-theme="neo" title="Neo Modernist">Neo</button>
+            <button type="button" class="theme-pill-btn live-piece-btn" data-piece-theme="cyber" title="Cyberpunk Neon">Cyber</button>
+            <button type="button" class="theme-pill-btn live-piece-btn" data-piece-theme="crystal" title="Frosted Crystal">Crystal</button>
+            <button type="button" class="theme-pill-btn live-piece-btn" data-piece-theme="mono" title="Tournament Monochrome">Mono</button>
+          </div>
+        </div>
+
+        <!-- 7. Quick Action Buttons -->
         <div class="wing-card wing-card-actions">
           <button class="btn-cupertino-action btn-customizer-trigger" id="btnOpenAppearanceModal" title="Match Settings &amp; Palettes">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>

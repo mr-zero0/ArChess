@@ -2,6 +2,21 @@
 
 All notable changes, architectural pivots, bugfixes, and refactorings across **ArChess** are documented in this file.
 
+## [4.3.0] - 2026-09-22
+
+### 🎨 Live Theme & Chess Piece Customizer (Match Preserved Without Reset)
+- **Real-Time Board & Piece Swapping Across All 3 Engines**:
+  - **3D Realistic WebGL (`static/js/engine3d.js`)**: Implemented `setPieceTheme(pieceThemeKey)` on `Archess3DEngine`. Updates PBR materials in real time across all 5 piece sets (`Staunton Prestige`, `Neo Modernist`, `Cyberpunk Neon`, `Frosted Crystal`, `Tournament Monochrome`) with distinct roughness, metalness, and emissive glow values without resetting, re-racking, or re-allocating 3D meshes.
+  - **2D Arena Kinetic Combat (`static/js/game.js`)**: Updated `drawStauntonPiece` to render full vector silhouettes for custom themes (`neo`, `cyber`, `crystal`, `mono`) alongside classic Cburnett SVGs (`classic`). Updated `setPieceTheme` to synchronize with 3D WebGL engine and immediately re-render canvas without resetting piece coordinates `(x, y)`, velocities, or turn status.
+  - **2D Classic FIDE (`frontend/src/Archess2DChess.jsx`)**: Synchronized real-time React SVG renderers and palette themes via `archess_appearance_change` and `window.Archess2DChess.setPieceSet`/`setTheme`, preserving `game` Chess.js instance and move history.
+- **In-Match Live Appearance Card in Left Wing (`templates/play.html`, `static/css/style.css`, `static/js/main.js`)**:
+  - Added `#liveAppearanceWingCard` directly into Left Wing command sidebar with `⚡ In-Match` status badge.
+  - 7 one-click Board Palette circular color swatches (`Midnight`, `Woodland`, `Ivory`, `Emerald`, `Cyberpunk`, `Bloodstone`, `Oceanic`).
+  - 5 one-click Piece Style segmented buttons (`Classic`, `Neo`, `Cyber`, `Crystal`, `Mono`).
+  - Bidirectionally synchronized with Grandmaster Atelier modal cards and `localStorage`.
+- **Zero Gameplay Reset**:
+  - Piece positions, turn state, move counter, HP bars, fallen casualties, and AI bot calculations remain 100% uninterrupted during any appearance changes.
+
 ## [4.2.0] - 2026-09-21
 
 ### 🤖 Autonomous AI vs AI Spectator Watch Mode & 5-Level Adaptive AI
