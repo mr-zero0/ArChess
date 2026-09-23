@@ -1927,7 +1927,13 @@
           if (topObj && topObj.userData?.piece) {
             const p = topObj.userData.piece;
             if (p && !p.dead) {
-              return { col: p.col, row: p.row };
+              const layout = this.arena.getBoardLayout();
+              const sqSize = layout ? layout.sqSize : 64;
+              const originX = layout ? layout.gridOriginX : 0;
+              const originY = layout ? layout.gridOriginY : 0;
+              const pCol = Math.floor((p.x - originX) / sqSize);
+              const pRow = Math.floor((p.y - originY) / sqSize);
+              return { col: pCol, row: pRow };
             }
           }
         }
@@ -2047,6 +2053,9 @@
         if (e.button === 2 || e.button === 1) return;
 
         if (this.arena.isGameOver) return;
+        if (this.arena.turnHasMoved || this.arena.simulationSettling) return;
+        const anyMoving = (this.arena.pieces || []).some(p => !p.dead && (Math.hypot(p.vx, p.vy) > 0.15 || p.inMotion));
+        if (anyMoving) return;
         if (this.arena.gameMode === 'bot' && this.arena.currentTurn === 'black') return;
         if (this.arena.gameMode === 'ai-vs-ai') return;
         if (this.arena.multiplayerMode) {
@@ -2158,6 +2167,7 @@
           this._capturedPointerId = undefined;
         }
 
+        const SLINGSHOT_DRAG_THRESHOLD = 24;
         const clientX = e.clientX !== undefined ? e.clientX : (e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX : 0);
         const clientY = e.clientY !== undefined ? e.clientY : (e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientY : 0);
         const distMoved = this._pointerDownClient
@@ -2165,13 +2175,21 @@
           : 0;
 
         // If user tapped/clicked without substantial drag and not in active deploy button mode
-        if (distMoved < 14 && !this.arena.deployMode && !this.arena.isGameOver) {
-          const m = getNormalizedMouse(e);
-          const sq = this.getSquareAtPointer(m);
-          if (sq) {
-            this._lastSquareTapTime = performance.now();
-            if (typeof this.arena.onSquareClick === 'function') {
-              this.arena.onSquareClick(sq.col, sq.row);
+        if (distMoved < SLINGSHOT_DRAG_THRESHOLD && !this.arena.deployMode && !this.arena.isGameOver) {
+          this.arena.isDragging = false;
+          this.arena.selectedPiece = null;
+
+          if (!this.arena.turnHasMoved && !this.arena.simulationSettling) {
+            const anyMoving = (this.arena.pieces || []).some(p => !p.dead && (Math.hypot(p.vx, p.vy) > 0.15 || p.inMotion));
+            if (!anyMoving) {
+              const m = getNormalizedMouse(e);
+              const sq = this.getSquareAtPointer(m);
+              if (sq) {
+                this._lastSquareTapTime = performance.now();
+                if (typeof this.arena.onSquareClick === 'function') {
+                  this.arena.onSquareClick(sq.col, sq.row);
+                }
+              }
             }
           }
         }
@@ -2181,29 +2199,32 @@
           let pullY = this.arena.dragScreenAnchor.y - this.arena.dragScreenCurrent.y;
           const dist = Math.hypot(pullX, pullY);
 
-          if (dist >= 10) {
-            this._lastLaunchTime = performance.now();
-            let clampedDist = Math.min(dist, this.arena.maxPullDistance);
-            const pieceToLaunch = this.arena.selectedPiece;
+          if (dist >= SLINGSHOT_DRAG_THRESHOLD && !this.arena.turnHasMoved && !this.arena.simulationSettling) {
+            const anyMoving = (this.arena.pieces || []).some(p => !p.dead && (Math.hypot(p.vx, p.vy) > 0.15 || p.inMotion));
+            if (!anyMoving) {
+              this._lastLaunchTime = performance.now();
+              let clampedDist = Math.min(dist, this.arena.maxPullDistance);
+              const pieceToLaunch = this.arena.selectedPiece;
 
-            if (typeof this.arena.clampLaunchVector === 'function') {
-              const clamped = this.arena.clampLaunchVector(pieceToLaunch, pullX, pullY);
-              pullX = clamped.pullX;
-              pullY = clamped.pullY;
-            }
+              if (typeof this.arena.clampLaunchVector === 'function') {
+                const clamped = this.arena.clampLaunchVector(pieceToLaunch, pullX, pullY);
+                pullX = clamped.pullX;
+                pullY = clamped.pullY;
+              }
 
-            this.arena.launchPiece(pieceToLaunch, pullX, pullY, clampedDist);
+              this.arena.launchPiece(pieceToLaunch, pullX, pullY, clampedDist);
 
-            if (this.arena.multiplayerMode && typeof this.arena.onPieceLaunchBroadcast === 'function') {
-              const impulse = clampedDist * 0.15 * pieceToLaunch.speedMulti;
-              const angle = Math.atan2(pullY, pullX);
-              this.arena.onPieceLaunchBroadcast({
-                pieceId: pieceToLaunch.id,
-                vx: Math.cos(angle) * impulse,
-                vy: Math.sin(angle) * impulse,
-                dist: clampedDist,
-                powerRatio: clampedDist / this.arena.maxPullDistance
-              });
+              if (this.arena.multiplayerMode && typeof this.arena.onPieceLaunchBroadcast === 'function') {
+                const impulse = clampedDist * 0.15 * pieceToLaunch.speedMulti;
+                const angle = Math.atan2(pullY, pullX);
+                this.arena.onPieceLaunchBroadcast({
+                  pieceId: pieceToLaunch.id,
+                  vx: Math.cos(angle) * impulse,
+                  vy: Math.sin(angle) * impulse,
+                  dist: clampedDist,
+                  powerRatio: clampedDist / this.arena.maxPullDistance
+                });
+              }
             }
           } else {
             if (this.arena.multiplayerMode && typeof this.arena.onAimCancel === 'function') {
@@ -2269,7 +2290,10 @@
         if (this.arena.gameMode === 'bot' && this.arena.currentTurn === 'black') return;
         if (this.arena.gameMode === 'ai-vs-ai') return;
         if (this.arena.deployMode) return;
-        if (this._lastSquareTapTime && (performance.now() - this._lastSquareTapTime < 400)) return;
+        if (this.arena.turnHasMoved || this.arena.simulationSettling) return;
+        const anyMoving = (this.arena.pieces || []).some(p => !p.dead && (Math.hypot(p.vx, p.vy) > 0.15 || p.inMotion));
+        if (anyMoving) return;
+        if (this._lastSquareTapTime && (performance.now() - this._lastSquareTapTime < 250)) return;
         if (this._lastLaunchTime && performance.now() - this._lastLaunchTime < 350) return;
 
         const m = getNormalizedMouse(e);

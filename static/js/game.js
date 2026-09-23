@@ -640,6 +640,7 @@ class ArchessArena {
 
     // Match tracking
     this.turns = 0;
+    this.turnHasMoved = false; // Strictly enforces 1 move per turn
     this.matchStartTime = Date.now();
     this.isGameOver = false;
     this.winner = null;
@@ -977,6 +978,9 @@ class ArchessArena {
     this.deployables = [];
     this.deployMode = null;
     this.deployHoverTile = null;
+    this.turnHasMoved = false;
+    this.simulationSettling = false;
+    this._squareClickState = { col: -1, row: -1, count: 0, timer: null, lastTime: 0 };
     if (this.engine3d && typeof this.engine3d.resetDeployables === 'function') {
       this.engine3d.resetDeployables();
     }
@@ -1730,6 +1734,9 @@ class ArchessArena {
    */
   setDeployMode(mode) {
     if (this.isGameOver) return;
+    if (this.turnHasMoved || this.simulationSettling) return;
+    const anyMoving = (this.pieces || []).some(p => !p.dead && (Math.hypot(p.vx, p.vy) > 0.15 || p.inMotion));
+    if (anyMoving) return;
     if (this.gameMode === 'bot' && this.currentTurn === 'black') return;
     if (this.gameMode === 'ai-vs-ai') return;
 
@@ -1791,7 +1798,6 @@ class ArchessArena {
       const pieceCol = Math.floor((p.x - layout.gridOriginX) / sqSize);
       const pieceRow = Math.floor((p.y - layout.gridOriginY) / sqSize);
       return (pieceCol === col && pieceRow === row) ||
-        (p.col === col && p.row === row) ||
         (Math.abs(p.x - tileCenterX) < sqSize * 0.44 && Math.abs(p.y - tileCenterY) < sqSize * 0.44);
     });
     if (occupiedByPiece) return false;
@@ -1807,7 +1813,7 @@ class ArchessArena {
       if (p.dead || p.type !== 'king' || !p.wallActive || p.wallHp <= 0) return false;
       const kCol = Math.floor((p.x - layout.gridOriginX) / sqSize);
       const kRow = Math.floor((p.y - layout.gridOriginY) / sqSize);
-      return (kCol === col && kRow === row) || (p.col === col && p.row === row);
+      return (kCol === col && kRow === row);
     });
     if (isKingFortressSquare) return false;
 
@@ -1822,6 +1828,9 @@ class ArchessArena {
   deployTacticalItem(team, type, col, row, options = {}) {
     if (this.isGameOver) return false;
     if (team !== this.currentTurn) return false;
+    if (this.turnHasMoved || this.simulationSettling) return false;
+    const anyMoving = (this.pieces || []).some(p => !p.dead && (Math.hypot(p.vx, p.vy) > 0.15 || p.inMotion));
+    if (anyMoving) return false;
 
     const inv = this.deployableInventory ? this.deployableInventory[team] : null;
     if (!inv) return false;
@@ -1897,20 +1906,27 @@ class ArchessArena {
       this.detonateMine(dep);
     }
 
-    // Consumes ONE MOVE: increment turns & pass turn to opponent
-    this.turns++;
-    this.currentTurn = this.currentTurn === 'white' ? 'black' : 'white';
-    this.turnStartTime = performance.now();
-    this.updateHUD();
-    this.saveMatchState();
+    const anyInMotionAfter = (this.pieces || []).some(p => !p.dead && (Math.hypot(p.vx, p.vy) > 0.15 || p.inMotion));
 
-    // If vs Bot or AI vs AI, trigger opponent bot turn
-    if (!this.isGameOver) {
-      if (this.currentTurn === 'black' && this.gameMode === 'bot') {
-        setTimeout(() => this.triggerBotTurn(), 600);
-      } else if (this.gameMode === 'ai-vs-ai') {
-        if (!this.pausedAiVsAi) {
+    if (anyInMotionAfter) {
+      this.turnHasMoved = true;
+      this.simulationSettling = true;
+    } else {
+      this.turnHasMoved = false;
+      this.simulationSettling = false;
+      this.turns++;
+      this.currentTurn = this.currentTurn === 'white' ? 'black' : 'white';
+      this.turnStartTime = performance.now();
+      this.updateHUD();
+      this.saveMatchState();
+
+      if (!this.isGameOver) {
+        if (this.currentTurn === 'black' && this.gameMode === 'bot') {
           setTimeout(() => this.triggerBotTurn(), 600);
+        } else if (this.gameMode === 'ai-vs-ai') {
+          if (!this.pausedAiVsAi) {
+            setTimeout(() => this.triggerBotTurn(), 600);
+          }
         }
       }
     }
@@ -1995,6 +2011,9 @@ class ArchessArena {
   onSquareClick(col, row) {
     if (this.isGameOver) return;
     if (col < 0 || col > 7 || row < 0 || row > 7) return;
+    if (this.turnHasMoved || this.simulationSettling) return;
+    const anyMoving = (this.pieces || []).some(p => !p.dead && (Math.hypot(p.vx, p.vy) > 0.15 || p.inMotion));
+    if (anyMoving) return;
     if (this.gameMode === 'bot' && this.currentTurn === 'black') return;
     if (this.gameMode === 'ai-vs-ai') return;
     if (this.multiplayerMode && this.playerRole && this.playerRole !== this.currentTurn) {
@@ -2009,8 +2028,11 @@ class ArchessArena {
     const now = performance.now();
     const st = this._squareClickState;
 
-    if (st.col === col && st.row === row && (now - st.lastTime < 500)) {
+    const isNearby = st.col !== -1 && Math.abs(st.col - col) <= 1 && Math.abs(st.row - row) <= 1;
+    if (isNearby && (now - st.lastTime < 550)) {
       st.count++;
+      st.col = col; // Target the latest clicked tile
+      st.row = row;
       st.lastTime = now;
     } else {
       if (st.timer) clearTimeout(st.timer);
@@ -2035,7 +2057,7 @@ class ArchessArena {
       const targetCol = st.col;
       const targetRow = st.row;
       st.timer = setTimeout(() => {
-        if (st.count === 2 && st.col === targetCol && st.row === targetRow) {
+        if (st.count === 2) {
           st.count = 0;
           st.col = -1;
           st.row = -1;
@@ -2053,6 +2075,10 @@ class ArchessArena {
   }
 
   handleSquareDoubleClick(col, row) {
+    if (this.turnHasMoved || this.simulationSettling) return;
+    const anyMoving = (this.pieces || []).some(p => !p.dead && (Math.hypot(p.vx, p.vy) > 0.15 || p.inMotion));
+    if (anyMoving) return;
+
     const inv = this.deployableInventory ? this.deployableInventory[this.currentTurn] : null;
     if (!inv || inv.walls <= 0) {
       if (window.ArchessToast) {
@@ -2074,6 +2100,10 @@ class ArchessArena {
   }
 
   handleSquareTripleClick(col, row) {
+    if (this.turnHasMoved || this.simulationSettling) return;
+    const anyMoving = (this.pieces || []).some(p => !p.dead && (Math.hypot(p.vx, p.vy) > 0.15 || p.inMotion));
+    if (anyMoving) return;
+
     const inv = this.deployableInventory ? this.deployableInventory[this.currentTurn] : null;
     if (!inv || inv.mines <= 0) {
       if (window.ArchessToast) {
@@ -2525,7 +2555,11 @@ class ArchessArena {
     };
 
     const handlePointerDown = (e) => {
+      if (this.renderMode === '3d') return; // Handled exclusively by engine3d in 3D mode
       if (this.isGameOver) return;
+      if (this.turnHasMoved || this.simulationSettling) return;
+      const anyMoving = (this.pieces || []).some(p => !p.dead && (Math.hypot(p.vx, p.vy) > 0.15 || p.inMotion));
+      if (anyMoving) return;
       if (this.gameMode === 'bot' && this.currentTurn === 'black') return;
       if (this.gameMode === 'ai-vs-ai') return;
       if (this.multiplayerMode) {
@@ -2672,20 +2706,29 @@ class ArchessArena {
     const handlePointerUp = (e) => {
       if (this.renderMode === '3d') return; // Handled exclusively by engine3d in 3D mode
 
+      const SLINGSHOT_DRAG_THRESHOLD = 24;
       const currentScreenPos = e ? getPointerScreenPos(e) : (this.dragScreenCurrent || this._pointerDownScreenPos);
       const distMoved = (this._pointerDownScreenPos && currentScreenPos)
         ? Math.hypot(currentScreenPos.x - this._pointerDownScreenPos.x, currentScreenPos.y - this._pointerDownScreenPos.y)
         : 0;
 
       // If user tapped/clicked without substantial drag and not in active deploy button mode
-      if (distMoved < 12 && !this.deployMode && this._pointerDownScreenPos) {
-        const worldPos = this.fromScreen(this._pointerDownScreenPos.x, this._pointerDownScreenPos.y);
-        const layout = this.getBoardLayout();
-        const col = Math.floor((worldPos.x - layout.gridOriginX) / layout.sqSize);
-        const row = Math.floor((worldPos.y - layout.gridOriginY) / layout.sqSize);
-        if (col >= 0 && col < 8 && row >= 0 && row < 8) {
-          this._lastSquareTapTime = performance.now();
-          this.onSquareClick(col, row);
+      if (distMoved < SLINGSHOT_DRAG_THRESHOLD && !this.deployMode && this._pointerDownScreenPos) {
+        this.isDragging = false;
+        this.selectedPiece = null;
+
+        if (!this.turnHasMoved && !this.simulationSettling) {
+          const anyMoving = (this.pieces || []).some(p => !p.dead && (Math.hypot(p.vx, p.vy) > 0.15 || p.inMotion));
+          if (!anyMoving) {
+            const worldPos = this.fromScreen(this._pointerDownScreenPos.x, this._pointerDownScreenPos.y);
+            const layout = this.getBoardLayout();
+            const col = Math.floor((worldPos.x - layout.gridOriginX) / layout.sqSize);
+            const row = Math.floor((worldPos.y - layout.gridOriginY) / layout.sqSize);
+            if (col >= 0 && col < 8 && row >= 0 && row < 8) {
+              this._lastSquareTapTime = performance.now();
+              this.onSquareClick(col, row);
+            }
+          }
         }
       }
 
@@ -2701,37 +2744,26 @@ class ArchessArena {
       }
       const screenDist = Math.hypot(pullScreenX, pullScreenY);
 
-      if (screenDist > 14) {
-        this._lastLaunchTime = performance.now();
-        const clampedDist = Math.min(screenDist, this.maxPullDistance);
-        const powerRatio = clampedDist / this.maxPullDistance;
-        let launchVx = pullScreenX;
-        let launchVy = pullScreenY;
+      if (screenDist >= SLINGSHOT_DRAG_THRESHOLD && !this.turnHasMoved && !this.simulationSettling) {
+        const anyMoving = (this.pieces || []).some(p => !p.dead && (Math.hypot(p.vx, p.vy) > 0.15 || p.inMotion));
+        if (!anyMoving) {
+          this._lastLaunchTime = performance.now();
+          const clampedDist = Math.min(screenDist, this.maxPullDistance);
+          const powerRatio = clampedDist / this.maxPullDistance;
+          let launchVx = pullScreenX;
+          let launchVy = pullScreenY;
 
-        if (this.renderMode === '2d') {
           this.launchPiece(this.selectedPiece, pullScreenX, pullScreenY, clampedDist);
-        } else {
-          // In 3D: Convert screen pull vector into board space isotropically
-          const layout = this.getBoardLayout();
-          const centerY = this.height / 2;
-          const ny = (this.selectedPiece.y - centerY) / (layout.boardSize / 2);
-          const depth = 1 + ny * 0.18;
-          const pitch = 0.68;
-          const scale = 0.86;
 
-          launchVx = (pullScreenX / screenDist) / (scale * depth) * clampedDist;
-          launchVy = (pullScreenY / screenDist) / (scale * pitch) * clampedDist;
-          this.launchPiece(this.selectedPiece, launchVx, launchVy, clampedDist);
-        }
-
-        if (this.multiplayerMode && typeof this.onPieceLaunchBroadcast === 'function') {
-          this.onPieceLaunchBroadcast({
-            pieceId: this.selectedPiece.id,
-            vx: launchVx,
-            vy: launchVy,
-            dist: clampedDist,
-            powerRatio
-          });
+          if (this.multiplayerMode && typeof this.onPieceLaunchBroadcast === 'function') {
+            this.onPieceLaunchBroadcast({
+              pieceId: this.selectedPiece.id,
+              vx: launchVx,
+              vy: launchVy,
+              dist: clampedDist,
+              powerRatio
+            });
+          }
         }
       } else {
         if (this.multiplayerMode && typeof this.onAimCancel === 'function') {
@@ -2758,7 +2790,10 @@ class ArchessArena {
     addTrackedListener(this.canvas, 'click', (e) => {
       if (this.renderMode === '3d') return; // Handled exclusively by engine3d in 3D mode
       if (this.deployMode) return;
-      if (this._lastSquareTapTime && (performance.now() - this._lastSquareTapTime < 400)) return;
+      if (this.turnHasMoved || this.simulationSettling) return;
+      const anyMoving = (this.pieces || []).some(p => !p.dead && (Math.hypot(p.vx, p.vy) > 0.15 || p.inMotion));
+      if (anyMoving) return;
+      if (this._lastSquareTapTime && (performance.now() - this._lastSquareTapTime < 250)) return;
       if (this._lastLaunchTime && performance.now() - this._lastLaunchTime < 350) return;
 
       const screenPos = getPointerScreenPos(e);
@@ -2811,6 +2846,9 @@ class ArchessArena {
   handleKeyboardControl(e) {
     if (this.audio) this.audio.init();
     if (this.isGameOver) return;
+    if (this.turnHasMoved || this.simulationSettling) return;
+    const anyMoving = (this.pieces || []).some(p => !p.dead && (Math.hypot(p.vx, p.vy) > 0.15 || p.inMotion));
+    if (anyMoving) return;
     if (this.gameMode === 'bot' && this.currentTurn === 'black') return;
     if (this.gameMode === 'ai-vs-ai') return;
     const livingActivePieces = this.pieces.filter(p => !p.dead && p.team === this.currentTurn && (p.type !== 'king' || p.awakened));
@@ -2906,7 +2944,15 @@ class ArchessArena {
   }
 
   launchPiece(piece, pullX, pullY, pullDist) {
+    if (this.isGameOver) return;
+    if (this.turnHasMoved || this.simulationSettling) return;
+    const anyMoving = (this.pieces || []).some(p => !p.dead && (Math.hypot(p.vx, p.vy) > 0.15 || p.inMotion));
+    if (anyMoving) return;
     if (piece.immovable || (piece.type === 'king' && !piece.awakened)) return;
+    if (piece.team !== this.currentTurn) return;
+
+    this.turnHasMoved = true;
+    this.simulationSettling = true;
     const clampedVec = this.clampLaunchVector(piece, pullX, pullY);
     pullX = clampedVec.pullX;
     pullY = clampedVec.pullY;
@@ -3285,6 +3331,7 @@ class ArchessArena {
         } else {
           p.vx = 0;
           p.vy = 0;
+          p.inMotion = false;
         }
       }
 
@@ -3783,6 +3830,7 @@ class ArchessArena {
     // Settlement & Turn Transition
     if (this.simulationSettling && !anyInMotion) {
       this.simulationSettling = false;
+      this.turnHasMoved = false; // Strictly reset 1-move lock so incoming player can make their move
       this.turns++;
 
       // Tactical Chess: Check Pawn Promotion
@@ -3847,6 +3895,7 @@ class ArchessArena {
       });
 
       this.currentTurn = this.currentTurn === 'white' ? 'black' : 'white';
+      this.turnHasMoved = false;
       this.turnStartTime = performance.now();
       this.updateHUD();
       this.saveMatchState();
@@ -3862,6 +3911,7 @@ class ArchessArena {
       if (currentMobile === 0 && opponentMobile > 0 && !this.isGameOver) {
         this.logTelemetry('TURN_PASSED', `${this.currentTurn.toUpperCase()} has no mobile pieces remaining! Turn passed to ${opponentTeam.toUpperCase()}.`);
         this.currentTurn = opponentTeam;
+        this.turnHasMoved = false;
         this.updateHUD();
       }
 
