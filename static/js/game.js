@@ -2339,6 +2339,7 @@ class ArchessArena {
 
     piece.vx = Math.cos(angle) * impulse;
     piece.vy = Math.sin(angle) * impulse;
+    piece.reachedBackRankDuringTurn = false;
 
     // Knight Vaulting Leap Initialization: phases over the first obstacle piece
     if (piece.type === 'knight') {
@@ -2611,6 +2612,15 @@ class ArchessArena {
           p.vx *= currentFriction;
           p.vy *= currentFriction;
 
+          // Track pawn reaching opponent back ranks during movement
+          if (p.type === 'pawn' && !p.promoted) {
+            if (p.team === 'white' && p.y <= layout.gridOriginY + layout.sqSize * 0.95) {
+              p.reachedBackRankDuringTurn = true;
+            } else if (p.team === 'black' && p.y >= layout.gridOriginY + layout.sqSize * 7.05) {
+              p.reachedBackRankDuringTurn = true;
+            }
+          }
+
           // Particle trail (v3.3.0 theme-aware)
           if (speed > 3 && Math.random() < 0.45) {
             const theme = this.particleTheme || 'sovereign_sparks';
@@ -2665,6 +2675,9 @@ class ArchessArena {
           if (p.y - p.radius < minY) {
             p.y = minY + p.radius;
             p.vy = -p.vy * bounceCoeff;
+            if (p.type === 'pawn' && p.team === 'white' && !p.promoted) {
+              p.reachedBackRankDuringTurn = true;
+            }
             if (isBishop) {
               this.spawnImpactParticles(p.x, p.y, 8, false);
               this.logTelemetry('PRISM_SURGE', 'Bishop gained +15% Prism Surge on wall reflection!');
@@ -2676,6 +2689,9 @@ class ArchessArena {
           } else if (p.y + p.radius > maxY) {
             p.y = maxY - p.radius;
             p.vy = -p.vy * bounceCoeff;
+            if (p.type === 'pawn' && p.team === 'black' && !p.promoted) {
+              p.reachedBackRankDuringTurn = true;
+            }
             if (isBishop) {
               this.spawnImpactParticles(p.x, p.y, 8, false);
               this.logTelemetry('PRISM_SURGE', 'Bishop gained +15% Prism Surge on wall reflection!');
@@ -3096,10 +3112,26 @@ class ArchessArena {
       const sq = layout.sqSize || 64;
       this.pieces.forEach(p => {
         if (p.dead || p.type !== 'pawn' || p.promoted) return;
+
+        // Check if resting against or assaulting active King fortress wall
+        const enemyKing = this.pieces.find(k => !k.dead && k.team !== p.team && k.type === 'king');
+        if (enemyKing && enemyKing.wallActive && enemyKing.wallHp > 0) {
+          const wallBoundary = (enemyKing.wallHalf || sq * 0.47) + p.radius + 8;
+          const distToKing = Math.hypot(p.x - enemyKing.x, p.y - enemyKing.y);
+          if (distToKing <= wallBoundary) {
+            // Hitting or resting against the King's wall does NOT grant promotion!
+            p.reachedBackRankDuringTurn = false;
+            return;
+          }
+        }
+
         const row = Math.floor((p.y - layout.gridOriginY) / sq);
-        const reachedBackRank = (p.team === 'white' && row <= 1) || (p.team === 'black' && row >= 6);
+        const reachedBackRank = (p.team === 'white' && (row <= 0 || p.reachedBackRankDuringTurn)) ||
+                                (p.team === 'black' && (row >= 7 || p.reachedBackRankDuringTurn));
+
         if (reachedBackRank) {
           p.promoted = true;
+          p.reachedBackRankDuringTurn = false;
           p.type = 'queen';
           p.mass = 1.9;
           p.speedMulti = 0.94;
@@ -3111,9 +3143,10 @@ class ArchessArena {
           this.spawnImpactParticles(p.x, p.y, 45, true, ['#ffd700', '#ffffff', '#00e1d9']);
           this.spawnShockwave(p.x, p.y, '#ffd700', 85, 5);
           this.audio.playLaunch(1.5);
+          const rankTitle = p.team === 'white' ? '8th Rank' : '1st Rank';
           this.addDamageNumber(p.x, p.y - p.radius * 1.6, 0, true, '#ffd700', 'PROMOTED TO QUEEN!');
-          this.logTelemetry('PAWN_PROMOTION', `👑 ${p.team.toUpperCase()} Pawn reached row ${row} and PROMOTED to QUEEN!`);
-          this.addCommentary(`👑 PROMOTION! ${p.team.toUpperCase()} Pawn has broken through to row ${row} and ascended to a QUEEN!`, 'shatter', '👑');
+          this.logTelemetry('PAWN_PROMOTION', `👑 ${p.team.toUpperCase()} Pawn reached ${rankTitle} and PROMOTED to QUEEN!`);
+          this.addCommentary(`👑 PROMOTION! ${p.team.toUpperCase()} Pawn has broken through to the ${rankTitle} and ascended to a QUEEN!`, 'shatter', '👑');
         }
       });
 
