@@ -629,6 +629,15 @@ class ArchessArena {
     this.pausedAiVsAi = false;
     this.currentTurn = 'white'; // 'white' or 'black'
 
+    // Tactical Deployables System (Landmines & Indestructible Walls, 2 uses each per match)
+    this.deployableInventory = {
+      white: { mines: 2, walls: 2 },
+      black: { mines: 2, walls: 2 }
+    };
+    this.deployables = [];
+    this.deployMode = null; // 'mine' | 'wall' | null
+    this.deployHoverTile = null; // { col, row }
+
     // Match tracking
     this.turns = 0;
     this.matchStartTime = Date.now();
@@ -827,12 +836,23 @@ class ArchessArena {
         if (p.wallHalf !== undefined) p.wallHalf = p.type === 'king' ? Math.round(newLayout.sqSize * 0.47) : 0;
         if (p.wallRadius !== undefined) p.wallRadius = p.type === 'king' ? Math.round(newLayout.sqSize * 0.47) : 0;
       });
+      if (this.deployables && this.deployables.length > 0) {
+        this.deployables.forEach(d => {
+          d.x = newLayout.gridOriginX + (d.col + 0.5) * newLayout.sqSize;
+          d.y = newLayout.gridOriginY + (d.row + 0.5) * newLayout.sqSize;
+          d.half = Math.round(newLayout.sqSize * 0.47);
+          d.radius = Math.round(newLayout.sqSize * 0.38);
+        });
+      }
     }
     this.currentLayout = newLayout;
 
     if (this.engine3d) {
       this.engine3d.resize(this.width, this.height);
       this.engine3d.syncPieces();
+      if (typeof this.engine3d.syncDeployables === 'function') {
+        this.engine3d.syncDeployables();
+      }
     }
   }
 
@@ -956,6 +976,16 @@ class ArchessArena {
   init32Pieces() {
     this.pieces = [];
     this.capturedPieces = { white: [], black: [] };
+    this.deployableInventory = {
+      white: { mines: 2, walls: 2 },
+      black: { mines: 2, walls: 2 }
+    };
+    this.deployables = [];
+    this.deployMode = null;
+    this.deployHoverTile = null;
+    if (this.engine3d && typeof this.engine3d.resetDeployables === 'function') {
+      this.engine3d.resetDeployables();
+    }
     const layout = this.getBoardLayout();
     this.currentLayout = layout;
     const sqSize = layout.sqSize;
@@ -1055,6 +1085,15 @@ class ArchessArena {
         whiteDamage: this.whiteDamage,
         blackDamage: this.blackDamage,
         capturedPieces: this.capturedPieces,
+        deployableInventory: this.deployableInventory,
+        deployables: (this.deployables || []).map(d => ({
+          id: d.id,
+          type: d.type,
+          team: d.team,
+          col: d.col,
+          row: d.row,
+          active: d.active
+        })),
         pieces: this.pieces.map(p => ({
           id: p.id,
           col: p.col,
@@ -1107,9 +1146,23 @@ class ArchessArena {
           lp.wallHp = sp.wallHp;
         }
       });
+      if (data.deployableInventory) {
+        this.deployableInventory = data.deployableInventory;
+      }
+      if (Array.isArray(data.deployables)) {
+        const layout = this.getBoardLayout();
+        this.deployables = data.deployables.map(d => ({
+          ...d,
+          x: layout.gridOriginX + (d.col + 0.5) * layout.sqSize,
+          y: layout.gridOriginY + (d.row + 0.5) * layout.sqSize,
+          half: Math.round(layout.sqSize * 0.47),
+          radius: Math.round(layout.sqSize * 0.38)
+        }));
+      }
       this.updateHUD();
-      if (this.engine3d && typeof this.engine3d.syncPieces === 'function') {
-        this.engine3d.syncPieces();
+      if (this.engine3d) {
+        if (typeof this.engine3d.syncPieces === 'function') this.engine3d.syncPieces();
+        if (typeof this.engine3d.syncDeployables === 'function') this.engine3d.syncDeployables();
       }
       return true;
     } catch(e) {
@@ -1315,6 +1368,15 @@ class ArchessArena {
     }
 
     if (friendlyPieces.length === 0 || enemyPieces.length === 0) return;
+
+    // Tactical AI: Smart Mine or Wall Deployment (Evaluates placing defensive wall or transit mine)
+    if (this.deployableInventory && this.deployableInventory[activeTeam]) {
+      const inv = this.deployableInventory[activeTeam];
+      if ((inv.mines > 0 || inv.walls > 0) && Math.random() < 0.24) {
+        const didDeploy = this.botAttemptTacticalDeployment(activeTeam);
+        if (didDeploy) return;
+      }
+    }
 
     const diffLevel = this.botDifficultyLevel || 3;
     const targetWeights = { king: 240, queen: 120, rook: 75, bishop: 65, knight: 60, pawn: 28 };
@@ -1606,6 +1668,309 @@ class ArchessArena {
       this.keyboardAiming = false;
       this.selectedPiece = null;
     }, 450);
+  }
+
+  /* -------------------------------------------------------------
+     Tactical Deployables System: Landmines & Indestructible Walls
+  ------------------------------------------------------------- */
+
+  /**
+   * AI tactical decision making for deploying walls or mines
+   */
+  botAttemptTacticalDeployment(activeTeam) {
+    const inv = this.deployableInventory ? this.deployableInventory[activeTeam] : null;
+    if (!inv || (inv.walls <= 0 && inv.mines <= 0)) return false;
+
+    const friendlyKing = this.pieces.find(p => !p.dead && p.team === activeTeam && p.type === 'king');
+
+    // 1. Defensively place Indestructible Wall in front of King or near breached citadel
+    if (inv.walls > 0 && friendlyKing) {
+      const candidates = [];
+      const dir = activeTeam === 'black' ? 1 : -1;
+      for (let dc = -1; dc <= 1; dc++) {
+        for (let dr = 1; dr <= 2; dr++) {
+          const c = friendlyKing.col + dc;
+          const r = friendlyKing.row + dr * dir;
+          if (this.canDeployAt(c, r, 'wall')) {
+            candidates.push({ col: c, row: r });
+          }
+        }
+      }
+      if (candidates.length > 0 && Math.random() < 0.65) {
+        const choice = candidates[Math.floor(Math.random() * candidates.length)];
+        return this.deployTacticalItem(activeTeam, 'wall', choice.col, choice.row);
+      }
+    }
+
+    // 2. Aggressively / defensively plant Landmine in central lanes (files c..f, ranks 2..5)
+    if (inv.mines > 0) {
+      const centerCandidates = [];
+      const centerCols = [2, 3, 4, 5];
+      const centerRows = activeTeam === 'black' ? [2, 3, 4] : [3, 4, 5];
+      centerCols.forEach(c => {
+        centerRows.forEach(r => {
+          if (this.canDeployAt(c, r, 'mine')) {
+            centerCandidates.push({ col: c, row: r });
+          }
+        });
+      });
+      if (centerCandidates.length > 0) {
+        const choice = centerCandidates[Math.floor(Math.random() * centerCandidates.length)];
+        return this.deployTacticalItem(activeTeam, 'mine', choice.col, choice.row);
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Sets deploy mode for player ('mine', 'wall', or null to cancel)
+   */
+  setDeployMode(mode) {
+    if (this.isGameOver) return;
+    if (this.gameMode === 'bot' && this.currentTurn === 'black') return;
+    if (this.gameMode === 'ai-vs-ai') return;
+
+    if (mode) {
+      const curInv = this.deployableInventory ? this.deployableInventory[this.currentTurn] : null;
+      if (!curInv || (mode === 'mine' && curInv.mines <= 0) || (mode === 'wall' && curInv.walls <= 0)) {
+        if (window.ArchessToast) window.ArchessToast.show(`No ${mode}s remaining this match!`, 'warning', 2000, 'INVENTORY');
+        return;
+      }
+    }
+
+    this.deployMode = mode;
+    this.deployHoverTile = null;
+    this.selectedPiece = null;
+    this.isDragging = false;
+    this.updateHUD();
+
+    if (mode && window.ArchessToast) {
+      window.ArchessToast.show(
+        mode === 'mine' ? '💣 Landmine Armed — Click any open square to plant (Consumes 1 Move, Max 2/Game)' : '🧱 Wall Ready — Click any open square to erect (Consumes 1 Move, Max 2/Game)',
+        'info',
+        2500,
+        'DEPLOY'
+      );
+    }
+  }
+
+  /**
+   * Validates if a square is open and eligible for tactical deployment
+   */
+  canDeployAt(col, row, type = 'wall') {
+    if (col < 0 || col > 7 || row < 0 || row > 7) return false;
+    const layout = this.getBoardLayout();
+    const sqSize = layout.sqSize;
+    const tileCenterX = layout.gridOriginX + (col + 0.5) * sqSize;
+    const tileCenterY = layout.gridOriginY + (row + 0.5) * sqSize;
+
+    // 1. Cannot deploy on a square occupied by any living piece
+    const occupiedByPiece = this.pieces.some(p => {
+      if (p.dead) return false;
+      return Math.abs(p.x - tileCenterX) < sqSize * 0.44 && Math.abs(p.y - tileCenterY) < sqSize * 0.44;
+    });
+    if (occupiedByPiece) return false;
+
+    // 2. Cannot deploy on an already active wall or mine on the same square
+    const occupiedByDeployable = (this.deployables || []).some(d => {
+      return d.active && d.col === col && d.row === row;
+    });
+    if (occupiedByDeployable) return false;
+
+    // 3. For walls, cannot block King fortress square
+    if (type === 'wall') {
+      const isKingFortressSquare = this.pieces.some(p => {
+        if (p.dead || p.type !== 'king' || !p.wallActive || p.wallHp <= 0) return false;
+        return p.col === col && p.row === row;
+      });
+      if (isKingFortressSquare) return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Places a mine or wall, consuming 1 move and switching turn
+   */
+  deployTacticalItem(team, type, col, row) {
+    if (this.isGameOver) return false;
+    if (team !== this.currentTurn) return false;
+
+    const inv = this.deployableInventory ? this.deployableInventory[team] : null;
+    if (!inv) return false;
+    const key = type === 'mine' ? 'mines' : 'walls';
+    if (inv[key] <= 0) return false;
+    if (!this.canDeployAt(col, row, type)) return false;
+
+    // Decrement inventory
+    inv[key]--;
+
+    const layout = this.getBoardLayout();
+    const sqSize = layout.sqSize;
+    const x = layout.gridOriginX + (col + 0.5) * sqSize;
+    const y = layout.gridOriginY + (row + 0.5) * sqSize;
+
+    const dep = {
+      id: `${type}_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
+      type: type,
+      team: team,
+      col: col,
+      row: row,
+      x: x,
+      y: y,
+      half: Math.round(sqSize * 0.47),
+      radius: Math.round(sqSize * 0.38),
+      active: true,
+      turnPlaced: this.turns
+    };
+    if (!this.deployables) this.deployables = [];
+    this.deployables.push(dep);
+
+    // Audio & Particles
+    if (type === 'wall') {
+      this.audio.playImpact(1.6);
+      this.spawnImpactParticles(x, y, 24, false, ['#38bdf8', '#818cf8', '#00f3ff', '#ffffff']);
+      this.spawnShockwave(x, y, '#38bdf8', 60, 4);
+      this.screenShake = 6;
+      this.addDamageNumber(x, y - sqSize * 0.3, 0, false, '#38bdf8', 'WALL ERECTED');
+      this.logTelemetry('TACTICAL_DEPLOY', `${team.toUpperCase()} placed an Indestructible Wall at ${String.fromCharCode(97 + col)}${8 - row}! [Move consumed | ${inv.walls} remaining]`);
+      this.addCommentary(`Reinforcement deployed! ${team.toUpperCase()} placed an Indestructible Wall at ${String.fromCharCode(97 + col)}${8 - row}!`, 'tactical', '🧱');
+    } else {
+      this.audio.playBounce();
+      this.spawnImpactParticles(x, y, 18, false, ['#f59e0b', '#ef4444', '#ffd700']);
+      this.spawnShockwave(x, y, '#f59e0b', 45, 3);
+      this.screenShake = 4;
+      this.addDamageNumber(x, y - sqSize * 0.3, 0, false, '#f59e0b', 'MINE ARMED');
+      this.logTelemetry('TACTICAL_DEPLOY', `${team.toUpperCase()} armed an Explosive Landmine at ${String.fromCharCode(97 + col)}${8 - row}! [Move consumed | ${inv.mines} remaining]`);
+      this.addCommentary(`Danger zone primed! ${team.toUpperCase()} armed an Explosive Landmine at ${String.fromCharCode(97 + col)}${8 - row}!`, 'tactical', '💣');
+    }
+
+    if (this.engine3d && typeof this.engine3d.syncDeployables === 'function') {
+      this.engine3d.syncDeployables();
+    }
+
+    // Reset deploy mode
+    this.deployMode = null;
+    this.deployHoverTile = null;
+
+    // Consumes ONE MOVE: increment turns & pass turn to opponent
+    this.turns++;
+    this.currentTurn = this.currentTurn === 'white' ? 'black' : 'white';
+    this.turnStartTime = performance.now();
+    this.updateHUD();
+    this.saveMatchState();
+
+    // If vs Bot or AI vs AI, trigger opponent bot turn
+    if (!this.isGameOver) {
+      if (this.currentTurn === 'black' && this.gameMode === 'bot') {
+        setTimeout(() => this.triggerBotTurn(), 600);
+      } else if (this.gameMode === 'ai-vs-ai') {
+        if (!this.pausedAiVsAi) {
+          setTimeout(() => this.triggerBotTurn(), 600);
+        }
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Detonates a landmine, dealing AoE damage and radial impulse in nearby area
+   */
+  detonateMine(mine, triggerPiece = null) {
+    if (!mine.active) return;
+    mine.active = false;
+
+    const layout = this.getBoardLayout();
+    const blastRadius = layout.sqSize * 1.6;
+
+    // Audio & Screen FX
+    this.audio.playShatter();
+    this.audio.playImpact(2.0);
+    this.screenShake = 15;
+    this.spawnImpactParticles(mine.x, mine.y, 50, true, ['#ff4500', '#ff8c00', '#ffd700', '#ffffff', '#ff0055']);
+    this.spawnShockwave(mine.x, mine.y, '#ff4500', 85, 6);
+    this.spawnShockwave(mine.x, mine.y, '#ffd700', 50, 4);
+
+    const tileCoord = `${String.fromCharCode(97 + mine.col)}${8 - mine.row}`;
+    const triggerText = triggerPiece ? `${triggerPiece.team.toUpperCase()} ${triggerPiece.type.toUpperCase()}` : 'kinetic impact';
+    this.logTelemetry('MINE_DETONATION', `💥 LANDMINE DETONATED at ${tileCoord}! Triggered by ${triggerText}. AoE Blast Radius: ${Math.round(blastRadius)}px.`);
+    this.addCommentary(`💥 DETONATION! Landmine at ${tileCoord} detonated by ${triggerText}! Devastating shockwave ripples across grid!`, 'blast', '💣');
+
+    // AoE Damage & Knockback to all living pieces within blastRadius
+    this.pieces.forEach((p) => {
+      if (p.dead) return;
+      const pdx = p.x - mine.x;
+      const pdy = p.y - mine.y;
+      const dist = Math.hypot(pdx, pdy);
+
+      if (dist <= blastRadius) {
+        const falloff = 1 - (dist / blastRadius) * 0.45;
+        const damage = Math.round(65 * Math.max(0.35, falloff));
+        p.hp = Math.max(0, p.hp - damage);
+        p.hitFlash = 1.0;
+        this.addDamageNumber(p.x, p.y - p.radius, damage, false, '#ff4500', `BLAST -${damage}`);
+
+        // Radial knockback impulse
+        if (!p.immovable) {
+          const angle = dist > 0.001 ? Math.atan2(pdy, pdx) : Math.random() * Math.PI * 2;
+          const pushForce = Math.max(1.5, (1 - dist / blastRadius) * 8.5);
+          p.vx += Math.cos(angle) * pushForce;
+          p.vy += Math.sin(angle) * pushForce;
+          p.inMotion = true;
+        }
+
+        // Check piece elimination
+        if (p.hp <= 0 && !p.dead) {
+          p.dead = true;
+          p.hp = 0;
+          p.vx = 0;
+          p.vy = 0;
+          p.inMotion = false;
+          this.spawnImpactParticles(p.x, p.y, 25, true);
+          this.addDamageNumber(p.x, p.y, 0, true, '#ff3b4e', 'BLASTED!');
+          if (!this.capturedPieces) this.capturedPieces = { white: [], black: [] };
+          this.capturedPieces[p.team].push(p.type);
+          if (this.onPieceCaptured) this.onPieceCaptured(p.team, p.type, this.getMaterialDiff());
+          this.logTelemetry('ELIMINATION', `[!] ${p.team.toUpperCase()} ${p.type.toUpperCase()} was obliterated in the mine explosion!`);
+          this.addCommentary(`Obliterated! ${p.team.toUpperCase()} ${p.type.toUpperCase()} destroyed by mine shockwave!`, 'elimination', '💀');
+        }
+      }
+    });
+
+    // Also damage King citadel wall if within blast radius
+    this.pieces.forEach((king) => {
+      if (king.dead || king.type !== 'king' || !king.wallActive || king.wallHp <= 0) return;
+      const dist = Math.hypot(king.x - mine.x, king.y - mine.y);
+      if (dist <= blastRadius) {
+        const wallDmg = Math.round(55 * (1 - dist / blastRadius * 0.4));
+        king.wallHp = Math.max(0, king.wallHp - wallDmg);
+        king.wallHitFlash = 1.0;
+        this.addDamageNumber(king.x, king.y - king.radius, wallDmg, false, '#ff8c00', `WALL -${wallDmg}`);
+        if (king.wallHp <= 0) {
+          king.wallActive = false;
+          king.wallHp = 0;
+          this.spawnImpactParticles(king.x, king.y, 45, true);
+          this.addDamageNumber(king.x, king.y, 0, true, '#ff3b4e', 'WALL BREACHED!');
+        }
+      }
+    });
+
+    this.checkSovereignAwakening();
+
+    // Check if either King was killed
+    const whiteKing = this.pieces.find(p => p.team === 'white' && p.type === 'king');
+    const blackKing = this.pieces.find(p => p.team === 'black' && p.type === 'king');
+    if (whiteKing && whiteKing.dead && !this.isGameOver) {
+      this.endGame('black', 'White King obliterated by explosive landmine!');
+    } else if (blackKing && blackKing.dead && !this.isGameOver) {
+      this.endGame('white', 'Black King obliterated by explosive landmine!');
+    }
+
+    if (this.engine3d && typeof this.engine3d.onMineDetonated === 'function') {
+      this.engine3d.onMineDetonated(mine);
+    }
   }
 
   handleKingElimination(king) {
@@ -2060,6 +2425,24 @@ class ArchessArena {
 
       const screenPos = getPointerScreenPos(e);
 
+      // Check if Tactical Deploy Mode is active (Placing Landmine or Indestructible Wall)
+      if (this.deployMode) {
+        const worldPos = this.fromScreen(screenPos.x, screenPos.y);
+        const layout = this.getBoardLayout();
+        const col = Math.floor((worldPos.x - layout.gridOriginX) / layout.sqSize);
+        const row = Math.floor((worldPos.y - layout.gridOriginY) / layout.sqSize);
+        if (col >= 0 && col < 8 && row >= 0 && row < 8) {
+          if (this.canDeployAt(col, row, this.deployMode)) {
+            this.deployTacticalItem(this.currentTurn, this.deployMode, col, row);
+          } else {
+            this.audio.playImpact(0.4);
+            if (window.ArchessToast) window.ArchessToast.show('Square occupied or invalid for deployment', 'warning', 1800, 'DEPLOY');
+          }
+        }
+        if (e.cancelable) e.preventDefault();
+        return;
+      }
+
       // Check if clicking King of current turn: show stationary citadel feedback ONLY if King is still anchored
       const currentKing = this.pieces.find(p => !p.dead && p.team === this.currentTurn && p.type === 'king');
       if (currentKing && !currentKing.awakened) {
@@ -2110,6 +2493,20 @@ class ArchessArena {
     const handlePointerMove = (e) => {
       if (this.renderMode === '3d') return; // Handled exclusively by engine3d in 3D mode
       const screenPos = getPointerScreenPos(e);
+
+      if (this.deployMode) {
+        const worldPos = this.fromScreen(screenPos.x, screenPos.y);
+        const layout = this.getBoardLayout();
+        const col = Math.floor((worldPos.x - layout.gridOriginX) / layout.sqSize);
+        const row = Math.floor((worldPos.y - layout.gridOriginY) / layout.sqSize);
+        if (col >= 0 && col < 8 && row >= 0 && row < 8) {
+          this.deployHoverTile = { col, row };
+        } else {
+          this.deployHoverTile = null;
+        }
+        return;
+      }
+
       if (this.isDragging && this.selectedPiece) {
         this.dragScreenCurrent = screenPos;
         let pullScreenX = this.dragScreenAnchor.x - this.dragScreenCurrent.x;
@@ -2838,6 +3235,83 @@ class ArchessArena {
       });
     });
 
+    // Tactical Deployable Indestructible Wall Collisions (Obstacles that reflect all non-leaping pieces)
+    if (this.deployables && this.deployables.length > 0) {
+      this.pieces.forEach((piece) => {
+        if (piece.dead) return;
+        if (piece.type === 'knight' && piece.isLeaping) return; // Knights vault over walls!
+
+        this.deployables.forEach((w) => {
+          if (!w.active || w.type !== 'wall') return;
+
+          const half = w.half || Math.round(layout.sqSize * 0.47);
+          const minBoxX = w.x - half;
+          const maxBoxX = w.x + half;
+          const minBoxY = w.y - half;
+          const maxBoxY = w.y + half;
+
+          const closestX = Math.max(minBoxX, Math.min(piece.x, maxBoxX));
+          const closestY = Math.max(minBoxY, Math.min(piece.y, maxBoxY));
+          const cdx = piece.x - closestX;
+          const cdy = piece.y - closestY;
+          const dist = Math.hypot(cdx, cdy);
+
+          if (dist < piece.radius) {
+            let nx = 0, ny = 0;
+            if (dist > 0.001) {
+              nx = cdx / dist;
+              ny = cdy / dist;
+            } else {
+              const dLeft = Math.abs(piece.x - minBoxX);
+              const dRight = Math.abs(maxBoxX - piece.x);
+              const dTop = Math.abs(piece.y - minBoxY);
+              const dBtm = Math.abs(maxBoxY - piece.y);
+              const minD = Math.min(dLeft, dRight, dTop, dBtm);
+              if (minD === dLeft) { nx = -1; ny = 0; }
+              else if (minD === dRight) { nx = 1; ny = 0; }
+              else if (minD === dTop) { nx = 0; ny = -1; }
+              else { nx = 0; ny = 1; }
+            }
+
+            piece.x = closestX + nx * piece.radius;
+            piece.y = closestY + ny * piece.radius;
+
+            const velAlongNormal = piece.vx * nx + piece.vy * ny;
+            if (velAlongNormal < 0) {
+              const hitSpeed = Math.hypot(piece.vx, piece.vy);
+              const bounce = Math.max(0.72, piece.bounce || 0.65);
+              piece.vx -= (1 + bounce) * velAlongNormal * nx;
+              piece.vy -= (1 + bounce) * velAlongNormal * ny;
+
+              if (hitSpeed > 0.6) {
+                this.audio.playImpact(Math.min(1.0, hitSpeed / 4.0));
+                this.spawnImpactParticles(piece.x, piece.y, 10, false, ['#38bdf8', '#818cf8', '#ffffff']);
+                this.screenShake = Math.max(this.screenShake, 3);
+              }
+            }
+          }
+        });
+      });
+
+      // Tactical Deployable Landmine Proximity & Detonation
+      this.deployables.forEach((m) => {
+        if (!m.active || m.type !== 'mine') return;
+
+        for (const p of this.pieces) {
+          if (p.dead) continue;
+          if (p.type === 'knight' && p.isLeaping) continue; // Leaping knight vaults over mine
+
+          const dist = Math.hypot(p.x - m.x, p.y - m.y);
+          const triggerDist = p.radius + m.radius * 0.72;
+
+          if (dist < triggerDist) {
+            this.detonateMine(m, p);
+            break;
+          }
+        }
+      });
+    }
+
     // Pairwise Piece-to-Piece Collisions
     for (let i = 0; i < this.pieces.length; i++) {
       const p1 = this.pieces[i];
@@ -3352,6 +3826,49 @@ class ArchessArena {
     const statsElem = document.getElementById('arenaPieceCounts');
     if (statsElem) {
       statsElem.innerHTML = `White: <strong>${whiteAlive}</strong> | Black: <strong>${blackAlive}</strong>`;
+    }
+
+    // Synchronize Tactical Deployable Badges and Buttons
+    const curInv = (this.deployableInventory && this.deployableInventory[this.currentTurn]) 
+      ? this.deployableInventory[this.currentTurn] 
+      : { mines: 0, walls: 0 };
+    const isHumanTurn = !(this.gameMode === 'bot' && this.currentTurn === 'black') && this.gameMode !== 'ai-vs-ai' && !this.isGameOver;
+
+    const mineBadges = [document.getElementById('badgeMineCount'), document.getElementById('wingBadgeMineCount')];
+    const wallBadges = [document.getElementById('badgeWallCount'), document.getElementById('wingBadgeWallCount')];
+    mineBadges.forEach(b => { if (b) b.textContent = `${curInv.mines}/2`; });
+    wallBadges.forEach(b => { if (b) b.textContent = `${curInv.walls}/2`; });
+
+    const mineBtns = [document.getElementById('btnDeployMine'), document.getElementById('btnWingDeployMine')];
+    const wallBtns = [document.getElementById('btnDeployWall'), document.getElementById('btnWingDeployWall')];
+    const cancelBtn = document.getElementById('btnCancelDeploy');
+    const banner = document.getElementById('deployPromptBanner');
+
+    mineBtns.forEach(btn => {
+      if (btn) {
+        btn.disabled = !isHumanTurn || curInv.mines <= 0;
+        btn.classList.toggle('active', this.deployMode === 'mine');
+      }
+    });
+    wallBtns.forEach(btn => {
+      if (btn) {
+        btn.disabled = !isHumanTurn || curInv.walls <= 0;
+        btn.classList.toggle('active', this.deployMode === 'wall');
+      }
+    });
+
+    if (cancelBtn) {
+      cancelBtn.style.display = this.deployMode ? 'inline-flex' : 'none';
+    }
+    if (banner) {
+      if (this.deployMode) {
+        banner.style.display = 'block';
+        banner.textContent = this.deployMode === 'mine'
+          ? '💣 LANDMINE ARMED — Click any open square to plant (Consumes 1 Move, Max 2/Game)'
+          : '🧱 INDESTRUCTIBLE WALL READY — Click any open square to erect barrier (Consumes 1 Move, Max 2/Game)';
+      } else {
+        banner.style.display = 'none';
+      }
     }
   }
 
@@ -4717,6 +5234,8 @@ class ArchessArena {
         this.engine3d.render();
       } else {
         this.renderBoard();
+        this.renderDeployables();
+        this.renderDeployPreview();
         this.renderTrajectory();
 
         // Sort pieces by Y for proper 3D depth layering (dragged piece on top)
@@ -4735,6 +5254,190 @@ class ArchessArena {
     }
 
     this._rAFId = requestAnimationFrame(this._boundLoop || this.loop.bind(this));
+  }
+
+  /**
+   * Renders active deployable items (Indestructible Walls and Landmines) in 2D mode
+   */
+  renderDeployables() {
+    if (!this.deployables || this.deployables.length === 0) return;
+    const ctx = this.ctx;
+    const layout = this.getBoardLayout();
+    const sqSize = layout.sqSize;
+
+    this.deployables.forEach(d => {
+      if (!d.active && d.type === 'mine') return; // Blown up mines vanish
+
+      const centerScreen = this.toScreen(d.x, d.y, this.renderMode === '3d' ? 8 : 0);
+      const half = d.half || Math.round(sqSize * 0.47);
+
+      if (d.type === 'wall') {
+        // --- Indestructible Fortress Barricade Tile ---
+        const c1 = this.toScreen(d.x - half, d.y - half);
+        const c2 = this.toScreen(d.x + half, d.y - half);
+        const c3 = this.toScreen(d.x + half, d.y + half);
+        const c4 = this.toScreen(d.x - half, d.y + half);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(c1.x, c1.y);
+        ctx.lineTo(c2.x, c2.y);
+        ctx.lineTo(c3.x, c3.y);
+        ctx.lineTo(c4.x, c4.y);
+        ctx.closePath();
+
+        // Heavy reinforced alloy fill
+        const grad = ctx.createLinearGradient(c1.x, c1.y, c3.x, c3.y);
+        grad.addColorStop(0, '#1e293b');
+        grad.addColorStop(0.5, '#0f172a');
+        grad.addColorStop(1, '#020617');
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // Glowing cyan energy border
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#38bdf8';
+        ctx.shadowColor = '#38bdf8';
+        ctx.shadowBlur = 10;
+        ctx.stroke();
+
+        // Inner cross-braced energy reinforcement
+        ctx.beginPath();
+        ctx.moveTo(c1.x + 6, c1.y + 6);
+        ctx.lineTo(c3.x - 6, c3.y - 6);
+        ctx.moveTo(c2.x - 6, c2.y + 6);
+        ctx.lineTo(c4.x + 6, c4.y - 6);
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+        ctx.lineWidth = 1.8;
+        ctx.stroke();
+
+        // 4 Corner structural bolts
+        const cornerOffsets = [
+          [-half + 8, -half + 8],
+          [half - 8, -half + 8],
+          [half - 8, half - 8],
+          [-half + 8, half - 8]
+        ];
+        cornerOffsets.forEach(([ox, oy]) => {
+          const bp = this.toScreen(d.x + ox, d.y + oy);
+          ctx.beginPath();
+          ctx.arc(bp.x, bp.y, 3, 0, Math.PI * 2);
+          ctx.fillStyle = '#94a3b8';
+          ctx.fill();
+        });
+
+        // Fortress Icon / Crest
+        ctx.shadowBlur = 6;
+        ctx.shadowColor = '#38bdf8';
+        ctx.font = `bold ${Math.round(sqSize * 0.38)}px system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🛡️', centerScreen.x, centerScreen.y);
+
+        ctx.restore();
+      } else if (d.type === 'mine') {
+        // --- Tactical Landmine Disc ---
+        ctx.save();
+        const rad = d.radius || Math.round(sqSize * 0.36);
+
+        // Pulsating Proximity Glow
+        const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.006);
+        ctx.beginPath();
+        ctx.arc(centerScreen.x, centerScreen.y, rad * (1.1 + pulse * 0.15), 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(239, 68, 68, ${0.25 + pulse * 0.35})`;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Dark Metallic Body
+        ctx.beginPath();
+        ctx.arc(centerScreen.x, centerScreen.y, rad, 0, Math.PI * 2);
+        const mGrad = ctx.createRadialGradient(centerScreen.x, centerScreen.y, rad * 0.2, centerScreen.x, centerScreen.y, rad);
+        mGrad.addColorStop(0, '#334155');
+        mGrad.addColorStop(0.7, '#1e293b');
+        mGrad.addColorStop(1, '#090d16');
+        ctx.fillStyle = mGrad;
+        ctx.fill();
+
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        // Center Blinking Beacon
+        const beaconPulse = Math.sin(performance.now() * 0.01) > 0;
+        ctx.beginPath();
+        ctx.arc(centerScreen.x, centerScreen.y, rad * 0.28, 0, Math.PI * 2);
+        ctx.fillStyle = beaconPulse ? '#ef4444' : '#7f1d1d';
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = beaconPulse ? 14 : 2;
+        ctx.fill();
+
+        // Tactical Glyph
+        ctx.font = `${Math.round(sqSize * 0.28)}px system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('💣', centerScreen.x, centerScreen.y - 1);
+
+        ctx.restore();
+      }
+    });
+  }
+
+  /**
+   * Renders placement hover preview tile and ghost silhouette in 2D mode
+   */
+  renderDeployPreview() {
+    if (!this.deployMode || !this.deployHoverTile) return;
+    const { col, row } = this.deployHoverTile;
+    if (col < 0 || col >= 8 || row < 0 || row >= 8) return;
+
+    const ctx = this.ctx;
+    const layout = this.getBoardLayout();
+    const sqSize = layout.sqSize;
+    const isValid = this.canDeployAt(col, row, this.deployMode);
+
+    const sqX = layout.gridOriginX + col * sqSize;
+    const sqY = layout.gridOriginY + row * sqSize;
+
+    const p1 = this.toScreen(sqX, sqY);
+    const p2 = this.toScreen(sqX + sqSize, sqY);
+    const p3 = this.toScreen(sqX + sqSize, sqY + sqSize);
+    const p4 = this.toScreen(sqX, sqY + sqSize);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.lineTo(p3.x, p3.y);
+    ctx.lineTo(p4.x, p4.y);
+    ctx.closePath();
+
+    ctx.fillStyle = isValid ? 'rgba(16, 185, 129, 0.28)' : 'rgba(239, 68, 68, 0.32)';
+    ctx.fill();
+
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = isValid ? '#10b981' : '#ef4444';
+    ctx.shadowColor = isValid ? '#10b981' : '#ef4444';
+    ctx.shadowBlur = 12;
+    ctx.stroke();
+
+    // Center ghost preview icon
+    const centerX = (p1.x + p3.x) / 2;
+    const centerY = (p1.y + p3.y) / 2;
+    ctx.font = `${Math.round(sqSize * 0.46)}px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.globalAlpha = 0.85;
+    ctx.fillText(this.deployMode === 'wall' ? '🧱' : '💣', centerX, centerY);
+
+    // Subtitle indicator
+    ctx.font = 'bold 11px system-ui, sans-serif';
+    ctx.fillStyle = isValid ? '#6ee7b7' : '#fca5a5';
+    ctx.shadowBlur = 4;
+    ctx.fillText(isValid ? (this.deployMode === 'wall' ? 'PLACE WALL' : 'ARM MINE') : 'BLOCKED', centerX, centerY + sqSize * 0.32);
+
+    ctx.restore();
   }
 
   /**

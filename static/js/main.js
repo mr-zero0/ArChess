@@ -1009,6 +1009,42 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  /* -------------------------------------------------------------
+     Tactical Deployments Controls (Landmines & Indestructible Walls)
+  ------------------------------------------------------------- */
+  const btnDeployMine = document.getElementById('btnDeployMine');
+  const btnDeployWall = document.getElementById('btnDeployWall');
+  const btnWingDeployMine = document.getElementById('btnWingDeployMine');
+  const btnWingDeployWall = document.getElementById('btnWingDeployWall');
+  const btnCancelDeploy = document.getElementById('btnCancelDeploy');
+
+  const toggleMineDeploy = () => {
+    const a = window.archessGame || arena;
+    if (a) {
+      a.setDeployMode(a.deployMode === 'mine' ? null : 'mine');
+    }
+  };
+
+  const toggleWallDeploy = () => {
+    const a = window.archessGame || arena;
+    if (a) {
+      a.setDeployMode(a.deployMode === 'wall' ? null : 'wall');
+    }
+  };
+
+  const cancelDeploy = () => {
+    const a = window.archessGame || arena;
+    if (a && a.deployMode) {
+      a.setDeployMode(null);
+    }
+  };
+
+  if (btnDeployMine) btnDeployMine.addEventListener('click', toggleMineDeploy);
+  if (btnWingDeployMine) btnWingDeployMine.addEventListener('click', toggleMineDeploy);
+  if (btnDeployWall) btnDeployWall.addEventListener('click', toggleWallDeploy);
+  if (btnWingDeployWall) btnWingDeployWall.addEventListener('click', toggleWallDeploy);
+  if (btnCancelDeploy) btnCancelDeploy.addEventListener('click', cancelDeploy);
+
   // Audio Toggle with LocalStorage Persistence
   const audioBtn = document.getElementById('audioToggleBtn');
   let isMuted = localStorage.getItem('archess_audio_muted') === 'true';
@@ -2059,14 +2095,35 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Keyboard shortcut Esc to close drawer or modal
+  // Keyboard shortcuts: Esc to cancel deploy or close drawer/modal, M for Mine, W for Wall
   window.addEventListener('keydown', (e) => {
+    const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+    if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select') return;
+
     if (e.key === 'Escape') {
+      const a = window.archessGame || arena;
+      if (a && a.deployMode) {
+        a.setDeployMode(null);
+        e.preventDefault();
+        return;
+      }
       closeSideDrawer();
       const authModal = document.getElementById('accountAuthModal') || document.getElementById('authModal');
       if (authModal) authModal.classList.remove('active');
       if (window.ArchessAuth && typeof window.ArchessAuth.closeModal === 'function') {
         window.ArchessAuth.closeModal();
+      }
+    } else if (e.key === 'm' || e.key === 'M') {
+      const a = window.archessGame || arena;
+      if (a && !a.isGameOver) {
+        toggleMineDeploy();
+        e.preventDefault();
+      }
+    } else if (e.key === 'w' || e.key === 'W') {
+      const a = window.archessGame || arena;
+      if (a && !a.isGameOver) {
+        toggleWallDeploy();
+        e.preventDefault();
       }
     }
   });

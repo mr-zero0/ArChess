@@ -152,6 +152,26 @@
           </div>
         </div>
 
+        <!-- 5b. Tactical Deployments (Landmines & Fortified Walls) -->
+        <div class="wing-card" id="tacticalDeploymentsWingCard">
+          <div class="wing-card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span class="wing-card-title">Tactical Reserves</span>
+            <span class="live-status-chip" id="deployTurnChip">Active Turn</span>
+          </div>
+          <div class="deploy-wing-actions" style="display: flex; flex-direction: column; gap: 6px;">
+            <button type="button" class="btn-cupertino-action deploy-wing-btn" id="btnWingDeployMine" title="Arm Landmine (Costs 1 move, Max 2 per game)">
+              <span class="deploy-icon">💣</span>
+              <span class="deploy-title">Landmine</span>
+              <span class="deploy-pill" id="wingBadgeMineCount">2 left</span>
+            </button>
+            <button type="button" class="btn-cupertino-action deploy-wing-btn" id="btnWingDeployWall" title="Erect Indestructible Wall (Costs 1 move, Max 2 per game)">
+              <span class="deploy-icon">🧱</span>
+              <span class="deploy-title">Fortified Wall</span>
+              <span class="deploy-pill" id="wingBadgeWallCount">2 left</span>
+            </button>
+          </div>
+        </div>
+
         <!-- 6. Live In-Game Appearance (Real-Time Palette & Piece Set Switching Without Reset) -->
         <div class="wing-card" id="liveAppearanceWingCard">
           <div class="wing-card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
@@ -238,6 +258,30 @@
 
             <!-- 2D Classic FIDE Chessboard Root -->
             <div id="reactChessboardRoot" class="react-chessboard-stage" style="display: none;"></div>
+
+            <!-- Tactical Deployables Dock (Mines & Fortified Walls) -->
+            <div class="tactical-deploy-dock" id="tacticalDeployDock">
+              <div class="deploy-dock-left">
+                <span class="deploy-dock-tag">TACTICAL RESERVES:</span>
+                <button type="button" class="deploy-dock-btn" id="btnDeployMine" title="Place explosive Landmine (Costs 1 move, Max 2 per game)">
+                  <span class="deploy-btn-icon">💣</span>
+                  <span class="deploy-btn-text">Landmine</span>
+                  <span class="deploy-btn-count" id="badgeMineCount">2</span>
+                </button>
+                <button type="button" class="deploy-dock-btn" id="btnDeployWall" title="Erect indestructible Fortified Wall (Costs 1 move, Max 2 per game)">
+                  <span class="deploy-btn-icon">🧱</span>
+                  <span class="deploy-btn-text">Wall</span>
+                  <span class="deploy-btn-count" id="badgeWallCount">2</span>
+                </button>
+                <button type="button" class="deploy-dock-btn deploy-cancel-btn" id="btnCancelDeploy" style="display: none;" title="Cancel placement mode">
+                  <span>✕ Cancel</span>
+                </button>
+              </div>
+              <div class="deploy-prompt-banner" id="deployPromptBanner" style="display: none;">
+                <span class="deploy-prompt-pulse"></span>
+                <span id="deployPromptText">Click any square on the board to deploy (costs 1 move)</span>
+              </div>
+            </div>
 
             <!-- Interactive Tactical Combat Replay HUD Bar -->
             <div class="tactical-replay-bar" id="tacticalReplayBar" style="display: none;">

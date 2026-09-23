@@ -45,6 +45,10 @@
       // Citadel Barrier 3D Meshes: team -> THREE.Mesh
       this.citadelBarriers = {};
 
+      // Tactical Deployables 3D Meshes: id -> THREE.Group
+      this.deployableMeshes = new Map();
+      this.deployPreviewMesh = null;
+
       // 3D Particles
       this.particles3D = [];
 
@@ -1156,6 +1160,316 @@
     }
 
     /* -------------------------------------------------------------
+       Tactical Deployables 3D Models (Indestructible Walls & Landmines)
+    ------------------------------------------------------------- */
+    syncDeployables() {
+      if (!this.arena.deployables || !this.piecesGroup) return;
+
+      // 1. Remove meshes for deployables that are no longer active
+      for (const [id, mesh] of this.deployableMeshes.entries()) {
+        const d = this.arena.deployables.find(item => item.id === id);
+        if (!d || (!d.active && d.type === 'mine')) {
+          if (mesh.parent) mesh.parent.remove(mesh);
+          this.deployableMeshes.delete(id);
+        }
+      }
+
+      // 2. Add or update meshes for active deployables
+      this.arena.deployables.forEach(d => {
+        if (!d.active && d.type === 'mine') return;
+        let mesh = this.deployableMeshes.get(d.id);
+
+        if (!mesh) {
+          mesh = this.createDeployableMesh(d);
+          this.piecesGroup.add(mesh);
+          this.deployableMeshes.set(d.id, mesh);
+        }
+
+        const pos3D = this.boardToWorld(d.x, d.y);
+        mesh.position.set(pos3D.x, 0, pos3D.z);
+
+        // Update animation ticks (e.g. mine LED blink, proximity pulse)
+        if (d.type === 'mine' && mesh.userData) {
+          const time = performance.now() * 0.001;
+          if (mesh.userData.beaconMat) {
+            const blink = Math.sin(time * 6) > 0 ? 1.0 : 0.15;
+            mesh.userData.beaconMat.emissiveIntensity = blink * 1.5;
+          }
+          if (mesh.userData.proximityMat) {
+            mesh.userData.proximityMat.opacity = 0.25 + 0.20 * Math.sin(time * 4);
+          }
+        }
+      });
+    }
+
+    createDeployableMesh(deployable) {
+      const group = new THREE.Group();
+      group.userData = { deployable };
+
+      if (deployable.type === 'wall') {
+        // --- Indestructible Fortress Barrier Block ---
+        // Main reinforced block
+        const blockGeo = new THREE.BoxGeometry(2.32, 1.45, 2.32);
+        const blockMat = new THREE.MeshStandardMaterial({
+          color: 0x1e293b,
+          roughness: 0.32,
+          metalness: 0.88
+        });
+        const blockMesh = new THREE.Mesh(blockGeo, blockMat);
+        blockMesh.position.y = 0.725;
+        blockMesh.castShadow = true;
+        blockMesh.receiveShadow = true;
+        group.add(blockMesh);
+
+        // 4 Corner Bastion Stanchions
+        const pylonGeo = new THREE.CylinderGeometry(0.16, 0.20, 1.6, 12);
+        const pylonMat = new THREE.MeshStandardMaterial({
+          color: 0x475569,
+          roughness: 0.25,
+          metalness: 0.95
+        });
+        const corners = [[-1.12, -1.12], [1.12, -1.12], [1.12, 1.12], [-1.12, 1.12]];
+        corners.forEach(([cx, cz]) => {
+          const p = new THREE.Mesh(pylonGeo, pylonMat);
+          p.position.set(cx, 0.8, cz);
+          p.castShadow = true;
+          group.add(p);
+
+          // Stanchion glowing cap
+          const capGeo = new THREE.SphereGeometry(0.12, 8, 8);
+          const capMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+          const cap = new THREE.Mesh(capGeo, capMat);
+          cap.position.set(cx, 1.65, cz);
+          group.add(cap);
+        });
+
+        // Top Shield Rune / Emblem
+        const shieldGeo = new THREE.OctahedronGeometry(0.36, 0);
+        const shieldMat = new THREE.MeshStandardMaterial({
+          color: 0x38bdf8,
+          emissive: 0x0284c7,
+          emissiveIntensity: 0.6,
+          roughness: 0.2,
+          metalness: 0.8
+        });
+        const shield = new THREE.Mesh(shieldGeo, shieldMat);
+        shield.position.set(0, 1.58, 0);
+        shield.rotation.y = Math.PI / 4;
+        group.add(shield);
+
+        // Neon outline trim on top edge
+        const trimGeo = new THREE.RingGeometry(0.85, 0.98, 4);
+        const trimMat = new THREE.MeshBasicMaterial({
+          color: 0x38bdf8,
+          side: THREE.DoubleSide
+        });
+        const trim = new THREE.Mesh(trimGeo, trimMat);
+        trim.position.set(0, 1.46, 0);
+        trim.rotation.x = -Math.PI / 2;
+        trim.rotation.z = Math.PI / 4;
+        group.add(trim);
+
+      } else if (deployable.type === 'mine') {
+        // --- Tactical Landmine Disc ---
+        // Base disc
+        const baseGeo = new THREE.CylinderGeometry(0.85, 0.96, 0.22, 24);
+        const baseMat = new THREE.MeshStandardMaterial({
+          color: 0x1f242d,
+          roughness: 0.45,
+          metalness: 0.85
+        });
+        const baseMesh = new THREE.Mesh(baseGeo, baseMat);
+        baseMesh.position.y = 0.11;
+        baseMesh.castShadow = true;
+        baseMesh.receiveShadow = true;
+        group.add(baseMesh);
+
+        // Warning Hazard Collar (Black & Yellow/Red)
+        const collarGeo = new THREE.CylinderGeometry(0.86, 0.86, 0.08, 24);
+        const collarMat = new THREE.MeshStandardMaterial({
+          color: 0xd97706,
+          roughness: 0.35,
+          metalness: 0.5
+        });
+        const collarMesh = new THREE.Mesh(collarGeo, collarMat);
+        collarMesh.position.y = 0.18;
+        group.add(collarMesh);
+
+        // Central Trigger Button
+        const trigGeo = new THREE.CylinderGeometry(0.38, 0.42, 0.14, 16);
+        const trigMat = new THREE.MeshStandardMaterial({
+          color: 0x0f172a,
+          roughness: 0.3,
+          metalness: 0.9
+        });
+        const trigMesh = new THREE.Mesh(trigGeo, trigMat);
+        trigMesh.position.y = 0.24;
+        group.add(trigMesh);
+
+        // Pulsing LED Hazard Beacon
+        const beaconGeo = new THREE.SphereGeometry(0.14, 12, 12);
+        const beaconMat = new THREE.MeshStandardMaterial({
+          color: 0xef4444,
+          emissive: 0xef4444,
+          emissiveIntensity: 1.0,
+          roughness: 0.1
+        });
+        const beacon = new THREE.Mesh(beaconGeo, beaconMat);
+        beacon.position.y = 0.34;
+        group.add(beacon);
+
+        // Holographic Proximity Danger Ring on floor
+        const proxGeo = new THREE.RingGeometry(1.05, 1.25, 32);
+        const proxMat = new THREE.MeshBasicMaterial({
+          color: 0xef4444,
+          transparent: true,
+          opacity: 0.35,
+          side: THREE.DoubleSide
+        });
+        const proxRing = new THREE.Mesh(proxGeo, proxMat);
+        proxRing.rotation.x = -Math.PI / 2;
+        proxRing.position.y = 0.02;
+        group.add(proxRing);
+
+        group.userData = { beaconMat, proximityMat: proxMat };
+      }
+
+      return group;
+    }
+
+    updateDeployPreview() {
+      if (!this.arena.deployMode || !this.arena.deployHoverTile) {
+        if (this.deployPreviewMesh) this.deployPreviewMesh.visible = false;
+        return;
+      }
+
+      const { col, row } = this.arena.deployHoverTile;
+      if (col < 0 || col > 7 || row < 0 || row > 7) {
+        if (this.deployPreviewMesh) this.deployPreviewMesh.visible = false;
+        return;
+      }
+
+      const isValid = this.arena.canDeployAt(col, row, this.arena.deployMode);
+      const hexColor = isValid ? 0x10b981 : 0xef4444;
+
+      if (!this.deployPreviewMesh) {
+        const previewGroup = new THREE.Group();
+
+        // Hologram tile floor box
+        const boxGeo = new THREE.BoxGeometry(2.35, 0.05, 2.35);
+        const boxMat = new THREE.MeshBasicMaterial({
+          color: hexColor,
+          transparent: true,
+          opacity: 0.38,
+          side: THREE.DoubleSide
+        });
+        const boxMesh = new THREE.Mesh(boxGeo, boxMat);
+        boxMesh.position.y = 0.03;
+        previewGroup.add(boxMesh);
+
+        // Ghost structure
+        const ghostGeo = new THREE.BoxGeometry(2.2, 1.4, 2.2);
+        const ghostMat = new THREE.MeshStandardMaterial({
+          color: hexColor,
+          emissive: hexColor,
+          emissiveIntensity: 0.45,
+          transparent: true,
+          opacity: 0.30,
+          roughness: 0.2
+        });
+        const ghostMesh = new THREE.Mesh(ghostGeo, ghostMat);
+        ghostMesh.position.y = 0.7;
+        previewGroup.add(ghostMesh);
+
+        previewGroup.userData = { boxMat, ghostMat };
+        this.scene.add(previewGroup);
+        this.deployPreviewMesh = previewGroup;
+      }
+
+      const layout = this.arena.getBoardLayout();
+      const sqSize = layout.sqSize;
+      const bx = layout.gridOriginX + (col + 0.5) * sqSize;
+      const by = layout.gridOriginY + (row + 0.5) * sqSize;
+      const pos3D = this.boardToWorld(bx, by);
+
+      this.deployPreviewMesh.position.set(pos3D.x, 0, pos3D.z);
+      this.deployPreviewMesh.visible = true;
+
+      if (this.deployPreviewMesh.userData) {
+        const { boxMat, ghostMat } = this.deployPreviewMesh.userData;
+        if (boxMat) boxMat.color.setHex(hexColor);
+        if (ghostMat) {
+          ghostMat.color.setHex(hexColor);
+          ghostMat.emissive.setHex(hexColor);
+        }
+      }
+    }
+
+    onMineDetonated(mine) {
+      const mesh = this.deployableMeshes.get(mine.id);
+      if (mesh) {
+        if (mesh.parent) mesh.parent.remove(mesh);
+        this.deployableMeshes.delete(mine.id);
+      }
+
+      if (!this.vfxGroup) return;
+      const pos3D = this.boardToWorld(mine.x, mine.y);
+
+      // Spawn 3D Fireball Explosion
+      const blastGeo = new THREE.SphereGeometry(0.8, 16, 16);
+      const blastMat = new THREE.MeshBasicMaterial({
+        color: 0xff4500,
+        transparent: true,
+        opacity: 0.95
+      });
+      const fireball = new THREE.Mesh(blastGeo, blastMat);
+      fireball.position.set(pos3D.x, 0.8, pos3D.z);
+      this.vfxGroup.add(fireball);
+
+      // Spawn 3D Shockwave Ring
+      const ringGeo = new THREE.RingGeometry(0.4, 0.9, 32);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: 0xffa500,
+        transparent: true,
+        opacity: 0.85,
+        side: THREE.DoubleSide
+      });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.set(pos3D.x, 0.05, pos3D.z);
+      this.vfxGroup.add(ring);
+
+      // Animate explosion burst
+      let elapsed = 0;
+      const animInterval = setInterval(() => {
+        elapsed += 0.033;
+        if (fireball) {
+          fireball.scale.addScalar(0.18);
+          blastMat.opacity = Math.max(0, 0.95 - elapsed * 2.8);
+        }
+        if (ring) {
+          ring.scale.addScalar(0.24);
+          ringMat.opacity = Math.max(0, 0.85 - elapsed * 2.5);
+        }
+        if (elapsed > 0.42) {
+          clearInterval(animInterval);
+          if (fireball && fireball.parent) fireball.parent.remove(fireball);
+          if (ring && ring.parent) ring.parent.remove(ring);
+        }
+      }, 33);
+    }
+
+    resetDeployables() {
+      for (const [id, mesh] of this.deployableMeshes.entries()) {
+        if (mesh.parent) mesh.parent.remove(mesh);
+      }
+      this.deployableMeshes.clear();
+      if (this.deployPreviewMesh) {
+        this.deployPreviewMesh.visible = false;
+      }
+    }
+
+    /* -------------------------------------------------------------
        3D Slingshot Aiming Trajectory, Elastic Tension Band & Power Ring
     ------------------------------------------------------------- */
     setupAimMeshes() {
@@ -1448,6 +1762,31 @@
         }
 
         const m = getNormalizedMouse(e);
+
+        // Check if Tactical Deploy Mode is active (Placing Landmine or Indestructible Wall in 3D)
+        if (this.arena.deployMode) {
+          this.mouse.x = m.x;
+          this.mouse.y = m.y;
+          this.raycaster.setFromCamera(this.mouse, this.camera);
+          const planeHit = this.raycaster.ray.intersectPlane(this.boardPlane, boardPlanePt);
+          if (planeHit) {
+            const bPos = this.worldToBoard(planeHit.x, planeHit.z);
+            const layout = this.arena.getBoardLayout();
+            const col = Math.floor((bPos.x - layout.gridOriginX) / layout.sqSize);
+            const row = Math.floor((bPos.y - layout.gridOriginY) / layout.sqSize);
+            if (col >= 0 && col < 8 && row >= 0 && row < 8) {
+              if (this.arena.canDeployAt(col, row, this.arena.deployMode)) {
+                this.arena.deployTacticalItem(this.arena.currentTurn, this.arena.deployMode, col, row);
+              } else {
+                if (this.arena.audio) this.arena.audio.playImpact(0.4);
+                if (window.ArchessToast) window.ArchessToast.show('Square occupied or invalid for deployment', 'warning', 1800, 'DEPLOY');
+              }
+            }
+          }
+          if (e.cancelable) e.preventDefault();
+          return;
+        }
+
         const { piece, isAnchoredKing } = findPieceAtPointer(m);
 
         if (piece && !isAnchoredKing && piece.team === this.arena.currentTurn && !piece.immovable && (piece.type !== 'king' || piece.awakened)) {
@@ -1479,6 +1818,25 @@
 
       const handlePointerMove = (e) => {
         const m = getNormalizedMouse(e);
+
+        if (this.arena.deployMode) {
+          this.mouse.x = m.x;
+          this.mouse.y = m.y;
+          this.raycaster.setFromCamera(this.mouse, this.camera);
+          const planeHit = this.raycaster.ray.intersectPlane(this.boardPlane, boardPlanePt);
+          if (planeHit) {
+            const bPos = this.worldToBoard(planeHit.x, planeHit.z);
+            const layout = this.arena.getBoardLayout();
+            const col = Math.floor((bPos.x - layout.gridOriginX) / layout.sqSize);
+            const row = Math.floor((bPos.y - layout.gridOriginY) / layout.sqSize);
+            if (col >= 0 && col < 8 && row >= 0 && row < 8) {
+              this.arena.deployHoverTile = { col, row };
+            } else {
+              this.arena.deployHoverTile = null;
+            }
+          }
+          return;
+        }
 
         if (this.arena.isDragging && this.arena.selectedPiece) {
           this.arena.dragScreenCurrent = { x: m.screenX, y: m.screenY };
@@ -1674,6 +2032,12 @@
 
       // 1. Sync 3D Pieces with 2D Physics state
       this.syncPieces();
+
+      // 1b. Sync Tactical Deployables (Indestructible Walls & Landmines)
+      this.syncDeployables();
+
+      // 1c. Update Holographic Deploy Preview on hovered square
+      this.updateDeployPreview();
 
       // 2. Update Slingshot Aim Visuals
       this.updateAimVisuals();
