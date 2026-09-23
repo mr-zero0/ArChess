@@ -148,6 +148,7 @@
             <button class="theme-pill-btn camera-btn active" id="camTabletopBtn" data-cam="tabletop" title="Tabletop Perspective">Tabletop</button>
             <button class="theme-pill-btn camera-btn" id="camCinematicBtn" data-cam="cinematic" title="Dramatic Angle">Cinematic</button>
             <button class="theme-pill-btn camera-btn" id="camTacticalBtn" data-cam="tactical" title="Top-Down Overview">Overhead</button>
+            <button class="theme-pill-btn camera-btn" id="camFlipBtn" data-cam="flipped" title="Flip Board Perspective (White / Black)">🔄 Flip</button>
             <button class="theme-pill-btn camera-btn" id="camResetBtn" title="Reset Camera Orbit">↺ Reset</button>
           </div>
         </div>
@@ -1055,10 +1056,10 @@
 {% endblock %}
 
 {% block extra_scripts %}
-  <script src="/static/js/three.min.js?v=4.4.2"></script>
-  <script src="/static/js/engine3d.js?v=4.4.2"></script>
-  <script src="/static/js/react-chessboard-bundle.js?v=4.4.2"></script>
-  <script src="/static/js/game.js?v=4.4.2"></script>
+  <script src="/static/js/three.min.js?v=4.4.3"></script>
+  <script src="/static/js/engine3d.js?v=4.4.3"></script>
+  <script src="/static/js/react-chessboard-bundle.js?v=4.4.3"></script>
+  <script src="/static/js/game.js?v=4.4.3"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       // Sync current logged in user name with White player card
@@ -1073,6 +1074,7 @@
       const camTabletop = document.getElementById('camTabletopBtn');
       const camCinematic = document.getElementById('camCinematicBtn');
       const camTactical = document.getElementById('camTacticalBtn');
+      const camFlip = document.getElementById('camFlipBtn');
       const camReset = document.getElementById('camResetBtn');
 
       function updateCameraActive(activeBtn, preset) {
@@ -1086,6 +1088,17 @@
       if (camTabletop) camTabletop.addEventListener('click', () => updateCameraActive(camTabletop, 'tabletop'));
       if (camCinematic) camCinematic.addEventListener('click', () => updateCameraActive(camCinematic, 'cinematic'));
       if (camTactical) camTactical.addEventListener('click', () => updateCameraActive(camTactical, 'tactical'));
+      if (camFlip) camFlip.addEventListener('click', () => {
+        if (window.archessGame && window.archessGame.engine3d) {
+          const isFlipped = window.archessGame.engine3d.toggleFlip();
+          document.querySelectorAll('.camera-btn').forEach(b => b.classList.remove('active'));
+          if (isFlipped) {
+            camFlip.classList.add('active');
+          } else {
+            if (camTabletop) camTabletop.classList.add('active');
+          }
+        }
+      });
       if (camReset) camReset.addEventListener('click', () => {
         updateCameraActive(camTabletop, 'tabletop');
         if (window.archessGame && window.archessGame.engine3d) {

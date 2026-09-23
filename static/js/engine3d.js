@@ -57,7 +57,8 @@
       this.cameraPresets = {
         tabletop: { pos: new THREE.Vector3(0, 24, 25), look: new THREE.Vector3(0, 0, -0.6) },
         cinematic: { pos: new THREE.Vector3(0, 13, 20), look: new THREE.Vector3(0, 1.2, 0) },
-        tactical: { pos: new THREE.Vector3(0, 34, 5), look: new THREE.Vector3(0, 0, 0) }
+        tactical: { pos: new THREE.Vector3(0, 34, 5), look: new THREE.Vector3(0, 0, 0) },
+        flipped: { pos: new THREE.Vector3(0, 24, -25), look: new THREE.Vector3(0, 0, 0.6) }
       };
       this.activePreset = 'tabletop';
       this._targetCamPos = null;
@@ -1169,9 +1170,14 @@
       const scaleFactor = 0.88;
       pieceModel.scale.set(scaleFactor, scaleFactor, scaleFactor);
 
-      // Orient pieces facing opponent forward
+      // Orient knights with authentic tournament inward angle (facing toward center squares)
       if (piece.type === 'knight') {
-        pieceModel.rotation.y = piece.team === 'white' ? Math.PI : 0;
+        const isQueenside = (piece.col !== undefined ? piece.col : 1) <= 3;
+        if (piece.team === 'white') {
+          pieceModel.rotation.y = isQueenside ? (Math.PI * 0.75) : (-Math.PI * 0.75);
+        } else {
+          pieceModel.rotation.y = isQueenside ? (Math.PI * 0.25) : (-Math.PI * 0.25);
+        }
       }
 
       // Contact shadow beneath piece
@@ -2218,6 +2224,14 @@
 
     resetCamera() {
       this.setCameraPreset('tabletop');
+    }
+
+    toggleFlip() {
+      if (this.activePreset === 'flipped') {
+        this.setCameraPreset('tabletop');
+      } else {
+        this.setCameraPreset('flipped');
+      }
     }
 
     /* -------------------------------------------------------------

@@ -1757,6 +1757,18 @@ class ArchessArena {
     }
   }
 
+  toggleDeployMode(mode) {
+    if (this.deployMode === mode) {
+      this.setDeployMode(null);
+    } else {
+      this.setDeployMode(mode);
+    }
+  }
+
+  cancelDeployMode() {
+    this.setDeployMode(null);
+  }
+
   /**
    * Validates if a square is open and eligible for tactical deployment
    */
@@ -2621,7 +2633,31 @@ class ArchessArena {
       addTrackedListener(window, 'touchend', handlePointerUp);
     }
 
-    // Keyboard Gameplay Listeners (Tracker Parity)
+    // Tactical Reserves Deploy Buttons Event Wiring
+    const setupDeployBtn = (id, mode) => {
+      const btn = document.getElementById(id);
+      if (btn) {
+        addTrackedListener(btn, 'click', (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          this.toggleDeployMode(mode);
+        });
+      }
+    };
+    setupDeployBtn('btnDeployWall', 'wall');
+    setupDeployBtn('btnWingDeployWall', 'wall');
+    setupDeployBtn('btnDeployMine', 'mine');
+    setupDeployBtn('btnWingDeployMine', 'mine');
+
+    const cancelDeployBtn = document.getElementById('btnCancelDeploy');
+    if (cancelDeployBtn) {
+      addTrackedListener(cancelDeployBtn, 'click', (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        this.cancelDeployMode();
+      });
+    }
+
     addTrackedListener(window, 'keydown', (e) => {
       // Do not intercept keystrokes when typing into input fields or modals
       const targetTag = e.target ? (e.target.tagName || '').toUpperCase() : '';
@@ -2678,9 +2714,14 @@ class ArchessArena {
         this.keyboardAiming = false;
         this.selectedPiece = null;
       } else if (e.code === 'Escape') {
+        if (this.deployMode) {
+          this.cancelDeployMode();
+        }
         this.keyboardAiming = false;
         this.selectedPiece = null;
       }
+    } else if (e.code === 'Escape' && this.deployMode) {
+      this.cancelDeployMode();
     }
   }
 
