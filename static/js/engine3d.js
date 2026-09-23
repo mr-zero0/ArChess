@@ -66,7 +66,11 @@
       // Raycaster for mouse/touch interactions
       this.raycaster = new THREE.Raycaster();
       this.mouse = new THREE.Vector2();
-      this.boardPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0); // Y = 0 plane
+      this.boardPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.08); // Tile surface at Y = 0.08
+
+      // Dimensions
+      this.gridSize3D = 20.0;
+      this.tileSize3D = 2.5;
 
       // Geometries and Materials Cache
       this.materials = {};
@@ -146,6 +150,12 @@
           LEFT: -1,
           MIDDLE: THREE.MOUSE.DOLLY,
           RIGHT: THREE.MOUSE.ROTATE
+        };
+
+        // Touch: Single finger drag is reserved for slingshot launching; two fingers for dolly/pan
+        this.controls.touches = {
+          ONE: -1,
+          TWO: THREE.TOUCH.DOLLY_PAN
         };
       }
 
@@ -1022,17 +1032,19 @@
           meshGroup.rotation.x -= Math.sin(progress * Math.PI) * 0.28;
         }
 
-        const targetElev = dragElev + leapHeight;
+        // Pieces rest on top of tile surface (Y = 0.08)
+        const BASE_ELEVATION = 0.08;
+        const targetElev = BASE_ELEVATION + dragElev + leapHeight;
         meshGroup.position.x = pos3D.x;
         meshGroup.position.z = pos3D.z;
         meshGroup.position.y = THREE.MathUtils.lerp(meshGroup.position.y, targetElev, 0.35);
 
-        // Contact shadow position & opacity tracking height
+        // Contact shadow position & opacity tracking height (floor level Y = 0.085)
         const shadowMesh = meshGroup.userData.shadowMesh;
         if (shadowMesh) {
-          shadowMesh.position.y = 0.045 - meshGroup.position.y;
-          const heightRatio = meshGroup.position.y / 4.0;
-          shadowMesh.material.opacity = Math.max(0.15, 0.70 - heightRatio * 0.50);
+          shadowMesh.position.y = 0.085 - meshGroup.position.y;
+          const heightRatio = Math.max(0, meshGroup.position.y - BASE_ELEVATION) / 3.5;
+          shadowMesh.material.opacity = Math.max(0.12, 0.70 - heightRatio * 0.50);
           const shadowScale = 1.0 + heightRatio * 0.40;
           shadowMesh.scale.set(shadowScale, shadowScale, 1);
         }
@@ -1157,13 +1169,20 @@
       const scaleFactor = 0.88;
       pieceModel.scale.set(scaleFactor, scaleFactor, scaleFactor);
 
+      // Orient pieces facing opponent forward
+      if (piece.type === 'knight') {
+        pieceModel.rotation.y = piece.team === 'white' ? Math.PI : 0;
+      }
+
       // Contact shadow beneath piece
       const shadowMesh = new THREE.Mesh(
         new THREE.PlaneGeometry(2.4, 2.4),
         this.materials.contactShadow
       );
       shadowMesh.rotation.x = -Math.PI / 2;
-      shadowMesh.position.y = 0.045; // Just above tile surface
+      shadowMesh.position.y = 0.005;
+      shadowMesh.name = 'contact_shadow';
+      shadowMesh.raycast = () => {}; // Prevent shadow from intercepting raycasts
       group.add(shadowMesh);
 
       // Precision Raycast Hit Cylinder
@@ -1210,6 +1229,7 @@
       phalanxMesh.name = 'phalanx_ring';
       phalanxMesh.position.y = 0.05;
       phalanxMesh.visible = false;
+      phalanxMesh.raycast = () => {};
       group.add(phalanxMesh);
 
       group.add(pieceModel);
@@ -1329,7 +1349,7 @@
 
       if (kingPiece.wallActive && kingPiece.wallHp > 0 && !kingPiece.dead) {
         barrier.visible = true;
-        barrier.position.set(pos3D.x, 0, pos3D.z);
+        barrier.position.set(pos3D.x, 0.08, pos3D.z);
         const hpRatio = kingPiece.wallHp / kingPiece.maxWallHp;
         const panelMat = barrier.userData.panelMat;
         const beaconMat = barrier.userData.beaconMat;
@@ -1389,7 +1409,7 @@
         }
 
         const pos3D = this.boardToWorld(d.x, d.y);
-        mesh.position.set(pos3D.x, 0, pos3D.z);
+        mesh.position.set(pos3D.x, 0.08, pos3D.z);
 
         // Update animation ticks (e.g. mine LED blink, proximity pulse)
         if (d.type === 'mine' && mesh.userData) {
@@ -1832,16 +1852,16 @@
     ------------------------------------------------------------- */
     boardToWorld(bx, by) {
       const layout = this.arena.getBoardLayout();
-      const originX = layout.gridOriginX;
-      const originY = layout.gridOriginY;
-      const size = layout.gridSize;
+      const originX = (layout && layout.gridOriginX !== undefined) ? layout.gridOriginX : 0;
+      const originY = (layout && layout.gridOriginY !== undefined) ? layout.gridOriginY : 0;
+      const size = (layout && layout.gridSize > 0) ? layout.gridSize : 600;
 
       // Normalize to -1 to +1
       const nx = ((bx - originX) / size) * 2 - 1;
       const ny = ((by - originY) / size) * 2 - 1;
 
       // Scale to 3D grid dimensions
-      const half3D = this.gridSize3D / 2;
+      const half3D = (this.gridSize3D || 20.0) / 2;
       return {
         x: nx * half3D,
         z: ny * half3D
@@ -1850,13 +1870,16 @@
 
     worldToBoard(wx, wz) {
       const layout = this.arena.getBoardLayout();
-      const half3D = this.gridSize3D / 2;
+      const originX = (layout && layout.gridOriginX !== undefined) ? layout.gridOriginX : 0;
+      const originY = (layout && layout.gridOriginY !== undefined) ? layout.gridOriginY : 0;
+      const size = (layout && layout.gridSize > 0) ? layout.gridSize : 600;
+      const half3D = (this.gridSize3D || 20.0) / 2;
       const nx = (wx / half3D + 1) / 2;
       const ny = (wz / half3D + 1) / 2;
 
       return {
-        x: layout.gridOriginX + nx * layout.gridSize,
-        y: layout.gridOriginY + ny * layout.gridSize
+        x: originX + nx * size,
+        y: originY + ny * size
       };
     }
 
@@ -1894,6 +1917,7 @@
         // 1. Direct 3D mesh raycast: scan hits with smart priority
         for (const hit of intersects) {
           let target = hit.object;
+          if (target.name === 'contact_shadow' || target.name === 'phalanx_ring') continue;
           let piece = null;
           while (target && target !== this.piecesGroup && target !== this.scene) {
             if (target.userData && target.userData.piece) {
@@ -2089,11 +2113,11 @@
         }
 
         if (this.arena.isDragging && this.arena.selectedPiece) {
-          const pullX = this.arena.dragScreenAnchor.x - this.arena.dragScreenCurrent.x;
-          const pullY = this.arena.dragScreenAnchor.y - this.arena.dragScreenCurrent.y;
+          let pullX = this.arena.dragScreenAnchor.x - this.arena.dragScreenCurrent.x;
+          let pullY = this.arena.dragScreenAnchor.y - this.arena.dragScreenCurrent.y;
           const dist = Math.hypot(pullX, pullY);
 
-          if (dist >= 14) {
+          if (dist >= 10) {
             let clampedDist = Math.min(dist, this.arena.maxPullDistance);
             const pieceToLaunch = this.arena.selectedPiece;
 

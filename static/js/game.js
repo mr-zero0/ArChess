@@ -760,29 +760,43 @@ class ArchessArena {
       pw = innerSquare;
       ph = innerSquare;
     } else {
-      const boardColumn = parent ? parent.closest('.arena-board-column') : null;
-      if (boardColumn) {
-        const colRect = boardColumn.getBoundingClientRect();
-        const isMobile = window.innerWidth <= 1024;
-        const availW = isMobile ? Math.min(window.innerWidth - 20, colRect.width > 50 ? colRect.width : (window.innerWidth - 20)) : (colRect.width - 56);
-        const availH = isMobile ? Math.min(window.innerHeight - 200, window.innerWidth - 20) : colRect.height;
-        const maxAvailable = isMobile 
-          ? Math.floor(Math.min(availW, availH))
-          : Math.floor(Math.min(colRect.width - 56, colRect.height) - 8);
-        if (maxAvailable >= 180) {
-          pw = maxAvailable;
-          ph = maxAvailable;
-          if (parent && parent.id === 'arenaCanvasStage') {
-            parent.style.width = maxAvailable + 'px';
-            parent.style.height = maxAvailable + 'px';
-          }
+      let stageDim = 0;
+      if (stage) {
+        const stageRect = stage.getBoundingClientRect();
+        if (stageRect.width > 50 && stageRect.height > 50) {
+          stageDim = Math.min(stageRect.width, stageRect.height);
+        } else if (stage.clientWidth > 50 && stage.clientHeight > 50) {
+          stageDim = Math.min(stage.clientWidth, stage.clientHeight);
         }
-      } else if (parent) {
-        const rect = parent.getBoundingClientRect();
-        pw = rect.width;
-        ph = rect.height;
-        if (!pw || pw < 50) pw = parent.clientWidth;
-        if (!ph || ph < 50) ph = parent.clientHeight;
+      }
+      if (stageDim >= 180) {
+        pw = stageDim;
+        ph = stageDim;
+      } else {
+        const boardColumn = parent ? parent.closest('.arena-board-column') : null;
+        if (boardColumn) {
+          const colRect = boardColumn.getBoundingClientRect();
+          const isMobile = window.innerWidth <= 1024;
+          const availW = isMobile ? Math.min(window.innerWidth - 20, colRect.width > 50 ? colRect.width : (window.innerWidth - 20)) : (colRect.width - 56);
+          const availH = isMobile ? Math.min(window.innerHeight - 200, window.innerWidth - 20) : colRect.height;
+          const maxAvailable = isMobile 
+            ? Math.floor(Math.min(availW, availH))
+            : Math.floor(Math.min(colRect.width - 56, colRect.height) - 8);
+          if (maxAvailable >= 180) {
+            pw = maxAvailable;
+            ph = maxAvailable;
+            if (parent && parent.id === 'arenaCanvasStage') {
+              parent.style.width = maxAvailable + 'px';
+              parent.style.height = maxAvailable + 'px';
+            }
+          }
+        } else if (parent) {
+          const rect = parent.getBoundingClientRect();
+          pw = rect.width;
+          ph = rect.height;
+          if (!pw || pw < 50) pw = parent.clientWidth;
+          if (!ph || ph < 50) ph = parent.clientHeight;
+        }
       }
       if (!pw || pw < 50) pw = window.innerWidth > 900 ? 760 : Math.max(320, window.innerWidth - 40);
       if (!ph || ph < 50) ph = pw;
@@ -895,34 +909,14 @@ class ArchessArena {
   }
 
   getBoardLayout() {
-    const minDim = Math.min(this.width, this.height);
-    if (this.renderMode === '2d') {
-      const boardSize = minDim;
-      const borderSize = 0;
-      const originX = (this.width - boardSize) / 2;
-      const originY = (this.height - boardSize) / 2;
-      const gridOriginX = originX;
-      const gridOriginY = originY;
-      const gridSize = boardSize;
-      const sqSize = gridSize / 8;
-      return {
-        boardSize,
-        originX,
-        originY,
-        borderSize,
-        gridOriginX,
-        gridOriginY,
-        gridSize,
-        sqSize
-      };
-    }
-    const boardSize = Math.max(300, minDim - 36);
-    const originX = (this.width - boardSize) / 2;
-    const originY = (this.height - boardSize) / 2;
-    const borderSize = Math.max(24, Math.round(boardSize * 0.052));
-    const gridOriginX = originX + borderSize;
-    const gridOriginY = originY + borderSize;
-    const gridSize = boardSize - borderSize * 2;
+    const minDim = Math.max(300, Math.min(this.width || 600, this.height || 600));
+    const boardSize = minDim;
+    const borderSize = 0;
+    const originX = ((this.width || minDim) - boardSize) / 2;
+    const originY = ((this.height || minDim) - boardSize) / 2;
+    const gridOriginX = originX;
+    const gridOriginY = originY;
+    const gridSize = boardSize;
     const sqSize = gridSize / 8;
 
     return {
@@ -1128,16 +1122,24 @@ class ArchessArena {
       this.blackDamage = data.blackDamage || 0;
       if (data.capturedPieces) this.capturedPieces = data.capturedPieces;
 
+      const currentL = this.getBoardLayout();
       data.pieces.forEach(sp => {
         const lp = this.pieces.find(p => p.id === sp.id);
         if (lp) {
           lp.col = sp.col;
           lp.row = sp.row;
           lp.hasMoved = sp.hasMoved;
-          lp.x = sp.x;
-          lp.y = sp.y;
-          lp.originX = sp.originX;
-          lp.originY = sp.originY;
+          if (!sp.hasMoved && sp.col !== undefined && sp.row !== undefined) {
+            lp.x = currentL.gridOriginX + sp.col * currentL.sqSize + currentL.sqSize / 2;
+            lp.y = currentL.gridOriginY + sp.row * currentL.sqSize + currentL.sqSize / 2;
+            lp.originX = lp.x;
+            lp.originY = lp.y;
+          } else {
+            lp.x = sp.x;
+            lp.y = sp.y;
+            lp.originX = sp.originX;
+            lp.originY = sp.originY;
+          }
           lp.hp = sp.hp;
           lp.maxHp = sp.maxHp;
           lp.dead = sp.dead;
