@@ -1377,7 +1377,7 @@ class ArchessArena {
       desiredPower = Math.min(0.96, Math.max(0.52, chosen.d / (this.width * 0.7)));
       trajectoryMode = 'COMMANDER_DIRECT';
     } else if (diffLevel === 4) {
-      // Level 4: Master - Raycast Line-Of-Sight obstacle check + 1-cushion bank-shot fallback
+      // Level 4: Master - Raycast Line-Of-Sight obstacle check + 1-cushion bank-shot fallback + Knight Leap awareness
       let candidateMoves = [];
       friendlyPieces.forEach(s => {
         enemyPieces.forEach(t => {
@@ -1385,7 +1385,17 @@ class ArchessArena {
           const directDy = t.y - s.y;
           const directDist = Math.hypot(directDx, directDy);
 
-          let isDirectBlocked = false;
+          // Pawn Forward Cone constraint
+          if (s.type === 'pawn' && !s.promoted) {
+            const isForward = activeTeam === 'black' ? (directDy > 0) : (directDy < 0);
+            if (!isForward) return;
+            const dirAngle = Math.atan2(directDy, directDx);
+            const minA = activeTeam === 'black' ? (Math.PI / 6) : (-5 * Math.PI / 6);
+            const maxA = activeTeam === 'black' ? (5 * Math.PI / 6) : (-Math.PI / 6);
+            if (dirAngle < minA || dirAngle > maxA) return;
+          }
+
+          let blockerCount = 0;
           for (let p of this.pieces) {
             if (p === s || p === t || p.dead) continue;
             const vX = directDx / directDist;
@@ -1394,13 +1404,26 @@ class ArchessArena {
             if (proj > s.radius && proj < directDist - t.radius) {
               const perpDist = Math.abs((p.x - s.x) * -vY + (p.y - s.y) * vX);
               if (perpDist < (s.radius + p.radius) * 0.95) {
-                isDirectBlocked = true;
-                break;
+                blockerCount++;
               }
             }
           }
 
-          const baseScore = (targetWeights[t.type] || 30) * 1.5 - directDist * 0.10;
+          const isKnightLeap = s.type === 'knight';
+          const isDirectBlocked = isKnightLeap ? (blockerCount > 1) : (blockerCount > 0);
+
+          // Landing safety evaluation: avoid suiciding fragile pieces into guarded enemy crosshairs
+          let safetyScore = 0;
+          if (s.hp < 45 && t.type !== 'king') {
+            const isDefendedByHeavy = enemyPieces.some(e => 
+              e !== t && (e.type === 'queen' || e.type === 'rook') &&
+              Math.hypot(e.x - t.x, e.y - t.y) < layout.sqSize * 2.2
+            );
+            if (isDefendedByHeavy) safetyScore -= 45;
+          }
+          if (isKnightLeap && blockerCount === 1) safetyScore += 30;
+
+          const baseScore = (targetWeights[t.type] || 30) * 1.5 - directDist * 0.10 + safetyScore;
 
           if (!isDirectBlocked) {
             candidateMoves.push({
@@ -1409,7 +1432,7 @@ class ArchessArena {
               angle: Math.atan2(directDy, directDx) + (Math.random() - 0.5) * 0.018,
               power: Math.min(1.0, Math.max(0.68, (directDist / (this.width * 0.6)) * 1.05)),
               score: baseScore + 60,
-              mode: 'MASTER_DIRECT'
+              mode: isKnightLeap && blockerCount === 1 ? 'MASTER_KNIGHT_VAULT' : 'MASTER_DIRECT'
             });
           } else {
             // Cushion bank off left wall
@@ -1456,7 +1479,7 @@ class ArchessArena {
       desiredPower = best.power;
       trajectoryMode = best.mode;
     } else {
-      // Level 5: Sovereign (Grandmaster) - Deep Multi-Angle LOS Evaluator & Lethal Bank-Shots
+      // Level 5: Sovereign (Grandmaster) - Deep Multi-Angle LOS Evaluator & Lethal Bank-Shots with Knight Leap & Safety
       let candidateMoves = [];
       friendlyPieces.forEach(s => {
         enemyPieces.forEach(t => {
@@ -1464,7 +1487,16 @@ class ArchessArena {
           const directDy = t.y - s.y;
           const directDist = Math.hypot(directDx, directDy);
 
-          let isDirectBlocked = false;
+          // Pawn Forward Cone constraint
+          if (s.type === 'pawn' && !s.promoted) {
+            const isForward = activeTeam === 'black' ? (directDy > 0) : (directDy < 0);
+            if (!isForward) return;
+            const dirAngle = Math.atan2(directDy, directDx);
+            const minA = activeTeam === 'black' ? (Math.PI / 6) : (-5 * Math.PI / 6);
+            const maxA = activeTeam === 'black' ? (5 * Math.PI / 6) : (-Math.PI / 6);
+            if (dirAngle < minA || dirAngle > maxA) return;
+          }
+
           let blockerCount = 0;
           for (let p of this.pieces) {
             if (p === s || p === t || p.dead) continue;
@@ -1474,15 +1506,28 @@ class ArchessArena {
             if (proj > s.radius && proj < directDist - t.radius) {
               const perpDist = Math.abs((p.x - s.x) * -vY + (p.y - s.y) * vX);
               if (perpDist < (s.radius + p.radius) * 0.96) {
-                isDirectBlocked = true;
                 blockerCount++;
               }
             }
           }
 
+          const isKnightLeap = s.type === 'knight';
+          const isDirectBlocked = isKnightLeap ? (blockerCount > 1) : (blockerCount > 0);
+
+          // Landing safety evaluation
+          let safetyScore = 0;
+          if (s.hp < 45 && t.type !== 'king') {
+            const isDefendedByHeavy = enemyPieces.some(e => 
+              e !== t && (e.type === 'queen' || e.type === 'rook') &&
+              Math.hypot(e.x - t.x, e.y - t.y) < layout.sqSize * 2.2
+            );
+            if (isDefendedByHeavy) safetyScore -= 50;
+          }
+          if (isKnightLeap && blockerCount === 1) safetyScore += 35;
+
           const pieceVal = targetWeights[t.type] || 30;
           const isLethal = t.hp <= (s.mass || 1.2) * 50;
-          const baseScore = pieceVal * 2.0 + (isLethal ? 80 : 0) - directDist * 0.08;
+          const baseScore = pieceVal * 2.0 + (isLethal ? 100 : 0) - directDist * 0.08 + safetyScore;
 
           if (!isDirectBlocked) {
             candidateMoves.push({
@@ -1491,7 +1536,7 @@ class ArchessArena {
               angle: Math.atan2(directDy, directDx),
               power: Math.min(1.0, Math.max(0.72, (directDist / (this.width * 0.58)) * 1.12)),
               score: baseScore + 100,
-              mode: 'SOVEREIGN_DIRECT'
+              mode: isKnightLeap && blockerCount === 1 ? 'SOVEREIGN_KNIGHT_VAULT' : 'SOVEREIGN_DIRECT'
             });
           } else {
             const mirrorLeftX = 2 * wallMinX - t.x;
@@ -1537,6 +1582,10 @@ class ArchessArena {
       desiredPower = best.power;
       trajectoryMode = best.mode;
     }
+
+    // Ensure final bot aim strictly obeys piece corridor constraints
+    const clampedBotAim = this.clampLaunchVector(shooter, Math.cos(aimAngle), Math.sin(aimAngle));
+    aimAngle = clampedBotAim.angle;
 
     this.logTelemetry('BOT_AIM', `[AI Tier: L${diffLevel} • ${this.botDifficulty.toUpperCase()}] ${activeTeam.toUpperCase()} ${shooter.type.toUpperCase()} -> ${target.type.toUpperCase()} (${trajectoryMode}, ${Math.round(desiredPower * 100)}% power)`);
 
@@ -2063,8 +2112,13 @@ class ArchessArena {
       const screenPos = getPointerScreenPos(e);
       if (this.isDragging && this.selectedPiece) {
         this.dragScreenCurrent = screenPos;
-        const pullScreenX = this.dragScreenAnchor.x - this.dragScreenCurrent.x;
-        const pullScreenY = this.dragScreenAnchor.y - this.dragScreenCurrent.y;
+        let pullScreenX = this.dragScreenAnchor.x - this.dragScreenCurrent.x;
+        let pullScreenY = this.dragScreenAnchor.y - this.dragScreenCurrent.y;
+        if (this.selectedPiece.type === 'pawn' && !this.selectedPiece.promoted) {
+          const clamped = this.clampLaunchVector(this.selectedPiece, pullScreenX, pullScreenY);
+          pullScreenX = clamped.pullX;
+          pullScreenY = clamped.pullY;
+        }
         const screenDist = Math.hypot(pullScreenX, pullScreenY);
         const powerRatio = Math.min(screenDist, this.maxPullDistance) / this.maxPullDistance;
         const now = performance.now();
@@ -2107,8 +2161,13 @@ class ArchessArena {
       if (!this.isDragging || !this.selectedPiece) return;
       this.isDragging = false;
 
-      const pullScreenX = this.dragScreenAnchor.x - this.dragScreenCurrent.x;
-      const pullScreenY = this.dragScreenAnchor.y - this.dragScreenCurrent.y;
+      let pullScreenX = this.dragScreenAnchor.x - this.dragScreenCurrent.x;
+      let pullScreenY = this.dragScreenAnchor.y - this.dragScreenCurrent.y;
+      if (this.selectedPiece.type === 'pawn' && !this.selectedPiece.promoted) {
+        const clamped = this.clampLaunchVector(this.selectedPiece, pullScreenX, pullScreenY);
+        pullScreenX = clamped.pullX;
+        pullScreenY = clamped.pullY;
+      }
       const screenDist = Math.hypot(pullScreenX, pullScreenY);
 
       if (screenDist > 14) {
@@ -2189,6 +2248,9 @@ class ArchessArena {
       this.keyboardTargetIndex = (this.keyboardTargetIndex + (e.shiftKey ? -1 : 1) + livingActivePieces.length) % livingActivePieces.length;
       this.selectedPiece = livingActivePieces[this.keyboardTargetIndex];
       this.keyboardAiming = true;
+      if (this.selectedPiece.type === 'pawn' && !this.selectedPiece.promoted) {
+        this.keyboardAimAngle = this.selectedPiece.team === 'white' ? (-Math.PI / 2) : (Math.PI / 2);
+      }
       this.logTelemetry('KBD_FOCUS', `Focused [${this.selectedPiece.type.toUpperCase()}] via keyboard`);
     } else if (this.keyboardAiming && this.selectedPiece) {
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
@@ -2199,7 +2261,16 @@ class ArchessArena {
         this.keyboardAimPower = Math.min(1.0, this.keyboardAimPower + 0.08);
       } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
         this.keyboardAimPower = Math.max(0.15, this.keyboardAimPower - 0.08);
-      } else if (e.code === 'Space' || e.code === 'Enter') {
+      }
+
+      // Clamp pawn keyboard aiming angle to forward cone
+      if (this.selectedPiece.type === 'pawn' && !this.selectedPiece.promoted) {
+        const minA = this.selectedPiece.team === 'white' ? (-5 * Math.PI / 6) : (Math.PI / 6);
+        const maxA = this.selectedPiece.team === 'white' ? (-Math.PI / 6) : (5 * Math.PI / 6);
+        this.keyboardAimAngle = Math.max(minA, Math.min(maxA, this.keyboardAimAngle));
+      }
+
+      if (e.code === 'Space' || e.code === 'Enter') {
         e.preventDefault();
         const dist = this.keyboardAimPower * this.maxPullDistance;
         const pullX = Math.cos(this.keyboardAimAngle) * dist;
@@ -2214,15 +2285,72 @@ class ArchessArena {
     }
   }
 
+  /**
+   * Clamps vector to piece's natural forward corridor (e.g. 120-deg forward cone for Pawns).
+   * Unpromoted pawns cannot be launched backwards or purely sideways.
+   */
+  clampLaunchVector(piece, pullX, pullY) {
+    const dist = Math.hypot(pullX, pullY);
+    if (dist < 0.001 || !piece || piece.type !== 'pawn' || piece.promoted) {
+      return { pullX, pullY, angle: Math.atan2(pullY, pullX), dist };
+    }
+
+    let angle = Math.atan2(pullY, pullX);
+    if (piece.team === 'white') {
+      // White pawns launch forward (upwards, negative Y): -150 deg to -30 deg
+      const minAngle = -5 * Math.PI / 6;
+      const maxAngle = -Math.PI / 6;
+      if (angle < minAngle || angle > maxAngle) {
+        if (angle > maxAngle && angle <= Math.PI / 2) {
+          angle = maxAngle;
+        } else {
+          angle = minAngle;
+        }
+      }
+    } else {
+      // Black pawns launch forward (downwards, positive Y): +30 deg to +150 deg
+      const minAngle = Math.PI / 6;
+      const maxAngle = 5 * Math.PI / 6;
+      if (angle < minAngle || angle > maxAngle) {
+        if (angle < minAngle && angle >= -Math.PI / 2) {
+          angle = minAngle;
+        } else {
+          angle = maxAngle;
+        }
+      }
+    }
+    return {
+      pullX: Math.cos(angle) * dist,
+      pullY: Math.sin(angle) * dist,
+      angle,
+      dist
+    };
+  }
+
   launchPiece(piece, pullX, pullY, pullDist) {
     if (piece.immovable || (piece.type === 'king' && !piece.awakened)) return;
+    const clampedVec = this.clampLaunchVector(piece, pullX, pullY);
+    pullX = clampedVec.pullX;
+    pullY = clampedVec.pullY;
     const clampedDist = Math.min(pullDist, this.maxPullDistance);
     const powerRatio = clampedDist / this.maxPullDistance;
     const impulse = clampedDist * PHYSICS_CONFIG.LAUNCH_IMPULSE * piece.speedMulti;
-    const angle = Math.atan2(pullY, pullX);
+    const angle = clampedVec.angle;
 
     piece.vx = Math.cos(angle) * impulse;
     piece.vy = Math.sin(angle) * impulse;
+
+    // Knight Vaulting Leap Initialization: phases over the first obstacle piece
+    if (piece.type === 'knight') {
+      piece.isLeaping = true;
+      piece.leapDistTraveled = 0;
+      piece.leapMaxDist = (this.getBoardLayout().sqSize || 64) * 2.4;
+      piece.leapHasHopped = false;
+      this.spawnImpactParticles(piece.x, piece.y, 18, false, ['#818cf8', '#c084fc', '#ffffff']);
+      this.logTelemetry('KNIGHT_LEAP_START', `♞ ${piece.team.toUpperCase()} Knight vaults into aerial leap!`);
+    } else {
+      piece.isLeaping = false;
+    }
 
     if (piece.type === 'king' && piece.awakened) {
       this.spawnImpactParticles(piece.x, piece.y, 25, false, piece.team === 'white' ? ['#ffd700', '#00e1d9', '#ffffff'] : ['#ff4757', '#ff7675', '#ffffff']);
@@ -2230,7 +2358,7 @@ class ArchessArena {
       this.logTelemetry('SOVEREIGN_LAUNCH', `👑 ${piece.team.toUpperCase()} Awakened King launched with sovereign kinetic force!`);
     } else {
       this.audio.playLaunch(powerRatio);
-    this.logTelemetry('LAUNCH', `Launched ${piece.team}_${piece.type} at power ${(powerRatio * 100).toFixed(0)}%`);
+      this.logTelemetry('LAUNCH', `Launched ${piece.team}_${piece.type} at power ${(powerRatio * 100).toFixed(0)}%`);
     }
 
     // Cap maximum speed
@@ -2450,8 +2578,38 @@ class ArchessArena {
           p.x += p.vx;
           p.y += p.vy;
 
-          p.vx *= this.friction;
-          p.vy *= this.friction;
+          // Knight Vaulting Leap Distance Decay
+          if (p.isLeaping) {
+            p.leapDistTraveled = (p.leapDistTraveled || 0) + speed;
+            if (p.leapDistTraveled >= (p.leapMaxDist || 140)) {
+              p.isLeaping = false;
+              this.spawnShockwave(p.x, p.y, p.team === 'white' ? '#818cf8' : '#c084fc', 32, 2);
+            }
+          }
+
+          // Tactical Chess Physics: Anisotropic Corridor Friction
+          let currentFriction = this.friction;
+          if (p.type === 'bishop') {
+            const absVx = Math.abs(p.vx);
+            const absVy = Math.abs(p.vy);
+            const sumV = absVx + absVy;
+            if (sumV > 0.4 && Math.abs(absVx - absVy) / sumV < 0.32) {
+              // Diagonal corridor (approx 45, 135, 225, 315 deg): low-drag glide!
+              currentFriction = Math.min(0.993, this.friction + 0.015);
+            } else {
+              currentFriction = this.friction * 0.985;
+            }
+          } else if (p.type === 'rook') {
+            const absVx = Math.abs(p.vx);
+            const absVy = Math.abs(p.vy);
+            // Pure horizontal or vertical corridor: heavy linear momentum
+            if (absVx > absVy * 2.5 || absVy > absVx * 2.5) {
+              currentFriction = Math.min(0.991, this.friction + 0.013);
+            }
+          }
+
+          p.vx *= currentFriction;
+          p.vy *= currentFriction;
 
           // Particle trail (v3.3.0 theme-aware)
           if (speed > 3 && Math.random() < 0.45) {
@@ -2677,6 +2835,28 @@ class ArchessArena {
         const minDist = p1.radius + p2.radius;
 
         if (dist < minDist && dist > 0.001) {
+          // Tactical Chess: Knight Vaulting Leap phases over first obstacle piece!
+          if (p1.isLeaping && !p1.leapHasHopped) {
+            p1.leapHasHopped = true;
+            p1.isLeaping = false;
+            this.spawnImpactParticles(p1.x, p1.y, 16, false, ['#818cf8', '#c084fc', '#ffffff']);
+            this.spawnShockwave(p1.x, p1.y, '#818cf8', 42, 2.5);
+            this.logTelemetry('KNIGHT_LEAP', `♞ ${p1.team.toUpperCase()} Knight vaulted cleanly over ${p2.team} ${p2.type}!`);
+            this.addDamageNumber(p1.x, p1.y - p1.radius * 1.3, 0, false, '#818cf8', 'VAULT LEAP!');
+            this.audio.playBounce();
+            continue;
+          }
+          if (p2.isLeaping && !p2.leapHasHopped) {
+            p2.leapHasHopped = true;
+            p2.isLeaping = false;
+            this.spawnImpactParticles(p2.x, p2.y, 16, false, ['#818cf8', '#c084fc', '#ffffff']);
+            this.spawnShockwave(p2.x, p2.y, '#818cf8', 42, 2.5);
+            this.logTelemetry('KNIGHT_LEAP', `♞ ${p2.team.toUpperCase()} Knight vaulted cleanly over ${p1.team} ${p1.type}!`);
+            this.addDamageNumber(p2.x, p2.y - p2.radius * 1.3, 0, false, '#818cf8', 'VAULT LEAP!');
+            this.audio.playBounce();
+            continue;
+          }
+
           const overlap = minDist - dist;
           const nx = dx / dist;
           const ny = dy / dist;
@@ -2751,11 +2931,24 @@ class ArchessArena {
                   defender = p1;
                 }
 
-                // Logical primary impact damage dealt to defender
-                let primaryDamage = Math.max(10, Math.round(relativeSpeed * 3.6 * striker.mass * damageMulti));
+                // Directness of collision along impact normal
+                const strikerSpd = Math.hypot(striker.vx, striker.vy) || 1;
+                const directness = Math.min(1.0, Math.abs(striker.vx * nx + striker.vy * ny) / strikerSpd);
+                // Glancing strikes (>40 deg off center) reduce attacker recoil self-damage up to 70%
+                const recoilFactor = 0.25 + 0.75 * Math.pow(directness, 2);
 
-                // Logical recoil self-damage taken by striker from the physical collision
-                let recoilDamage = Math.max(4, Math.round(relativeSpeed * 1.1 * defender.mass));
+                // Check if defender is Braced (Phalanx Defense by adjacent friendly allies)
+                const isDefenderBraced = defender.isBraced && defender.type !== 'king';
+
+                // Primary impact damage dealt to defender (absorbed by 25% if defender is braced)
+                let primaryDamage = Math.max(10, Math.round(relativeSpeed * 3.6 * striker.mass * damageMulti * (isDefenderBraced ? 0.75 : 1.0)));
+
+                // Recoil self-damage taken by striker (heavily mitigated on glancing/flank strikes)
+                let recoilDamage = Math.max(1, Math.round(relativeSpeed * 1.1 * defender.mass * recoilFactor));
+
+                if (isDefenderBraced) {
+                  this.addDamageNumber(defender.x, defender.y - defender.radius * 1.3, 0, false, '#00e1d9', 'PHALANX BRACED');
+                }
 
                 // Queen Supernova Discharge on high velocity
                 if ((p1.type === 'queen' || p2.type === 'queen') && relativeSpeed > 5.5) {
@@ -2898,6 +3091,44 @@ class ArchessArena {
     if (this.simulationSettling && !anyInMotion) {
       this.simulationSettling = false;
       this.turns++;
+
+      // Tactical Chess: Check Pawn Promotion upon reaching opponent back ranks
+      const sq = layout.sqSize || 64;
+      this.pieces.forEach(p => {
+        if (p.dead || p.type !== 'pawn' || p.promoted) return;
+        const row = Math.floor((p.y - layout.gridOriginY) / sq);
+        const reachedBackRank = (p.team === 'white' && row <= 1) || (p.team === 'black' && row >= 6);
+        if (reachedBackRank) {
+          p.promoted = true;
+          p.type = 'queen';
+          p.mass = 1.9;
+          p.speedMulti = 0.94;
+          p.bounce = 0.75;
+          p.hp = Math.min(130, p.hp + 60);
+          p.maxHp = 130;
+          p.radius = Math.round(sq * 0.40);
+          p.glyph = p.team === 'white' ? '♕' : '♛';
+          this.spawnImpactParticles(p.x, p.y, 45, true, ['#ffd700', '#ffffff', '#00e1d9']);
+          this.spawnShockwave(p.x, p.y, '#ffd700', 85, 5);
+          this.audio.playLaunch(1.5);
+          this.addDamageNumber(p.x, p.y - p.radius * 1.6, 0, true, '#ffd700', 'PROMOTED TO QUEEN!');
+          this.logTelemetry('PAWN_PROMOTION', `👑 ${p.team.toUpperCase()} Pawn reached row ${row} and PROMOTED to QUEEN!`);
+          this.addCommentary(`👑 PROMOTION! ${p.team.toUpperCase()} Pawn has broken through to row ${row} and ascended to a QUEEN!`, 'shatter', '👑');
+        }
+      });
+
+      // Update Braced / Phalanx defense stance for all stationary pieces
+      this.pieces.forEach(p => {
+        if (p.dead || p.type === 'king' || p.inMotion) {
+          p.isBraced = false;
+          return;
+        }
+        p.isBraced = this.pieces.some(ally => 
+          !ally.dead && ally !== p && ally.team === p.team && !ally.inMotion &&
+          Math.hypot(ally.x - p.x, ally.y - p.y) <= sq * 1.6
+        );
+      });
+
       this.currentTurn = this.currentTurn === 'white' ? 'black' : 'white';
       this.turnStartTime = performance.now();
       this.updateHUD();
@@ -3371,15 +3602,20 @@ class ArchessArena {
     let active = false;
 
     if (this.isDragging) {
-      const pullScreenX = this.dragScreenAnchor.x - this.dragScreenCurrent.x;
-      const pullScreenY = this.dragScreenAnchor.y - this.dragScreenCurrent.y;
+      let pullScreenX = this.dragScreenAnchor.x - this.dragScreenCurrent.x;
+      let pullScreenY = this.dragScreenAnchor.y - this.dragScreenCurrent.y;
+      if (sourcePiece.type === 'pawn' && !sourcePiece.promoted) {
+        const clamped = this.clampLaunchVector(sourcePiece, pullScreenX, pullScreenY);
+        pullScreenX = clamped.pullX;
+        pullScreenY = clamped.pullY;
+      }
       const screenDist = Math.hypot(pullScreenX, pullScreenY);
       if (screenDist >= 10) {
         active = true;
         const clampedDist = Math.min(screenDist, this.maxPullDistance);
         powerRatio = clampedDist / this.maxPullDistance;
-        dirScreenX = pullScreenX / screenDist;
-        dirScreenY = pullScreenY / screenDist;
+        dirScreenX = pullScreenX / (screenDist || 1);
+        dirScreenY = pullScreenY / (screenDist || 1);
       }
     } else if (this.keyboardAiming) {
       active = true;
@@ -4093,6 +4329,27 @@ class ArchessArena {
       ctx.scale(depthScale, depthScale);
     }
 
+    // Tactical Chess: Leaping Knight Visual Elevation (phases above the board)
+    const isKnightLeap = p.type === 'knight' && p.isLeaping;
+    if (isKnightLeap) {
+      ctx.save();
+      ctx.shadowColor = '#818cf8';
+      ctx.shadowBlur = 20;
+      ctx.scale(1.22, 1.22);
+    }
+
+    // Tactical Chess: Braced Phalanx Defensive Stance Ring
+    if (p.isBraced && !p.dead && !p.inMotion && p.type !== 'king') {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(0, 0, p.radius * 1.25, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(0, 225, 217, 0.55)';
+      ctx.lineWidth = 1.8;
+      ctx.setLineDash([5, 4]);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     // Selection Halo (Smooth Golden Pulse)
     if (isSelected) {
       ctx.beginPath();
@@ -4145,6 +4402,9 @@ class ArchessArena {
 
     // Draw the Master Staunton Vector Silhouette
     this.drawStauntonPiece(ctx, p.type, p.team, p.radius, this.pieceTheme);
+    if (isKnightLeap) {
+      ctx.restore();
+    }
 
     const isHovered = (this.hoveredPiece === p) || isSelected;
 
