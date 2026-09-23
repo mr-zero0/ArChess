@@ -2339,7 +2339,7 @@ class ArchessArena {
 
     piece.vx = Math.cos(angle) * impulse;
     piece.vy = Math.sin(angle) * impulse;
-    piece.reachedBackRankDuringTurn = false;
+    piece.hitBackCushionDuringTurn = false;
 
     // Knight Vaulting Leap Initialization: phases over the first obstacle piece
     if (piece.type === 'knight') {
@@ -2612,15 +2612,6 @@ class ArchessArena {
           p.vx *= currentFriction;
           p.vy *= currentFriction;
 
-          // Track pawn reaching opponent back ranks during movement
-          if (p.type === 'pawn' && !p.promoted) {
-            if (p.team === 'white' && p.y <= layout.gridOriginY + layout.sqSize * 0.95) {
-              p.reachedBackRankDuringTurn = true;
-            } else if (p.team === 'black' && p.y >= layout.gridOriginY + layout.sqSize * 7.05) {
-              p.reachedBackRankDuringTurn = true;
-            }
-          }
-
           // Particle trail (v3.3.0 theme-aware)
           if (speed > 3 && Math.random() < 0.45) {
             const theme = this.particleTheme || 'sovereign_sparks';
@@ -2676,7 +2667,13 @@ class ArchessArena {
             p.y = minY + p.radius;
             p.vy = -p.vy * bounceCoeff;
             if (p.type === 'pawn' && p.team === 'white' && !p.promoted) {
-              p.reachedBackRankDuringTurn = true;
+              // Only counts if outside the King's fortress wall zone
+              const enemyKing = this.pieces.find(k => !k.dead && k.team === 'black' && k.type === 'king');
+              const wallBoundary = (enemyKing && enemyKing.wallActive && enemyKing.wallHp > 0) ? ((enemyKing.wallHalf || layout.sqSize * 0.47) + p.radius + 8) : 0;
+              const distToKing = enemyKing ? Math.hypot(p.x - enemyKing.x, p.y - enemyKing.y) : 999;
+              if (distToKing > wallBoundary) {
+                p.hitBackCushionDuringTurn = true;
+              }
             }
             if (isBishop) {
               this.spawnImpactParticles(p.x, p.y, 8, false);
@@ -2690,7 +2687,13 @@ class ArchessArena {
             p.y = maxY - p.radius;
             p.vy = -p.vy * bounceCoeff;
             if (p.type === 'pawn' && p.team === 'black' && !p.promoted) {
-              p.reachedBackRankDuringTurn = true;
+              // Only counts if outside the King's fortress wall zone
+              const enemyKing = this.pieces.find(k => !k.dead && k.team === 'white' && k.type === 'king');
+              const wallBoundary = (enemyKing && enemyKing.wallActive && enemyKing.wallHp > 0) ? ((enemyKing.wallHalf || layout.sqSize * 0.47) + p.radius + 8) : 0;
+              const distToKing = enemyKing ? Math.hypot(p.x - enemyKing.x, p.y - enemyKing.y) : 999;
+              if (distToKing > wallBoundary) {
+                p.hitBackCushionDuringTurn = true;
+              }
             }
             if (isBishop) {
               this.spawnImpactParticles(p.x, p.y, 8, false);
@@ -2762,6 +2765,9 @@ class ArchessArena {
               const velAlongNormal = rvx * nx + rvy * ny;
 
               if (velAlongNormal < 0) {
+                if (attacker.type === 'pawn') {
+                  attacker.hitBackCushionDuringTurn = false;
+                }
                 const hitSpeed = Math.hypot(rvx, rvy);
                 const bounce = Math.max(0.68, attacker.bounce);
                 attacker.vx = -nx * hitSpeed * bounce;
@@ -3066,6 +3072,18 @@ class ArchessArena {
                       const sKey = striker.id || `${striker.team}_${striker.type}`;
                       this.pieceKills[sKey] = (this.pieceKills[sKey] || 0) + 1;
                     }
+
+                    // Check if a Pawn scored a lethal takedown against an enemy non-pawn officer
+                    const killer = (p === defender ? striker : defender);
+                    if (killer && killer.type === 'pawn' && p.type !== 'pawn' && killer.team !== p.team) {
+                      killer.killedNonPawn = true;
+                      killer.nonPawnKills = (killer.nonPawnKills || 0) + 1;
+                      this.spawnImpactParticles(killer.x, killer.y, 25, true, ['#ffd700', '#ffffff', '#00e1d9']);
+                      this.spawnShockwave(killer.x, killer.y, '#ffd700', 48, 3);
+                      this.addDamageNumber(killer.x, killer.y - killer.radius * 1.5, 0, true, '#ffd700', '★ VETERAN PAWN!');
+                      this.logTelemetry('PAWN_VETERAN', `🎖️ ${killer.team.toUpperCase()} Pawn vanquished enemy ${p.type.toUpperCase()} and attained VETERAN status! Eligible for Queen ascension at back cushion.`);
+                      this.addCommentary(`🎖️ VETERAN HONORS! ${killer.team.toUpperCase()} Pawn vanquished an enemy ${p.type.toUpperCase()} and earned Veteran Ascension status!`, 'strike', '🎖️');
+                    }
                     this.spawnImpactParticles(p.x, p.y, 35, true);
                     this.spawnShockwave(p.x, p.y, p.team === 'white' ? '#ffd700' : '#ff3b4e', 75, 4.5);
                     this.audio.playShatter();
@@ -3108,7 +3126,10 @@ class ArchessArena {
       this.simulationSettling = false;
       this.turns++;
 
-      // Tactical Chess: Check Pawn Promotion upon reaching opponent back ranks
+      // Tactical Chess: Check Pawn Promotion
+      // Strict Rules:
+      // 1. Must be a Veteran (has defeated at least one non-pawn enemy officer)
+      // 2. Must hit the deep back cushion of the opponent's first rank (not merely touching the king wall or partially entering the first rank)
       const sq = layout.sqSize || 64;
       this.pieces.forEach(p => {
         if (p.dead || p.type !== 'pawn' || p.promoted) return;
@@ -3119,34 +3140,38 @@ class ArchessArena {
           const wallBoundary = (enemyKing.wallHalf || sq * 0.47) + p.radius + 8;
           const distToKing = Math.hypot(p.x - enemyKing.x, p.y - enemyKing.y);
           if (distToKing <= wallBoundary) {
-            // Hitting or resting against the King's wall does NOT grant promotion!
-            p.reachedBackRankDuringTurn = false;
+            // Hitting or resting against King's wall strictly blocks promotion!
+            p.hitBackCushionDuringTurn = false;
             return;
           }
         }
 
-        const row = Math.floor((p.y - layout.gridOriginY) / sq);
-        const reachedBackRank = (p.team === 'white' && (row <= 0 || p.reachedBackRankDuringTurn)) ||
-                                (p.team === 'black' && (row >= 7 || p.reachedBackRankDuringTurn));
+        // Must physically strike or reach the deep back cushion of opponent's first rank
+        const hitBackSide = (p.team === 'white' && (p.hitBackCushionDuringTurn || (p.y - p.radius <= minY + 4))) ||
+                            (p.team === 'black' && (p.hitBackCushionDuringTurn || (p.y + p.radius >= maxY - 4)));
 
-        if (reachedBackRank) {
-          p.promoted = true;
-          p.reachedBackRankDuringTurn = false;
-          p.type = 'queen';
-          p.mass = 1.9;
-          p.speedMulti = 0.94;
-          p.bounce = 0.75;
-          p.hp = Math.min(130, p.hp + 60);
-          p.maxHp = 130;
-          p.radius = Math.round(sq * 0.40);
-          p.glyph = p.team === 'white' ? '♕' : '♛';
-          this.spawnImpactParticles(p.x, p.y, 45, true, ['#ffd700', '#ffffff', '#00e1d9']);
-          this.spawnShockwave(p.x, p.y, '#ffd700', 85, 5);
-          this.audio.playLaunch(1.5);
-          const rankTitle = p.team === 'white' ? '8th Rank' : '1st Rank';
-          this.addDamageNumber(p.x, p.y - p.radius * 1.6, 0, true, '#ffd700', 'PROMOTED TO QUEEN!');
-          this.logTelemetry('PAWN_PROMOTION', `👑 ${p.team.toUpperCase()} Pawn reached ${rankTitle} and PROMOTED to QUEEN!`);
-          this.addCommentary(`👑 PROMOTION! ${p.team.toUpperCase()} Pawn has broken through to the ${rankTitle} and ascended to a QUEEN!`, 'shatter', '👑');
+        if (hitBackSide) {
+          p.hitBackCushionDuringTurn = false;
+          if (p.killedNonPawn) {
+            p.promoted = true;
+            p.type = 'queen';
+            p.mass = 1.9;
+            p.speedMulti = 0.94;
+            p.bounce = 0.75;
+            p.hp = Math.min(130, p.hp + 60);
+            p.maxHp = 130;
+            p.radius = Math.round(sq * 0.40);
+            p.glyph = p.team === 'white' ? '♕' : '♛';
+            this.spawnImpactParticles(p.x, p.y, 45, true, ['#ffd700', '#ffffff', '#00e1d9']);
+            this.spawnShockwave(p.x, p.y, '#ffd700', 85, 5);
+            this.audio.playLaunch(1.5);
+            const rankTitle = p.team === 'white' ? '8th Rank Cushion' : '1st Rank Cushion';
+            this.addDamageNumber(p.x, p.y - p.radius * 1.6, 0, true, '#ffd700', 'VETERAN ASCENSION: QUEEN!');
+            this.logTelemetry('PAWN_PROMOTION', `👑 VETERAN ASCENSION: ${p.team.toUpperCase()} Pawn reached ${rankTitle} and ASCENDED to a QUEEN!`);
+            this.addCommentary(`👑 VETERAN ASCENSION! ${p.team.toUpperCase()} Veteran Pawn breached the ${rankTitle} and ascended to a QUEEN!`, 'shatter', '👑');
+          } else {
+            this.logTelemetry('PROMOTION_LOCKED', `${p.team.toUpperCase()} Pawn reached back cushion but is not a Veteran (must defeat an enemy officer to qualify for Queen ascension).`);
+          }
         }
       });
 
@@ -4436,6 +4461,19 @@ class ArchessArena {
     // Draw the Master Staunton Vector Silhouette
     this.drawStauntonPiece(ctx, p.type, p.team, p.radius, this.pieceTheme);
     if (isKnightLeap) {
+      ctx.restore();
+    }
+
+    // Veteran Pawn Badge: Golden star indicating combat kill & promotion readiness
+    if (p.type === 'pawn' && !p.promoted && p.killedNonPawn) {
+      ctx.save();
+      ctx.font = `bold ${Math.max(12, Math.round(p.radius * 0.62))}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#ffd700';
+      ctx.shadowColor = '#000000';
+      ctx.shadowBlur = 6;
+      ctx.fillText('★', 0, -p.radius * 1.15);
       ctx.restore();
     }
 
