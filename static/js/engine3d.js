@@ -2075,6 +2075,7 @@
           const sq = this.getSquareAtPointer(m);
           if (sq) {
             if (this.arena.canDeployAt(sq.col, sq.row, this.arena.deployMode)) {
+              this._pointerDownWasDeploy = true;
               this.arena.deployTacticalItem(this.arena.currentTurn, this.arena.deployMode, sq.col, sq.row);
             } else {
               if (this.arena.audio) this.arena.audio.playImpact(0.4);
@@ -2165,6 +2166,13 @@
             }
           } catch (err) {}
           this._capturedPointerId = undefined;
+        }
+
+        if (this._pointerDownWasDeploy) {
+          this._pointerDownWasDeploy = false;
+          this.arena.isDragging = false;
+          this.arena.selectedPiece = null;
+          return;
         }
 
         const SLINGSHOT_DRAG_THRESHOLD = 24;
@@ -2286,6 +2294,10 @@
       // Direct Click Listener on 3D canvas (handles single, double, and triple clicks cleanly)
       addTrackedListener(dom, 'click', (e) => {
         if (e.button === 2 || e.button === 1) return;
+        if (this._pointerDownWasDeploy) {
+          this._pointerDownWasDeploy = false;
+          return;
+        }
         if (this.arena.isGameOver) return;
         if (this.arena.gameMode === 'bot' && this.arena.currentTurn === 'black') return;
         if (this.arena.gameMode === 'ai-vs-ai') return;

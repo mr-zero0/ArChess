@@ -2583,6 +2583,7 @@ class ArchessArena {
         const row = Math.floor((worldPos.y - layout.gridOriginY) / layout.sqSize);
         if (col >= 0 && col < 8 && row >= 0 && row < 8) {
           if (this.canDeployAt(col, row, this.deployMode)) {
+            this._pointerDownWasDeploy = true;
             this.deployTacticalItem(this.currentTurn, this.deployMode, col, row);
           } else {
             this.audio.playImpact(0.4);
@@ -2706,6 +2707,13 @@ class ArchessArena {
     const handlePointerUp = (e) => {
       if (this.renderMode === '3d') return; // Handled exclusively by engine3d in 3D mode
 
+      if (this._pointerDownWasDeploy) {
+        this._pointerDownWasDeploy = false;
+        this.isDragging = false;
+        this.selectedPiece = null;
+        return;
+      }
+
       const SLINGSHOT_DRAG_THRESHOLD = 24;
       const currentScreenPos = e ? getPointerScreenPos(e) : (this.dragScreenCurrent || this._pointerDownScreenPos);
       const distMoved = (this._pointerDownScreenPos && currentScreenPos)
@@ -2790,6 +2798,10 @@ class ArchessArena {
     addTrackedListener(this.canvas, 'click', (e) => {
       if (this.renderMode === '3d') return; // Handled exclusively by engine3d in 3D mode
       if (this.deployMode) return;
+      if (this._pointerDownWasDeploy) {
+        this._pointerDownWasDeploy = false;
+        return;
+      }
       if (this.turnHasMoved || this.simulationSettling) return;
       const anyMoving = (this.pieces || []).some(p => !p.dead && (Math.hypot(p.vx, p.vy) > 0.15 || p.inMotion));
       if (anyMoving) return;
