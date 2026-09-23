@@ -1,7 +1,7 @@
 # ♟️ ARCHESS — The Kinetic Chess Protocol
 
 [![Live Application](https://img.shields.io/badge/Live%20Demo-archess.onrender.com-brightgreen?logo=render&logoColor=white)](https://archess.onrender.com)
-[![Version](https://img.shields.io/badge/Version-v4.3.1-blue.svg)](docs/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-v4.5.2-blue.svg)](docs/CHANGELOG.md)
 [![CI/CD Pipeline](https://github.com/mr-zero0/ArChess/actions/workflows/ci.yml/badge.svg)](https://github.com/mr-zero0/ArChess/actions/workflows/ci.yml)
 [![Tests Passing](https://img.shields.io/badge/Tests-373%20passed-brightgreen.svg)](tests/)
 [![Python Version](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/)
@@ -31,9 +31,11 @@ Built for competitive tactical mastery with real-time multiplayer matchmaking, b
   * Slingshot targeting with 24-point arced trajectory ribbon and real-time elastic tension cord.
 * **⚔️ 2D Arena Kinetic Combat (`game.js`)**:
   * Authentic slingshot kinetic combat engine with momentum conservation, trajectory prediction arcs, and drag physics.
+  * **🛡️ Strict 1-Move-Only Turn Lock**: Physical simulation settlement lock (`turnHasMoved`, `simulationSettling`) strictly guarantees exactly 1 move per turn, blocking any rapid back-to-back piece launches.
   * **💣 Tactical Deployables System**:
-    * **2 Explosive Landmines per Game**: Placeable on any open square in exchange for 1 move. Detonates upon piece entry, inflicting up to 65 AoE blast damage + radial knockback.
-    * **2 Indestructible Walls per Game**: Permanent fortified barriers placeable in exchange for 1 move. Blocks and rebounds all pieces (Knights vault cleanly over).
+    * **2 Indestructible Walls per Game**: Erected via double-click on any open square or UI deploy button in exchange for 1 move. Permanent, non-breakable barrier blocking opponent pieces while friendly pieces pass freely through (Knights vault cleanly over).
+    * **2 Explosive Landmines per Game**: Planted via triple-click on any open square or UI deploy button in exchange for 1 move. **Blasts off immediately**, dealing radial AoE non-lethal damage and impulse (all non-pawns survive with at least 1 HP; Sovereign King and Fortress Wall are 100% immune).
+    * **Slingshot Drag Separation (`24px` threshold)**: Short mouse drags (< 24px) cancel piece dragging and route cleanly to square clicks, preventing hand tremor from misfiring slingshots.
   * **🎖️ Veteran Pawn Ascension**: Pawns must eliminate a non-pawn officer and reach the deep back cushion outside the King's fortress to ascend to Queen.
   * **🛡️ Fortified King Citadel**: King remains anchored behind its square fortress wall (fits chessboard square, inflicts recoil damage) as the core objective.
   * High-elasticity perimeter cushions with wall rebounds, shockwaves, and particle spark explosions.

@@ -149,24 +149,34 @@ $$v_x' = -v_x \times e_{wall}, \quad v_y' = -v_y \times e_{wall} \quad (e_{wall}
 Each wall contact spawns particle sparks and sound impulses.
 
 ### 3. Tactical Indestructible Fortified Walls
-Players can deploy up to 2 indestructible walls per match in exchange for 1 turn move:
-* Rigid AABB box perimeter collision pushes non-leaping pieces outside the boundary tile.
-* Normal reflection rebound with high restitution ($e = 0.72$) and metallic impact sparks.
+Players can deploy up to 2 indestructible walls per match in exchange for 1 turn move (via double-click or UI deploy button):
+* **One-Way Asymmetric Blocking**: Enemy pieces bounce off with normal reflection rebound ($e = 0.72$) and metallic impact sparks; friendly allied pieces pass freely through without rebound or velocity loss.
+* Rigid AABB box perimeter collision pushes non-leaping enemy pieces outside the boundary tile.
 * Permanent structural durability ($\infty\text{ HP}$, indestructible).
 * **Knight Vaulting**: Leaping Knights in parabolic flight bypass wall collisions completely.
 
-### 4. Explosive Landmines & AoE Blast Kinematics
-Players can deploy up to 2 landmines per match in exchange for 1 turn move:
-* Proximity trigger: $d \le r_{piece} + 0.72 \times r_{mine}$.
-* Area-of-Effect (AoE) blast radius: $R_{blast} = 1.6 \times \text{sqSize}$.
-* Distance-scaled damage:
-  $$\text{DMG} = \max\left(25, \left\lfloor 65 \times \left(1 - 0.45 \frac{d}{R_{blast}}\right) \right\rfloor\right)$$
-* Radial knockback impulse:
-  $$\vec{v}_{impulse} = \left(1 - \frac{d}{R_{blast}}\right) \times 8.5 \times \hat{u}_{radial}$$
+### 4. Explosive Landmines & Immediate AoE Blast Kinematics
+Players can deploy up to 2 landmines per match in exchange for 1 turn move (via triple-click or UI deploy button):
+* **Immediate Blast-Off**: Detonates instantaneously upon placement, triggering screen shake (15px), shockwaves, and fireball particle VFX.
+* **AoE Blast Radius**: $R_{blast} = 1.35 \times \text{sqSize}$.
+* **Distance-Scaled Damage**:
+  $$\text{DMG} = \max\left(15, \left\lfloor 42 \times \max\left(0.35, 1 - 0.45 \frac{d}{R_{blast}}\right) \right\rfloor\right)$$
+* **Radial Knockback Impulse**:
+  $$\vec{v}_{impulse} = \max\left(1.5, \left(1 - \frac{d}{R_{blast}}\right) \times 8.5\right) \times \hat{u}_{radial}$$
+* **Non-Lethal Blast Protection**: Blast damage reduces piece HP but caps at $\max(1, \text{HP} - \text{DMG})$. Non-pawn pieces survive with at least 1 HP.
+* **Absolute Sovereign Immunity**: The Sovereign King and King Fortress Citadel Wall are 100% immune (0 damage).
+* **Permanent Hazard Marker**: After detonation, the landmine casing remains anchored on the board as a tactical ground hazard plate.
 
 ### 5. Veteran Pawn Ascension & Citadel Defense
-* **Veteran Ascension**: Pawns must eliminate at least one non-pawn officer (`officerKillCount \ge 1`) AND rebound off the deep back cushion outside the King's fortress wall to promote to Queen.
+* **Veteran Ascension**: Pawns must eliminate at least one non-pawn officer (`killedNonPawn == true`) AND reach the deep back cushion of the opponent's first rank outside the King's fortress wall to promote to Queen.
 * **Fortified King Citadel**: Kings are anchored behind a square fortress bulkhead absorbing damage and inflicting 25% recoil back onto ramming attackers.
+
+### 6. Strict 1-Move-Only Turn Lock State Machine
+To guarantee deterministic turn-based physics without race conditions or multi-move exploits:
+* **Atomic Move Lock**: Upon piece launch or tactical deploy, `turnHasMoved = true;` and `simulationSettling = true;` are set synchronously.
+* **Input Isolation**: All pointerdown, pointermove, pointerup, click, and keyboard triggers reject interaction if `turnHasMoved || simulationSettling || anyMoving`.
+* **Slingshot Drag Separation**: Pointer drag distances $< 24\text{px}$ cancel piece dragging and route cleanly to square click detection (`onSquareClick`), preventing mouse jitter from triggering launches.
+* **Settlement & Transition**: Only when all pieces physically settle ($\|\vec{v}\| \le 0.15$ and `!anyInMotion`), `turnHasMoved` resets to `false`, `turns++` increments, and turn transfers to the opponent.
 
 ## 🪐 3D WebGL Studio Rendering Pipeline
 

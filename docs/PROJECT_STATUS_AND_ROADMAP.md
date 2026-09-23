@@ -1,9 +1,9 @@
 # 🗺️ ARCHESS — Comprehensive Project Status & Technical Roadmap
 
-**Current Release:** `v4.4.0`  
+**Current Release:** `v4.5.2`  
 **Production Deployment:** [https://archess.onrender.com](https://archess.onrender.com)  
 **Repository:** `mr-zero0/ArChess`  
-**Branch:** `feat/tactical-chess-physics`  
+**Branch:** `main`  
 **Test Suite:** 373 / 373 Passed (100% Core Pass Rate, 12 Backend Modules)  
 **Security & Code Health:** Zero Known CVEs (pip-audit & bandit verified)
 
@@ -67,7 +67,7 @@ ARCHESS Repository Architecture
 ├── docs/                          # Comprehensive Documentation Suite
 │   ├── API.md                     # REST API schemas, WebSocket packets, and error responses
 │   ├── ARCHITECTURE.md            # System blueprint, physics equations, and component topology
-│   ├── CHANGELOG.md               # Chronological version history from v1.0.0 through v4.3.1
+│   ├── CHANGELOG.md               # Chronological version history from v1.0.0 through v4.5.2
 │   ├── DEPLOYMENT.md              # Cloud hosting manual (Render, Docker, VPS, Hugging Face)
 │   ├── openapi.json               # Mirrored OpenAPI 3.1.0 specification
 │   ├── PROJECT_STATUS_AND_ROADMAP.md # This document (Status, file map, completed vs left)
@@ -143,8 +143,10 @@ ARCHESS Repository Architecture
 
 | Area | Feature | Status | Implementation Details |
 |---|---|---|---|
-| **Tactical** | Tactical Landmines (x2) | ✅ Verified | Placed in exchange for 1 move; proximity triggered with AoE blast damage + radial knockback |
-| **Tactical** | Indestructible Walls (x2) | ✅ Verified | Permanent barricades placed in exchange for 1 move; blocks/rebounds pieces, Knights vault over |
+| **Turn Control** | Strict 1-Move-Only Turn Lock | ✅ Verified | `turnHasMoved` & `simulationSettling` locks; zero back-to-back moves; releases upon physical settlement |
+| **Tactical** | Tactical Landmines (x2) | ✅ Verified | Placed via triple-click or UI button; blasts off immediately with radial non-lethal AoE damage/impulse (King & King Citadel Wall 100% immune, non-pawns retain HP) |
+| **Tactical** | Indestructible Walls (x2) | ✅ Verified | Placed via double-click or UI button; permanent barrier blocking enemy pieces while friendly pieces pass freely through (Knights vault over) |
+| **Tactical** | Slingshot Drag Separation | ✅ Verified | Threshold 24px; drags < 24px cancel piece drag and route to square clicks; prevents hand tremor misfires |
 | **Tactical** | Veteran Pawn Ascension | ✅ Verified | Pawns must defeat a non-pawn officer and reach deep back cushion to ascend to Queen |
 | **Tactical** | King Citadel Fortress | ✅ Verified | King anchored behind dedicated square fortress bulkhead inflicting 25% recoil damage |
 | **Engines** | 3D Realistic WebGL Engine | ✅ Verified | Procedural Staunton geometry, PBR materials, parlor table, notations, shadow catcher, vault arcs, tension cord |

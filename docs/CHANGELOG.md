@@ -2,6 +2,41 @@
 
 All notable changes, architectural pivots, bugfixes, and refactorings across **ArChess** are documented in this file.
 
+## [4.5.2] - 2026-09-23
+
+### 🛡️ Strict 1-Move-Only Turn Lock & Kinetic Simulation Settle Engine
+- **Atomic Turn Enforcement (`turnHasMoved` & `simulationSettling`)**:
+  - Eliminated rapid-fire back-to-back piece launches by setting `this.turnHasMoved = true;` and `this.simulationSettling = true;` synchronously in `launchPiece` and `deployTacticalItem`.
+  - Comprehensive input locking across 2D and 3D pointer handlers (`handlePointerDown`, `handlePointerUp`, canvas `click`, and `handleKeyboardControl`): rejects all interactions if `turnHasMoved`, `simulationSettling`, or any piece is in motion.
+  - The lock is strictly released only upon physical settlement in `updatePhysics` (`simulationSettling && !anyInMotion`), which advances `turns++` and transfers turn ownership to the opponent.
+  - Added `p.inMotion = false;` when piece velocity drops below 0.15 to ensure reliable settlement detection.
+
+### 💣 Tactical Multi-Click Placement & Slingshot Drag Separation
+- **Slingshot Drag Separation (`SLINGSHOT_DRAG_THRESHOLD = 24px`)**:
+  - Decoupled slingshot drag mechanics from rapid mouse clicks. Any pointer drag < 24px cancels piece selection (`isDragging = false; selectedPiece = null;`) and routes directly to square click processing.
+  - Mitigates mouse tremor and hand jitter (10–18px) when rapidly clicking on or near pieces.
+- **Double-Click Indestructible Wall (Max 2 per Army)**:
+  - Double-clicking any open square immediately erects a permanent, non-breakable Fortified Wall.
+  - **One-Way Asymmetric Blocking**: Enemy pieces bounce off with elastic rebound ($e = 0.72$); friendly pieces pass freely through without rebound or velocity loss.
+  - **Knight Vaulting**: Leaping Knights soar cleanly over walls in parabolic flight.
+- **Triple-Click Explosive Landmine (Max 2 per Army)**:
+  - Triple-clicking any open square deploys an Explosive Landmine that **blasts off immediately** upon placement.
+  - **Non-Lethal AoE Blast**: Inflicts radial explosive damage and impulse knockback to nearby pieces; non-pawn pieces retain at least 1 HP (cannot be wiped out purely by blast).
+  - **Absolute Immunity**: The Sovereign King and King Fortress Wall take 0 damage from mine blasts.
+  - Remains on the board after detonation as a permanent tactical hazard marker plate.
+- **Multi-Click Tolerance**:
+  - Rapid click aggregator (`onSquareClick`) accepts follow-up clicks within 550ms on the same or adjacent ($\pm 1$) square to accommodate human motor variance.
+  - Double-click candidates wait 320ms for a potential 3rd click candidate before resolving to a wall; 3 clicks resolve immediately to a mine blast.
+
+### 🚀 Deploy Mode PointerUp Leakage Fix & Browser Cache Invalidation
+- **PointerUp Leakage Prevention**:
+  - Implemented `this._pointerDownWasDeploy = true;` in both 2D and 3D pointerdown handlers when deploying via UI buttons (`#btnDeployWall`, `#btnDeployMine`).
+  - Consumed cleanly at the top of `handlePointerUp` and canvas `click` listeners to prevent accidental square clicks or drag cancellations on the newly deployed tile.
+- **Dynamic Vacancy Coordinates in `canDeployAt`**:
+  - Removed stale starting square checks (`p.col === col && p.row === row`); deployment validation now strictly inspects live physical coordinates (`p.x, p.y`) so vacated squares across ranks 1, 2, 7, and 8 can be deployed to freely.
+- **Asset Version Invalidation (`?v=4.5.2`)**:
+  - Bumped script query strings in `templates/play.html` to `?v=4.5.2` for `three.min.js`, `engine3d.js`, `react-chessboard-bundle.js`, and `game.js` to ensure zero stale browser cache execution.
+
 ## [4.4.1] - 2026-09-23
 
 ### 👑 Authentic 3D Staunton Piece Sculpting & PBR Clearcoat
