@@ -19,6 +19,7 @@
 
 | Feature / Milestone | Category | Status | Verification Snapshot |
 |---|---|---|---|
+| **Tactical Deployables & 3D Overhaul (v4.4.0)** | Gameplay / 3D Graphics | ✅ COMPLETE | Added 2 Landmines (AoE blast & knockback in 1 move) and 2 Indestructible Walls (permanent rebound barrier in 1 move) per match; 2D & 3D raycast placement with holographic preview; Veteran Pawn Ascension; King fortress citadel defense; 3D parlor table, notations, and Knight vault leaps; 373/373 tests passing |
 | **In-Place Theme Navigation & State Persistence (v4.3.1)** | UX / Gameplay Engine | ✅ COMPLETE | Intercepted `#navThemesLink`, `#drawerThemesLink`, `#footerThemesLink` on `/play` to open Atelier in-place; fixed React custom SVG NaN bug; persisted arena piece coordinates & FEN in `sessionStorage`; synchronized URL query string via `replaceState`; 373/373 tests passing |
 | **Live Theme & Chess Piece Customizer (v4.3.0)** | 3D / 2D Gameplay / UI | ✅ COMPLETE | Real-time PBR material morphing (3D), vector silhouettes (2D Arena), and custom SVG sets (2D Classic) across 7 board palettes & 5 piece styles without resetting board or match progress; in-match Left Wing command card |
 | **Production Engineering & Security Hardening (v4.2.0)** | Security / Architecture | ✅ COMPLETE | Fixed Google OAuth token validation, multiplayer role/turn verification, SQLite `BEGIN IMMEDIATE` write locks, rate limiter FIFO ceiling (5k entries), metrics cardinality cap (250), 2D/3D listener lifecycle cleanup, 373/373 tests passing |

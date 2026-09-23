@@ -1955,9 +1955,14 @@
         this._listeners.push({ target, evt, handler, opts });
       };
 
+      const handleWindowPointerMove = (e) => {
+        if (!this.arena.isDragging) return;
+        handlePointerMove(e);
+      };
+
       addTrackedListener(dom, 'pointerdown', handlePointerDown);
       addTrackedListener(dom, 'pointermove', handlePointerMove);
-      addTrackedListener(window, 'pointermove', handlePointerMove);
+      addTrackedListener(window, 'pointermove', handleWindowPointerMove);
       addTrackedListener(dom, 'pointerup', handlePointerUp);
       addTrackedListener(window, 'pointerup', handlePointerUp);
       addTrackedListener(dom, 'pointercancel', handlePointerCancel);
@@ -2065,6 +2070,11 @@
     }
 
     destroy() {
+      this.resetDeployables();
+      if (this.deployPreviewMesh) {
+        if (this.deployPreviewMesh.parent) this.deployPreviewMesh.parent.remove(this.deployPreviewMesh);
+        this.deployPreviewMesh = null;
+      }
       if (this._listeners && Array.isArray(this._listeners)) {
         for (const item of this._listeners) {
           try {

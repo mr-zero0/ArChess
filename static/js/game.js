@@ -3847,13 +3847,13 @@ class ArchessArena {
     mineBtns.forEach(btn => {
       if (btn) {
         btn.disabled = !isHumanTurn || curInv.mines <= 0;
-        btn.classList.toggle('active', this.deployMode === 'mine');
+        if (btn.classList) btn.classList.toggle('active', this.deployMode === 'mine');
       }
     });
     wallBtns.forEach(btn => {
       if (btn) {
         btn.disabled = !isHumanTurn || curInv.walls <= 0;
-        btn.classList.toggle('active', this.deployMode === 'wall');
+        if (btn.classList) btn.classList.toggle('active', this.deployMode === 'wall');
       }
     });
 

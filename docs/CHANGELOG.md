@@ -2,6 +2,38 @@
 
 All notable changes, architectural pivots, bugfixes, and refactorings across **ArChess** are documented in this file.
 
+## [4.4.0] - 2026-09-23
+
+### 💣 Tactical Deployables System (Landmines & Indestructible Fortified Walls)
+- **Explosive Landmines (2 per game per player)**:
+  - Players can deploy up to 2 mines on open squares anytime during their turn in exchange for 1 move.
+  - Proximity trigger ($d \le r_{piece} + 0.72 \times r_{mine}$) causes immediate detonation.
+  - Area-of-Effect (AoE) blast radius ($1.6 \times \text{sqSize}$) deals up to 65 damage with radial knockback impulses away from epicenter.
+  - Leaping Knights in mid-air vault over mines without triggering until touchdown.
+  - Comprehensive VFX with 50 flame sparks, shockwaves, 15px screen shake, shatter audio, and 3D fireball mesh.
+- **Indestructible Fortified Walls (2 per game per player)**:
+  - Permanent barricades placed on any open square in exchange for 1 move.
+  - Cannot be damaged, breached, or destroyed ($\infty$ HP).
+  - High-elasticity rebound collision physics ($e = 0.72$) with metallic impact sparks.
+  - Leaping Knights vault cleanly over walls.
+- **2D & 3D Parity & Real-Time Raycast Placement**:
+  - Full procedural 3D models: metallic bunker block with glowing cyan corner pylons and shield crest for walls; cylindrical pressure plate with hazard stripes, pulsating red LED beacon, and floor proximity ring for mines.
+  - 3D surface raycasting highlights hovered square with real-time green/red holographic preview.
+  - Keyboard shortcuts (<kbd>M</kbd> for Mine, <kbd>W</kbd> for Wall, <kbd>Esc</kbd> to cancel).
+  - Bot AI evaluates placing defensive walls near kings or transit mines in central files.
+
+### 🎖️ Veteran Pawn Ascension & Fortified King Citadel
+- **Veteran Ascension**: Pawns must eliminate a non-pawn officer (`officerKillCount >= 1`) AND reach the deep back cushion outside the King's fortress wall to promote to Queen.
+- **Fortified King Citadel**: King is anchored behind its square fortress bulkhead as the central game objective. Ramming attackers suffer 25% recoil damage.
+
+### 🪐 Realistic 3D WebGL Engine Overhaul
+- Calibrated perspective depth with smooth camera preset lerping (`tabletop`, `cinematic`, `tactical`).
+- Circular parlor table surface with PCF soft shadow catcher.
+- 3D embossed rank & file algebraic notations along board bevels (a-h, 1-8).
+- Knight 3D parabolic vault leap with dynamic altitude arc.
+- Dynamic Queen 3D mesh swapping upon ascension.
+- Slingshot 24-point arced trajectory ribbon and real-time elastic tension cord.
+
 ## [4.3.1] - 2026-09-22
 
 ### 🛠️ In-Place Theme Navigation & State Persistence Engine

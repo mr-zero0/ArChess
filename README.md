@@ -25,11 +25,17 @@ Built for competitive tactical mastery with real-time multiplayer matchmaking, b
 ### 🎮 Three Authoritative Perspectives
 * **🪐 3D Realistic WebGL Studio (`Three.js`)**:
   * Procedurally lathed Staunton geometry with soft shadow maps and studio multi-point illumination (key, rim, ambient, fill, and spot) calibrated with ACES Filmic tone mapping.
+  * Real 3D physical parlor table, shadow catcher, 3D rank and file notations (a-h, 1-8), and dynamic camera preset lerping (`tabletop`, `cinematic`, `tactical`).
   * Real-time dynamic PBR material swapping across 5 piece sets (`Classic`, `Neo`, `Cyber`, `Crystal`, `Mono`).
-  * Orbit, tilt, zoom bounds, and focus framing with smooth momentum damping.
+  * Dynamic Queen mesh swap on pawn promotion, 3D golden star for veteran pawns, Knight parabolic vault arcs, and glowing citadel barriers.
+  * Slingshot targeting with 24-point arced trajectory ribbon and real-time elastic tension cord.
 * **⚔️ 2D Arena Kinetic Combat (`game.js`)**:
   * Authentic slingshot kinetic combat engine with momentum conservation, trajectory prediction arcs, and drag physics.
-  * Square Fortress Wall (500 HP) and Citadel Bastion Core mechanics: the King absorbs impacts with 25% Newtonian recoil self-damage back to attackers.
+  * **💣 Tactical Deployables System**:
+    * **2 Explosive Landmines per Game**: Placeable on any open square in exchange for 1 move. Detonates upon piece entry, inflicting up to 65 AoE blast damage + radial knockback.
+    * **2 Indestructible Walls per Game**: Permanent fortified barriers placeable in exchange for 1 move. Blocks and rebounds all pieces (Knights vault cleanly over).
+  * **🎖️ Veteran Pawn Ascension**: Pawns must eliminate a non-pawn officer and reach the deep back cushion outside the King's fortress to ascend to Queen.
+  * **🛡️ Fortified King Citadel**: King remains anchored behind its square fortress wall (fits chessboard square, inflicts recoil damage) as the core objective.
   * High-elasticity perimeter cushions with wall rebounds, shockwaves, and particle spark explosions.
   * Bespoke vector piece silhouettes with tailored drop shadows, bevels, and radial HP halos on hover.
 * **♟️ 2D Classic FIDE Mode (`react-chessboard` + `chess.js`)**:

@@ -148,7 +148,25 @@ Four elastic boundaries cushion the 8x8 battlefield:
 $$v_x' = -v_x \times e_{wall}, \quad v_y' = -v_y \times e_{wall} \quad (e_{wall} = 0.78)$$
 Each wall contact spawns particle sparks and sound impulses.
 
----
+### 3. Tactical Indestructible Fortified Walls
+Players can deploy up to 2 indestructible walls per match in exchange for 1 turn move:
+* Rigid AABB box perimeter collision pushes non-leaping pieces outside the boundary tile.
+* Normal reflection rebound with high restitution ($e = 0.72$) and metallic impact sparks.
+* Permanent structural durability ($\infty\text{ HP}$, indestructible).
+* **Knight Vaulting**: Leaping Knights in parabolic flight bypass wall collisions completely.
+
+### 4. Explosive Landmines & AoE Blast Kinematics
+Players can deploy up to 2 landmines per match in exchange for 1 turn move:
+* Proximity trigger: $d \le r_{piece} + 0.72 \times r_{mine}$.
+* Area-of-Effect (AoE) blast radius: $R_{blast} = 1.6 \times \text{sqSize}$.
+* Distance-scaled damage:
+  $$\text{DMG} = \max\left(25, \left\lfloor 65 \times \left(1 - 0.45 \frac{d}{R_{blast}}\right) \right\rfloor\right)$$
+* Radial knockback impulse:
+  $$\vec{v}_{impulse} = \left(1 - \frac{d}{R_{blast}}\right) \times 8.5 \times \hat{u}_{radial}$$
+
+### 5. Veteran Pawn Ascension & Citadel Defense
+* **Veteran Ascension**: Pawns must eliminate at least one non-pawn officer (`officerKillCount \ge 1`) AND rebound off the deep back cushion outside the King's fortress wall to promote to Queen.
+* **Fortified King Citadel**: Kings are anchored behind a square fortress bulkhead absorbing damage and inflicting 25% recoil back onto ramming attackers.
 
 ## 🪐 3D WebGL Studio Rendering Pipeline
 

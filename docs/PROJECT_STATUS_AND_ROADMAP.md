@@ -1,8 +1,9 @@
 # 🗺️ ARCHESS — Comprehensive Project Status & Technical Roadmap
 
-**Current Release:** `v4.3.1`  
+**Current Release:** `v4.4.0`  
 **Production Deployment:** [https://archess.onrender.com](https://archess.onrender.com)  
 **Repository:** `mr-zero0/ArChess`  
+**Branch:** `feat/tactical-chess-physics`  
 **Test Suite:** 373 / 373 Passed (100% Core Pass Rate, 12 Backend Modules)  
 **Security & Code Health:** Zero Known CVEs (pip-audit & bandit verified)
 
@@ -142,7 +143,11 @@ ARCHESS Repository Architecture
 
 | Area | Feature | Status | Implementation Details |
 |---|---|---|---|
-| **Engines** | 3D Realistic WebGL Engine | ✅ Verified | Procedural Staunton geometry, PBR materials, multi-point lighting, OrbitControls, live material swaps |
+| **Tactical** | Tactical Landmines (x2) | ✅ Verified | Placed in exchange for 1 move; proximity triggered with AoE blast damage + radial knockback |
+| **Tactical** | Indestructible Walls (x2) | ✅ Verified | Permanent barricades placed in exchange for 1 move; blocks/rebounds pieces, Knights vault over |
+| **Tactical** | Veteran Pawn Ascension | ✅ Verified | Pawns must defeat a non-pawn officer and reach deep back cushion to ascend to Queen |
+| **Tactical** | King Citadel Fortress | ✅ Verified | King anchored behind dedicated square fortress bulkhead inflicting 25% recoil damage |
+| **Engines** | 3D Realistic WebGL Engine | ✅ Verified | Procedural Staunton geometry, PBR materials, parlor table, notations, shadow catcher, vault arcs, tension cord |
 | **Engines** | 2D Arena Kinetic Combat | ✅ Verified | Authentic HTML5 canvas slingshot physics, perimeter cushion rebounds, Citadel King 500HP wall |
 | **Engines** | 2D Classic FIDE Mode | ✅ Verified | Official FIDE chess rules, legal moves, check/checkmate, custom responsive vector SVG pieces |
 | **Customizer** | Grandmaster Atelier | ✅ Verified | 7 board themes (`Midnight`, `Woodland`, `Ivory`, `Emerald`, `Cyberpunk`, `Bloodstone`, `Oceanic`) and 5 piece sets |
