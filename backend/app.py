@@ -115,6 +115,41 @@ if _admin_email and _admin_password:
     create_or_promote_admin(_admin_username, _admin_email, _admin_password)
     logger.info(f'{{"event":"admin_initialized", "email":"{_admin_email}"}}')
 
+# -------------------------------------------------------------
+# Render Free-Tier Keep-Alive Self-Ping
+# Prevents the service from sleeping after 15min of inactivity,
+# which causes the Render cold-start splash screen.
+# Only activates on Render (detected via RENDER env var).
+# -------------------------------------------------------------
+_render_url = os.environ.get("RENDER_EXTERNAL_URL")
+_is_render = os.environ.get("RENDER") == "true" or bool(_render_url)
+
+if _is_render:
+    import urllib.request
+
+    def _keep_alive_ping():
+        """Ping own health endpoint every 13 minutes to prevent Render free-tier sleep."""
+        ping_url = f"{_render_url}/api/health" if _render_url else None
+        if not ping_url:
+            logger.warning('{"event":"keep_alive_skip", "reason":"RENDER_EXTERNAL_URL not set"}')
+            return
+
+        logger.info(f'{{"event":"keep_alive_started", "interval_min":13, "url":"{ping_url}"}}')
+
+        while True:
+            time.sleep(13 * 60)  # 13 minutes (Render sleeps at 15)
+            try:
+                req = urllib.request.Request(ping_url, method="GET")
+                req.add_header("User-Agent", "ArChess-KeepAlive/1.0")
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    logger.info(f'{{"event":"keep_alive_ping", "status":{resp.status}}}')
+            except Exception as e:
+                logger.warning(f'{{"event":"keep_alive_error", "error":"{e}"}}')
+
+    _keep_alive_thread = threading.Thread(target=_keep_alive_ping, daemon=True)
+    _keep_alive_thread.start()
+
+
 @app.context_processor
 def inject_global_settings():
     return {

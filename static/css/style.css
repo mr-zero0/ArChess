@@ -1,4 +1,4 @@
-/* ==========================================================================
+﻿/* ==========================================================================
    ARCHESS - Minimalist Luxury Chess Design System
    Full-Width Hero Video, Side Expansion Menu, Dedicated Chess Themes, Zero Clutter.
    ========================================================================== */
@@ -152,6 +152,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html {
@@ -169,6 +170,8 @@ body {
   position: relative;
   min-height: 100vh;
   letter-spacing: -0.01em;
+  overscroll-behavior-y: contain;
+  -webkit-text-size-adjust: 100%;
 }
 
 /* Background Ambient Vignette (Apple & Tesla Calm Dark Canvas) */
@@ -179,6 +182,28 @@ body::after {
   background: radial-gradient(circle at 50% -10%, rgba(212, 175, 55, 0.035) 0%, rgba(7, 8, 11, 0) 70%);
   z-index: -1;
   pointer-events: none;
+}
+
+/* ==========================================================================
+   Accessibility: Reduced Motion Support
+   Respects iOS & system-level motion preferences for smoother experience.
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  html {
+    scroll-behavior: auto !important;
+  }
+  body::after {
+    display: none;
+  }
+  #bgMotionCanvas {
+    display: none !important;
+  }
 }
 
 /* Background Motion Canvas */
@@ -680,11 +705,6 @@ button {
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
 }
 
-.btn-outline:hover {
-  background: var(--secondary);
-  border-color: var(--border-hover);
-  color: var(--foreground);
-}
 
 .btn-destructive {
   background: var(--destructive);
@@ -1775,7 +1795,7 @@ button {
 }
 
 /* ==========================================================================
-   Tactical Arena Styles (play.html) — shadcn/ui Card Architecture
+   Tactical Arena Styles (play.html) â€” shadcn/ui Card Architecture
    ========================================================================== */
 .play-page-container {
   padding-top: 96px;
@@ -1940,9 +1960,6 @@ button {
   transform: scale(0.97);
 }
 
-.btn-cupertino-action:active {
-  transform: scale(0.97);
-}
 
 .arena-toolbar-actions {
   display: flex;
@@ -2004,7 +2021,7 @@ button {
   transform: scale(0.96);
 }
 
-/* Turn Indicator — shadcn/ui Banner Component */
+/* Turn Indicator â€” shadcn/ui Banner Component */
 .turn-indicator-bar {
   display: flex;
   align-items: center;
@@ -2833,7 +2850,6 @@ body.play-screen-active .play-page-container {
 }
 
 /* Compact adjustments for Match Card and Casualties on Right Wing */
-/* Compact adjustments for Match Card and Casualties on Right Wing (Tesla Telemetry) */
 .sidebar-match-card {
   padding: 12px 14px;
   background: rgba(14, 18, 26, 0.65);
@@ -3250,7 +3266,7 @@ body.play-screen-active .play-page-container {
   transform: scale(1.06);
 }
 
-/* Battle Casualties — shadcn/ui Card Component */
+/* Battle Casualties â€” shadcn/ui Card Component */
 .sidebar-casualties-card {
   position: relative;
   background: var(--card);
@@ -3414,7 +3430,6 @@ body.play-screen-active .play-page-container {
   0% { transform: scale(0.6); opacity: 0; }
   100% { transform: scale(1); opacity: 1; }
 }
-
 
 
 /* ==========================================================================
@@ -3955,7 +3970,7 @@ body.play-screen-active .play-page-container {
 }
 
 /* ==========================================================================
-   shadcn/ui Dialog — Victory / Match Settlement Modal
+   shadcn/ui Dialog â€” Victory / Match Settlement Modal
    ========================================================================== */
 @keyframes modalSlideUp {
   from { opacity: 0; transform: scale(0.95) translateY(16px); }
@@ -4038,7 +4053,7 @@ body.play-screen-active .play-page-container {
   animation: modalSlideUp 0.45s var(--ease-spring);
 }
 
-/* Subtle top accent line — shadcn dialog pattern */
+/* Subtle top accent line â€” shadcn dialog pattern */
 .victory-modal-dialog::before {
   content: '';
   position: absolute;
@@ -5701,7 +5716,6 @@ body.play-screen-active .play-page-container {
   border-color: rgba(212, 175, 55, 0.45);
   color: var(--gold-light, #ffd700);
 }
-
 
 
 /* ==========================================================================
@@ -8712,217 +8726,6 @@ body.play-screen-active .play-page-container {
   color: #ffffff;
 }
 
-.match-found-banner .found-countdown {
-  font-size: 0.75rem;
-}
-
-.btn-danger-purge {
-  margin-top: 6px;
-  padding: 10px 16px;
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.5);
-  color: #fca5a5;
-  border-radius: var(--radius-sm, 8px);
-  font-size: 0.82rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-danger-purge:hover {
-  background: rgba(239, 68, 68, 0.3);
-  color: #fff;
-  box-shadow: 0 0 16px rgba(239, 68, 68, 0.4);
-}
-
-/* ==========================================================================
-   Live Matchmaking Radar Modal & Sonar Sweep
-   ========================================================================== */
-.radar-modal-dialog {
-  max-width: 460px;
-  width: 90%;
-  background: rgba(11, 15, 24, 0.95);
-  border: 1px solid rgba(212, 175, 55, 0.4);
-  border-radius: var(--radius-xl, 24px);
-  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.9), 0 0 40px rgba(212, 175, 55, 0.2);
-  backdrop-filter: blur(32px);
-  padding: 32px 24px;
-  text-align: center;
-}
-
-.radar-sonar-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-}
-
-.radar-sonar-wrap {
-  position: relative;
-  width: 160px;
-  height: 160px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(212, 175, 55, 0.12) 0%, rgba(15, 23, 42, 0.8) 70%);
-  border: 2px solid rgba(212, 175, 55, 0.4);
-  box-shadow: 0 0 30px rgba(212, 175, 55, 0.25), inset 0 0 20px rgba(212, 175, 55, 0.15);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.radar-ring {
-  position: absolute;
-  border-radius: 50%;
-  border: 1px solid rgba(212, 175, 55, 0.25);
-}
-
-.radar-ring.ring-1 { width: 50px; height: 50px; }
-.radar-ring.ring-2 { width: 100px; height: 100px; }
-.radar-ring.ring-3 { width: 140px; height: 140px; }
-
-.radar-sweep {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: conic-gradient(from 0deg, rgba(212, 175, 55, 0.45) 0deg, rgba(212, 175, 55, 0) 60deg);
-  animation: radarSweepAnim 2.2s linear infinite;
-}
-
-@keyframes radarSweepAnim {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.radar-core-blip {
-  position: relative;
-  z-index: 5;
-  font-size: 1.5rem;
-  color: #ffd700;
-  text-shadow: 0 0 12px #ffd700;
-  animation: pulseBlip 1.5s ease-in-out infinite;
-}
-
-@keyframes pulseBlip {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.15); opacity: 0.8; }
-}
-
-.radar-status-details {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-}
-
-.radar-eyebrow {
-  font-family: var(--font-mono, monospace);
-  font-size: 0.68rem;
-  font-weight: 700;
-  color: #ffd700;
-  letter-spacing: 0.12em;
-}
-
-.radar-heading {
-  font-family: var(--font-display, 'Cinzel', serif);
-  font-size: 1.35rem;
-  font-weight: 700;
-  color: #f8fafc;
-  margin: 0;
-}
-
-.radar-subtext {
-  font-size: 0.80rem;
-  color: #94a3b8;
-  margin: 0;
-  max-width: 340px;
-  line-height: 1.4;
-}
-
-.radar-meta-strip {
-  display: flex;
-  justify-content: space-around;
-  width: 100%;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-md, 12px);
-  margin-top: 10px;
-}
-
-.radar-meta-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.radar-meta-item .meta-label {
-  font-size: 0.65rem;
-  color: #64748b;
-  text-transform: uppercase;
-}
-
-.radar-meta-item .meta-val {
-  font-family: var(--font-mono, monospace);
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #e2e8f0;
-}
-
-.match-found-banner {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 18px;
-  background: rgba(16, 185, 129, 0.15);
-  border: 1px solid rgba(16, 185, 129, 0.5);
-  border-radius: var(--radius-md, 12px);
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.25);
-  width: 100%;
-  text-align: left;
-  animation: bannerFadeIn 0.3s ease-out;
-}
-
-@keyframes bannerFadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.match-found-banner .found-icon {
-  font-size: 2rem;
-}
-
-.match-found-banner .found-title {
-  font-family: var(--font-mono, monospace);
-  font-size: 0.72rem;
-  font-weight: 800;
-  color: #10b981;
-  letter-spacing: 0.1em;
-}
-
-.match-found-banner .found-opponent-name {
-  font-family: var(--font-display, 'Cinzel', serif);
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #ffffff;
-}
-
-.match-found-banner .found-countdown {
-  font-size: 0.75rem;
-  color: #a7f3d0;
-  font-weight: 600;
-}
-
-.radar-cancel-btn {
-  margin-top: 10px;
-}
-
-@keyframes shockwavePulse {
-  0% { transform: translate(-50%, -50%) scale(0.2); opacity: 1; }
-  100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
-}
 
 /* -------------------------------------------------------------
    2D Arena Kinetic Stage (Unified Luxury Frame matching 2D Classic)
@@ -8999,4 +8802,368 @@ body.play-screen-active .play-page-container {
 
 .archess-2d-canvas-box canvas#archessCanvas:active {
   cursor: grabbing;
+}
+
+/* ==========================================================================
+   MOBILE & iOS PERFORMANCE OPTIMIZATION LAYER
+   Addresses Safari compositing costs, GPU budget, scroll jank,
+   and animation overhead on touch devices.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Mobile Scroll & Touch Behavior
+   -------------------------------------------------------------------------- */
+@media (max-width: 1024px) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  /* Ensure native momentum scrolling on all scrollable containers */
+  .appearance-modal-content,
+  .arsenal-tabs-list,
+  .side-expansion-drawer,
+  .leaderboard-table-card,
+  .drawer-body {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Remove 300ms tap delay on interactive elements */
+  a, button, input, select, textarea,
+  .btn, .btn-gold, .btn-ghost, .btn-outline,
+  .mobile-arena-tab,
+  .theme-card-item, .piece-card-item, .sound-card-item,
+  .piece-tab-item, .drawer-design-btn,
+  .live-palette-swatch,
+  .board-resize-btn {
+    touch-action: manipulation;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   2. GPU Layer Promotion for Key Animated Elements
+   -------------------------------------------------------------------------- */
+@media (max-width: 1024px) {
+  .site-header {
+    will-change: transform;
+    transform: translateZ(0);
+  }
+
+  .mobile-arena-nav-bar {
+    will-change: transform;
+    transform: translateZ(0);
+  }
+
+  .arena-canvas-stage {
+    will-change: transform;
+    transform: translateZ(0);
+  }
+
+  .modal-backdrop {
+    will-change: opacity;
+  }
+
+  .appearance-modal-card,
+  .modal-dialog {
+    will-change: transform, opacity;
+  }
+
+  .side-expansion-drawer {
+    will-change: transform;
+    transform: translateZ(0);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   3. Layout Containment â€” Prevent Style Recalculation Cascading
+   -------------------------------------------------------------------------- */
+@media (max-width: 1024px) {
+  .card,
+  .bento-card,
+  .sidebar-match-card,
+  .sidebar-casualties-card,
+  .theme-card,
+  .piece-tab-item,
+  .sound-card-item,
+  .bracket-match-card,
+  .leaderboard-table-card {
+    contain: content;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   4. Backdrop-Filter Reduction on Mobile
+   iOS Safari composites each blur as a separate GPU layer.
+   Keep blur only on fixed overlays (header, modals); remove from cards/badges.
+   -------------------------------------------------------------------------- */
+@media (max-width: 1024px) {
+  /* Keep header blur but reduce intensity */
+  .site-header {
+    backdrop-filter: blur(12px) saturate(140%) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(140%) !important;
+  }
+
+  /* Remove blur from cards â€” they don't need it on mobile */
+  .card,
+  .bento-card,
+  .sidebar-match-card,
+  .sidebar-casualties-card,
+  .theme-card,
+  .piece-detail-card,
+  .action-banner-box {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Remove blur from buttons and badges â€” pure waste on mobile */
+  .tag-badge,
+  .badge-pill,
+  .btn-ghost,
+  .btn-outline,
+  .announcement-pill,
+  .advantage-badge,
+  .live-status-chip {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Reduce blur on the mobile HUD row */
+  .mobile-hud-row {
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+  }
+
+  /* Reduce blur on mobile tab bar */
+  .mobile-arena-nav-bar {
+    backdrop-filter: blur(10px) saturate(140%) !important;
+    -webkit-backdrop-filter: blur(10px) saturate(140%) !important;
+  }
+
+  /* Reduce blur on side drawer */
+  .side-expansion-drawer {
+    backdrop-filter: blur(14px) saturate(150%) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(150%) !important;
+  }
+
+  /* Keep modal backdrops blurred but reduce */
+  .appearance-modal-card,
+  .modal-dialog {
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+  }
+
+  /* Remove toast/notification blurs */
+  .toast-notification,
+  .shadcn-toast {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   5. Box-Shadow Simplification on Mobile
+   Multi-layer shadows are CPU-composited on iOS Safari.
+   -------------------------------------------------------------------------- */
+@media (max-width: 1024px) {
+  .card,
+  .bento-card,
+  .sidebar-match-card,
+  .sidebar-casualties-card,
+  .piece-tab-item {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  .card:hover,
+  .bento-card:hover,
+  .sidebar-match-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+  }
+
+  .btn-gold {
+    box-shadow: 0 2px 10px rgba(212, 175, 55, 0.3) !important;
+  }
+
+  .btn-gold:hover {
+    box-shadow: 0 4px 14px rgba(212, 175, 55, 0.4) !important;
+  }
+
+  .btn-ghost,
+  .btn-outline {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2) !important;
+  }
+
+  /* Simplify glow shadows on player discs */
+  .player-strip-disc.white-disc {
+    box-shadow: 0 2px 8px rgba(212, 175, 55, 0.25) !important;
+  }
+
+  .player-strip-disc.black-disc {
+    box-shadow: 0 2px 8px rgba(255, 71, 87, 0.2) !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   6. Disable Continuous Animations on Mobile
+   Infinite keyframe animations drain battery and GPU on touch devices.
+   -------------------------------------------------------------------------- */
+@media (max-width: 1024px) {
+  /* Disable breathing/floating/pulse loops */
+  .tag-badge .dot::after,
+  .badge-dot.pulse::after {
+    animation: none !important;
+  }
+
+  .magic-border-beam::after {
+    animation: none !important;
+  }
+
+  /* Disable body vignette overlay â€” saves a compositing layer */
+  body::after {
+    display: none !important;
+  }
+
+  /* Hide background particle canvas on mobile */
+  #bgMotionCanvas {
+    display: none !important;
+  }
+
+  /* Simplify casualty badge entry animation */
+  .casualty-badge {
+    animation: none !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   7. Transition Optimization on Mobile
+   Replace expensive "transition: all" with explicit properties.
+   -------------------------------------------------------------------------- */
+@media (max-width: 1024px) {
+  .card,
+  .bento-card {
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      transform 0.2s ease !important;
+  }
+
+  .btn,
+  .btn-gold,
+  .btn-ghost,
+  .btn-outline,
+  .btn-secondary {
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease,
+      color 0.15s ease,
+      transform 0.1s ease !important;
+  }
+
+  .mobile-arena-tab {
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease !important;
+  }
+
+  .piece-tab-item,
+  .theme-card-item,
+  .piece-card-item,
+  .sound-card-item,
+  .drawer-design-btn {
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease,
+      transform 0.15s ease !important;
+  }
+
+  .nav-links a {
+    transition:
+      color 0.15s ease,
+      background-color 0.15s ease !important;
+  }
+
+  /* Disable hover transforms on touch â€” they cause layout thrash */
+  .card:hover,
+  .bento-card:hover,
+  .sidebar-match-card:hover,
+  .bracket-match-card:hover,
+  .btn-ghost:hover,
+  .sound-card-item:hover,
+  .theme-card-item:hover,
+  .piece-card-item:hover {
+    transform: none !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   8. Small Phone Optimizations (â‰¤480px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 480px) {
+  /* Further reduce blur on very small screens */
+  .site-header {
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+  }
+
+  .mobile-arena-nav-bar {
+    backdrop-filter: blur(6px) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
+  }
+
+  .mobile-hud-row {
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+  }
+
+  /* Simpler shadows on small phones */
+  .card,
+  .bento-card,
+  .sidebar-match-card,
+  .sidebar-casualties-card {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25) !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   9. Design-Specific Mobile Overrides
+   Glassmorphism and iOS-native designs use extra blur â€” reduce on mobile.
+   -------------------------------------------------------------------------- */
+@media (max-width: 1024px) {
+  [data-ui-design="glassmorphism"] .site-header,
+  [data-ui-design="glassmorphism"] .side-expansion-drawer,
+  [data-ui-design="glassmorphism"] .play-arena-toolbar,
+  [data-ui-design="glassmorphism"] .turn-indicator-bar {
+    backdrop-filter: blur(14px) saturate(150%) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(150%) !important;
+  }
+
+  [data-ui-design="glassmorphism"] .card,
+  [data-ui-design="glassmorphism"] .bento-card,
+  [data-ui-design="glassmorphism"] .theme-card,
+  [data-ui-design="glassmorphism"] .sidebar-match-card,
+  [data-ui-design="glassmorphism"] .sidebar-casualties-card,
+  [data-ui-design="glassmorphism"] .leaderboard-table-card,
+  [data-ui-design="glassmorphism"] .piece-detail-card,
+  [data-ui-design="glassmorphism"] .action-banner-box {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  [data-ui-design="glassmorphism"] .btn-gold,
+  [data-ui-design="glassmorphism"] .btn-default,
+  [data-ui-design="glassmorphism"] .btn-outline,
+  [data-ui-design="glassmorphism"] .btn-ghost,
+  [data-ui-design="glassmorphism"] .tag-badge,
+  [data-ui-design="glassmorphism"] .badge-pill,
+  [data-ui-design="glassmorphism"] .announcement-pill {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* iOS-native design: reduce blur on mobile too */
+  [data-ui-design="ios-native"] .card,
+  [data-ui-design="ios-native"] .bento-card,
+  [data-ui-design="ios-native"] .sidebar-match-card,
+  [data-ui-design="ios-native"] .sidebar-casualties-card {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
 }

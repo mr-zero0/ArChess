@@ -132,9 +132,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* -------------------------------------------------------------
      2. Motion Dynamic Background Canvas
+     (Skipped on mobile, touch devices, and reduced-motion preference)
   ------------------------------------------------------------- */
   const bgCanvas = document.getElementById('bgMotionCanvas');
-  if (bgCanvas) {
+  const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const isMobileDevice = window.matchMedia && (
+    window.matchMedia('(max-width: 1024px)').matches ||
+    window.matchMedia('(pointer: coarse)').matches
+  );
+
+  if (bgCanvas && !prefersReducedMotion && !isMobileDevice) {
     const bgCtx = bgCanvas.getContext('2d');
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     let bgWidth = window.innerWidth;
@@ -172,11 +179,9 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    let bgAnimId = null;
+
     function animateBg() {
-      if (document.hidden) {
-        requestAnimationFrame(animateBg);
-        return;
-      }
       bgCtx.clearRect(0, 0, bgWidth, bgHeight);
       
       const isLight = document.documentElement.getAttribute('data-theme') === 'light';
@@ -224,10 +229,33 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         }
       }
-      requestAnimationFrame(animateBg);
+      bgAnimId = requestAnimationFrame(animateBg);
     }
-    requestAnimationFrame(animateBg);
+
+    // Properly pause/resume on visibility change instead of spinning idle rAFs
+    function startBgAnim() {
+      if (bgAnimId === null) {
+        bgAnimId = requestAnimationFrame(animateBg);
+      }
+    }
+    function stopBgAnim() {
+      if (bgAnimId !== null) {
+        cancelAnimationFrame(bgAnimId);
+        bgAnimId = null;
+      }
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        stopBgAnim();
+      } else {
+        startBgAnim();
+      }
+    });
+
+    startBgAnim();
   }
+
 
   /* -------------------------------------------------------------
      3. Battle Casualties & Material Advantage Listener (Grouped Stack)
