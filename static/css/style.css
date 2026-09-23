@@ -1,4 +1,4 @@
-﻿/* ==========================================================================
+/* ==========================================================================
    ARCHESS - Minimalist Luxury Chess Design System
    Full-Width Hero Video, Side Expansion Menu, Dedicated Chess Themes, Zero Clutter.
    ========================================================================== */
@@ -9161,8 +9161,23 @@ body.play-screen-active .play-page-container {
   /* iOS-native design: reduce blur on mobile too */
   [data-ui-design="ios-native"] .card,
   [data-ui-design="ios-native"] .bento-card,
+  [data-ui-design="ios-native"] .theme-card,
   [data-ui-design="ios-native"] .sidebar-match-card,
-  [data-ui-design="ios-native"] .sidebar-casualties-card {
+  [data-ui-design="ios-native"] .sidebar-casualties-card,
+  [data-ui-design="ios-native"] .leaderboard-table-card,
+  [data-ui-design="ios-native"] .piece-detail-card,
+  [data-ui-design="ios-native"] .action-banner-box {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  [data-ui-design="ios-native"] .btn-gold,
+  [data-ui-design="ios-native"] .btn-default,
+  [data-ui-design="ios-native"] .btn-outline,
+  [data-ui-design="ios-native"] .btn-ghost,
+  [data-ui-design="ios-native"] .tag-badge,
+  [data-ui-design="ios-native"] .badge-pill,
+  [data-ui-design="ios-native"] .announcement-pill {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
   }
