@@ -600,6 +600,7 @@
 
       // 4. Inset 64 Playing Squares (Rank 1-8, File A-H)
       const tileGeo = new THREE.BoxGeometry(TILE_SIZE * 0.985, 0.08, TILE_SIZE * 0.985);
+      this.tileMeshList = [];
 
       for (let r = 0; r < 8; r++) {
         for (let c = 0; c < 8; c++) {
@@ -612,6 +613,8 @@
           const posZ = -GRID_SIZE / 2 + (r + 0.5) * TILE_SIZE;
           tile.position.set(posX, 0.04, posZ);
           tile.receiveShadow = true;
+          tile.userData = { isBoardTile: true, col: c, row: r };
+          this.tileMeshList.push(tile);
           this.boardGroup.add(tile);
         }
       }
@@ -1889,6 +1892,63 @@
       };
     }
 
+    /**
+     * Resolves exact board square (col, row) directly from 3D raycast
+     * Checks tile meshes, piece positions, and mathematical plane fallback
+     */
+    getSquareAtPointer(m) {
+      this.mouse.x = m.x;
+      this.mouse.y = m.y;
+      this.raycaster.setFromCamera(this.mouse, this.camera);
+
+      // 1. Raycast against tile meshes in 3D board
+      if (this.tileMeshList && this.tileMeshList.length > 0) {
+        const hits = this.raycaster.intersectObjects(this.tileMeshList, false);
+        if (hits.length > 0) {
+          const u = hits[0].object.userData;
+          if (u && u.col !== undefined && u.row !== undefined) {
+            return { col: u.col, row: u.row };
+          }
+        }
+      }
+
+      // 2. Raycast against 3D piece meshes
+      const pieceTargets = [];
+      if (this.pieceMeshes) {
+        this.pieceMeshes.forEach(mesh => pieceTargets.push(mesh));
+      }
+      if (pieceTargets.length > 0) {
+        const hits = this.raycaster.intersectObjects(pieceTargets, true);
+        if (hits.length > 0) {
+          let topObj = hits[0].object;
+          while (topObj && !topObj.userData?.piece && topObj.parent) {
+            topObj = topObj.parent;
+          }
+          if (topObj && topObj.userData?.piece) {
+            const p = topObj.userData.piece;
+            if (p && !p.dead) {
+              return { col: p.col, row: p.row };
+            }
+          }
+        }
+      }
+
+      // 3. Mathematical fallback from 3D board plane
+      const boardPlanePt = new THREE.Vector3();
+      const planeHit = this.raycaster.ray.intersectPlane(this.boardPlane, boardPlanePt);
+      if (planeHit) {
+        const half = (this.gridSize3D || 20.0) / 2;
+        const tile = (this.gridSize3D || 20.0) / 8;
+        const col = Math.floor((planeHit.x + half) / tile);
+        const row = Math.floor((planeHit.z + half) / tile);
+        if (col >= 0 && col < 8 && row >= 0 && row < 8) {
+          return { col, row };
+        }
+      }
+
+      return null;
+    }
+
     /* -------------------------------------------------------------
        Mouse & Touch Interaction Handlers on 3D Canvas
     ------------------------------------------------------------- */
@@ -1951,12 +2011,12 @@
         }
 
         // 2. Proximity Fallback: Intersect ray with board plane (Y = 0)
-        // Snaps to the nearest eligible piece if user clicks near piece base or on tile
+        // Snaps to the nearest eligible piece only if clicking immediately at piece base
         const planeHit = this.raycaster.ray.intersectPlane(this.boardPlane, boardPlanePt);
         if (planeHit && this.arena.pieces) {
           let closestPiece = null;
           let minDistance = Infinity;
-          const maxSnapDistance = (this.tileSize3D || 2.5) * 1.35; // Generous square radius
+          const maxSnapDistance = (this.tileSize3D || 2.5) * 0.40; // Tight piece base radius
 
           for (const p of this.arena.pieces) {
             if (p.dead || p.team !== this.arena.currentTurn || p.immovable) continue;
@@ -2003,22 +2063,13 @@
 
         // Check if Tactical Deploy Mode is active (Placing Landmine or Indestructible Wall in 3D)
         if (this.arena.deployMode) {
-          this.mouse.x = m.x;
-          this.mouse.y = m.y;
-          this.raycaster.setFromCamera(this.mouse, this.camera);
-          const planeHit = this.raycaster.ray.intersectPlane(this.boardPlane, boardPlanePt);
-          if (planeHit) {
-            const bPos = this.worldToBoard(planeHit.x, planeHit.z);
-            const layout = this.arena.getBoardLayout();
-            const col = Math.floor((bPos.x - layout.gridOriginX) / layout.sqSize);
-            const row = Math.floor((bPos.y - layout.gridOriginY) / layout.sqSize);
-            if (col >= 0 && col < 8 && row >= 0 && row < 8) {
-              if (this.arena.canDeployAt(col, row, this.arena.deployMode)) {
-                this.arena.deployTacticalItem(this.arena.currentTurn, this.arena.deployMode, col, row);
-              } else {
-                if (this.arena.audio) this.arena.audio.playImpact(0.4);
-                if (window.ArchessToast) window.ArchessToast.show('Square occupied or invalid for deployment', 'warning', 1800, 'DEPLOY');
-              }
+          const sq = this.getSquareAtPointer(m);
+          if (sq) {
+            if (this.arena.canDeployAt(sq.col, sq.row, this.arena.deployMode)) {
+              this.arena.deployTacticalItem(this.arena.currentTurn, this.arena.deployMode, sq.col, sq.row);
+            } else {
+              if (this.arena.audio) this.arena.audio.playImpact(0.4);
+              if (window.ArchessToast) window.ArchessToast.show('Square occupied or invalid for deployment', 'warning', 1800, 'DEPLOY');
             }
           }
           if (e.cancelable) e.preventDefault();
@@ -2058,21 +2109,8 @@
         const m = getNormalizedMouse(e);
 
         if (this.arena.deployMode) {
-          this.mouse.x = m.x;
-          this.mouse.y = m.y;
-          this.raycaster.setFromCamera(this.mouse, this.camera);
-          const planeHit = this.raycaster.ray.intersectPlane(this.boardPlane, boardPlanePt);
-          if (planeHit) {
-            const bPos = this.worldToBoard(planeHit.x, planeHit.z);
-            const layout = this.arena.getBoardLayout();
-            const col = Math.floor((bPos.x - layout.gridOriginX) / layout.sqSize);
-            const row = Math.floor((bPos.y - layout.gridOriginY) / layout.sqSize);
-            if (col >= 0 && col < 8 && row >= 0 && row < 8) {
-              this.arena.deployHoverTile = { col, row };
-            } else {
-              this.arena.deployHoverTile = null;
-            }
-          }
+          const sq = this.getSquareAtPointer(m);
+          this.arena.deployHoverTile = sq ? { col: sq.col, row: sq.row } : null;
           return;
         }
 
@@ -2120,26 +2158,20 @@
           this._capturedPointerId = undefined;
         }
 
+        const clientX = e.clientX !== undefined ? e.clientX : (e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX : 0);
+        const clientY = e.clientY !== undefined ? e.clientY : (e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientY : 0);
         const distMoved = this._pointerDownClient
-          ? Math.hypot(e.clientX - this._pointerDownClient.x, e.clientY - this._pointerDownClient.y)
+          ? Math.hypot(clientX - this._pointerDownClient.x, clientY - this._pointerDownClient.y)
           : 0;
 
-        // If clicked without substantial drag and not in active deploy button mode
-        if (distMoved < 12 && !this.arena.deployMode) {
+        // If user tapped/clicked without substantial drag and not in active deploy button mode
+        if (distMoved < 14 && !this.arena.deployMode && !this.arena.isGameOver) {
           const m = getNormalizedMouse(e);
-          this.mouse.x = m.x;
-          this.mouse.y = m.y;
-          this.raycaster.setFromCamera(this.mouse, this.camera);
-          const planeHit = this.raycaster.ray.intersectPlane(this.boardPlane, boardPlanePt);
-          if (planeHit) {
-            const bPos = this.worldToBoard(planeHit.x, planeHit.z);
-            const layout = this.arena.getBoardLayout();
-            const col = Math.floor((bPos.x - layout.gridOriginX) / layout.sqSize);
-            const row = Math.floor((bPos.y - layout.gridOriginY) / layout.sqSize);
-            if (col >= 0 && col < 8 && row >= 0 && row < 8) {
-              if (typeof this.arena.onSquareClick === 'function') {
-                this.arena.onSquareClick(col, row);
-              }
+          const sq = this.getSquareAtPointer(m);
+          if (sq) {
+            this._lastSquareTapTime = performance.now();
+            if (typeof this.arena.onSquareClick === 'function') {
+              this.arena.onSquareClick(sq.col, sq.row);
             }
           }
         }
@@ -2150,6 +2182,7 @@
           const dist = Math.hypot(pullX, pullY);
 
           if (dist >= 10) {
+            this._lastLaunchTime = performance.now();
             let clampedDist = Math.min(dist, this.arena.maxPullDistance);
             const pieceToLaunch = this.arena.selectedPiece;
 
@@ -2225,10 +2258,28 @@
       addTrackedListener(dom, 'pointerdown', handlePointerDown);
       addTrackedListener(dom, 'pointermove', handlePointerMove);
       addTrackedListener(window, 'pointermove', handleWindowPointerMove);
-      addTrackedListener(dom, 'pointerup', handlePointerUp);
       addTrackedListener(window, 'pointerup', handlePointerUp);
       addTrackedListener(dom, 'pointercancel', handlePointerCancel);
       addTrackedListener(window, 'pointercancel', handlePointerCancel);
+
+      // Direct Click Listener on 3D canvas (handles single, double, and triple clicks cleanly)
+      addTrackedListener(dom, 'click', (e) => {
+        if (e.button === 2 || e.button === 1) return;
+        if (this.arena.isGameOver) return;
+        if (this.arena.gameMode === 'bot' && this.arena.currentTurn === 'black') return;
+        if (this.arena.gameMode === 'ai-vs-ai') return;
+        if (this.arena.deployMode) return;
+        if (this._lastSquareTapTime && (performance.now() - this._lastSquareTapTime < 400)) return;
+        if (this._lastLaunchTime && performance.now() - this._lastLaunchTime < 350) return;
+
+        const m = getNormalizedMouse(e);
+        const sq = this.getSquareAtPointer(m);
+        if (sq) {
+          if (typeof this.arena.onSquareClick === 'function') {
+            this.arena.onSquareClick(sq.col, sq.row);
+          }
+        }
+      });
 
       // Touch fallbacks
       addTrackedListener(dom, 'touchstart', handlePointerDown, { passive: false });
