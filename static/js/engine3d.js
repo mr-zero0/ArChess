@@ -49,12 +49,15 @@
       this.particles3D = [];
 
       // Camera preset targets
+      // Camera preset targets (Refined for real 3D perspective depth)
       this.cameraPresets = {
-        tabletop: { pos: new THREE.Vector3(0, 26, 28), look: new THREE.Vector3(0, 0, 0) },
-        cinematic: { pos: new THREE.Vector3(0, 16, 26), look: new THREE.Vector3(0, 1.5, 0) },
-        tactical: { pos: new THREE.Vector3(0, 38, 4), look: new THREE.Vector3(0, 0, 0) }
+        tabletop: { pos: new THREE.Vector3(0, 24, 25), look: new THREE.Vector3(0, 0, -0.6) },
+        cinematic: { pos: new THREE.Vector3(0, 13, 20), look: new THREE.Vector3(0, 1.2, 0) },
+        tactical: { pos: new THREE.Vector3(0, 34, 5), look: new THREE.Vector3(0, 0, 0) }
       };
       this.activePreset = 'tabletop';
+      this._targetCamPos = null;
+      this._targetCamLook = null;
 
       // Raycaster for mouse/touch interactions
       this.raycaster = new THREE.Raycaster();
@@ -76,8 +79,8 @@
       this.scene = new THREE.Scene();
       this.scene.background = null; // Transparent background to blend with page theme
 
-      // 2. Camera setup (FOV 42 for realistic perspective without wide-angle fish-eye)
-      this.camera = new THREE.PerspectiveCamera(42, width / height, 0.5, 200);
+      // 2. Camera setup (FOV 40 for realistic perspective depth without wide-angle fish-eye)
+      this.camera = new THREE.PerspectiveCamera(40, width / height, 0.5, 200);
       const defaultPreset = this.cameraPresets.tabletop;
       this.camera.position.copy(defaultPreset.pos);
       this.camera.lookAt(defaultPreset.look);
@@ -222,28 +225,32 @@
 
       // 4. White Army: Polished Alabaster Ivory (Clear visible contours and bevels)
       this.materials.pieceWhite = new THREE.MeshStandardMaterial({
-        color: 0xe8e2d5,
-        roughness: 0.30,
-        metalness: 0.06
+        color: 0xede6d8,
+        roughness: 0.16,
+        metalness: 0.06,
+        envMapIntensity: 1.15
       });
 
       this.materials.pieceWhiteAccent = new THREE.MeshStandardMaterial({
         color: 0xd4af37, // Burnished imperial gold finials
-        roughness: 0.26,
-        metalness: 0.88
+        roughness: 0.12,
+        metalness: 0.94,
+        envMapIntensity: 1.6
       });
 
       // 5. Black Army: Polished Obsidian Onyx (Clear form, satin sheen, deep contrast)
       this.materials.pieceBlack = new THREE.MeshStandardMaterial({
-        color: 0x222a36,
-        roughness: 0.32,
-        metalness: 0.24
+        color: 0x181e26,
+        roughness: 0.18,
+        metalness: 0.25,
+        envMapIntensity: 1.2
       });
 
       this.materials.pieceBlackAccent = new THREE.MeshStandardMaterial({
         color: 0xe11d48, // Radiant ruby crimson crest
-        roughness: 0.24,
-        metalness: 0.85
+        roughness: 0.14,
+        metalness: 0.90,
+        envMapIntensity: 1.5
       });
 
       // 6. Contact Shadows beneath pieces
@@ -387,53 +394,88 @@
     }
 
     /* -------------------------------------------------------------
-       Studio Lighting (Key Light, Fill Light, Rear Rim Light, Spotlight)
+       Studio Lighting (Key Light, Fill Light, Rear Rim Light, Spotlight & Environment)
     ------------------------------------------------------------- */
+    setupEnvironment() {
+      // Procedural studio environment map for physically-based reflections on lacquered pieces & brass
+      const envCanvas = document.createElement('canvas');
+      envCanvas.width = 512;
+      envCanvas.height = 256;
+      const ctx = envCanvas.getContext('2d');
+
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, 256);
+      bgGrad.addColorStop(0, '#1c2638');
+      bgGrad.addColorStop(0.45, '#0e1522');
+      bgGrad.addColorStop(1, '#070b12');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, 512, 256);
+
+      const softbox1 = ctx.createRadialGradient(160, 60, 5, 160, 60, 95);
+      softbox1.addColorStop(0, 'rgba(255, 252, 245, 0.95)');
+      softbox1.addColorStop(0.5, 'rgba(255, 242, 225, 0.35)');
+      softbox1.addColorStop(1, 'rgba(255, 242, 225, 0.0)');
+      ctx.fillStyle = softbox1;
+      ctx.fillRect(70, 0, 180, 130);
+
+      const softbox2 = ctx.createRadialGradient(380, 80, 5, 380, 80, 110);
+      softbox2.addColorStop(0, 'rgba(215, 235, 255, 0.80)');
+      softbox2.addColorStop(0.5, 'rgba(190, 220, 255, 0.25)');
+      softbox2.addColorStop(1, 'rgba(190, 220, 255, 0.0)');
+      ctx.fillStyle = softbox2;
+      ctx.fillRect(270, 0, 220, 150);
+
+      const envTexture = new THREE.CanvasTexture(envCanvas);
+      envTexture.mapping = THREE.EquirectangularReflectionMapping;
+      this.scene.environment = envTexture;
+    }
+
     setupLights() {
-      // 1. Soft Warm Ambient Light (Illuminates shadow crevices with natural contrast)
-      const ambientLight = new THREE.AmbientLight(0xfff8ed, 0.42);
+      this.setupEnvironment();
+
+      // 1. Soft Warm Ambient Light
+      const ambientLight = new THREE.AmbientLight(0xfff6ea, 0.48);
       this.scene.add(ambientLight);
       this.lights.ambient = ambientLight;
 
       // 2. Main Key Directional Light (Warm sunlight, crisp realistic soft shadows)
-      const keyLight = new THREE.DirectionalLight(0xfffaed, 1.05);
-      keyLight.position.set(18, 34, 22);
+      const keyLight = new THREE.DirectionalLight(0xfff8ee, 1.15);
+      keyLight.position.set(16, 32, 20);
       keyLight.castShadow = true;
       keyLight.shadow.mapSize.width = 2048;
       keyLight.shadow.mapSize.height = 2048;
       keyLight.shadow.camera.near = 10;
       keyLight.shadow.camera.far = 75;
-      const d = 16;
+      const d = 17;
       keyLight.shadow.camera.left = -d;
       keyLight.shadow.camera.right = d;
       keyLight.shadow.camera.top = d;
       keyLight.shadow.camera.bottom = -d;
-      keyLight.shadow.bias = -0.0004;
-      keyLight.shadow.radius = 2.0;
+      keyLight.shadow.bias = -0.0003;
+      keyLight.shadow.radius = 2.2;
       this.scene.add(keyLight);
       this.lights.key = keyLight;
 
-      // 3. Cool Accent Fill Light (Softens opposite flank without overexposure)
-      const fillLight = new THREE.DirectionalLight(0xdbe4ee, 0.40);
+      // 3. Cool Accent Fill Light
+      const fillLight = new THREE.DirectionalLight(0xdbe4ee, 0.42);
       fillLight.position.set(-20, 18, -16);
       this.scene.add(fillLight);
       this.lights.fill = fillLight;
 
-      // 4. Rear Rim Light (Gives crisp rim definition to piece silhouettes & crowns)
-      const rimLight = new THREE.DirectionalLight(0xbfdbfe, 0.55);
-      rimLight.position.set(0, 26, -26);
+      // 4. Rear Rim Light (Crisp rim definition to piece silhouettes & crowns)
+      const rimLight = new THREE.DirectionalLight(0xa5c4f2, 0.65);
+      rimLight.position.set(0, 24, -24);
       this.scene.add(rimLight);
       this.lights.rim = rimLight;
 
-      // 5. Warm Front Fill Light (Gentle frontal specular depth)
-      const frontFill = new THREE.DirectionalLight(0xfef3c7, 0.30);
-      frontFill.position.set(0, 14, 26);
+      // 5. Warm Front Fill Light
+      const frontFill = new THREE.DirectionalLight(0xfef3c7, 0.35);
+      frontFill.position.set(0, 12, 24);
       this.scene.add(frontFill);
       this.lights.front = frontFill;
 
-      // 6. Broad Center Spotlight (Subtle focus on active 64 tiles)
-      const spotLight = new THREE.SpotLight(0xfffbeb, 0.55, 60, Math.PI / 3.2, 0.4, 1.0);
-      spotLight.position.set(0, 32, 0);
+      // 6. Broad Center Spotlight
+      const spotLight = new THREE.SpotLight(0xfffaec, 0.50, 60, Math.PI / 3.0, 0.45, 1.0);
+      spotLight.position.set(0, 30, 0);
       spotLight.target.position.set(0, 0, 0);
       this.scene.add(spotLight);
       this.scene.add(spotLight.target);
@@ -512,6 +554,73 @@
           tile.receiveShadow = true;
           this.boardGroup.add(tile);
         }
+      }
+
+      // 5. Grand Parlor Table underneath the board slab
+      const tableGeo = new THREE.CylinderGeometry(23.5, 24.2, 1.4, 64);
+      const tableWoodTex = this.createWoodTexture('#1c1108', '#0f0804', 512, 512);
+      const tableMat = new THREE.MeshStandardMaterial({
+        color: 0x160e07,
+        map: tableWoodTex,
+        roughness: 0.32,
+        metalness: 0.08
+      });
+      const tableMesh = new THREE.Mesh(tableGeo, tableMat);
+      tableMesh.position.y = -SLAB_THICKNESS - 0.7;
+      tableMesh.receiveShadow = true;
+      this.boardGroup.add(tableMesh);
+
+      // Tabletop Outer Brass Bevel Trim
+      const tableTrimGeo = new THREE.TorusGeometry(23.8, 0.16, 16, 64);
+      tableTrimGeo.rotateX(Math.PI / 2);
+      const tableTrim = new THREE.Mesh(tableTrimGeo, this.materials.brassTrim);
+      tableTrim.position.y = -SLAB_THICKNESS - 0.02;
+      this.boardGroup.add(tableTrim);
+
+      // Shadow catcher plane on tabletop
+      const shadowPlaneGeo = new THREE.PlaneGeometry(38, 38);
+      const shadowPlaneMat = new THREE.ShadowMaterial({ opacity: 0.55 });
+      const shadowPlane = new THREE.Mesh(shadowPlaneGeo, shadowPlaneMat);
+      shadowPlane.rotation.x = -Math.PI / 2;
+      shadowPlane.position.y = -SLAB_THICKNESS + 0.01;
+      shadowPlane.receiveShadow = true;
+      this.boardGroup.add(shadowPlane);
+
+      // 6. Algebraic Rank & File Notation on Outer Frame
+      const files = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+      const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
+
+      const makeCharMesh = (char) => {
+        const c = document.createElement('canvas');
+        c.width = 48;
+        c.height = 48;
+        const cx = c.getContext('2d');
+        cx.font = 'bold 30px serif';
+        cx.textAlign = 'center';
+        cx.textBaseline = 'middle';
+        cx.fillStyle = 'rgba(212, 175, 55, 0.72)';
+        cx.fillText(char, 24, 24);
+        const tex = new THREE.CanvasTexture(c);
+        const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
+        const plane = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.8), mat);
+        plane.rotation.x = -Math.PI / 2;
+        return plane;
+      };
+
+      for (let i = 0; i < 8; i++) {
+        const pos = -GRID_SIZE / 2 + (i + 0.5) * TILE_SIZE;
+        const sFile = makeCharMesh(files[i]);
+        sFile.position.set(pos, 0.04, GRID_SIZE / 2 + 1.1);
+        const nFile = makeCharMesh(files[i]);
+        nFile.position.set(pos, 0.04, -GRID_SIZE / 2 - 1.1);
+        nFile.rotation.z = Math.PI;
+
+        const wRank = makeCharMesh(ranks[i]);
+        wRank.position.set(-GRID_SIZE / 2 - 1.1, 0.04, pos);
+        const eRank = makeCharMesh(ranks[i]);
+        eRank.position.set(GRID_SIZE / 2 + 1.1, 0.04, pos);
+
+        this.boardGroup.add(sFile, nFile, wRank, eRank);
       }
 
       // Store board layout scale metrics for coordinate conversions
@@ -736,13 +845,20 @@
       if (!this.arena || !this.arena.pieces) return;
 
       const activeIds = new Set();
+      const now = performance.now();
 
       this.arena.pieces.forEach(p => {
         activeIds.add(p.id);
         let meshGroup = this.pieceMeshes.get(p.id);
 
+        // Check if piece changed type (e.g. Pawn promoted to Queen!)
+        if (meshGroup && meshGroup.userData.pieceType !== p.type) {
+          this.piecesGroup.remove(meshGroup);
+          this.pieceMeshes.delete(p.id);
+          meshGroup = null;
+        }
+
         if (!meshGroup) {
-          // Create new 3D Piece Mesh
           meshGroup = this.buildPieceMesh(p);
           this.piecesGroup.add(meshGroup);
           this.pieceMeshes.set(p.id, meshGroup);
@@ -751,12 +867,31 @@
         // Convert 2D Arena Board Space (x, y) to 3D World Space (X, Z)
         const pos3D = this.boardToWorld(p.x, p.y);
         
-        // Handle Elevation (when dragged, lifted off board)
+        // Handle Elevation: drag lift + Knight aerial vault leap
         const isSelected = this.arena.selectedPiece === p;
-        const targetElev = (isSelected && this.arena.isDragging) ? 1.4 : 0;
+        const dragElev = (isSelected && this.arena.isDragging) ? 1.6 : 0;
+
+        let leapHeight = 0;
+        if (p.type === 'knight' && p.isLeaping) {
+          const progress = Math.min(1.0, (p.leapDistTraveled || 0) / (p.leapMaxDist || 140));
+          leapHeight = Math.sin(progress * Math.PI) * 3.2;
+          meshGroup.rotation.x -= Math.sin(progress * Math.PI) * 0.28;
+        }
+
+        const targetElev = dragElev + leapHeight;
         meshGroup.position.x = pos3D.x;
         meshGroup.position.z = pos3D.z;
-        meshGroup.position.y = THREE.MathUtils.lerp(meshGroup.position.y, targetElev, 0.25);
+        meshGroup.position.y = THREE.MathUtils.lerp(meshGroup.position.y, targetElev, 0.35);
+
+        // Contact shadow position & opacity tracking height
+        const shadowMesh = meshGroup.userData.shadowMesh;
+        if (shadowMesh) {
+          shadowMesh.position.y = 0.045 - meshGroup.position.y;
+          const heightRatio = meshGroup.position.y / 4.0;
+          shadowMesh.material.opacity = Math.max(0.15, 0.70 - heightRatio * 0.50);
+          const shadowScale = 1.0 + heightRatio * 0.40;
+          shadowMesh.scale.set(shadowScale, shadowScale, 1);
+        }
 
         // Visibility & Death
         if (p.dead) {
@@ -764,9 +899,22 @@
         } else {
           meshGroup.visible = true;
 
-          // Velocity-based dynamic tilt / inertia (piece tilts into its direction of motion)
+          // Velocity-based dynamic tilt / inertia or slingshot drag tension tilt
           const speed = Math.hypot(p.vx || 0, p.vy || 0);
-          if (speed > 0.4) {
+          if (isSelected && this.arena.isDragging) {
+            let pullX = this.arena.dragScreenAnchor.x - this.arena.dragScreenCurrent.x;
+            let pullY = this.arena.dragScreenAnchor.y - this.arena.dragScreenCurrent.y;
+            if (typeof this.arena.clampLaunchVector === 'function') {
+              const clamped = this.arena.clampLaunchVector(p, pullX, pullY);
+              pullX = clamped.pullX;
+              pullY = clamped.pullY;
+            }
+            const dist = Math.hypot(pullX, pullY);
+            const angle = Math.atan2(pullY, pullX);
+            const tiltAmount = Math.min(0.35, (dist / this.arena.maxPullDistance) * 0.35);
+            meshGroup.rotation.x = THREE.MathUtils.lerp(meshGroup.rotation.x, -Math.sin(angle) * tiltAmount, 0.25);
+            meshGroup.rotation.z = THREE.MathUtils.lerp(meshGroup.rotation.z, Math.cos(angle) * tiltAmount, 0.25);
+          } else if (speed > 0.4) {
             const tiltMax = 0.22;
             const angle = Math.atan2(p.vy, p.vx);
             meshGroup.rotation.z = THREE.MathUtils.lerp(meshGroup.rotation.z, -Math.cos(angle) * Math.min(tiltMax, speed * 0.025), 0.2);
@@ -775,7 +923,8 @@
             meshGroup.rotation.z = THREE.MathUtils.lerp(meshGroup.rotation.z, 0, 0.2);
             meshGroup.rotation.x = THREE.MathUtils.lerp(meshGroup.rotation.x, 0, 0.2);
           }
-          // Dynamic Collision Impact Flash in 3D (visual effect suggesting collision without text)
+
+          // Dynamic Collision Impact Flash in 3D
           if (p.hitFlash && p.hitFlash > 0) {
             meshGroup.traverse(child => {
               if (child.isMesh && child.material && child.material.emissive) {
@@ -785,10 +934,35 @@
             });
           } else {
             meshGroup.traverse(child => {
-              if (child.isMesh && child.material && child.material.emissive) {
+              if (child.isMesh && child.material && child.material.emissive && child.name !== 'veteran_star_mesh') {
                 child.material.emissiveIntensity = 0;
               }
             });
+          }
+
+          // Veteran Pawn 3D Golden Star
+          const star = meshGroup.getObjectByName('veteran_star');
+          if (star) {
+            if (p.type === 'pawn' && !p.promoted && p.killedNonPawn) {
+              star.visible = true;
+              star.rotation.y += 0.035;
+              star.position.y = 2.85 + Math.sin(now / 240) * 0.12;
+            } else {
+              star.visible = false;
+            }
+          }
+
+          // Braced / Phalanx 3D Defense Glyph
+          const phalanxRing = meshGroup.getObjectByName('phalanx_ring');
+          if (phalanxRing) {
+            if (p.isBraced && !p.inMotion && p.type !== 'king') {
+              phalanxRing.visible = true;
+              phalanxRing.rotation.y += 0.015;
+              phalanxRing.position.y = 0.05 - meshGroup.position.y;
+              phalanxRing.material.opacity = 0.45 + Math.sin(now / 280) * 0.25;
+            } else {
+              phalanxRing.visible = false;
+            }
           }
         }
 
@@ -809,7 +983,6 @@
 
     buildPieceMesh(piece) {
       const group = new THREE.Group();
-      group.userData = { pieceId: piece.id, piece: piece };
 
       // Clone procedural geometry
       const proto = this.createPieceGeometry(piece.type);
@@ -845,7 +1018,7 @@
       shadowMesh.position.y = 0.045; // Just above tile surface
       group.add(shadowMesh);
 
-      // Precision Raycast Hit Cylinder: sized tailored to square bounds to ensure vanguard pawns are never blocked by back-rank pieces
+      // Precision Raycast Hit Cylinder
       const hH = piece.type === 'pawn' ? 2.0 : (piece.type === 'king' || piece.type === 'queen' ? 3.0 : 2.5);
       const hitRadiusTop = piece.type === 'pawn' ? 0.80 : 0.88;
       const hitRadiusBottom = piece.type === 'pawn' ? 0.90 : 0.98;
@@ -856,7 +1029,43 @@
       hitMesh.userData = { pieceId: piece.id, piece: piece };
       group.add(hitMesh);
 
+      // Veteran Golden Star 3D Finial
+      const starGroup = new THREE.Group();
+      starGroup.name = 'veteran_star';
+      const starMat = new THREE.MeshStandardMaterial({
+        color: 0xffd700,
+        emissive: 0xffb700,
+        emissiveIntensity: 0.50,
+        roughness: 0.18,
+        metalness: 0.92
+      });
+      const starGeom = new THREE.OctahedronGeometry(0.38, 0);
+      starGeom.scale(1.0, 1.45, 0.45);
+      const starMesh = new THREE.Mesh(starGeom, starMat);
+      starMesh.name = 'veteran_star_mesh';
+      starGroup.add(starMesh);
+      starGroup.position.y = 2.85;
+      starGroup.visible = false;
+      group.add(starGroup);
+
+      // Braced Phalanx Defensive Floor Ring
+      const phalanxRingGeo = new THREE.RingGeometry(1.22, 1.38, 32);
+      phalanxRingGeo.rotateX(-Math.PI / 2);
+      const phalanxMat = new THREE.MeshBasicMaterial({
+        color: 0x00e1d9,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.65,
+        depthWrite: false
+      });
+      const phalanxMesh = new THREE.Mesh(phalanxRingGeo, phalanxMat);
+      phalanxMesh.name = 'phalanx_ring';
+      phalanxMesh.position.y = 0.05;
+      phalanxMesh.visible = false;
+      group.add(phalanxMesh);
+
       group.add(pieceModel);
+      group.userData = { pieceId: piece.id, pieceType: piece.type, piece: piece, shadowMesh };
       return group;
     }
 
@@ -867,65 +1076,129 @@
       let barrier = this.citadelBarriers[kingPiece.team];
 
       if (!barrier) {
-        // Build Hexagonal Crystalline Shield
-        const shieldGeo = new THREE.CylinderGeometry(2.2, 2.2, 2.8, 6, 1, true);
-        const shieldMat = new THREE.MeshPhysicalMaterial({
-          color: kingPiece.team === 'white' ? 0x00f3ff : 0xff0055,
+        barrier = new THREE.Group();
+
+        // 4 Corner Bastion Pylons
+        const pylonGeo = new THREE.CylinderGeometry(0.18, 0.24, 2.6, 16);
+        const pylonMat = new THREE.MeshStandardMaterial({
+          color: kingPiece.team === 'white' ? 0xd4af37 : 0x7f1d1d,
+          roughness: 0.25,
+          metalness: 0.85
+        });
+
+        const corners = [
+          [-1.25, -1.25], [1.25, -1.25],
+          [1.25, 1.25], [-1.25, 1.25]
+        ];
+        corners.forEach(([cx, cz]) => {
+          const pylon = new THREE.Mesh(pylonGeo, pylonMat);
+          pylon.position.set(cx, 1.3, cz);
+          pylon.castShadow = true;
+          barrier.add(pylon);
+
+          const crystalGeo = new THREE.OctahedronGeometry(0.16, 0);
+          const crystalMat = new THREE.MeshBasicMaterial({
+            color: kingPiece.team === 'white' ? 0x00f3ff : 0xff3b4e
+          });
+          const crystal = new THREE.Mesh(crystalGeo, crystalMat);
+          crystal.position.set(cx, 2.7, cz);
+          barrier.add(crystal);
+        });
+
+        // 4 Fortress Energy Bulkhead Panels
+        const panelMat = new THREE.MeshPhysicalMaterial({
+          color: kingPiece.team === 'white' ? 0x00e1d9 : 0xff2a48,
           transparent: true,
-          opacity: 0.55,
-          roughness: 0.1,
-          transmission: 0.65,
-          emissive: kingPiece.team === 'white' ? 0x00f3ff : 0xff0055,
-          emissiveIntensity: 0.35,
+          opacity: 0.45,
+          roughness: 0.12,
+          transmission: 0.70,
+          emissive: kingPiece.team === 'white' ? 0x00e1d9 : 0xff2a48,
+          emissiveIntensity: 0.40,
           side: THREE.DoubleSide,
           depthWrite: false
         });
 
-        barrier = new THREE.Mesh(shieldGeo, shieldMat);
+        const pNorth = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.2, 0.10), panelMat);
+        pNorth.position.set(0, 1.2, -1.25);
+        const pSouth = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.2, 0.10), panelMat);
+        pSouth.position.set(0, 1.2, 1.25);
+        const pWest = new THREE.Mesh(new THREE.BoxGeometry(0.10, 2.2, 2.5), panelMat);
+        pWest.position.set(-1.25, 1.2, 0);
+        const pEast = new THREE.Mesh(new THREE.BoxGeometry(0.10, 2.2, 2.5), panelMat);
+        pEast.position.set(1.25, 1.2, 0);
+
+        barrier.add(pNorth, pSouth, pWest, pEast);
+        barrier.userData = { panelMat };
+
         this.vfxGroup.add(barrier);
         this.citadelBarriers[kingPiece.team] = barrier;
       }
 
       if (kingPiece.wallActive && kingPiece.wallHp > 0 && !kingPiece.dead) {
         barrier.visible = true;
-        barrier.position.set(pos3D.x, 1.4, pos3D.z);
-        barrier.rotation.y += 0.015; // Slow ambient rotation
+        barrier.position.set(pos3D.x, 0, pos3D.z);
         const hpRatio = kingPiece.wallHp / kingPiece.maxWallHp;
-        barrier.material.opacity = 0.25 + hpRatio * 0.45;
+        const panelMat = barrier.userData.panelMat;
+        if (panelMat) {
+          if (kingPiece.wallHitFlash > 0) {
+            panelMat.emissive.setHex(0xffffff);
+            panelMat.emissiveIntensity = 1.0;
+            panelMat.opacity = 0.85;
+          } else {
+            panelMat.emissive.setHex(kingPiece.team === 'white' ? 0x00e1d9 : 0xff2a48);
+            panelMat.emissiveIntensity = 0.25 + hpRatio * 0.35;
+            panelMat.opacity = 0.20 + hpRatio * 0.40;
+          }
+        }
       } else {
         barrier.visible = false;
       }
     }
 
     /* -------------------------------------------------------------
-       3D Slingshot Aiming Trajectory & Power Ring
+       3D Slingshot Aiming Trajectory, Elastic Tension Band & Power Ring
     ------------------------------------------------------------- */
     setupAimMeshes() {
-      // 1. Aim Trajectory Tube / Ribbon
+      // 1. Aim Trajectory Ribbon (Parabolic 3D Projectile Arc)
+      const ARC_COUNT = 24;
       const lineGeo = new THREE.BufferGeometry();
-      const positions = new Float32Array(2 * 3);
+      const positions = new Float32Array(ARC_COUNT * 3);
       lineGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 
       const lineMat = new THREE.LineDashedMaterial({
         color: 0xffd700,
-        dashSize: 0.6,
-        gapSize: 0.4,
+        dashSize: 0.5,
+        gapSize: 0.3,
         linewidth: 3
       });
       this.aimTrajectoryMesh = new THREE.Line(lineGeo, lineMat);
       this.aimTrajectoryMesh.visible = false;
       this.scene.add(this.aimTrajectoryMesh);
 
-      // 2. Aim Arrowhead Marker
-      const arrowGeo = new THREE.ConeGeometry(0.42, 0.9, 16);
+      // 2. Aim Tension Elastic Cord (Stretching from anchor tile to pulled piece)
+      const bandGeo = new THREE.BufferGeometry();
+      const bandPositions = new Float32Array(2 * 3);
+      bandGeo.setAttribute('position', new THREE.BufferAttribute(bandPositions, 3));
+      const bandMat = new THREE.LineBasicMaterial({
+        color: 0x00e1d9,
+        linewidth: 3,
+        transparent: true,
+        opacity: 0.85
+      });
+      this.aimBandMesh = new THREE.Line(bandGeo, bandMat);
+      this.aimBandMesh.visible = false;
+      this.scene.add(this.aimBandMesh);
+
+      // 3. Aim Arrowhead Marker
+      const arrowGeo = new THREE.ConeGeometry(0.38, 0.85, 16);
       arrowGeo.rotateX(Math.PI / 2);
       const arrowMat = new THREE.MeshBasicMaterial({ color: 0xffd700 });
       this.aimArrowMesh = new THREE.Mesh(arrowGeo, arrowMat);
       this.aimArrowMesh.visible = false;
       this.scene.add(this.aimArrowMesh);
 
-      // 3. Power Reticle around Piece
-      const ringGeo = new THREE.RingGeometry(1.2, 1.35, 32);
+      // 4. Power Reticle around Piece Anchor
+      const ringGeo = new THREE.RingGeometry(1.15, 1.32, 32);
       ringGeo.rotateX(-Math.PI / 2);
       const ringMat = new THREE.MeshBasicMaterial({
         color: 0xffd700,
@@ -946,8 +1219,13 @@
       let angle = 0;
 
       if (this.arena.isDragging && selPiece) {
-        const pullX = this.arena.dragScreenAnchor.x - this.arena.dragScreenCurrent.x;
-        const pullY = this.arena.dragScreenAnchor.y - this.arena.dragScreenCurrent.y;
+        let pullX = this.arena.dragScreenAnchor.x - this.arena.dragScreenCurrent.x;
+        let pullY = this.arena.dragScreenAnchor.y - this.arena.dragScreenCurrent.y;
+        if (typeof this.arena.clampLaunchVector === 'function') {
+          const clamped = this.arena.clampLaunchVector(selPiece, pullX, pullY);
+          pullX = clamped.pullX;
+          pullY = clamped.pullY;
+        }
         const screenDist = Math.hypot(pullX, pullY);
 
         if (screenDist >= 10) {
@@ -980,14 +1258,33 @@
         const isMaxPower = power > 0.85;
         const aimColor = isMaxPower ? 0xff3b4e : 0xffd700;
 
-        // Update trajectory line
+        // Build smooth 3D parabolic trajectory arc
         const posAttr = this.aimTrajectoryMesh.geometry.attributes.position;
-        posAttr.setXYZ(0, startPos.x, 0.4, startPos.z);
-        posAttr.setXYZ(1, endX, 0.4, endZ);
+        const ARC_COUNT = 24;
+        const apexHeight = 0.5 + power * 1.8;
+        for (let i = 0; i < ARC_COUNT; i++) {
+          const t = i / (ARC_COUNT - 1);
+          const px = THREE.MathUtils.lerp(startPos.x, endX, t);
+          const pz = THREE.MathUtils.lerp(startPos.z, endZ, t);
+          const py = 0.35 + Math.sin(t * Math.PI) * apexHeight;
+          posAttr.setXYZ(i, px, py, pz);
+        }
         posAttr.needsUpdate = true;
         this.aimTrajectoryMesh.material.color.setHex(aimColor);
         this.aimTrajectoryMesh.computeLineDistances();
         this.aimTrajectoryMesh.visible = true;
+
+        // Update Tension Band stretching from anchor to lifted piece
+        if (this.aimBandMesh) {
+          const meshGroup = this.pieceMeshes.get(selPiece.id);
+          const pieceY = meshGroup ? meshGroup.position.y : 1.4;
+          const bandAttr = this.aimBandMesh.geometry.attributes.position;
+          bandAttr.setXYZ(0, startPos.x, 0.08, startPos.z);
+          bandAttr.setXYZ(1, startPos.x, pieceY, startPos.z);
+          bandAttr.needsUpdate = true;
+          this.aimBandMesh.material.color.setHex(isMaxPower ? 0xff3b4e : 0x00e1d9);
+          this.aimBandMesh.visible = true;
+        }
 
         // Update Arrowhead
         this.aimArrowMesh.position.set(endX, 0.4, endZ);
@@ -996,14 +1293,16 @@
         this.aimArrowMesh.visible = true;
 
         // Update Reticle
-        this.aimReticleMesh.position.set(startPos.x, 0.08, startPos.z);
+        this.aimReticleMesh.position.set(startPos.x, 0.06, startPos.z);
         this.aimReticleMesh.rotation.y += 0.04;
+        this.aimReticleMesh.scale.set(1 + power * 0.3, 1 + power * 0.3, 1);
         this.aimReticleMesh.material.color.setHex(aimColor);
         this.aimReticleMesh.visible = true;
         return;
       }
 
       this.aimTrajectoryMesh.visible = false;
+      if (this.aimBandMesh) this.aimBandMesh.visible = false;
       this.aimArrowMesh.visible = false;
       this.aimReticleMesh.visible = false;
     }
@@ -1231,9 +1530,14 @@
           const dist = Math.hypot(pullX, pullY);
 
           if (dist >= 14) {
-            const clampedDist = Math.min(dist, this.arena.maxPullDistance);
-            const powerRatio = clampedDist / this.arena.maxPullDistance;
+            let clampedDist = Math.min(dist, this.arena.maxPullDistance);
             const pieceToLaunch = this.arena.selectedPiece;
+
+            if (typeof this.arena.clampLaunchVector === 'function') {
+              const clamped = this.arena.clampLaunchVector(pieceToLaunch, pullX, pullY);
+              pullX = clamped.pullX;
+              pullY = clamped.pullY;
+            }
 
             this.arena.launchPiece(pieceToLaunch, pullX, pullY, clampedDist);
 
@@ -1245,7 +1549,7 @@
                 vx: Math.cos(angle) * impulse,
                 vy: Math.sin(angle) * impulse,
                 dist: clampedDist,
-                powerRatio
+                powerRatio: clampedDist / this.arena.maxPullDistance
               });
             }
           } else {
@@ -1259,6 +1563,7 @@
         }
 
         if (this.aimTrajectoryMesh) this.aimTrajectoryMesh.visible = false;
+        if (this.aimBandMesh) this.aimBandMesh.visible = false;
         if (this.aimArrowMesh) this.aimArrowMesh.visible = false;
         if (this.aimReticleMesh) this.aimReticleMesh.visible = false;
       };
@@ -1280,6 +1585,7 @@
           this.arena.selectedPiece = null;
         }
         if (this.aimTrajectoryMesh) this.aimTrajectoryMesh.visible = false;
+        if (this.aimBandMesh) this.aimBandMesh.visible = false;
         if (this.aimArrowMesh) this.aimArrowMesh.visible = false;
         if (this.aimReticleMesh) this.aimReticleMesh.visible = false;
       };
@@ -1306,17 +1612,14 @@
     }
 
     /* -------------------------------------------------------------
-       Camera Presets & View Controls
+       Camera Presets & View Controls with Smooth Interpolation
     ------------------------------------------------------------- */
     setCameraPreset(presetName) {
       if (this.cameraPresets[presetName]) {
         this.activePreset = presetName;
         const target = this.cameraPresets[presetName];
-        this.camera.position.copy(target.pos);
-        if (this.controls) {
-          this.controls.target.copy(target.look);
-          this.controls.update();
-        }
+        this._targetCamPos = target.pos.clone();
+        this._targetCamLook = target.look.clone();
       }
     }
 
@@ -1354,6 +1657,21 @@
        Main 3D Animation & Render Loop
     ------------------------------------------------------------- */
     update(dt) {
+      // 0. Smooth Camera Preset Interpolation
+      if (this._targetCamPos) {
+        this.camera.position.lerp(this._targetCamPos, 0.09);
+        if (this.controls) {
+          this.controls.target.lerp(this._targetCamLook, 0.09);
+          this.controls.update();
+        }
+        if (this.camera.position.distanceTo(this._targetCamPos) < 0.04) {
+          this.camera.position.copy(this._targetCamPos);
+          if (this.controls) this.controls.target.copy(this._targetCamLook);
+          this._targetCamPos = null;
+          this._targetCamLook = null;
+        }
+      }
+
       // 1. Sync 3D Pieces with 2D Physics state
       this.syncPieces();
 
@@ -1364,7 +1682,7 @@
       this.updateHoverVisuals();
 
       // 4. Update Orbit Controls Damping
-      if (this.controls) {
+      if (this.controls && !this._targetCamPos) {
         this.controls.update();
       }
     }
