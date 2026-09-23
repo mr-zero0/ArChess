@@ -2,6 +2,34 @@
 
 All notable changes, architectural pivots, bugfixes, and refactorings across **ArChess** are documented in this file.
 
+## [4.4.1] - 2026-09-23
+
+### 👑 Authentic 3D Staunton Piece Sculpting & PBR Clearcoat
+- **LatheGeometry Curvature Curves**:
+  - Replaced crude stacked primitives with authentic, smoothly revolved Staunton silhouette profiles using `THREE.LatheGeometry` (Pawn, Rook, Bishop, Queen, King).
+  - Multi-tiered tournament pedestal base with ogee fillets, scotia recess, torus bead, and tournament emerald (`0x14402a`) / burgundy (`0x4a0e17`) baize felt ring.
+  - **Pawn**: Gracefully curved concave stem, toroidal collar bead, and spherical head.
+  - **Rook**: Concave castle tower column, molded cornice band, and 4 crenellated battlements (merlons) enclosing a depressed parapet walk.
+  - **Knight**: Sculpted equestrian bust with sweeping muscular neck, arched crest mane with stepped tuft ridges, angled tapered snout, contoured cheek/jaw flare, and alert pointed ears.
+  - **Bishop**: Slender waisted stem, dual collar beads, elongated mitre cap with iconic diagonal notch cut (mitre slit), and polished imperial gold apex finial.
+  - **Queen**: Dramatic hour-glass flowing gown, royal waist ring, fluted coronet with 8 radial pearl jewels, and central sovereign orb.
+  - **King**: Majestic column mantle, stepped capital molding, arched imperial crown dome, and Latin cross with faceted center jewel finial.
+- **High-End PBR Physical Materials & Photographic Tone Mapping**:
+  - Upgraded White Army to Polished Alabaster Ivory (`THREE.MeshPhysicalMaterial` with `roughness: 0.14`, `clearcoat: 0.72`, `clearcoatRoughness: 0.12`).
+  - Upgraded Black Army to Satin Piano-Lacquered Obsidian / Ebony (`THREE.MeshPhysicalMaterial` with `roughness: 0.16`, `clearcoat: 0.85`, `clearcoatRoughness: 0.10`).
+  - Tone Mapping: Enabled `THREE.ACESFilmicToneMapping` with `exposure: 1.12` and `SRGBColorSpace` for photographic depth and realistic specular highlights.
+
+### 🏰 Grounded Citadel Bastion Keep (King's Fortress Wall Overhaul)
+- **Architectural Bastion Keep**:
+  - Replaced the awkward floating hexagonal lampshade with an architecturally grounded medieval fortress bastion keep anchored directly onto the King's 2.5-unit tile surface.
+  - **Foundation Plinth**: Heavy beveled stone base plinth (`2.38 x 0.10 x 2.38`) eliminating floating gaps.
+  - **4 Corner Bastion Towers**: Sturdy stone masonry columns with machicolated turret caps and pulsing team energy beacon crystals (Cyan for White, Ruby for Black).
+  - **4 Crenellated Curtain Walls**: Alternating merlons and arrow-slit embrasures with low profile (`height: 1.05 - 1.30`) allowing the King's upper chest, head, crown, and golden cross to rise majestically above the ramparts.
+  - **Reactive Aegis Forcefield Panels**: Shimmering translucent energy shield (`opacity: 0.26`, `transmission: 0.78`) that flares radiant white/gold (`opacity: 0.85`, `emissiveIntensity: 1.35`) upon collision impact.
+- **Tactical Deployables Polish**:
+  - Indestructible Wall deployable dynamically reflects team color on glowing bastion stanchion caps, central shield rune, and top neon perimeter ring.
+  - Cache-busting: Updated asset query strings in `templates/play.html` and `templates/base.html` to `?v=4.4.1` ensuring instant refresh without stale client cache.
+
 ## [4.4.0] - 2026-09-23
 
 ### 💣 Tactical Deployables System (Landmines & Indestructible Fortified Walls)

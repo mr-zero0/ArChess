@@ -100,7 +100,12 @@
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      this.renderer.toneMappingExposure = 1.0;
+      this.renderer.toneMappingExposure = 1.12;
+      if ('outputColorSpace' in this.renderer && THREE.SRGBColorSpace) {
+        this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+      } else if ('outputEncoding' in this.renderer && THREE.sRGBEncoding) {
+        this.renderer.outputEncoding = THREE.sRGBEncoding;
+      }
 
       this.renderer.domElement.id = 'archess3DCanvas';
       this.renderer.domElement.style.width = '100%';
@@ -227,34 +232,74 @@
         metalness: 0.04
       });
 
-      // 4. White Army: Polished Alabaster Ivory (Clear visible contours and bevels)
-      this.materials.pieceWhite = new THREE.MeshStandardMaterial({
-        color: 0xede6d8,
-        roughness: 0.16,
-        metalness: 0.06,
-        envMapIntensity: 1.15
+      // 4. White Army: Polished Alabaster Ivory (Clearcoat gloss, subsurface softness, warm tone)
+      this.materials.pieceWhite = new THREE.MeshPhysicalMaterial({
+        color: 0xf4eee2,
+        roughness: 0.14,
+        metalness: 0.04,
+        clearcoat: 0.72,
+        clearcoatRoughness: 0.12,
+        reflectivity: 0.65,
+        envMapIntensity: 1.35
       });
 
       this.materials.pieceWhiteAccent = new THREE.MeshStandardMaterial({
         color: 0xd4af37, // Burnished imperial gold finials
-        roughness: 0.12,
-        metalness: 0.94,
-        envMapIntensity: 1.6
+        roughness: 0.14,
+        metalness: 0.95,
+        envMapIntensity: 1.7
       });
 
-      // 5. Black Army: Polished Obsidian Onyx (Clear form, satin sheen, deep contrast)
-      this.materials.pieceBlack = new THREE.MeshStandardMaterial({
-        color: 0x181e26,
-        roughness: 0.18,
-        metalness: 0.25,
-        envMapIntensity: 1.2
+      this.materials.pieceWhiteFelt = new THREE.MeshStandardMaterial({
+        color: 0x14402a, // Deep tournament emerald baize felt
+        roughness: 0.92,
+        metalness: 0.02
+      });
+
+      // 5. Black Army: Polished Obsidian / Ebony Onyx (Piano-lacquered clearcoat gloss)
+      this.materials.pieceBlack = new THREE.MeshPhysicalMaterial({
+        color: 0x161a22,
+        roughness: 0.16,
+        metalness: 0.18,
+        clearcoat: 0.85,
+        clearcoatRoughness: 0.10,
+        reflectivity: 0.82,
+        envMapIntensity: 1.45
       });
 
       this.materials.pieceBlackAccent = new THREE.MeshStandardMaterial({
         color: 0xe11d48, // Radiant ruby crimson crest
         roughness: 0.14,
-        metalness: 0.90,
-        envMapIntensity: 1.5
+        metalness: 0.92,
+        envMapIntensity: 1.6
+      });
+
+      this.materials.pieceBlackFelt = new THREE.MeshStandardMaterial({
+        color: 0x4a0e17, // Rich royal burgundy velvet baize felt
+        roughness: 0.92,
+        metalness: 0.02
+      });
+
+      // 5b. Citadel Bastion Fortress Masonry & Battlements
+      this.materials.citadelStoneWhite = new THREE.MeshStandardMaterial({
+        color: 0xe5e0d5, // Carved white marble / limestone masonry
+        roughness: 0.42,
+        metalness: 0.12
+      });
+      this.materials.citadelStoneBlack = new THREE.MeshStandardMaterial({
+        color: 0x1e2430, // Forged dark basalt / obsidian stone
+        roughness: 0.38,
+        metalness: 0.22
+      });
+      this.materials.citadelTrimWhite = new THREE.MeshStandardMaterial({
+        color: 0xd4af37, // Imperial brass / gold parapet trims
+        roughness: 0.22,
+        metalness: 0.88
+      });
+      this.materials.citadelTrimBlack = new THREE.MeshStandardMaterial({
+        color: 0x881337, // Burnished crimson alloy battlements
+        roughness: 0.24,
+        metalness: 0.85
       });
 
       // 6. Contact Shadows beneath pieces
@@ -639,201 +684,296 @@
       if (this.geometries[type]) return this.geometries[type];
 
       const pieceGroup = new THREE.Group();
-      const R = 0.92; // Base scale unit
 
-      // Standard Multi-Tiered Pedestal Base (Common to Staunton pieces)
-      const base1 = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.95, R * 1.05, 0.35, 32));
-      base1.position.y = 0.175;
-      base1.castShadow = true;
-      base1.receiveShadow = true;
+      // Helper to generate smoothly normal-computed revolved LatheGeometry
+      const createLathe = (pts, segments = 36) => {
+        const v2s = pts.map(([r, y]) => new THREE.Vector2(r, y));
+        const geo = new THREE.LatheGeometry(v2s, segments);
+        geo.computeVertexNormals();
+        return geo;
+      };
 
-      const baseRing = new THREE.Mesh(new THREE.TorusGeometry(R * 0.90, 0.08, 16, 32));
-      baseRing.rotation.x = Math.PI / 2;
-      baseRing.position.y = 0.36;
+      // Classic Staunton tournament multi-tiered pedestal base curve (r, y)
+      const getBaseProfile = (scale = 1.0) => [
+        [0.0, 0.0],
+        [0.94 * scale, 0.0],
+        [0.94 * scale, 0.08],
+        [0.90 * scale, 0.16],
+        [0.85 * scale, 0.28],
+        [0.87 * scale, 0.36],
+        [0.83 * scale, 0.44],
+        [0.72 * scale, 0.55],
+        [0.66 * scale, 0.64],
+        [0.64 * scale, 0.70]
+      ];
 
-      const base2 = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.70, R * 0.88, 0.32, 32));
-      base2.position.y = 0.52;
-      base2.castShadow = true;
-
-      pieceGroup.add(base1, baseRing, base2);
+      // Tournament Baize Felt Ring underneath the base
+      const feltGeo = new THREE.CylinderGeometry(0.90, 0.92, 0.04, 32);
+      const feltMesh = new THREE.Mesh(feltGeo);
+      feltMesh.name = 'felt_base';
+      feltMesh.position.y = 0.02;
+      pieceGroup.add(feltMesh);
 
       switch (type) {
         case 'pawn': {
-          // Tapered concave stem
-          const stem = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.34, R * 0.68, 0.90, 32));
-          stem.position.y = 1.13;
-          stem.castShadow = true;
-
-          // Collar ring
-          const collar = new THREE.Mesh(new THREE.TorusGeometry(R * 0.44, 0.09, 16, 32));
-          collar.rotation.x = Math.PI / 2;
-          collar.position.y = 1.58;
-
-          // Spherical head
-          const head = new THREE.Mesh(new THREE.SphereGeometry(R * 0.48, 32, 32));
-          head.position.y = 2.02;
-          head.castShadow = true;
-
-          pieceGroup.add(stem, collar, head);
+          const pawnPts = [
+            ...getBaseProfile(0.88),
+            // Slender concave stem
+            [0.50, 0.84],
+            [0.36, 1.08],
+            [0.28, 1.32],
+            [0.24, 1.50],
+            // Toroidal collar bead
+            [0.32, 1.56],
+            [0.40, 1.62],
+            [0.32, 1.68],
+            [0.24, 1.72],
+            // Head sphere profile
+            [0.32, 1.78],
+            [0.40, 1.88],
+            [0.44, 2.00],
+            [0.42, 2.12],
+            [0.34, 2.22],
+            [0.20, 2.30],
+            [0.0, 2.34]
+          ];
+          const pawnMesh = new THREE.Mesh(createLathe(pawnPts));
+          pawnMesh.castShadow = true;
+          pawnMesh.receiveShadow = true;
+          pieceGroup.add(pawnMesh);
           break;
         }
 
         case 'rook': {
-          // Broad cylindrical fortified tower
-          const tower = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.65, R * 0.78, 1.25, 32));
-          tower.position.y = 1.30;
-          tower.castShadow = true;
+          const rookPts = [
+            ...getBaseProfile(0.96),
+            // Fortified tower body
+            [0.62, 0.85],
+            [0.59, 1.25],
+            [0.58, 1.65],
+            // Cornice ledge molding
+            [0.64, 1.75],
+            [0.74, 1.85],
+            [0.78, 1.95],
+            [0.76, 2.02],
+            // Parapet rim and depressed basin
+            [0.74, 2.08],
+            [0.54, 2.08],
+            [0.54, 1.90],
+            [0.0, 1.90]
+          ];
+          const rookMesh = new THREE.Mesh(createLathe(rookPts));
+          rookMesh.castShadow = true;
+          rookMesh.receiveShadow = true;
 
-          // Cornice ledge
-          const cornice = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.82, R * 0.68, 0.28, 32));
-          cornice.position.y = 2.06;
-          cornice.castShadow = true;
-
-          // Crenellated Battlements (Castle merlons)
+          // 4 Crenellated Battlements (Castle merlons)
           const battlements = new THREE.Group();
           const merlonCount = 4;
           for (let m = 0; m < merlonCount; m++) {
             const angle = (m / merlonCount) * Math.PI * 2 + Math.PI / 4;
-            const merlon = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.42, 0.24));
-            merlon.position.set(Math.cos(angle) * 0.62, 2.38, Math.sin(angle) * 0.62);
+            const merlon = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.36, 0.22));
+            merlon.position.set(Math.cos(angle) * 0.64, 2.24, Math.sin(angle) * 0.64);
             merlon.rotation.y = -angle + Math.PI / 2;
             merlon.castShadow = true;
             battlements.add(merlon);
           }
-          pieceGroup.add(tower, cornice, battlements);
+          pieceGroup.add(rookMesh, battlements);
           break;
         }
 
         case 'knight': {
-          // Horse neck riser
-          const neckBase = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.52, R * 0.72, 0.60, 24));
-          neckBase.position.y = 0.98;
-          neckBase.castShadow = true;
+          // Revolved pedestal base
+          const knightBaseGeo = createLathe(getBaseProfile(0.94));
+          const knightBase = new THREE.Mesh(knightBaseGeo);
+          knightBase.castShadow = true;
+          knightBase.receiveShadow = true;
 
           // Sculpted Equestrian Bust
           const horseBust = new THREE.Group();
 
-          // Main head volume (angled forward)
-          const head = new THREE.Mesh(new THREE.BoxGeometry(0.68, 1.15, 0.95));
-          head.position.set(0, 1.65, 0.12);
-          head.rotation.x = -0.32;
+          // Swept muscular neck (angled forward)
+          const neckGeo = new THREE.BoxGeometry(0.56, 1.15, 0.72);
+          const neck = new THREE.Mesh(neckGeo);
+          neck.position.set(0, 1.16, 0.08);
+          neck.rotation.x = -0.32;
+          neck.castShadow = true;
+
+          // Arched mane spine (swept back with crest ridges)
+          const maneGroup = new THREE.Group();
+          const maneSpine = new THREE.Mesh(new THREE.BoxGeometry(0.24, 1.10, 0.35));
+          maneSpine.position.set(0, 1.34, -0.32);
+          maneSpine.rotation.x = 0.28;
+          maneGroup.add(maneSpine);
+          for (let i = 0; i < 3; i++) {
+            const tuft = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.22, 0.18));
+            tuft.position.set(0, 1.05 + i * 0.30, -0.40 - i * 0.06);
+            tuft.rotation.x = 0.35;
+            maneGroup.add(tuft);
+          }
+
+          // Equestrian head volume
+          const headGeo = new THREE.BoxGeometry(0.64, 0.68, 0.85);
+          const head = new THREE.Mesh(headGeo);
+          head.position.set(0, 1.82, 0.24);
+          head.rotation.x = -0.42;
           head.castShadow = true;
 
-          // Snout / Muzzle
-          const muzzle = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.36, 0.65, 16));
-          muzzle.rotation.x = Math.PI / 2.6;
-          muzzle.position.set(0, 1.55, 0.68);
-          muzzle.castShadow = true;
+          // Tapered muzzle / snout
+          const snoutGeo = new THREE.CylinderGeometry(0.20, 0.32, 0.60, 16);
+          const snout = new THREE.Mesh(snoutGeo);
+          snout.rotation.x = Math.PI / 2.3;
+          snout.position.set(0, 1.62, 0.72);
+          snout.castShadow = true;
 
-          // Arched Mane Crest
-          const mane = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.95, 0.45));
-          mane.position.set(0, 1.85, -0.36);
-          mane.rotation.x = 0.22;
-          mane.castShadow = true;
+          // Cheek / jaw flare
+          const jawGeo = new THREE.SphereGeometry(0.32, 16, 16);
+          const jaw = new THREE.Mesh(jawGeo);
+          jaw.scale.set(0.95, 0.80, 1.15);
+          jaw.position.set(0, 1.68, 0.14);
 
-          // Ears
-          const earGeo = new THREE.ConeGeometry(0.12, 0.32, 8);
-          const earLeft = new THREE.Mesh(earGeo);
-          earLeft.position.set(-0.24, 2.22, -0.06);
-          earLeft.rotation.z = -0.15;
-          const earRight = new THREE.Mesh(earGeo);
-          earRight.position.set(0.24, 2.22, -0.06);
-          earRight.rotation.z = 0.15;
+          // Alert equine ears
+          const earGeo = new THREE.ConeGeometry(0.11, 0.34, 8);
+          const earL = new THREE.Mesh(earGeo);
+          earL.position.set(-0.20, 2.24, 0.06);
+          earL.rotation.set(-0.20, 0, -0.22);
+          const earR = new THREE.Mesh(earGeo);
+          earR.position.set(0.20, 2.24, 0.06);
+          earR.rotation.set(-0.20, 0, 0.22);
 
-          horseBust.add(head, muzzle, mane, earLeft, earRight);
-          pieceGroup.add(neckBase, horseBust);
+          horseBust.add(neck, maneGroup, head, snout, jaw, earL, earR);
+          pieceGroup.add(knightBase, horseBust);
           break;
         }
 
         case 'bishop': {
-          // Slender concave stem
-          const stem = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.38, R * 0.70, 1.20, 32));
-          stem.position.y = 1.28;
-          stem.castShadow = true;
+          const bishopPts = [
+            ...getBaseProfile(0.92),
+            // Slender waist
+            [0.54, 0.85],
+            [0.38, 1.15],
+            [0.32, 1.48],
+            // Lower collar bead
+            [0.40, 1.56],
+            [0.46, 1.62],
+            [0.38, 1.68],
+            // Upper collar bead
+            [0.44, 1.74],
+            [0.48, 1.80],
+            [0.38, 1.86],
+            // Mitre oval cap
+            [0.42, 1.94],
+            [0.50, 2.10],
+            [0.52, 2.30],
+            [0.48, 2.52],
+            [0.38, 2.72],
+            [0.24, 2.88],
+            [0.12, 2.98],
+            [0.0, 3.02]
+          ];
+          const bishopMesh = new THREE.Mesh(createLathe(bishopPts));
+          bishopMesh.castShadow = true;
+          bishopMesh.receiveShadow = true;
 
-          // Dual collar rings
-          const collar1 = new THREE.Mesh(new THREE.TorusGeometry(R * 0.48, 0.08, 16, 32));
-          collar1.rotation.x = Math.PI / 2;
-          collar1.position.y = 1.88;
-
-          // Elongated Mitre Cap
-          const mitre = new THREE.Mesh(new THREE.SphereGeometry(R * 0.50, 32, 32));
-          mitre.scale.set(1.0, 1.45, 1.0);
-          mitre.position.y = 2.45;
-          mitre.castShadow = true;
+          // Iconic diagonal notch cut (mitre slit)
+          const notch = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.36, 0.60));
+          notch.position.set(0.18, 2.52, 0);
+          notch.rotation.z = Math.PI / 4.5;
+          notch.name = 'mitre_slit';
 
           // Apex Finial Orb
-          const finial = new THREE.Mesh(new THREE.SphereGeometry(R * 0.16, 16, 16));
-          finial.position.y = 3.25;
+          const finial = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 16));
+          finial.position.y = 3.16;
           finial.name = 'metallic_accent';
 
-          pieceGroup.add(stem, collar1, mitre, finial);
+          pieceGroup.add(bishopMesh, notch, finial);
           break;
         }
 
         case 'queen': {
-          // Flowing flared gown
-          const gown = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.42, R * 0.72, 1.55, 32));
-          gown.position.y = 1.45;
-          gown.castShadow = true;
+          const queenPts = [
+            ...getBaseProfile(0.96),
+            // Flowing gown
+            [0.56, 0.85],
+            [0.44, 1.25],
+            [0.38, 1.65],
+            [0.36, 1.95],
+            // Waist cord
+            [0.44, 2.02],
+            [0.48, 2.08],
+            [0.42, 2.14],
+            // Flared coronet
+            [0.44, 2.25],
+            [0.54, 2.45],
+            [0.64, 2.68],
+            [0.68, 2.82],
+            [0.56, 2.82],
+            [0.48, 2.65],
+            [0.0, 2.65]
+          ];
+          const queenMesh = new THREE.Mesh(createLathe(queenPts));
+          queenMesh.castShadow = true;
+          queenMesh.receiveShadow = true;
 
-          // Regal waist ring
-          const waistRing = new THREE.Mesh(new THREE.TorusGeometry(R * 0.50, 0.09, 16, 32));
-          waistRing.rotation.x = Math.PI / 2;
-          waistRing.position.y = 2.22;
-
-          // Fluted Coronet Head
-          const coronetBase = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.68, R * 0.44, 0.65, 32));
-          coronetBase.position.y = 2.60;
-          coronetBase.castShadow = true;
-
-          // Coronet Jewels (8 points with spherical pearls)
-          const jewels = new THREE.Group();
+          // 8 Coronet Pearls
+          const pearls = new THREE.Group();
           for (let j = 0; j < 8; j++) {
             const angle = (j / 8) * Math.PI * 2;
-            const pearl = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12));
-            pearl.position.set(Math.cos(angle) * 0.68, 2.96, Math.sin(angle) * 0.68);
+            const pearl = new THREE.Mesh(new THREE.SphereGeometry(0.10, 12, 12));
+            pearl.position.set(Math.cos(angle) * 0.68, 2.92, Math.sin(angle) * 0.68);
             pearl.name = 'metallic_accent';
-            jewels.add(pearl);
+            pearls.add(pearl);
           }
 
           // Apex Sovereign Orb
-          const orb = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 16));
-          orb.position.y = 3.02;
+          const orb = new THREE.Mesh(new THREE.SphereGeometry(0.20, 16, 16));
+          orb.position.y = 2.96;
           orb.name = 'metallic_accent';
 
-          pieceGroup.add(gown, waistRing, coronetBase, jewels, orb);
+          pieceGroup.add(queenMesh, pearls, orb);
           break;
         }
 
         case 'king': {
-          // Colossus majestic body
-          const mantle = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.48, R * 0.78, 1.70, 32));
-          mantle.position.y = 1.52;
-          mantle.castShadow = true;
+          const kingPts = [
+            ...getBaseProfile(1.02),
+            // Stately mantle column
+            [0.62, 0.88],
+            [0.52, 1.35],
+            [0.46, 1.80],
+            [0.44, 2.10],
+            // Capital molding
+            [0.52, 2.20],
+            [0.64, 2.32],
+            [0.68, 2.44],
+            [0.56, 2.50],
+            // Imperial crown dome
+            [0.58, 2.60],
+            [0.66, 2.80],
+            [0.68, 3.02],
+            [0.62, 3.22],
+            [0.48, 3.38],
+            [0.26, 3.48],
+            [0.0, 3.52]
+          ];
+          const kingMesh = new THREE.Mesh(createLathe(kingPts));
+          kingMesh.castShadow = true;
+          kingMesh.receiveShadow = true;
 
-          // Stepped capital
-          const capital = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.68, R * 0.52, 0.45, 32));
-          capital.position.y = 2.50;
-          capital.castShadow = true;
-
-          // Imperial Crown Base
-          const crown = new THREE.Mesh(new THREE.SphereGeometry(R * 0.62, 32, 32));
-          crown.scale.set(1.0, 0.85, 1.0);
-          crown.position.y = 2.92;
-          crown.castShadow = true;
-
-          // Sovereign Cross Finial at summit
+          // Sovereign Latin Cross finial at summit
           const crossGroup = new THREE.Group();
-          const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.75, 0.18));
-          crossV.position.y = 3.58;
-          const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.18, 0.18));
-          crossH.position.y = 3.68;
+          const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.72, 0.16));
+          crossV.position.y = 3.86;
+          const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.50, 0.16, 0.16));
+          crossH.position.y = 3.96;
           crossV.name = 'metallic_accent';
           crossH.name = 'metallic_accent';
-          crossGroup.add(crossV, crossH);
 
-          pieceGroup.add(mantle, capital, crown, crossGroup);
+          const centerJewel = new THREE.Mesh(new THREE.OctahedronGeometry(0.10, 0));
+          centerJewel.position.y = 3.96;
+          centerJewel.name = 'metallic_accent';
+          crossGroup.add(crossV, crossH, centerJewel);
+
+          pieceGroup.add(kingMesh, crossGroup);
           break;
         }
       }
@@ -1001,6 +1141,10 @@
         if (child.isMesh) {
           if (child.name === 'metallic_accent') {
             child.material = accentMat;
+          } else if (child.name === 'felt_base') {
+            child.material = isWhite ? this.materials.pieceWhiteFelt : this.materials.pieceBlackFelt;
+          } else if (child.name === 'mitre_slit') {
+            child.material = accentMat;
           } else {
             child.material = bodyMat;
           }
@@ -1074,65 +1218,110 @@
     }
 
     /* -------------------------------------------------------------
-       King Citadel Wall 3D Forcefield Barrier
+       King Citadel Wall 3D Fortress Bastion Keep
     ------------------------------------------------------------- */
     updateCitadelBarrier(kingPiece, pos3D) {
       let barrier = this.citadelBarriers[kingPiece.team];
+      const isWhite = kingPiece.team === 'white';
 
       if (!barrier) {
         barrier = new THREE.Group();
 
-        // 4 Corner Bastion Pylons
-        const pylonGeo = new THREE.CylinderGeometry(0.18, 0.24, 2.6, 16);
-        const pylonMat = new THREE.MeshStandardMaterial({
-          color: kingPiece.team === 'white' ? 0xd4af37 : 0x7f1d1d,
-          roughness: 0.25,
-          metalness: 0.85
-        });
+        const stoneMat = isWhite ? this.materials.citadelStoneWhite : this.materials.citadelStoneBlack;
+        const trimMat = isWhite ? this.materials.citadelTrimWhite : this.materials.citadelTrimBlack;
+        const beaconColor = isWhite ? 0x00f3ff : 0xff1744;
 
+        // 1. Heavy Foundation Stone Plinth (rests directly on tile surface, preventing hover gaps)
+        const plinthGeo = new THREE.BoxGeometry(2.38, 0.10, 2.38);
+        const plinth = new THREE.Mesh(plinthGeo, stoneMat);
+        plinth.position.y = 0.05;
+        plinth.receiveShadow = true;
+        barrier.add(plinth);
+
+        // 2. 4 Sturdy Corner Bastion Towers
+        const towerGeo = new THREE.BoxGeometry(0.36, 1.40, 0.36);
+        const towerCapGeo = new THREE.BoxGeometry(0.44, 0.16, 0.44);
+        const beaconGeo = new THREE.OctahedronGeometry(0.12, 0);
+        const beaconMat = new THREE.MeshBasicMaterial({ color: beaconColor });
+
+        const beaconMeshes = [];
         const corners = [
-          [-1.25, -1.25], [1.25, -1.25],
-          [1.25, 1.25], [-1.25, 1.25]
+          [-1.02, -1.02], [1.02, -1.02],
+          [1.02, 1.02], [-1.02, 1.02]
         ];
-        corners.forEach(([cx, cz]) => {
-          const pylon = new THREE.Mesh(pylonGeo, pylonMat);
-          pylon.position.set(cx, 1.3, cz);
-          pylon.castShadow = true;
-          barrier.add(pylon);
 
-          const crystalGeo = new THREE.OctahedronGeometry(0.16, 0);
-          const crystalMat = new THREE.MeshBasicMaterial({
-            color: kingPiece.team === 'white' ? 0x00f3ff : 0xff3b4e
-          });
-          const crystal = new THREE.Mesh(crystalGeo, crystalMat);
-          crystal.position.set(cx, 2.7, cz);
-          barrier.add(crystal);
+        corners.forEach(([cx, cz]) => {
+          // Stone column shaft
+          const col = new THREE.Mesh(towerGeo, stoneMat);
+          col.position.set(cx, 0.70, cz);
+          col.castShadow = true;
+          col.receiveShadow = true;
+
+          // Machicolated turret cap
+          const cap = new THREE.Mesh(towerCapGeo, trimMat);
+          cap.position.set(cx, 1.46, cz);
+          cap.castShadow = true;
+
+          // Glowing energy power beacon crystal
+          const beacon = new THREE.Mesh(beaconGeo, beaconMat);
+          beacon.position.set(cx, 1.66, cz);
+          beaconMeshes.push(beacon);
+
+          barrier.add(col, cap, beacon);
         });
 
-        // 4 Fortress Energy Bulkhead Panels
+        // 3. 4 Crenellated Rampart Curtain Walls (North, South, East, West)
+        const wallGeoH = new THREE.BoxGeometry(1.68, 1.05, 0.16);
+        const wallGeoV = new THREE.BoxGeometry(0.16, 1.05, 1.68);
+        const merlonGeoH = new THREE.BoxGeometry(0.44, 0.24, 0.18);
+        const merlonGeoV = new THREE.BoxGeometry(0.18, 0.24, 0.44);
+
+        const walls = [
+          { geo: wallGeoH, mGeo: merlonGeoH, pos: [0, 0.58, -1.02], mOffsets: [[-0.45, 1.18, -1.02], [0.45, 1.18, -1.02]] },
+          { geo: wallGeoH, mGeo: merlonGeoH, pos: [0, 0.58, 1.02],  mOffsets: [[-0.45, 1.18, 1.02], [0.45, 1.18, 1.02]] },
+          { geo: wallGeoV, mGeo: merlonGeoV, pos: [-1.02, 0.58, 0], mOffsets: [[-1.02, 1.18, -0.45], [-1.02, 1.18, 0.45]] },
+          { geo: wallGeoV, mGeo: merlonGeoV, pos: [1.02, 0.58, 0],  mOffsets: [[1.02, 1.18, -0.45], [1.02, 1.18, 0.45]] }
+        ];
+
+        walls.forEach(w => {
+          const wMesh = new THREE.Mesh(w.geo, stoneMat);
+          wMesh.position.set(...w.pos);
+          wMesh.castShadow = true;
+          wMesh.receiveShadow = true;
+          barrier.add(wMesh);
+
+          w.mOffsets.forEach(mo => {
+            const merlon = new THREE.Mesh(w.mGeo, trimMat);
+            merlon.position.set(...mo);
+            merlon.castShadow = true;
+            barrier.add(merlon);
+          });
+        });
+
+        // 4. Shimmering Inner Aegis Forcefield Shield Panels
         const panelMat = new THREE.MeshPhysicalMaterial({
-          color: kingPiece.team === 'white' ? 0x00e1d9 : 0xff2a48,
+          color: beaconColor,
           transparent: true,
-          opacity: 0.45,
-          roughness: 0.12,
-          transmission: 0.70,
-          emissive: kingPiece.team === 'white' ? 0x00e1d9 : 0xff2a48,
-          emissiveIntensity: 0.40,
+          opacity: 0.26,
+          roughness: 0.10,
+          transmission: 0.78,
+          emissive: beaconColor,
+          emissiveIntensity: 0.35,
           side: THREE.DoubleSide,
           depthWrite: false
         });
 
-        const pNorth = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.2, 0.10), panelMat);
-        pNorth.position.set(0, 1.2, -1.25);
-        const pSouth = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.2, 0.10), panelMat);
-        pSouth.position.set(0, 1.2, 1.25);
-        const pWest = new THREE.Mesh(new THREE.BoxGeometry(0.10, 2.2, 2.5), panelMat);
-        pWest.position.set(-1.25, 1.2, 0);
-        const pEast = new THREE.Mesh(new THREE.BoxGeometry(0.10, 2.2, 2.5), panelMat);
-        pEast.position.set(1.25, 1.2, 0);
+        const sNorth = new THREE.Mesh(new THREE.BoxGeometry(1.68, 1.30, 0.04), panelMat);
+        sNorth.position.set(0, 0.75, -0.96);
+        const sSouth = new THREE.Mesh(new THREE.BoxGeometry(1.68, 1.30, 0.04), panelMat);
+        sSouth.position.set(0, 0.75, 0.96);
+        const sWest = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.30, 1.68), panelMat);
+        sWest.position.set(-0.96, 0.75, 0);
+        const sEast = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.30, 1.68), panelMat);
+        sEast.position.set(0.96, 0.75, 0);
 
-        barrier.add(pNorth, pSouth, pWest, pEast);
-        barrier.userData = { panelMat };
+        barrier.add(sNorth, sSouth, sWest, sEast);
+        barrier.userData = { panelMat, beaconMat, beaconMeshes, beaconColor };
 
         this.vfxGroup.add(barrier);
         this.citadelBarriers[kingPiece.team] = barrier;
@@ -1143,15 +1332,29 @@
         barrier.position.set(pos3D.x, 0, pos3D.z);
         const hpRatio = kingPiece.wallHp / kingPiece.maxWallHp;
         const panelMat = barrier.userData.panelMat;
+        const beaconMat = barrier.userData.beaconMat;
+        const baseColor = barrier.userData.beaconColor;
+
+        // Subtle idle pulse for beacon crystals
+        const now = performance.now();
+        if (barrier.userData.beaconMeshes) {
+          barrier.userData.beaconMeshes.forEach(b => {
+            b.rotation.y += 0.025;
+            b.position.y = 1.66 + Math.sin(now / 350) * 0.04;
+          });
+        }
+
         if (panelMat) {
           if (kingPiece.wallHitFlash > 0) {
             panelMat.emissive.setHex(0xffffff);
-            panelMat.emissiveIntensity = 1.0;
+            panelMat.emissiveIntensity = 1.35;
             panelMat.opacity = 0.85;
+            if (beaconMat) beaconMat.color.setHex(0xffffff);
           } else {
-            panelMat.emissive.setHex(kingPiece.team === 'white' ? 0x00e1d9 : 0xff2a48);
-            panelMat.emissiveIntensity = 0.25 + hpRatio * 0.35;
-            panelMat.opacity = 0.20 + hpRatio * 0.40;
+            panelMat.emissive.setHex(baseColor);
+            panelMat.emissiveIntensity = 0.20 + hpRatio * 0.35 + Math.sin(now / 400) * 0.10;
+            panelMat.opacity = 0.18 + hpRatio * 0.25;
+            if (beaconMat) beaconMat.color.setHex(baseColor);
           }
         }
       } else {
@@ -1221,6 +1424,9 @@
         blockMesh.receiveShadow = true;
         group.add(blockMesh);
 
+        const teamColor = deployable.team === 'white' ? 0x00f3ff : 0xe11d48;
+        const teamEmissive = deployable.team === 'white' ? 0x0284c7 : 0x9f1239;
+
         // 4 Corner Bastion Stanchions
         const pylonGeo = new THREE.CylinderGeometry(0.16, 0.20, 1.6, 12);
         const pylonMat = new THREE.MeshStandardMaterial({
@@ -1237,7 +1443,7 @@
 
           // Stanchion glowing cap
           const capGeo = new THREE.SphereGeometry(0.12, 8, 8);
-          const capMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+          const capMat = new THREE.MeshBasicMaterial({ color: teamColor });
           const cap = new THREE.Mesh(capGeo, capMat);
           cap.position.set(cx, 1.65, cz);
           group.add(cap);
@@ -1246,8 +1452,8 @@
         // Top Shield Rune / Emblem
         const shieldGeo = new THREE.OctahedronGeometry(0.36, 0);
         const shieldMat = new THREE.MeshStandardMaterial({
-          color: 0x38bdf8,
-          emissive: 0x0284c7,
+          color: teamColor,
+          emissive: teamEmissive,
           emissiveIntensity: 0.6,
           roughness: 0.2,
           metalness: 0.8
@@ -1260,7 +1466,7 @@
         // Neon outline trim on top edge
         const trimGeo = new THREE.RingGeometry(0.85, 0.98, 4);
         const trimMat = new THREE.MeshBasicMaterial({
-          color: 0x38bdf8,
+          color: teamColor,
           side: THREE.DoubleSide
         });
         const trim = new THREE.Mesh(trimGeo, trimMat);
