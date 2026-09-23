@@ -1772,12 +1772,17 @@ class ArchessArena {
   /**
    * Validates if a square is open and eligible for tactical deployment
    */
-  canDeployAt(col, row, type = 'wall') {
+  canDeployAt(col, row, type = 'wall', isImmediateDetonate = false) {
     if (col < 0 || col > 7 || row < 0 || row > 7) return false;
     const layout = this.getBoardLayout();
     const sqSize = layout.sqSize;
     const tileCenterX = layout.gridOriginX + (col + 0.5) * sqSize;
     const tileCenterY = layout.gridOriginY + (row + 0.5) * sqSize;
+
+    // For immediate detonation mine: can target any square on the board!
+    if (type === 'mine' && isImmediateDetonate) {
+      return true;
+    }
 
     // 1. Cannot deploy on a square occupied by any living piece
     const occupiedByPiece = this.pieces.some(p => {
@@ -1805,19 +1810,31 @@ class ArchessArena {
   }
 
   /**
-   * Places a mine or wall, consuming 1 move and switching turn
+   * Places a mine or wall, consuming 1 move and switching turn (Max 2 per game)
    */
-  deployTacticalItem(team, type, col, row) {
+  deployTacticalItem(team, type, col, row, options = {}) {
     if (this.isGameOver) return false;
     if (team !== this.currentTurn) return false;
 
     const inv = this.deployableInventory ? this.deployableInventory[team] : null;
     if (!inv) return false;
     const key = type === 'mine' ? 'mines' : 'walls';
-    if (inv[key] <= 0) return false;
-    if (!this.canDeployAt(col, row, type)) return false;
+    if (inv[key] <= 0) {
+      if (window.ArchessToast) {
+        window.ArchessToast.show(`Maximum 2 ${key} reached for ${team.toUpperCase()}!`, 'warning', 1800, 'DEPLOY');
+      }
+      return false;
+    }
 
-    // Decrement inventory
+    const isImmediate = Boolean(options && options.immediateDetonate);
+    if (!this.canDeployAt(col, row, type, isImmediate)) {
+      if (window.ArchessToast) {
+        window.ArchessToast.show('Square occupied or invalid for deployment', 'warning', 1800, 'DEPLOY');
+      }
+      return false;
+    }
+
+    // Decrement inventory (Max 2 per game strictly enforced)
     inv[key]--;
 
     const layout = this.getBoardLayout();
@@ -1841,6 +1858,8 @@ class ArchessArena {
     if (!this.deployables) this.deployables = [];
     this.deployables.push(dep);
 
+    const coordStr = `${String.fromCharCode(97 + col)}${8 - row}`;
+
     // Audio & Particles
     if (type === 'wall') {
       this.audio.playImpact(1.6);
@@ -1848,25 +1867,32 @@ class ArchessArena {
       this.spawnShockwave(x, y, '#38bdf8', 60, 4);
       this.screenShake = 6;
       this.addDamageNumber(x, y - sqSize * 0.3, 0, false, '#38bdf8', 'WALL ERECTED');
-      this.logTelemetry('TACTICAL_DEPLOY', `${team.toUpperCase()} placed an Indestructible Wall at ${String.fromCharCode(97 + col)}${8 - row}! [Move consumed | ${inv.walls} remaining]`);
-      this.addCommentary(`Reinforcement deployed! ${team.toUpperCase()} placed an Indestructible Wall at ${String.fromCharCode(97 + col)}${8 - row}!`, 'tactical', '🧱');
+      this.logTelemetry('TACTICAL_DEPLOY', `${team.toUpperCase()} placed an Indestructible Wall at ${coordStr}! [Move consumed | ${inv.walls} remaining]`);
+      this.addCommentary(`Reinforcement deployed! ${team.toUpperCase()} placed an Indestructible Wall at ${coordStr}!`, 'tactical', '🧱');
     } else {
-      this.audio.playBounce();
-      this.spawnImpactParticles(x, y, 18, false, ['#f59e0b', '#ef4444', '#ffd700']);
-      this.spawnShockwave(x, y, '#f59e0b', 45, 3);
-      this.screenShake = 4;
-      this.addDamageNumber(x, y - sqSize * 0.3, 0, false, '#f59e0b', 'MINE ARMED');
-      this.logTelemetry('TACTICAL_DEPLOY', `${team.toUpperCase()} armed an Explosive Landmine at ${String.fromCharCode(97 + col)}${8 - row}! [Move consumed | ${inv.mines} remaining]`);
-      this.addCommentary(`Danger zone primed! ${team.toUpperCase()} armed an Explosive Landmine at ${String.fromCharCode(97 + col)}${8 - row}!`, 'tactical', '💣');
+      if (!isImmediate) {
+        this.audio.playBounce();
+        this.spawnImpactParticles(x, y, 18, false, ['#f59e0b', '#ef4444', '#ffd700']);
+        this.spawnShockwave(x, y, '#f59e0b', 45, 3);
+        this.screenShake = 4;
+        this.addDamageNumber(x, y - sqSize * 0.3, 0, false, '#f59e0b', 'MINE ARMED');
+        this.logTelemetry('TACTICAL_DEPLOY', `${team.toUpperCase()} armed an Explosive Landmine at ${coordStr}! [Move consumed | ${inv.mines} remaining]`);
+        this.addCommentary(`Danger zone primed! ${team.toUpperCase()} armed an Explosive Landmine at ${coordStr}!`, 'tactical', '💣');
+      }
     }
 
     if (this.engine3d && typeof this.engine3d.syncDeployables === 'function') {
       this.engine3d.syncDeployables();
     }
 
-    // Reset deploy mode
+    // Reset deploy mode if active
     this.deployMode = null;
     this.deployHoverTile = null;
+
+    // Immediate blast-off if requested (e.g. via triple click)
+    if (type === 'mine' && isImmediate) {
+      this.detonateMine(dep);
+    }
 
     // Consumes ONE MOVE: increment turns & pass turn to opponent
     this.turns++;
@@ -1891,13 +1917,15 @@ class ArchessArena {
 
   /**
    * Detonates a landmine, dealing AoE damage and radial impulse in nearby area
+   * Non-pawns cannot be fully destroyed from full HP by the blast
+   * King and King Fortress Wall are 100% immune
    */
   detonateMine(mine, triggerPiece = null) {
     if (!mine.active) return;
     mine.active = false;
 
     const layout = this.getBoardLayout();
-    const blastRadius = layout.sqSize * 1.6;
+    const blastRadius = layout.sqSize * 1.35;
 
     // Audio & Screen FX
     this.audio.playShatter();
@@ -1910,18 +1938,39 @@ class ArchessArena {
     const tileCoord = `${String.fromCharCode(97 + mine.col)}${8 - mine.row}`;
     const triggerText = triggerPiece ? `${triggerPiece.team.toUpperCase()} ${triggerPiece.type.toUpperCase()}` : 'kinetic impact';
     this.logTelemetry('MINE_DETONATION', `💥 LANDMINE DETONATED at ${tileCoord}! Triggered by ${triggerText}. AoE Blast Radius: ${Math.round(blastRadius)}px.`);
-    this.addCommentary(`💥 DETONATION! Landmine at ${tileCoord} detonated by ${triggerText}! Devastating shockwave ripples across grid!`, 'blast', '💣');
+    this.addCommentary(`💥 DETONATION! Landmine at ${tileCoord} blasted off! Devastating shockwave ripples across grid!`, 'blast', '💣');
+
+    // Notify 3D engine to render fireball explosion and shockwave ring
+    if (this.engine3d && typeof this.engine3d.onMineDetonated === 'function') {
+      this.engine3d.onMineDetonated(mine);
+    }
+    if (this.engine3d && typeof this.engine3d.syncDeployables === 'function') {
+      this.engine3d.syncDeployables();
+    }
 
     // AoE Damage & Knockback to all living pieces within blastRadius
     this.pieces.forEach((p) => {
       if (p.dead) return;
+      // User requirement: King is completely immune to mine blast
+      if (p.type === 'king') return;
+
       const pdx = p.x - mine.x;
       const pdy = p.y - mine.y;
       const dist = Math.hypot(pdx, pdy);
 
       if (dist <= blastRadius) {
         const falloff = 1 - (dist / blastRadius) * 0.45;
-        const damage = Math.round(65 * Math.max(0.35, falloff));
+        let damage = Math.round(48 * Math.max(0.35, falloff));
+
+        // User requirement: "inflicting damage to nearby radius not too large to destroy non-pawn fully"
+        if (p.type !== 'pawn') {
+          // Non-pawns cannot be fully destroyed from full HP by a single blast
+          // Leave at least 10 HP alive so non-pawns survive
+          if (damage >= p.hp) {
+            damage = Math.max(1, p.hp - 10);
+          }
+        }
+
         p.hp = Math.max(0, p.hp - damage);
         p.hitFlash = 1.0;
         this.addDamageNumber(p.x, p.y - p.radius, damage, false, '#ff4500', `BLAST -${damage}`);
@@ -1935,7 +1984,7 @@ class ArchessArena {
           p.inMotion = true;
         }
 
-        // Check piece elimination
+        // Check piece elimination (only pawns can be eliminated by mine blast from full HP)
         if (p.hp <= 0 && !p.dead) {
           p.dead = true;
           p.hp = 0;
@@ -1953,38 +2002,108 @@ class ArchessArena {
       }
     });
 
-    // Also damage King citadel wall if within blast radius
-    this.pieces.forEach((king) => {
-      if (king.dead || king.type !== 'king' || !king.wallActive || king.wallHp <= 0) return;
-      const dist = Math.hypot(king.x - mine.x, king.y - mine.y);
-      if (dist <= blastRadius) {
-        const wallDmg = Math.round(55 * (1 - dist / blastRadius * 0.4));
-        king.wallHp = Math.max(0, king.wallHp - wallDmg);
-        king.wallHitFlash = 1.0;
-        this.addDamageNumber(king.x, king.y - king.radius, wallDmg, false, '#ff8c00', `WALL -${wallDmg}`);
-        if (king.wallHp <= 0) {
-          king.wallActive = false;
-          king.wallHp = 0;
-          this.spawnImpactParticles(king.x, king.y, 45, true);
-          this.addDamageNumber(king.x, king.y, 0, true, '#ff3b4e', 'WALL BREACHED!');
-        }
-      }
-    });
-
+    // User requirement: "and king wall and king are immune to it" -> King Citadel Wall is completely immune, takes 0 damage!
     this.checkSovereignAwakening();
+  }
 
-    // Check if either King was killed
-    const whiteKing = this.pieces.find(p => p.team === 'white' && p.type === 'king');
-    const blackKing = this.pieces.find(p => p.team === 'black' && p.type === 'king');
-    if (whiteKing && whiteKing.dead && !this.isGameOver) {
-      this.endGame('black', 'White King obliterated by explosive landmine!');
-    } else if (blackKing && blackKing.dead && !this.isGameOver) {
-      this.endGame('white', 'Black King obliterated by explosive landmine!');
+  /**
+   * Central multi-click square interaction across 2D & 3D:
+   * Double-click -> Erect Indestructible Wall (max 2)
+   * Triple-click -> Plant Mine that blasts off immediately (max 2)
+   */
+  onSquareClick(col, row) {
+    if (this.isGameOver) return;
+    if (col < 0 || col > 7 || row < 0 || row > 7) return;
+    if (this.gameMode === 'bot' && this.currentTurn === 'black') return;
+    if (this.gameMode === 'ai-vs-ai') return;
+    if (this.multiplayerMode && this.playerRole && this.playerRole !== this.currentTurn) {
+      if (window.ArchessToast) window.ArchessToast.show("Waiting for opponent's turn", 'warning', 1800, 'MULTIPLAYER');
+      return;
     }
 
-    if (this.engine3d && typeof this.engine3d.onMineDetonated === 'function') {
-      this.engine3d.onMineDetonated(mine);
+    if (!this._squareClickState) {
+      this._squareClickState = { col: -1, row: -1, count: 0, timer: null, lastTime: 0 };
     }
+
+    const now = performance.now();
+    const st = this._squareClickState;
+
+    if (st.col === col && st.row === row && (now - st.lastTime < 450)) {
+      st.count++;
+      st.lastTime = now;
+    } else {
+      if (st.timer) clearTimeout(st.timer);
+      st.col = col;
+      st.row = row;
+      st.count = 1;
+      st.lastTime = now;
+    }
+
+    if (st.timer) clearTimeout(st.timer);
+
+    if (st.count >= 3) {
+      // TRIPLE CLICK DETECTED -> Deploy Mine and blast off immediately!
+      const targetCol = st.col;
+      const targetRow = st.row;
+      st.count = 0;
+      st.col = -1;
+      st.row = -1;
+      this.handleSquareTripleClick(targetCol, targetRow);
+    } else if (st.count === 2) {
+      // DOUBLE CLICK CANDIDATE -> Wait 280ms to check if a 3rd click arrives
+      const targetCol = st.col;
+      const targetRow = st.row;
+      st.timer = setTimeout(() => {
+        if (st.count === 2 && st.col === targetCol && st.row === targetRow) {
+          st.count = 0;
+          st.col = -1;
+          st.row = -1;
+          this.handleSquareDoubleClick(targetCol, targetRow);
+        }
+      }, 280);
+    } else {
+      // Single click: reset state after timeout if no further clicks arrive
+      st.timer = setTimeout(() => {
+        st.count = 0;
+        st.col = -1;
+        st.row = -1;
+      }, 350);
+    }
+  }
+
+  handleSquareDoubleClick(col, row) {
+    const inv = this.deployableInventory ? this.deployableInventory[this.currentTurn] : null;
+    if (!inv || inv.walls <= 0) {
+      if (window.ArchessToast) {
+        window.ArchessToast.show(`Max 2 walls reached for ${this.currentTurn.toUpperCase()}!`, 'warning', 2000, 'WALLS');
+      }
+      if (this.audio) this.audio.playImpact(0.4);
+      return;
+    }
+
+    if (!this.canDeployAt(col, row, 'wall')) {
+      if (window.ArchessToast) {
+        window.ArchessToast.show('Square occupied! Double-click an open square to erect wall.', 'warning', 2000, 'WALLS');
+      }
+      if (this.audio) this.audio.playImpact(0.4);
+      return;
+    }
+
+    this.deployTacticalItem(this.currentTurn, 'wall', col, row);
+  }
+
+  handleSquareTripleClick(col, row) {
+    const inv = this.deployableInventory ? this.deployableInventory[this.currentTurn] : null;
+    if (!inv || inv.mines <= 0) {
+      if (window.ArchessToast) {
+        window.ArchessToast.show(`Max 2 mines reached for ${this.currentTurn.toUpperCase()}!`, 'warning', 2000, 'MINES');
+      }
+      if (this.audio) this.audio.playImpact(0.4);
+      return;
+    }
+
+    // Deploy mine and blast off immediately!
+    this.deployTacticalItem(this.currentTurn, 'mine', col, row, { immediateDetonate: true });
   }
 
   handleKingElimination(king) {
@@ -2438,6 +2557,8 @@ class ArchessArena {
       this.audio.init();
 
       const screenPos = getPointerScreenPos(e);
+      this._pointerDownScreenPos = { x: screenPos.x, y: screenPos.y };
+      this._pointerDownTime = performance.now();
 
       // Check if Tactical Deploy Mode is active (Placing Landmine or Indestructible Wall)
       if (this.deployMode) {
@@ -2567,8 +2688,25 @@ class ArchessArena {
       }
     };
 
-    const handlePointerUp = () => {
+    const handlePointerUp = (e) => {
       if (this.renderMode === '3d') return; // Handled exclusively by engine3d in 3D mode
+
+      const currentScreenPos = e ? getPointerScreenPos(e) : (this.dragScreenCurrent || this._pointerDownScreenPos);
+      const distMoved = (this._pointerDownScreenPos && currentScreenPos)
+        ? Math.hypot(currentScreenPos.x - this._pointerDownScreenPos.x, currentScreenPos.y - this._pointerDownScreenPos.y)
+        : 0;
+
+      // If user tapped/clicked without substantial drag and not in active deploy button mode
+      if (distMoved < 12 && !this.deployMode && this._pointerDownScreenPos) {
+        const worldPos = this.fromScreen(this._pointerDownScreenPos.x, this._pointerDownScreenPos.y);
+        const layout = this.getBoardLayout();
+        const col = Math.floor((worldPos.x - layout.gridOriginX) / layout.sqSize);
+        const row = Math.floor((worldPos.y - layout.gridOriginY) / layout.sqSize);
+        if (col >= 0 && col < 8 && row >= 0 && row < 8) {
+          this.onSquareClick(col, row);
+        }
+      }
+
       if (!this.isDragging || !this.selectedPiece) return;
       this.isDragging = false;
 

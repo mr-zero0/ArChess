@@ -1998,6 +1998,8 @@
         }
 
         const m = getNormalizedMouse(e);
+        this._pointerDownClient = { x: e.clientX, y: e.clientY };
+        this._pointerDownTime = performance.now();
 
         // Check if Tactical Deploy Mode is active (Placing Landmine or Indestructible Wall in 3D)
         if (this.arena.deployMode) {
@@ -2116,6 +2118,30 @@
             }
           } catch (err) {}
           this._capturedPointerId = undefined;
+        }
+
+        const distMoved = this._pointerDownClient
+          ? Math.hypot(e.clientX - this._pointerDownClient.x, e.clientY - this._pointerDownClient.y)
+          : 0;
+
+        // If clicked without substantial drag and not in active deploy button mode
+        if (distMoved < 12 && !this.arena.deployMode) {
+          const m = getNormalizedMouse(e);
+          this.mouse.x = m.x;
+          this.mouse.y = m.y;
+          this.raycaster.setFromCamera(this.mouse, this.camera);
+          const planeHit = this.raycaster.ray.intersectPlane(this.boardPlane, boardPlanePt);
+          if (planeHit) {
+            const bPos = this.worldToBoard(planeHit.x, planeHit.z);
+            const layout = this.arena.getBoardLayout();
+            const col = Math.floor((bPos.x - layout.gridOriginX) / layout.sqSize);
+            const row = Math.floor((bPos.y - layout.gridOriginY) / layout.sqSize);
+            if (col >= 0 && col < 8 && row >= 0 && row < 8) {
+              if (typeof this.arena.onSquareClick === 'function') {
+                this.arena.onSquareClick(col, row);
+              }
+            }
+          }
         }
 
         if (this.arena.isDragging && this.arena.selectedPiece) {
