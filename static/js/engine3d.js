@@ -49,8 +49,19 @@
       this.deployableMeshes = new Map();
       this.deployPreviewMesh = null;
 
-      // 3D Particles
+      // 3D Particles & Kinetic Ground Dust Puffs
       this.particles3D = [];
+      this.landingDustParticles = [];
+
+      // Tumbling pieces on defeat / capture
+      this.tumblingPieces = [];
+
+      // Realistic 3D Camera Action Dynamics
+      this.baseFov = 40;
+      this.camAimZoom = 0;       // Smooth aim tension zoom interpolator (0 to 1)
+      this.camZoomPunch = 0;     // Impact zoom punch
+      this.camShake = { intensity: 0 };
+      this.isSloMoActive = false;
 
       // Camera preset targets
       // Camera preset targets (Refined for real 3D perspective depth)
@@ -998,8 +1009,14 @@
 
     /* -------------------------------------------------------------
        Sync Authoritative Physics Pieces to 3D Scene
+       Features:
+       - Continuous kinetic hop arc based on movement speed
+       - Knight aerial vault trajectory & high-impact landing
+       - Dynamic squash & stretch on impact / touchdown
+       - Damped harmonic wobble & rocking settle on sudden stops / hits
+       - Realistic 3D defeat tumble knockdown & ground dust puffs
     ------------------------------------------------------------- */
-    syncPieces() {
+    syncPieces(dt = 0.016) {
       if (!this.arena || !this.arena.pieces) return;
 
       const activeIds = new Set();
@@ -1022,107 +1039,221 @@
           this.pieceMeshes.set(p.id, meshGroup);
         }
 
+        // Check if piece is defeated (trigger dramatic 3D tumble knockdown)
+        if (p.dead) {
+          if (!meshGroup.userData.isTumbling) {
+            this.startPieceTumble(p, meshGroup);
+          }
+          return;
+        }
+
         // Convert 2D Arena Board Space (x, y) to 3D World Space (X, Z)
-        const pos3D = this.boardToWorld(p.x, p.y);
-        
-        // Handle Elevation: drag lift + Knight aerial vault leap
+        let pos3D;
+        const speed = Math.hypot(p.vx || 0, p.vy || 0);
+        const inMotion = (speed > 0.35 || p.inMotion || p.isLeaping);
+
+        // Sanitize piece 2D coordinates if NaN or invalid
+        if (!isFinite(p.x) || !isFinite(p.y)) {
+          const layout = this.arena.getBoardLayout();
+          if (layout && layout.gridSize > 0) {
+            const c = (p.col !== undefined && p.col >= 0 && p.col < 8) ? p.col : 0;
+            const r = (p.row !== undefined && p.row >= 0 && p.row < 8) ? p.row : 0;
+            p.x = layout.gridOriginX + (c + 0.5) * layout.sqSize;
+            p.y = layout.gridOriginY + (r + 0.5) * layout.sqSize;
+            p.originX = p.x;
+            p.originY = p.y;
+            p.vx = 0;
+            p.vy = 0;
+          }
+        }
+
+        if (!inMotion && p.col !== undefined && p.row !== undefined && !p.hasMoved) {
+          // Stationary unmoved piece: ALWAYS place precisely at canonical tile coordinates
+          pos3D = this.tileToWorld(p.col, p.row);
+        } else if (isFinite(p.x) && isFinite(p.y)) {
+          pos3D = this.boardToWorld(p.x, p.y);
+        } else if (p.col !== undefined && p.row !== undefined) {
+          pos3D = this.tileToWorld(p.col, p.row);
+        } else {
+          pos3D = { x: 0, z: 0 };
+        }
+
         const isSelected = this.arena.selectedPiece === p;
         const dragElev = (isSelected && this.arena.isDragging) ? 1.6 : 0;
 
+        // 1. Continuous Realistic Kinetic Hop (Parabolic arc during sliding locomotion)
+        let hopElev = 0;
+        let hopTiltX = 0;
+        let hopTiltZ = 0;
         let leapHeight = 0;
+
         if (p.type === 'knight' && p.isLeaping) {
+          // Special high-arc vaulting leap for knights
           const progress = Math.min(1.0, (p.leapDistTraveled || 0) / (p.leapMaxDist || 140));
-          leapHeight = Math.sin(progress * Math.PI) * 3.2;
-          meshGroup.rotation.x -= Math.sin(progress * Math.PI) * 0.28;
+          leapHeight = Math.sin(progress * Math.PI) * 3.4;
+          meshGroup.rotation.x -= Math.sin(progress * Math.PI) * 0.32;
+
+          // Knight touchdown impact
+          if (progress > 0.90 && meshGroup.userData.wasAirborne) {
+            meshGroup.userData.squash = 0.74;
+            meshGroup.userData.wobbleAmp = 0.22;
+            meshGroup.userData.wobblePhase = 0;
+            this.spawnLandingDust(pos3D.x, pos3D.z, 1.6);
+            this.triggerZoomPunch(0.85);
+            meshGroup.userData.wasAirborne = false;
+          } else if (progress < 0.85) {
+            meshGroup.userData.wasAirborne = true;
+          }
+        } else if (inMotion) {
+          // All other units take realistic kinetic hops scaled with velocity
+          meshGroup.userData.hopPhase = (meshGroup.userData.hopPhase || 0) + dt * Math.min(speed, 14) * 3.4;
+          const maxHop = Math.min(1.35, Math.pow(speed / 8.5, 0.82) * 1.15);
+          hopElev = Math.abs(Math.sin(meshGroup.userData.hopPhase)) * maxHop;
+
+          // Subtle pitch/roll along the hop trajectory
+          if (speed > 0.8) {
+            const angle = Math.atan2(p.vy, p.vx);
+            const hopWave = Math.cos(meshGroup.userData.hopPhase * 2) * 0.09 * Math.min(1.0, speed / 5);
+            hopTiltZ = -Math.cos(angle) * hopWave;
+            hopTiltX = Math.sin(angle) * hopWave;
+          }
+
+          // Hop touchdown detection
+          if (meshGroup.userData.wasAirborne && hopElev < 0.08) {
+            meshGroup.userData.squash = Math.max(0.78, 1.0 - (speed / 14) * 0.26);
+            this.spawnLandingDust(pos3D.x, pos3D.z, Math.min(1.3, 0.6 + speed / 8));
+            meshGroup.userData.wasAirborne = false;
+          } else if (hopElev >= 0.18) {
+            meshGroup.userData.wasAirborne = true;
+          }
+        } else {
+          meshGroup.userData.hopPhase = 0;
+          meshGroup.userData.wasAirborne = false;
         }
 
-        // Pieces rest on top of tile surface (Y = 0.08)
+        // 2. Sudden Deceleration Landing Squash & Ground Dust
+        if ((meshGroup.userData.prevSpeed || 0) > 2.2 && speed <= 0.35) {
+          meshGroup.userData.squash = Math.max(0.78, 1.0 - ((meshGroup.userData.prevSpeed || 0) / 12) * 0.25);
+          meshGroup.userData.wobbleAmp = Math.min(0.26, (meshGroup.userData.prevSpeed || 0) * 0.04);
+          meshGroup.userData.wobblePhase = 0;
+          this.spawnLandingDust(pos3D.x, pos3D.z, Math.min(1.4, (meshGroup.userData.prevSpeed || 0) / 7));
+        }
+        meshGroup.userData.prevSpeed = speed;
+
+        // 3. Collision Impact Wobble & Micro-Squash on Hit Flash
+        if (p.hitFlash && p.hitFlash > 0.1 && (meshGroup.userData.prevHitFlash || 0) <= 0.1) {
+          meshGroup.userData.wobbleAmp = Math.min(0.34, (meshGroup.userData.wobbleAmp || 0) + 0.18 + speed * 0.03);
+          meshGroup.userData.wobblePhase = 0;
+          meshGroup.userData.squash = 0.82;
+          this.triggerZoomPunch(0.85);
+        }
+        meshGroup.userData.prevHitFlash = p.hitFlash || 0;
+
+        // 4. Elastic Squash & Stretch Recovery
+        meshGroup.userData.squash = meshGroup.userData.squash || 1.0;
+        meshGroup.userData.squash += (1.0 - meshGroup.userData.squash) * Math.min(1.0, dt * 16.0);
+
+        const pieceModel = meshGroup.userData.pieceModel;
+        const baseScale = meshGroup.userData.baseScale || 0.88;
+        if (pieceModel) {
+          const sY = meshGroup.userData.squash * baseScale;
+          const sXZ = (2.0 - meshGroup.userData.squash) * baseScale;
+          pieceModel.scale.set(sXZ, sY, sXZ);
+        }
+
+        // 5. Decaying Harmonic Wobble
+        let wobbleX = 0;
+        let wobbleZ = 0;
+        if (meshGroup.userData.wobbleAmp > 0.005) {
+          meshGroup.userData.wobblePhase = (meshGroup.userData.wobblePhase || 0) + dt * 26.0;
+          meshGroup.userData.wobbleAmp *= Math.exp(-dt * 8.0);
+          wobbleX = Math.sin(meshGroup.userData.wobblePhase) * meshGroup.userData.wobbleAmp;
+          wobbleZ = Math.cos(meshGroup.userData.wobblePhase * 0.85) * meshGroup.userData.wobbleAmp;
+        }
+
+        // 6. 3D Elevation & Grounding
         const BASE_ELEVATION = 0.08;
-        const targetElev = BASE_ELEVATION + dragElev + leapHeight;
+        const targetElev = BASE_ELEVATION + dragElev + leapHeight + hopElev;
         meshGroup.position.x = pos3D.x;
         meshGroup.position.z = pos3D.z;
-        meshGroup.position.y = THREE.MathUtils.lerp(meshGroup.position.y, targetElev, 0.35);
+        meshGroup.position.y = THREE.MathUtils.lerp(meshGroup.position.y, targetElev, 0.42);
 
-        // Contact shadow position & opacity tracking height (floor level Y = 0.085)
+        // Contact shadow position & opacity tracking height
         const shadowMesh = meshGroup.userData.shadowMesh;
         if (shadowMesh) {
           shadowMesh.position.y = 0.085 - meshGroup.position.y;
           const heightRatio = Math.max(0, meshGroup.position.y - BASE_ELEVATION) / 3.5;
-          shadowMesh.material.opacity = Math.max(0.12, 0.70 - heightRatio * 0.50);
-          const shadowScale = 1.0 + heightRatio * 0.40;
+          shadowMesh.material.opacity = Math.max(0.10, 0.70 - heightRatio * 0.52);
+          const shadowScale = 1.0 + heightRatio * 0.45;
           shadowMesh.scale.set(shadowScale, shadowScale, 1);
         }
 
-        // Visibility & Death
-        if (p.dead) {
-          meshGroup.visible = false;
+        meshGroup.visible = true;
+
+        // 7. Velocity-based dynamic tilt / inertia or slingshot drag tension tilt
+        if (isSelected && this.arena.isDragging) {
+          const aimVec = (typeof this.arena.getAimVector === 'function')
+            ? this.arena.getAimVector(p)
+            : { pullX: this.arena.dragScreenAnchor.x - this.arena.dragScreenCurrent.x, pullY: this.arena.dragScreenAnchor.y - this.arena.dragScreenCurrent.y, dist: 0, angle: 0 };
+          let pullX = aimVec.pullX;
+          let pullY = aimVec.pullY;
+          const dist = aimVec.dist || Math.hypot(pullX, pullY);
+          const angle = aimVec.angle !== undefined ? aimVec.angle : Math.atan2(pullY, pullX);
+          const tiltAmount = Math.min(0.35, (dist / this.arena.maxPullDistance) * 0.35);
+          meshGroup.rotation.x = THREE.MathUtils.lerp(meshGroup.rotation.x, -Math.sin(angle) * tiltAmount, 0.25);
+          meshGroup.rotation.z = THREE.MathUtils.lerp(meshGroup.rotation.z, Math.cos(angle) * tiltAmount, 0.25);
+        } else if (speed > 0.4) {
+          const tiltMax = 0.22;
+          const angle = Math.atan2(p.vy, p.vx);
+          meshGroup.rotation.z = THREE.MathUtils.lerp(meshGroup.rotation.z, -Math.cos(angle) * Math.min(tiltMax, speed * 0.025), 0.2);
+          meshGroup.rotation.x = THREE.MathUtils.lerp(meshGroup.rotation.x, Math.sin(angle) * Math.min(tiltMax, speed * 0.025), 0.2);
         } else {
-          meshGroup.visible = true;
+          meshGroup.rotation.z = THREE.MathUtils.lerp(meshGroup.rotation.z, 0, 0.2);
+          meshGroup.rotation.x = THREE.MathUtils.lerp(meshGroup.rotation.x, 0, 0.2);
+        }
 
-          // Velocity-based dynamic tilt / inertia or slingshot drag tension tilt
-          const speed = Math.hypot(p.vx || 0, p.vy || 0);
-          if (isSelected && this.arena.isDragging) {
-            let pullX = this.arena.dragScreenAnchor.x - this.arena.dragScreenCurrent.x;
-            let pullY = this.arena.dragScreenAnchor.y - this.arena.dragScreenCurrent.y;
-            if (typeof this.arena.clampLaunchVector === 'function') {
-              const clamped = this.arena.clampLaunchVector(p, pullX, pullY);
-              pullX = clamped.pullX;
-              pullY = clamped.pullY;
+        // Layer in the hop tilt and decaying wobble
+        meshGroup.rotation.x += hopTiltX + wobbleX;
+        meshGroup.rotation.z += hopTiltZ + wobbleZ;
+
+        // Dynamic Collision Impact Flash in 3D
+        if (p.hitFlash && p.hitFlash > 0) {
+          meshGroup.traverse(child => {
+            if (child.isMesh && child.material && child.material.emissive) {
+              child.material.emissive.setHex(0xff3333);
+              child.material.emissiveIntensity = p.hitFlash * 0.85;
             }
-            const dist = Math.hypot(pullX, pullY);
-            const angle = Math.atan2(pullY, pullX);
-            const tiltAmount = Math.min(0.35, (dist / this.arena.maxPullDistance) * 0.35);
-            meshGroup.rotation.x = THREE.MathUtils.lerp(meshGroup.rotation.x, -Math.sin(angle) * tiltAmount, 0.25);
-            meshGroup.rotation.z = THREE.MathUtils.lerp(meshGroup.rotation.z, Math.cos(angle) * tiltAmount, 0.25);
-          } else if (speed > 0.4) {
-            const tiltMax = 0.22;
-            const angle = Math.atan2(p.vy, p.vx);
-            meshGroup.rotation.z = THREE.MathUtils.lerp(meshGroup.rotation.z, -Math.cos(angle) * Math.min(tiltMax, speed * 0.025), 0.2);
-            meshGroup.rotation.x = THREE.MathUtils.lerp(meshGroup.rotation.x, Math.sin(angle) * Math.min(tiltMax, speed * 0.025), 0.2);
+          });
+        } else {
+          meshGroup.traverse(child => {
+            if (child.isMesh && child.material && child.material.emissive && child.name !== 'veteran_star_mesh') {
+              child.material.emissiveIntensity = 0;
+            }
+          });
+        }
+
+        // Veteran Pawn 3D Golden Star
+        const star = meshGroup.getObjectByName('veteran_star');
+        if (star) {
+          if (p.type === 'pawn' && !p.promoted && p.killedNonPawn) {
+            star.visible = true;
+            star.rotation.y += 0.035;
+            star.position.y = 2.85 + Math.sin(now / 240) * 0.12;
           } else {
-            meshGroup.rotation.z = THREE.MathUtils.lerp(meshGroup.rotation.z, 0, 0.2);
-            meshGroup.rotation.x = THREE.MathUtils.lerp(meshGroup.rotation.x, 0, 0.2);
+            star.visible = false;
           }
+        }
 
-          // Dynamic Collision Impact Flash in 3D
-          if (p.hitFlash && p.hitFlash > 0) {
-            meshGroup.traverse(child => {
-              if (child.isMesh && child.material && child.material.emissive) {
-                child.material.emissive.setHex(0xff3333);
-                child.material.emissiveIntensity = p.hitFlash * 0.85;
-              }
-            });
+        // Braced / Phalanx 3D Defense Glyph
+        const phalanxRing = meshGroup.getObjectByName('phalanx_ring');
+        if (phalanxRing) {
+          if (p.isBraced && !p.inMotion && p.type !== 'king') {
+            phalanxRing.visible = true;
+            phalanxRing.rotation.y += 0.015;
+            phalanxRing.position.y = 0.05 - meshGroup.position.y;
+            phalanxRing.material.opacity = 0.45 + Math.sin(now / 280) * 0.25;
           } else {
-            meshGroup.traverse(child => {
-              if (child.isMesh && child.material && child.material.emissive && child.name !== 'veteran_star_mesh') {
-                child.material.emissiveIntensity = 0;
-              }
-            });
-          }
-
-          // Veteran Pawn 3D Golden Star
-          const star = meshGroup.getObjectByName('veteran_star');
-          if (star) {
-            if (p.type === 'pawn' && !p.promoted && p.killedNonPawn) {
-              star.visible = true;
-              star.rotation.y += 0.035;
-              star.position.y = 2.85 + Math.sin(now / 240) * 0.12;
-            } else {
-              star.visible = false;
-            }
-          }
-
-          // Braced / Phalanx 3D Defense Glyph
-          const phalanxRing = meshGroup.getObjectByName('phalanx_ring');
-          if (phalanxRing) {
-            if (p.isBraced && !p.inMotion && p.type !== 'king') {
-              phalanxRing.visible = true;
-              phalanxRing.rotation.y += 0.015;
-              phalanxRing.position.y = 0.05 - meshGroup.position.y;
-              phalanxRing.material.opacity = 0.45 + Math.sin(now / 280) * 0.25;
-            } else {
-              phalanxRing.visible = false;
-            }
+            phalanxRing.visible = false;
           }
         }
 
@@ -1242,7 +1373,21 @@
       group.add(phalanxMesh);
 
       group.add(pieceModel);
-      group.userData = { pieceId: piece.id, pieceType: piece.type, piece: piece, shadowMesh };
+      group.userData = {
+        pieceId: piece.id,
+        pieceType: piece.type,
+        piece: piece,
+        shadowMesh,
+        pieceModel,
+        baseScale: scaleFactor,
+        squash: 1.0,
+        hopPhase: 0,
+        wasAirborne: false,
+        wobbleAmp: 0,
+        wobblePhase: 0,
+        prevSpeed: 0,
+        prevHitFlash: 0
+      };
       return group;
     }
 
@@ -1358,7 +1503,10 @@
 
       if (kingPiece.wallActive && kingPiece.wallHp > 0 && !kingPiece.dead) {
         barrier.visible = true;
-        barrier.position.set(pos3D.x, 0.08, pos3D.z);
+        const kingPos3D = (!kingPiece.inMotion && kingPiece.col !== undefined && kingPiece.row !== undefined)
+          ? this.tileToWorld(kingPiece.col, kingPiece.row)
+          : pos3D;
+        barrier.position.set(kingPos3D.x, 0.08, kingPos3D.z);
         const hpRatio = kingPiece.wallHp / kingPiece.maxWallHp;
         const panelMat = barrier.userData.panelMat;
         const beaconMat = barrier.userData.beaconMat;
@@ -1417,7 +1565,9 @@
           this.deployableMeshes.set(d.id, mesh);
         }
 
-        const pos3D = this.boardToWorld(d.x, d.y);
+        const pos3D = (d.col !== undefined && d.row !== undefined && isFinite(d.col) && isFinite(d.row))
+          ? this.tileToWorld(d.col, d.row)
+          : this.boardToWorld(d.x, d.y);
         mesh.position.set(pos3D.x, 0.08, pos3D.z);
 
         // Update animation ticks (e.g. mine LED blink, proximity pulse)
@@ -1768,19 +1918,17 @@
       let angle = 0;
 
       if (this.arena.isDragging && selPiece) {
-        let pullX = this.arena.dragScreenAnchor.x - this.arena.dragScreenCurrent.x;
-        let pullY = this.arena.dragScreenAnchor.y - this.arena.dragScreenCurrent.y;
-        if (typeof this.arena.clampLaunchVector === 'function') {
-          const clamped = this.arena.clampLaunchVector(selPiece, pullX, pullY);
-          pullX = clamped.pullX;
-          pullY = clamped.pullY;
-        }
-        const screenDist = Math.hypot(pullX, pullY);
+        const aimVec = (typeof this.arena.getAimVector === 'function')
+          ? this.arena.getAimVector(selPiece)
+          : { pullX: this.arena.dragScreenAnchor.x - this.arena.dragScreenCurrent.x, pullY: this.arena.dragScreenAnchor.y - this.arena.dragScreenCurrent.y, dist: 0, angle: 0 };
+        const pullX = aimVec.pullX;
+        const pullY = aimVec.pullY;
+        const screenDist = aimVec.dist || Math.hypot(pullX, pullY);
 
-        if (screenDist >= 10) {
+        if (screenDist >= 8) {
           const clamped = Math.min(screenDist, this.arena.maxPullDistance);
           power = clamped / this.arena.maxPullDistance;
-          angle = Math.atan2(pullY, pullX);
+          angle = aimVec.angle !== undefined ? aimVec.angle : Math.atan2(pullY, pullX);
           active = true;
         }
       } else if (this.arena.keyboardAiming && selPiece) {
@@ -1854,6 +2002,17 @@
       if (this.aimBandMesh) this.aimBandMesh.visible = false;
       this.aimArrowMesh.visible = false;
       this.aimReticleMesh.visible = false;
+    }
+
+    tileToWorld(col, row) {
+      const half3D = (this.gridSize3D || 20.0) / 2;
+      const tileSize = (this.gridSize3D || 20.0) / 8;
+      const c = Math.max(0, Math.min(7, col !== undefined ? col : 0));
+      const r = Math.max(0, Math.min(7, row !== undefined ? row : 0));
+      return {
+        x: -half3D + (c + 0.5) * tileSize,
+        z: -half3D + (r + 0.5) * tileSize
+      };
     }
 
     /* -------------------------------------------------------------
@@ -2126,9 +2285,12 @@
 
         if (this.arena.isDragging && this.arena.selectedPiece) {
           this.arena.dragScreenCurrent = { x: m.screenX, y: m.screenY };
-          const pullX = this.arena.dragScreenAnchor.x - this.arena.dragScreenCurrent.x;
-          const pullY = this.arena.dragScreenAnchor.y - this.arena.dragScreenCurrent.y;
-          const dist = Math.hypot(pullX, pullY);
+          const aimVec = (typeof this.arena.getAimVector === 'function')
+            ? this.arena.getAimVector(this.arena.selectedPiece)
+            : { pullX: this.arena.dragScreenAnchor.x - this.arena.dragScreenCurrent.x, pullY: this.arena.dragScreenAnchor.y - this.arena.dragScreenCurrent.y, dist: 0 };
+          const pullX = aimVec.pullX;
+          const pullY = aimVec.pullY;
+          const dist = aimVec.dist || Math.hypot(pullX, pullY);
           const powerRatio = Math.min(dist, this.arena.maxPullDistance) / this.arena.maxPullDistance;
           const now = performance.now();
 
@@ -2175,7 +2337,7 @@
           return;
         }
 
-        const SLINGSHOT_DRAG_THRESHOLD = 24;
+        const SLINGSHOT_DRAG_THRESHOLD = 8;
         const clientX = e.clientX !== undefined ? e.clientX : (e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX : 0);
         const clientY = e.clientY !== undefined ? e.clientY : (e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientY : 0);
         const distMoved = this._pointerDownClient
@@ -2203,22 +2365,19 @@
         }
 
         if (this.arena.isDragging && this.arena.selectedPiece) {
-          let pullX = this.arena.dragScreenAnchor.x - this.arena.dragScreenCurrent.x;
-          let pullY = this.arena.dragScreenAnchor.y - this.arena.dragScreenCurrent.y;
-          const dist = Math.hypot(pullX, pullY);
+          const pieceToLaunch = this.arena.selectedPiece;
+          const aimVec = (typeof this.arena.getAimVector === 'function')
+            ? this.arena.getAimVector(pieceToLaunch)
+            : { pullX: this.arena.dragScreenAnchor.x - this.arena.dragScreenCurrent.x, pullY: this.arena.dragScreenAnchor.y - this.arena.dragScreenCurrent.y, dist: 0 };
+          let pullX = aimVec.pullX;
+          let pullY = aimVec.pullY;
+          const dist = aimVec.dist || Math.hypot(pullX, pullY);
 
           if (dist >= SLINGSHOT_DRAG_THRESHOLD && !this.arena.turnHasMoved && !this.arena.simulationSettling) {
             const anyMoving = (this.arena.pieces || []).some(p => !p.dead && (Math.hypot(p.vx, p.vy) > 0.15 || p.inMotion));
             if (!anyMoving) {
               this._lastLaunchTime = performance.now();
               let clampedDist = Math.min(dist, this.arena.maxPullDistance);
-              const pieceToLaunch = this.arena.selectedPiece;
-
-              if (typeof this.arena.clampLaunchVector === 'function') {
-                const clamped = this.arena.clampLaunchVector(pieceToLaunch, pullX, pullY);
-                pullX = clamped.pullX;
-                pullY = clamped.pullY;
-              }
 
               this.arena.launchPiece(pieceToLaunch, pullX, pullY, clampedDist);
 
@@ -2374,10 +2533,233 @@
     }
 
     /* -------------------------------------------------------------
+       Realistic 3D Defeat Knockdown & Tumble Physics
+    ------------------------------------------------------------- */
+    startPieceTumble(piece, meshGroup) {
+      if (meshGroup.userData.isTumbling) return;
+      meshGroup.userData.isTumbling = true;
+      this.pieceMeshes.delete(piece.id);
+
+      // Determine topple vector from piece's last velocity or impact angle
+      let vx = piece.vx || (Math.random() - 0.5) * 1.5;
+      let vy = piece.vy || (Math.random() - 0.5) * 1.5;
+      const speed = Math.hypot(vx, vy);
+      let dirX = (speed > 0.05) ? (vx / speed) : (Math.random() - 0.5);
+      let dirZ = (speed > 0.05) ? (vy / speed) : (Math.random() - 0.5);
+
+      // Topple axis is perpendicular to knockback vector
+      const rotAxis = new THREE.Vector3(-dirZ, 0, dirX).normalize();
+
+      this.tumblingPieces.push({
+        meshGroup,
+        piece,
+        rotAxis,
+        fallAngle: 0,
+        targetAngle: Math.PI * 0.48, // ~86 degrees: resting flat on its side
+        fallSpeed: Math.min(7.5, 3.8 + speed * 0.45),
+        bounceY: 0.35 + Math.min(0.5, speed * 0.05),
+        bounceVy: 2.2,
+        y: meshGroup.position.y,
+        life: 0,
+        maxLife: 1.2
+      });
+
+      this.spawnLandingDust(meshGroup.position.x, meshGroup.position.z, 1.4);
+      this.triggerZoomPunch(0.75);
+    }
+
+    updateTumbles(dt) {
+      for (let i = this.tumblingPieces.length - 1; i >= 0; i--) {
+        const item = this.tumblingPieces[i];
+        item.life += dt;
+
+        // 1. Angular topple onto side
+        if (item.fallAngle < item.targetAngle) {
+          const deltaAngle = item.fallSpeed * dt;
+          item.fallAngle = Math.min(item.targetAngle, item.fallAngle + deltaAngle);
+          item.meshGroup.rotateOnAxis(item.rotAxis, deltaAngle);
+        }
+
+        // 2. Vertical bounce & settle on board plinth
+        if (item.bounceY > 0) {
+          item.y += item.bounceVy * dt;
+          item.bounceVy -= 14.0 * dt;
+          if (item.y <= 0.08) {
+            item.y = 0.08;
+            item.bounceVy = -item.bounceVy * 0.35;
+            if (Math.abs(item.bounceVy) < 0.25) {
+              item.bounceVy = 0;
+              item.bounceY = 0;
+            }
+          }
+          item.meshGroup.position.y = item.y;
+        }
+
+        // 3. Smooth dissolve fade out in the final 50% of tumble
+        if (item.life > item.maxLife * 0.50) {
+          const fadeProgress = (item.life - item.maxLife * 0.50) / (item.maxLife * 0.50);
+          const opacity = Math.max(0, 1.0 - fadeProgress);
+          item.meshGroup.traverse(child => {
+            if (child.isMesh && child.material) {
+              child.material.transparent = true;
+              child.material.opacity = opacity;
+            }
+          });
+        }
+
+        // 4. Remove completely after maxLife
+        if (item.life >= item.maxLife) {
+          if (item.meshGroup.parent) {
+            item.meshGroup.parent.remove(item.meshGroup);
+          }
+          this.tumblingPieces.splice(i, 1);
+        }
+      }
+    }
+
+    resetTumbles() {
+      for (const item of this.tumblingPieces) {
+        if (item.meshGroup && item.meshGroup.parent) {
+          item.meshGroup.parent.remove(item.meshGroup);
+        }
+      }
+      this.tumblingPieces = [];
+      for (const p of this.landingDustParticles) {
+        if (p.mesh && p.mesh.parent) {
+          p.mesh.parent.remove(p.mesh);
+        }
+        if (p.mesh && p.mesh.geometry) p.mesh.geometry.dispose();
+        if (p.mat) p.mat.dispose();
+      }
+      this.landingDustParticles = [];
+    }
+
+    /* -------------------------------------------------------------
+       3D Ground Landing Dust Rings & Impact Shockwaves
+    ------------------------------------------------------------- */
+    spawnLandingDust(x, z, intensity = 1.0) {
+      if (!this.vfxGroup) return;
+      const ringGeo = new THREE.RingGeometry(0.28 * intensity, 0.72 * intensity, 24);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: 0xdfd7ca,
+        transparent: true,
+        opacity: 0.55,
+        side: THREE.DoubleSide,
+        depthWrite: false
+      });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.set(x, 0.086, z);
+      this.vfxGroup.add(ring);
+
+      this.landingDustParticles.push({
+        mesh: ring,
+        mat: ringMat,
+        scaleSpeed: 2.4 * intensity,
+        opacity: 0.55,
+        fadeSpeed: 2.6
+      });
+    }
+
+    updateLandingDust(dt) {
+      for (let i = this.landingDustParticles.length - 1; i >= 0; i--) {
+        const p = this.landingDustParticles[i];
+        p.mesh.scale.addScalar(p.scaleSpeed * dt);
+        p.opacity -= p.fadeSpeed * dt;
+        p.mat.opacity = Math.max(0, p.opacity);
+        if (p.opacity <= 0) {
+          if (p.mesh.parent) p.mesh.parent.remove(p.mesh);
+          if (p.mesh.geometry) p.mesh.geometry.dispose();
+          if (p.mat) p.mat.dispose();
+          this.landingDustParticles.splice(i, 1);
+        }
+      }
+    }
+
+    /* -------------------------------------------------------------
+       Dynamic Camera Zooming Effects (Action Cam, Zoom Punch & Shake)
+    ------------------------------------------------------------- */
+    triggerZoomPunch(intensity = 1.0) {
+      this.camZoomPunch = Math.min(0.28, (this.camZoomPunch || 0) + 0.09 * intensity);
+      if (this.arena && this.arena.screenShake) {
+        this.camShake.intensity = Math.max(this.camShake.intensity, this.arena.screenShake * 0.08);
+      }
+    }
+
+    updateCamera(dt) {
+      if (!this.camera) return;
+
+      // 1. Aim Tension Zoom (Cinematic Action Cam while pulling slingshot)
+      const isAiming = Boolean(this.arena && this.arena.isDragging && this.arena.selectedPiece);
+      const targetAimZoom = isAiming ? 1.0 : 0.0;
+      this.camAimZoom = THREE.MathUtils.lerp(this.camAimZoom || 0, targetAimZoom, Math.min(1.0, dt * 6.5));
+
+      // 2. Impact Zoom Punch decay
+      if (this.camZoomPunch > 0.001) {
+        this.camZoomPunch *= Math.exp(-dt * 13.0);
+      } else {
+        this.camZoomPunch = 0;
+      }
+
+      // 3. Dynamic FOV calculation (Normal 40deg -> tight 32.5deg on aim -> sudden zoom-in punch on impact)
+      const aimFovDelta = this.camAimZoom * 7.5;
+      const punchFovDelta = this.camZoomPunch * 20.0;
+      const targetFov = Math.max(24, Math.min(50, this.baseFov - aimFovDelta - punchFovDelta));
+      if (Math.abs(this.camera.fov - targetFov) > 0.05) {
+        this.camera.fov = targetFov;
+        this.camera.updateProjectionMatrix();
+      }
+
+      // 4. Slingshot Aim Camera Focus Drift (gently frames the piece being aimed)
+      if (isAiming && this.arena.selectedPiece && !this._targetCamPos) {
+        const selPos = this.boardToWorld(this.arena.selectedPiece.x, this.arena.selectedPiece.y);
+        if (this.controls) {
+          const aimLookTarget = new THREE.Vector3(selPos.x * 0.35, 0.2, selPos.z * 0.35);
+          this.controls.target.lerp(aimLookTarget, Math.min(1.0, dt * 4.0));
+        }
+      } else if (!this._targetCamPos && this.controls) {
+        // Return look target to center
+        const defaultLook = (this.cameraPresets[this.activePreset] || this.cameraPresets.tabletop).look;
+        this.controls.target.lerp(defaultLook, Math.min(1.0, dt * 5.0));
+      }
+
+      // 5. 3D Camera Shake from impacts & arena screenShake
+      if (this.arena && this.arena.screenShake > 0) {
+        this.camShake.intensity = Math.max(this.camShake.intensity, this.arena.screenShake * 0.07);
+      }
+      if (this.camShake.intensity > 0.002) {
+        const shake = this.camShake.intensity;
+        this.camera.position.x += (Math.random() - 0.5) * shake;
+        this.camera.position.y += (Math.random() - 0.5) * shake * 0.6;
+        this.camera.position.z += (Math.random() - 0.5) * shake;
+        this.camShake.intensity *= Math.exp(-dt * 9.5);
+      } else {
+        this.camShake.intensity = 0;
+      }
+    }
+
+    onSloMo(active) {
+      this.isSloMoActive = active;
+      if (this.container) {
+        if (active) {
+          this.container.classList.add('archess-slomo-active');
+        } else {
+          this.container.classList.remove('archess-slomo-active');
+        }
+      }
+      if (this.renderer) {
+        this.renderer.toneMappingExposure = active ? 1.25 : 1.12;
+      }
+      if (active) {
+        this.triggerZoomPunch(1.1);
+      }
+    }
+
+    /* -------------------------------------------------------------
        Main 3D Animation & Render Loop
     ------------------------------------------------------------- */
-    update(dt) {
-      // 0. Smooth Camera Preset Interpolation
+    update(dt = 0.016) {
+      // 0. Smooth Camera Preset Interpolation & Action Cam / Aim Zoom / Zoom Punch / 3D Shake
       if (this._targetCamPos) {
         this.camera.position.lerp(this._targetCamPos, 0.09);
         if (this.controls) {
@@ -2392,13 +2774,21 @@
         }
       }
 
-      // 1. Sync 3D Pieces with 2D Physics state
-      this.syncPieces();
+      this.updateCamera(dt);
 
-      // 1b. Sync Tactical Deployables (Indestructible Walls & Landmines)
+      // 1. Sync 3D Pieces with 2D Physics state (Hops, Squash & Stretch, Wobble)
+      this.syncPieces(dt);
+
+      // 1b. Update Tumbling Pieces on Defeat / Knockdown
+      this.updateTumbles(dt);
+
+      // 1c. Update 3D Landing Dust & Impact Sparks
+      this.updateLandingDust(dt);
+
+      // 1d. Sync Tactical Deployables (Indestructible Walls & Landmines)
       this.syncDeployables();
 
-      // 1c. Update Holographic Deploy Preview on hovered square
+      // 1e. Update Holographic Deploy Preview on hovered square
       this.updateDeployPreview();
 
       // 2. Update Slingshot Aim Visuals
@@ -2427,6 +2817,7 @@
     }
 
     destroy() {
+      this.resetTumbles();
       this.resetDeployables();
       if (this.deployPreviewMesh) {
         if (this.deployPreviewMesh.parent) this.deployPreviewMesh.parent.remove(this.deployPreviewMesh);

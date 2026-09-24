@@ -48,6 +48,12 @@
             <span class="kbd-key">Drag</span> Aim &bull; Launch
             <span class="kbd-hint-more" style="color: var(--muted-foreground); font-size: 0.72rem; margin-left: 4px;">(Tab &bull; Space)</span>
           </div>
+
+          <!-- Aim Control Mode Toggle (Drag & Aim vs Slingshot) -->
+          <div class="aim-mode-toggle cupertino-segmented-control wing-segmented" id="aimModeToolbarGroup" role="group" aria-label="Aim Control Mode" style="margin-top: 6px;">
+            <button type="button" class="theme-pill-btn aim-mode-btn active" id="aimDirectBtn" data-aim="direct" title="Drag &amp; Drop Aim: Drag piece towards target to launch directly">🎯 Drag &amp; Aim</button>
+            <button type="button" class="theme-pill-btn aim-mode-btn" id="aimSlingshotBtn" data-aim="slingshot" title="Slingshot: Pull backward away from target to launch forward">🏹 Slingshot</button>
+          </div>
         </div>
 
         <!-- 2. Match Mode Segmented Control -->
@@ -160,10 +166,10 @@
             <span class="live-status-chip" id="deployTurnChip">Active Turn</span>
           </div>
           <div class="deploy-wing-actions" style="display: flex; flex-direction: column; gap: 6px;">
-            <button type="button" class="btn-cupertino-action deploy-wing-btn" id="btnWingDeployMine" title="Arm Landmine (Costs 1 move, Max 2 per game)">
+            <button type="button" class="btn-cupertino-action deploy-wing-btn" id="btnWingDeployMine" title="Arm Landmine (Unlocks after 10 moves, blasts off on placement, Max 2 per game)">
               <span class="deploy-icon">💣</span>
               <span class="deploy-title">Landmine</span>
-              <span class="deploy-pill" id="wingBadgeMineCount">2 left</span>
+              <span class="deploy-pill" id="wingBadgeMineCount">Move 10</span>
             </button>
             <button type="button" class="btn-cupertino-action deploy-wing-btn" id="btnWingDeployWall" title="Erect Indestructible Wall (Costs 1 move, Max 2 per game)">
               <span class="deploy-icon">🧱</span>
@@ -260,22 +266,22 @@
             <!-- 2D Classic FIDE Chessboard Root -->
             <div id="reactChessboardRoot" class="react-chessboard-stage" style="display: none;"></div>
 
-            <!-- Tactical Deployables Dock (Mines & Fortified Walls) -->
-            <div class="tactical-deploy-dock" id="tacticalDeployDock">
+            <!-- Tactical Deployables Dock (Mines & Fortified Walls - Banner prompt only, no duplicate buttons) -->
+            <div class="tactical-deploy-dock" id="tacticalDeployDock" style="display: none;">
               <div class="deploy-dock-left">
-                <span class="deploy-dock-tag">TACTICAL RESERVES:</span>
-                <button type="button" class="deploy-dock-btn" id="btnDeployMine" title="Place explosive Landmine (Costs 1 move, Max 2 per game)">
+                <span class="deploy-dock-tag" style="display: none;">TACTICAL RESERVES:</span>
+                <button type="button" class="deploy-dock-btn" id="btnDeployMine" style="display: none;" title="Place explosive Landmine (Costs 1 move, Max 2 per game)">
                   <span class="deploy-btn-icon">💣</span>
                   <span class="deploy-btn-text">Landmine</span>
                   <span class="deploy-btn-count" id="badgeMineCount">2</span>
                 </button>
-                <button type="button" class="deploy-dock-btn" id="btnDeployWall" title="Erect indestructible Fortified Wall (Costs 1 move, Max 2 per game)">
+                <button type="button" class="deploy-dock-btn" id="btnDeployWall" style="display: none;" title="Erect indestructible Fortified Wall (Costs 1 move, Max 2 per game)">
                   <span class="deploy-btn-icon">🧱</span>
                   <span class="deploy-btn-text">Wall</span>
                   <span class="deploy-btn-count" id="badgeWallCount">2</span>
                 </button>
                 <button type="button" class="deploy-dock-btn deploy-cancel-btn" id="btnCancelDeploy" style="display: none;" title="Cancel placement mode">
-                  <span>✕ Cancel</span>
+                  <span>✕ Cancel Placement</span>
                 </button>
               </div>
               <div class="deploy-prompt-banner" id="deployPromptBanner" style="display: none;">
@@ -1056,10 +1062,10 @@
 {% endblock %}
 
 {% block extra_scripts %}
-  <script src="/static/js/three.min.js?v=4.5.2"></script>
-  <script src="/static/js/engine3d.js?v=4.5.2"></script>
-  <script src="/static/js/react-chessboard-bundle.js?v=4.5.2"></script>
-  <script src="/static/js/game.js?v=4.5.2"></script>
+  <script src="/static/js/three.min.js?v=4.6.1"></script>
+  <script src="/static/js/engine3d.js?v=4.6.1"></script>
+  <script src="/static/js/react-chessboard-bundle.js?v=4.6.1"></script>
+  <script src="/static/js/game.js?v=4.6.1"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       // Sync current logged in user name with White player card
@@ -1069,6 +1075,26 @@
           if (wName) wName.textContent = window.ArchessAuth.currentUser.username;
         }
       }, 500);
+
+      // Aim Mode Toggle Event Wiring (Direct Aim vs Slingshot)
+      const aimDirectBtn = document.getElementById('aimDirectBtn');
+      const aimSlingshotBtn = document.getElementById('aimSlingshotBtn');
+
+      function updateAimModeUI(mode) {
+        if (aimDirectBtn && aimSlingshotBtn) {
+          aimDirectBtn.classList.toggle('active', mode !== 'slingshot');
+          aimSlingshotBtn.classList.toggle('active', mode === 'slingshot');
+        }
+        if (window.archessGame && typeof window.archessGame.setAimMode === 'function') {
+          window.archessGame.setAimMode(mode);
+        }
+      }
+
+      const savedAimMode = localStorage.getItem('archess_aim_mode') || 'direct';
+      updateAimModeUI(savedAimMode);
+
+      if (aimDirectBtn) aimDirectBtn.addEventListener('click', () => updateAimModeUI('direct'));
+      if (aimSlingshotBtn) aimSlingshotBtn.addEventListener('click', () => updateAimModeUI('slingshot'));
 
       // 3D Camera Controls Event Wiring
       const camTabletop = document.getElementById('camTabletopBtn');

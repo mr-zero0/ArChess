@@ -661,6 +661,8 @@ class ArchessArena {
     this.keyboardAimPower = 0.5;
     this.keyboardAiming = false;
 
+    this.aimMode = localStorage.getItem('archess_aim_mode') || 'direct'; // 'direct' (drag to target) or 'slingshot' (pull back)
+    this._capturedPointerId = undefined;
     this.isDragging = false;
     this.dragStart = { x: 0, y: 0 };
     this.dragCurrent = { x: 0, y: 0 };
@@ -707,6 +709,11 @@ class ArchessArena {
       }
     }
 
+    // Cinematic Slow-Motion Time Dilation
+    this.timeScale = 1.0;
+    this.targetTimeScale = 1.0;
+    this.sloMoTimer = 0;
+
     this.initCanvasSize();
     this.init32Pieces();
     this.setupListeners();
@@ -735,6 +742,19 @@ class ArchessArena {
     this.addCommentary('Vanguard units mobilized on tactical grid. Engagement initiated.', 'info', '⚔️');
   }
 
+  /**
+   * Triggers cinematic bullet-time slow motion on dramatic game events
+   * @param {number} duration Duration in seconds
+   * @param {number} scale Time dilation factor (0.15 - 0.35)
+   */
+  triggerSloMo(duration = 0.55, scale = 0.22) {
+    this.targetTimeScale = Math.max(0.1, Math.min(1.0, scale));
+    this.sloMoTimer = Math.max(this.sloMoTimer || 0, duration);
+    if (this.engine3d && typeof this.engine3d.onSloMo === 'function') {
+      this.engine3d.onSloMo(true);
+    }
+  }
+
   initCanvasSize(passedOldLayout = null) {
     if (!this.canvas) return;
     const oldLayout = passedOldLayout || this.currentLayout || ((this.width && this.height) ? this.getBoardLayout() : null);
@@ -748,15 +768,26 @@ class ArchessArena {
 
     if (this.renderMode === '2d' && archessFrame && stage) {
       const stageRect = stage.getBoundingClientRect();
-      const available = Math.min(stageRect.width || 600, stageRect.height || 600);
-      const frameDim = Math.max(280, Math.min(960, available - 16));
-      archessFrame.style.width = frameDim + 'px';
+      const availW = (stageRect.width > 50 ? stageRect.width : stage.clientWidth) || 600;
+      const availH = (stageRect.height > 50 ? stageRect.height : stage.clientHeight) || 600;
+      const available = Math.min(availW, availH);
+      // Overhead of 2D frame: FIDE status bar (26px) + margin (6px) + padding (8px * 2) + border (2px * 2) = 52px
+      const overhead = 52;
+      const innerSquare = Math.max(180, Math.min(960, Math.floor(available - overhead)));
+      const frameW = innerSquare + 20; // 8px padding + 2px border on each side
+      const frameH = innerSquare + overhead;
+      archessFrame.style.width = frameW + 'px';
+      archessFrame.style.height = frameH + 'px';
+      archessFrame.style.maxWidth = '100%';
+      archessFrame.style.maxHeight = '100%';
+      archessFrame.style.boxSizing = 'border-box';
 
-      // Inner square accounts for 20px padding and ~46px classic-fide-bar
-      const innerSquare = Math.max(220, frameDim - 56);
       if (canvasBox) {
         canvasBox.style.width = innerSquare + 'px';
         canvasBox.style.height = innerSquare + 'px';
+        canvasBox.style.maxWidth = '100%';
+        canvasBox.style.maxHeight = '100%';
+        canvasBox.style.boxSizing = 'border-box';
       }
       pw = innerSquare;
       ph = innerSquare;
@@ -834,7 +865,7 @@ class ArchessArena {
           p.y = newLayout.gridOriginY + p.row * newLayout.sqSize + newLayout.sqSize / 2;
           p.originX = p.x;
           p.originY = p.y;
-        } else if (oldLayout && oldLayout.gridSize > 0) {
+        } else if (oldLayout && oldLayout.gridSize > 0 && isFinite(oldLayout.gridSize) && isFinite(p.x) && isFinite(p.y)) {
           const relX = (p.x - oldLayout.gridOriginX) / oldLayout.gridSize;
           const relY = (p.y - oldLayout.gridOriginY) / oldLayout.gridSize;
           p.x = newLayout.gridOriginX + relX * newLayout.gridSize;
@@ -844,6 +875,11 @@ class ArchessArena {
           const origRelY = (p.originY - oldLayout.gridOriginY) / oldLayout.gridSize;
           p.originX = newLayout.gridOriginX + origRelX * newLayout.gridSize;
           p.originY = newLayout.gridOriginY + origRelY * newLayout.gridSize;
+        } else if (p.col !== undefined && p.row !== undefined) {
+          p.x = newLayout.gridOriginX + (p.col + 0.5) * newLayout.sqSize;
+          p.y = newLayout.gridOriginY + (p.row + 0.5) * newLayout.sqSize;
+          p.originX = p.x;
+          p.originY = p.y;
         }
 
         const radiusMulti = (p.type === 'queen' || p.type === 'king') ? 0.40 : p.type === 'rook' ? 0.37 : p.type === 'knight' ? 0.36 : p.type === 'bishop' ? 0.35 : 0.32;
@@ -853,8 +889,10 @@ class ArchessArena {
       });
       if (this.deployables && this.deployables.length > 0) {
         this.deployables.forEach(d => {
-          d.x = newLayout.gridOriginX + (d.col + 0.5) * newLayout.sqSize;
-          d.y = newLayout.gridOriginY + (d.row + 0.5) * newLayout.sqSize;
+          if (d.col !== undefined && d.row !== undefined) {
+            d.x = newLayout.gridOriginX + (d.col + 0.5) * newLayout.sqSize;
+            d.y = newLayout.gridOriginY + (d.row + 0.5) * newLayout.sqSize;
+          }
           d.half = Math.round(newLayout.sqSize * 0.47);
           d.radius = Math.round(newLayout.sqSize * 0.38);
         });
@@ -1220,6 +1258,37 @@ class ArchessArena {
       this.render();
     }
     this.logTelemetry('THEME_CHANGE', `Piece style updated to ${theme.toUpperCase()}.`);
+  }
+
+  setAimMode(mode) {
+    this.aimMode = (mode === 'slingshot') ? 'slingshot' : 'direct';
+    localStorage.setItem('archess_aim_mode', this.aimMode);
+    this.logTelemetry('AIM_MODE_CHANGE', `Aim control mode set to: ${this.aimMode.toUpperCase()}`);
+    if (typeof this.updateHUD === 'function') this.updateHUD();
+  }
+
+  getAimVector(selectedPiece = null) {
+    const piece = selectedPiece || this.selectedPiece;
+    if (!this.dragScreenAnchor || !this.dragScreenCurrent) {
+      return { pullX: 0, pullY: 0, dist: 0, angle: 0 };
+    }
+    const mode = this.aimMode || 'direct';
+    let pullX, pullY;
+    if (mode === 'slingshot') {
+      // Slingshot: Pull backward away from target, release launches forward
+      pullX = this.dragScreenAnchor.x - this.dragScreenCurrent.x;
+      pullY = this.dragScreenAnchor.y - this.dragScreenCurrent.y;
+    } else {
+      // Direct Drag & Drop Aim: Drag towards target, release launches towards target
+      pullX = this.dragScreenCurrent.x - this.dragScreenAnchor.x;
+      pullY = this.dragScreenCurrent.y - this.dragScreenAnchor.y;
+    }
+    if (piece && piece.type === 'pawn' && !piece.promoted) {
+      return this.clampLaunchVector(piece, pullX, pullY);
+    }
+    const dist = Math.hypot(pullX, pullY);
+    const angle = Math.atan2(pullY, pullX);
+    return { pullX, pullY, dist, angle };
   }
 
   setGameMode(mode) {
@@ -1709,7 +1778,8 @@ class ArchessArena {
     }
 
     // 2. Aggressively / defensively plant Landmine in central lanes (files c..f, ranks 2..5)
-    if (inv.mines > 0) {
+    // Landmines unlock only after 10 moves!
+    if (inv.mines > 0 && this.turns >= 10) {
       const centerCandidates = [];
       const centerCols = [2, 3, 4, 5];
       const centerRows = activeTeam === 'black' ? [2, 3, 4] : [3, 4, 5];
@@ -1740,6 +1810,21 @@ class ArchessArena {
     if (this.gameMode === 'bot' && this.currentTurn === 'black') return;
     if (this.gameMode === 'ai-vs-ai') return;
 
+    if (mode === 'mine') {
+      if (this.turns < 10) {
+        const movesLeft = 10 - this.turns;
+        if (window.ArchessToast) {
+          window.ArchessToast.show(
+            `Landmines locked! Available after 10 moves (${movesLeft} move${movesLeft > 1 ? 's' : ''} remaining).`,
+            'warning',
+            2200,
+            'TACTICAL LOCK'
+          );
+        }
+        return;
+      }
+    }
+
     if (mode) {
       const curInv = this.deployableInventory ? this.deployableInventory[this.currentTurn] : null;
       if (!curInv || (mode === 'mine' && curInv.mines <= 0) || (mode === 'wall' && curInv.walls <= 0)) {
@@ -1756,7 +1841,7 @@ class ArchessArena {
 
     if (mode && window.ArchessToast) {
       window.ArchessToast.show(
-        mode === 'mine' ? '💣 Landmine Armed — Click any open square to plant (Consumes 1 Move, Max 2/Game)' : '🧱 Wall Ready — Click any open square to erect (Consumes 1 Move, Max 2/Game)',
+        mode === 'mine' ? '💣 Landmine Armed — Click any open square to plant (Blasts off on placement, Max 2/Game)' : '🧱 Wall Ready — Click any open square to erect (Consumes 1 Move, Max 2/Game)',
         'info',
         2500,
         'DEPLOY'
@@ -1787,7 +1872,9 @@ class ArchessArena {
     const tileCenterY = layout.gridOriginY + (row + 0.5) * sqSize;
 
     // For mine: can be placed anywhere except if there is already an active mine on that square
+    // AND user requirement: cannot be placed before 10 moves!
     if (type === 'mine') {
+      if (this.turns < 10) return false;
       const alreadyHasMine = (this.deployables || []).some(d => d.active && d.type === 'mine' && d.col === col && d.row === row);
       return !alreadyHasMine;
     }
@@ -1822,7 +1909,7 @@ class ArchessArena {
 
   /**
    * Places a mine or wall, consuming 1 move and switching turn (Max 2 per game)
-   * Mines blast off immediately after placing and are not destroyed
+   * Mines blast off immediately after placing, inflicting damage to nearby opponent pieces (not permanent)
    * Walls permanently block opponent pieces, but not self pieces
    */
   deployTacticalItem(team, type, col, row, options = {}) {
@@ -1831,6 +1918,14 @@ class ArchessArena {
     if (this.turnHasMoved || this.simulationSettling) return false;
     const anyMoving = (this.pieces || []).some(p => !p.dead && (Math.hypot(p.vx, p.vy) > 0.15 || p.inMotion));
     if (anyMoving) return false;
+
+    if (type === 'mine' && this.turns < 10) {
+      const movesLeft = 10 - this.turns;
+      if (window.ArchessToast) {
+        window.ArchessToast.show(`Landmines locked! Available after 10 moves (${movesLeft} move${movesLeft > 1 ? 's' : ''} left).`, 'warning', 2000, 'TACTICAL LOCK');
+      }
+      return false;
+    }
 
     const inv = this.deployableInventory ? this.deployableInventory[team] : null;
     if (!inv) return false;
@@ -1935,17 +2030,17 @@ class ArchessArena {
   }
 
   /**
-   * Detonates a landmine: blasts off immediately, deals AoE damage and radial impulse.
-   * Pieces and the mine itself are not destroyed (non-lethal blast damage).
+   * Detonates a landmine: blasts off immediately, deals AoE damage to nearby opponent pieces.
+   * Mines are single-use and NOT permanent: they blast off, damage nearby opponents, and disappear.
    * King and King Fortress Wall are 100% immune.
    */
   detonateMine(mine, triggerPiece = null) {
-    // Mine remains on the board (not destroyed) as a permanent tactical hazard plate
-    mine.active = true;
+    // Mine blasts off and is NOT permanent - it detonates and is consumed
+    mine.active = false;
     mine.detonated = true;
 
     const layout = this.getBoardLayout();
-    const blastRadius = layout.sqSize * 1.35;
+    const blastRadius = layout.sqSize * 1.45;
 
     // Audio & Screen FX
     this.audio.playShatter();
@@ -1958,7 +2053,7 @@ class ArchessArena {
     const tileCoord = `${String.fromCharCode(97 + mine.col)}${8 - mine.row}`;
     const triggerText = triggerPiece ? `${triggerPiece.team.toUpperCase()} ${triggerPiece.type.toUpperCase()}` : 'tactical placement';
     this.logTelemetry('MINE_DETONATION', `💥 LANDMINE BLAST-OFF at ${tileCoord}! Triggered by ${triggerText}. AoE Blast Radius: ${Math.round(blastRadius)}px.`);
-    this.addCommentary(`💥 BLAST OFF! Tactical Mine at ${tileCoord} detonated! Shockwave ripples across grid!`, 'blast', '💣');
+    this.addCommentary(`💥 BLAST OFF! Tactical Mine at ${tileCoord} detonated! Shockwave hits nearby opponent pieces!`, 'blast', '💣');
 
     // Notify 3D engine to render fireball explosion and shockwave ring
     if (this.engine3d && typeof this.engine3d.onMineDetonated === 'function') {
@@ -1968,38 +2063,69 @@ class ArchessArena {
       this.engine3d.syncDeployables();
     }
 
-    // AoE Damage & Knockback to all living pieces within blastRadius
+    // AoE Damage & Knockback to nearby OPPONENT pieces within blastRadius (friendly units immune!)
+    let opponentHitCount = 0;
     this.pieces.forEach((p) => {
       if (p.dead) return;
-      // User requirement: King is completely immune to mine blast
+      // King is completely immune to mine blast
       if (p.type === 'king') return;
+      // User requirement: mines inflict damage strictly to opponent pieces!
+      if (p.team === mine.team) return;
 
       const pdx = p.x - mine.x;
       const pdy = p.y - mine.y;
       const dist = Math.hypot(pdx, pdy);
 
       if (dist <= blastRadius) {
+        opponentHitCount++;
         const falloff = 1 - (dist / blastRadius) * 0.45;
-        const damage = Math.round(42 * Math.max(0.35, falloff));
+        const damage = Math.round(55 * Math.max(0.38, falloff));
 
-        // User requirement: pieces are not to be destroyed by the blast
-        // Reduce HP but retain at least 1 HP!
-        p.hp = Math.max(1, p.hp - damage);
+        p.hp = Math.max(0, p.hp - damage);
         p.hitFlash = 1.0;
         this.addDamageNumber(p.x, p.y - p.radius, damage, false, '#ff4500', `BLAST -${damage}`);
 
-        // Radial knockback impulse
+        // Radial knockback impulse away from the blast center
         if (!p.immovable) {
           const angle = dist > 0.001 ? Math.atan2(pdy, pdx) : Math.random() * Math.PI * 2;
-          const pushForce = Math.max(1.5, (1 - dist / blastRadius) * 8.5);
+          const pushForce = Math.max(2.0, (1 - dist / blastRadius) * 10.0);
           p.vx += Math.cos(angle) * pushForce;
           p.vy += Math.sin(angle) * pushForce;
           p.inMotion = true;
         }
+
+        if (p.hp <= 0 && !p.dead) {
+          p.dead = true;
+          p.hp = 0;
+          p.vx = 0;
+          p.vy = 0;
+          p.inMotion = false;
+          this.triggerSloMo(0.60, 0.22);
+          if (this.engine3d && typeof this.engine3d.triggerZoomPunch === 'function') {
+            this.engine3d.triggerZoomPunch(1.0);
+          }
+          this.spawnImpactParticles(p.x, p.y, 35, true);
+          this.spawnShockwave(p.x, p.y, p.team === 'white' ? '#ffd700' : '#ff3b4e', 75, 4.5);
+          this.audio.playShatter();
+          if (!this.capturedPieces) this.capturedPieces = { white: [], black: [] };
+          this.capturedPieces[p.team].push(p.type);
+          if (this.onPieceCaptured) {
+            this.onPieceCaptured(p.team, p.type, this.getMaterialDiff());
+          }
+          this.logTelemetry('ELIMINATION', `💥 [!] ${p.team.toUpperCase()} ${p.type.toUpperCase()} demolished by mine blast.`);
+          this.addCommentary(`💥 DEMOLISHED! ${p.team.toUpperCase()} ${p.type.toUpperCase()} caught in mine explosion and eliminated!`, 'shatter', '💥');
+          this.checkSovereignAwakening();
+        }
       }
     });
 
-    // User requirement: King Citadel Wall is completely immune, takes 0 damage!
+    if (opponentHitCount === 0) {
+      this.logTelemetry('MINE_DETONATION', `Mine blasted off at ${tileCoord}. No enemy pieces in direct blast radius.`);
+    }
+
+    // Remove detonated non-permanent mines from active deployables array
+    this.deployables = this.deployables.filter(d => d.active);
+
     this.checkSovereignAwakening();
   }
 
@@ -2103,6 +2229,15 @@ class ArchessArena {
     if (this.turnHasMoved || this.simulationSettling) return;
     const anyMoving = (this.pieces || []).some(p => !p.dead && (Math.hypot(p.vx, p.vy) > 0.15 || p.inMotion));
     if (anyMoving) return;
+
+    if (this.turns < 10) {
+      const movesLeft = 10 - this.turns;
+      if (window.ArchessToast) {
+        window.ArchessToast.show(`Landmines locked! Available after 10 moves (${movesLeft} move${movesLeft > 1 ? 's' : ''} left).`, 'warning', 2000, 'TACTICAL LOCK');
+      }
+      if (this.audio) this.audio.playImpact(0.4);
+      return;
+    }
 
     const inv = this.deployableInventory ? this.deployableInventory[this.currentTurn] : null;
     if (!inv || inv.mines <= 0) {
@@ -2447,6 +2582,13 @@ class ArchessArena {
     this.audio.stopSuddenDeathDrone();
     this.pieceDamageDealt = {};
     this.pieceKills = {};
+    this.timeScale = 1.0;
+    this.targetTimeScale = 1.0;
+    this.sloMoTimer = 0;
+    if (this.engine3d) {
+      if (typeof this.engine3d.onSloMo === 'function') this.engine3d.onSloMo(false);
+      if (typeof this.engine3d.resetTumbles === 'function') this.engine3d.resetTumbles();
+    }
     const timerRing = document.getElementById('turnTimerRing');
     if (timerRing) {
       timerRing.style.strokeDashoffset = '0px';
@@ -2544,8 +2686,20 @@ class ArchessArena {
 
     const getPointerScreenPos = (e) => {
       const rect = this.canvas.getBoundingClientRect();
-      const clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
-      const clientY = e.touches && e.touches.length > 0 ? e.touches[0].clientY : e.clientY;
+      let clientX = 0;
+      let clientY = 0;
+      if (e) {
+        if (e.touches && e.touches.length > 0) {
+          clientX = e.touches[0].clientX;
+          clientY = e.touches[0].clientY;
+        } else if (e.changedTouches && e.changedTouches.length > 0) {
+          clientX = e.changedTouches[0].clientX;
+          clientY = e.changedTouches[0].clientY;
+        } else if (e.clientX !== undefined) {
+          clientX = e.clientX;
+          clientY = e.clientY;
+        }
+      }
       const scaleX = this.width / (rect.width || 1);
       const scaleY = this.height / (rect.height || 1);
       return {
@@ -2612,13 +2766,15 @@ class ArchessArena {
       const eligiblePieces = this.pieces.filter(p => !p.dead && p.team === this.currentTurn && (p.type !== 'king' || p.awakened));
       let target = null;
       let bestDist = Infinity;
+      const layout = this.getBoardLayout();
+      const sqSize = layout ? layout.sqSize : 64;
 
       for (const p of eligiblePieces) {
         const pElevation = (this.renderMode === '3d') ? 14 : 0;
         const pScreen = this.toScreen(p.x, p.y, pElevation);
         const hitCenterY = this.renderMode === '3d' ? (pScreen.y - p.radius * 0.3) : pScreen.y;
         const dist = Math.hypot(screenPos.x - pScreen.x, screenPos.y - hitCenterY);
-        const hitRadius = p.radius * (this.renderMode === '3d' ? 1.85 : 1.5);
+        const hitRadius = Math.max(p.radius * 1.85, sqSize * 0.48);
 
         if (dist <= hitRadius && dist < bestDist) {
           bestDist = dist;
@@ -2635,6 +2791,15 @@ class ArchessArena {
         this.dragScreenCurrent = { x: screenPos.x, y: screenPos.y };
         this.dragStart = { x: target.x, y: target.y };
         this.dragCurrent = { x: target.x, y: target.y };
+
+        // Pointer capture for unbroken drag stream
+        if (this.canvas && this.canvas.setPointerCapture && e.pointerId !== undefined) {
+          try {
+            this.canvas.setPointerCapture(e.pointerId);
+            this._capturedPointerId = e.pointerId;
+          } catch (err) {}
+        }
+
         this.logTelemetry('PIECE_SELECTED', `Selected ${target.team.toUpperCase()} ${target.type.toUpperCase()} at [${Math.round(target.x)}, ${Math.round(target.y)}]`);
         if (e.cancelable) e.preventDefault();
       }
@@ -2660,14 +2825,10 @@ class ArchessArena {
 
       if (this.isDragging && this.selectedPiece) {
         this.dragScreenCurrent = screenPos;
-        let pullScreenX = this.dragScreenAnchor.x - this.dragScreenCurrent.x;
-        let pullScreenY = this.dragScreenAnchor.y - this.dragScreenCurrent.y;
-        if (this.selectedPiece.type === 'pawn' && !this.selectedPiece.promoted) {
-          const clamped = this.clampLaunchVector(this.selectedPiece, pullScreenX, pullScreenY);
-          pullScreenX = clamped.pullX;
-          pullScreenY = clamped.pullY;
-        }
-        const screenDist = Math.hypot(pullScreenX, pullScreenY);
+        const aimVec = this.getAimVector(this.selectedPiece);
+        const pullScreenX = aimVec.pullX;
+        const pullScreenY = aimVec.pullY;
+        const screenDist = aimVec.dist;
         const powerRatio = Math.min(screenDist, this.maxPullDistance) / this.maxPullDistance;
         const now = performance.now();
         if (now - lastTensionSoundTime > 90) {
@@ -2707,6 +2868,16 @@ class ArchessArena {
     const handlePointerUp = (e) => {
       if (this.renderMode === '3d') return; // Handled exclusively by engine3d in 3D mode
 
+      // Release pointer capture cleanly
+      if (this.canvas && this.canvas.releasePointerCapture && this._capturedPointerId !== undefined) {
+        try {
+          if (this.canvas.hasPointerCapture && this.canvas.hasPointerCapture(this._capturedPointerId)) {
+            this.canvas.releasePointerCapture(this._capturedPointerId);
+          }
+        } catch (err) {}
+        this._capturedPointerId = undefined;
+      }
+
       if (this._pointerDownWasDeploy) {
         this._pointerDownWasDeploy = false;
         this.isDragging = false;
@@ -2714,14 +2885,14 @@ class ArchessArena {
         return;
       }
 
-      const SLINGSHOT_DRAG_THRESHOLD = 24;
+      const DRAG_LAUNCH_THRESHOLD = 8;
       const currentScreenPos = e ? getPointerScreenPos(e) : (this.dragScreenCurrent || this._pointerDownScreenPos);
       const distMoved = (this._pointerDownScreenPos && currentScreenPos)
         ? Math.hypot(currentScreenPos.x - this._pointerDownScreenPos.x, currentScreenPos.y - this._pointerDownScreenPos.y)
         : 0;
 
-      // If user tapped/clicked without substantial drag and not in active deploy button mode
-      if (distMoved < SLINGSHOT_DRAG_THRESHOLD && !this.deployMode && this._pointerDownScreenPos) {
+      // If user tapped/clicked without drag and not in active deploy button mode
+      if (distMoved < DRAG_LAUNCH_THRESHOLD && !this.deployMode && this._pointerDownScreenPos) {
         this.isDragging = false;
         this.selectedPiece = null;
 
@@ -2743,16 +2914,13 @@ class ArchessArena {
       if (!this.isDragging || !this.selectedPiece) return;
       this.isDragging = false;
 
-      let pullScreenX = this.dragScreenAnchor.x - this.dragScreenCurrent.x;
-      let pullScreenY = this.dragScreenAnchor.y - this.dragScreenCurrent.y;
-      if (this.selectedPiece.type === 'pawn' && !this.selectedPiece.promoted) {
-        const clamped = this.clampLaunchVector(this.selectedPiece, pullScreenX, pullScreenY);
-        pullScreenX = clamped.pullX;
-        pullScreenY = clamped.pullY;
-      }
-      const screenDist = Math.hypot(pullScreenX, pullScreenY);
+      const pieceToLaunch = this.selectedPiece;
+      const aimVec = this.getAimVector(pieceToLaunch);
+      const pullScreenX = aimVec.pullX;
+      const pullScreenY = aimVec.pullY;
+      const screenDist = aimVec.dist;
 
-      if (screenDist >= SLINGSHOT_DRAG_THRESHOLD && !this.turnHasMoved && !this.simulationSettling) {
+      if (screenDist >= DRAG_LAUNCH_THRESHOLD && !this.turnHasMoved && !this.simulationSettling) {
         const anyMoving = (this.pieces || []).some(p => !p.dead && (Math.hypot(p.vx, p.vy) > 0.15 || p.inMotion));
         if (!anyMoving) {
           this._lastLaunchTime = performance.now();
@@ -2761,11 +2929,11 @@ class ArchessArena {
           let launchVx = pullScreenX;
           let launchVy = pullScreenY;
 
-          this.launchPiece(this.selectedPiece, pullScreenX, pullScreenY, clampedDist);
+          this.launchPiece(pieceToLaunch, pullScreenX, pullScreenY, clampedDist);
 
           if (this.multiplayerMode && typeof this.onPieceLaunchBroadcast === 'function') {
             this.onPieceLaunchBroadcast({
-              pieceId: this.selectedPiece.id,
+              pieceId: pieceToLaunch.id,
               vx: launchVx,
               vy: launchVy,
               dist: clampedDist,
@@ -2781,17 +2949,45 @@ class ArchessArena {
       this.selectedPiece = null;
     };
 
+    const handlePointerCancel = () => {
+      if (this.canvas && this.canvas.releasePointerCapture && this._capturedPointerId !== undefined) {
+        try {
+          if (this.canvas.hasPointerCapture && this.canvas.hasPointerCapture(this._capturedPointerId)) {
+            this.canvas.releasePointerCapture(this._capturedPointerId);
+          }
+        } catch (err) {}
+        this._capturedPointerId = undefined;
+      }
+      if (this.isDragging) {
+        if (this.multiplayerMode && typeof this.onAimCancel === 'function') {
+          this.onAimCancel();
+        }
+        this.isDragging = false;
+        this.selectedPiece = null;
+      }
+    };
+
     if (window.PointerEvent) {
       addTrackedListener(this.canvas, 'pointerdown', handlePointerDown);
+      addTrackedListener(this.canvas, 'pointermove', handlePointerMove);
       addTrackedListener(window, 'pointermove', handlePointerMove);
+      addTrackedListener(this.canvas, 'pointerup', handlePointerUp);
       addTrackedListener(window, 'pointerup', handlePointerUp);
+      addTrackedListener(this.canvas, 'pointercancel', handlePointerCancel);
+      addTrackedListener(window, 'pointercancel', handlePointerCancel);
     } else {
       addTrackedListener(this.canvas, 'mousedown', handlePointerDown);
+      addTrackedListener(this.canvas, 'mousemove', handlePointerMove);
       addTrackedListener(window, 'mousemove', handlePointerMove);
+      addTrackedListener(this.canvas, 'mouseup', handlePointerUp);
       addTrackedListener(window, 'mouseup', handlePointerUp);
       addTrackedListener(this.canvas, 'touchstart', handlePointerDown, { passive: false });
+      addTrackedListener(this.canvas, 'touchmove', handlePointerMove, { passive: false });
       addTrackedListener(window, 'touchmove', handlePointerMove, { passive: false });
+      addTrackedListener(this.canvas, 'touchend', handlePointerUp);
       addTrackedListener(window, 'touchend', handlePointerUp);
+      addTrackedListener(this.canvas, 'touchcancel', handlePointerCancel);
+      addTrackedListener(window, 'touchcancel', handlePointerCancel);
     }
 
     // Direct Click Listener on 2D canvas for clean single, double, and triple-click detection
@@ -3438,6 +3634,10 @@ class ArchessArena {
                   attacker.vx = 0;
                   attacker.vy = 0;
                   attacker.inMotion = false;
+                  this.triggerSloMo(0.60, 0.22);
+                  if (this.engine3d && typeof this.engine3d.triggerZoomPunch === 'function') {
+                    this.engine3d.triggerZoomPunch(1.1);
+                  }
                   this.audio.playShatter();
                   this.spawnImpactParticles(attacker.x, attacker.y, 28, true);
                   this.spawnShockwave(attacker.x, attacker.y, '#f87171', 65, 4);
@@ -3453,6 +3653,10 @@ class ArchessArena {
                 if (king.wallHp <= 0) {
                   king.wallActive = false;
                   king.wallHp = 0;
+                  this.triggerSloMo(0.75, 0.18);
+                  if (this.engine3d && typeof this.engine3d.triggerZoomPunch === 'function') {
+                    this.engine3d.triggerZoomPunch(1.5);
+                  }
                   this.audio.playShatter();
                   this.spawnImpactParticles(king.x, king.y, 55, true, ['#00e1d9', '#ffd700', '#ff3b4e', '#ffffff']);
                   this.spawnShockwave(king.x, king.y, '#ff3b4e', 90, 5);
@@ -3694,6 +3898,10 @@ class ArchessArena {
                 if ((p1.type === 'queen' || p2.type === 'queen') && relativeSpeed > 5.5) {
                   primaryDamage += 35;
                   this.screenShake = 12;
+                  this.triggerSloMo(0.55, 0.20);
+                  if (this.engine3d && typeof this.engine3d.triggerZoomPunch === 'function') {
+                    this.engine3d.triggerZoomPunch(1.2);
+                  }
                   this.spawnImpactParticles(impactX, impactY, 35, true);
                   this.logTelemetry('SUPERNOVA', 'Queen discharged Supernova blast on high-velocity strike!');
                 }
@@ -3704,6 +3912,10 @@ class ArchessArena {
                   if (striker === sovereign) {
                     primaryDamage = Math.max(35, Math.round(primaryDamage * 1.5));
                     this.screenShake = 15;
+                    this.triggerSloMo(0.65, 0.18);
+                    if (this.engine3d && typeof this.engine3d.triggerZoomPunch === 'function') {
+                      this.engine3d.triggerZoomPunch(1.3);
+                    }
                     this.spawnImpactParticles(impactX, impactY, 35, true, sovereign.team === 'white' ? ['#ffd700', '#00e1d9'] : ['#ff4757', '#ff7675']);
                     this.logTelemetry('SOVEREIGN_STRIKE', `👑 ${sovereign.team.toUpperCase()} Awakened King landed crushing Sovereign Strike (-${primaryDamage} HP)!`);
                   }
@@ -3767,6 +3979,12 @@ class ArchessArena {
                 this.addDamageNumber(striker.x, striker.y, recoilDamage, false, '#f87171', `RECOIL -${recoilDamage}`);
 
                 this.screenShake = isCritical ? 7 : 3;
+                if (isCritical) {
+                  this.triggerSloMo(0.48, 0.26);
+                  if (this.engine3d && typeof this.engine3d.triggerZoomPunch === 'function') {
+                    this.engine3d.triggerZoomPunch(1.1);
+                  }
+                }
                 this.spawnShockwave(impactX, impactY, isCritical ? '#ffd700' : (striker.team === 'white' ? '#ffd700' : '#ff4757'), isCritical ? 65 : 42, isCritical ? 4 : 2.5);
                 this.totalImpacts++;
                 this.audio.playImpact(relativeSpeed / 6);
@@ -3786,6 +4004,10 @@ class ArchessArena {
                     p.vx = 0;
                     p.vy = 0;
                     p.inMotion = false;
+                    this.triggerSloMo(0.60, 0.22);
+                    if (this.engine3d && typeof this.engine3d.triggerZoomPunch === 'function') {
+                      this.engine3d.triggerZoomPunch(1.0);
+                    }
                     if (p === defender) {
                       const sKey = striker.id || `${striker.team}_${striker.type}`;
                       this.pieceKills[sKey] = (this.pieceKills[sKey] || 0) + 1;
@@ -4081,9 +4303,14 @@ class ArchessArena {
       : { mines: 0, walls: 0 };
     const isHumanTurn = !(this.gameMode === 'bot' && this.currentTurn === 'black') && this.gameMode !== 'ai-vs-ai' && !this.isGameOver;
 
+    const mineLocked = this.turns < 10;
     const mineBadges = [document.getElementById('badgeMineCount'), document.getElementById('wingBadgeMineCount')];
     const wallBadges = [document.getElementById('badgeWallCount'), document.getElementById('wingBadgeWallCount')];
-    mineBadges.forEach(b => { if (b) b.textContent = `${curInv.mines}/2`; });
+    mineBadges.forEach(b => {
+      if (b) {
+        b.textContent = mineLocked ? `Move 10 (${this.turns}/10)` : `${curInv.mines}/2`;
+      }
+    });
     wallBadges.forEach(b => { if (b) b.textContent = `${curInv.walls}/2`; });
 
     const mineBtns = [document.getElementById('btnDeployMine'), document.getElementById('btnWingDeployMine')];
@@ -4093,7 +4320,12 @@ class ArchessArena {
 
     mineBtns.forEach(btn => {
       if (btn) {
-        btn.disabled = !isHumanTurn || curInv.mines <= 0;
+        btn.disabled = !isHumanTurn || curInv.mines <= 0 || mineLocked;
+        if (mineLocked) {
+          btn.title = `Landmines locked until 10 moves have elapsed (${this.turns}/10 moves)`;
+        } else {
+          btn.title = `Arm Landmine (${curInv.mines}/2 left, blasts off on placement)`;
+        }
         if (btn.classList) btn.classList.toggle('active', this.deployMode === 'mine');
       }
     });
@@ -4116,6 +4348,12 @@ class ArchessArena {
       } else {
         banner.style.display = 'none';
       }
+    }
+
+    const dock = document.getElementById('tacticalDeployDock');
+    if (dock) {
+      dock.classList.toggle('active-deploy', Boolean(this.deployMode));
+      dock.style.display = this.deployMode ? 'flex' : 'none';
     }
   }
 
@@ -4424,15 +4662,11 @@ class ArchessArena {
     let active = false;
 
     if (this.isDragging) {
-      let pullScreenX = this.dragScreenAnchor.x - this.dragScreenCurrent.x;
-      let pullScreenY = this.dragScreenAnchor.y - this.dragScreenCurrent.y;
-      if (sourcePiece.type === 'pawn' && !sourcePiece.promoted) {
-        const clamped = this.clampLaunchVector(sourcePiece, pullScreenX, pullScreenY);
-        pullScreenX = clamped.pullX;
-        pullScreenY = clamped.pullY;
-      }
-      const screenDist = Math.hypot(pullScreenX, pullScreenY);
-      if (screenDist >= 10) {
+      const aimVec = this.getAimVector(sourcePiece);
+      const pullScreenX = aimVec.pullX;
+      const pullScreenY = aimVec.pullY;
+      const screenDist = aimVec.dist;
+      if (screenDist >= 8) {
         active = true;
         const clampedDist = Math.min(screenDist, this.maxPullDistance);
         powerRatio = clampedDist / this.maxPullDistance;
@@ -5432,8 +5666,22 @@ class ArchessArena {
 
   loop(timestamp) {
     if (!this.lastTime) this.lastTime = timestamp;
-    const elapsed = Math.min((timestamp - this.lastTime) / 1000, 0.1);
+    const rawElapsed = Math.min((timestamp - this.lastTime) / 1000, 0.1);
     this.lastTime = timestamp;
+
+    // Cinematic Slo-Mo time dilation interpolation
+    if (this.sloMoTimer > 0) {
+      this.sloMoTimer -= rawElapsed;
+      if (this.sloMoTimer <= 0) {
+        this.targetTimeScale = 1.0;
+        if (this.engine3d && typeof this.engine3d.onSloMo === 'function') {
+          this.engine3d.onSloMo(false);
+        }
+      }
+    }
+    const lerpSpeed = (this.targetTimeScale < (this.timeScale || 1.0)) ? 0.35 : 0.12;
+    this.timeScale = (this.timeScale || 1.0) + (this.targetTimeScale - (this.timeScale || 1.0)) * lerpSpeed;
+    const elapsed = rawElapsed * this.timeScale;
 
     try {
       // Update Turn Timer Ring

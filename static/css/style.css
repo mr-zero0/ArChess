@@ -2219,15 +2219,16 @@ body.play-screen-active .play-page-container {
   width: auto;
   margin: 0 auto;
   display: flex;
+  flex-direction: column !important;
   align-items: center;
   justify-content: center;
   transition: transform 0.2s var(--ease-spring);
   touch-action: none;
 }
 
-.arena-canvas-stage canvas {
-  width: 100%;
-  height: 100%;
+#threeCanvasContainer canvas {
+  width: 100% !important;
+  height: 100% !important;
   display: block;
   touch-action: none;
 }
@@ -2334,7 +2335,6 @@ body.play-screen-active .play-page-container {
 
 .archess-2d-canvas-box {
   position: relative;
-  width: 100%;
   aspect-ratio: 1 / 1;
   border-radius: 6px;
   overflow: hidden;
@@ -2342,14 +2342,16 @@ body.play-screen-active .play-page-container {
   align-items: center;
   justify-content: center;
   background: #050608;
+  flex-shrink: 0;
 }
 
 .archess-2d-canvas-box canvas {
-  width: 100% !important;
-  height: 100% !important;
   display: block !important;
   touch-action: none;
   border-radius: 6px;
+  max-width: 100%;
+  max-height: 100%;
+  flex-shrink: 0;
 }
 
 .react-chessboard-wrapper {
@@ -2501,6 +2503,29 @@ body.play-screen-active .play-page-container {
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
+}
+
+#camera3DToolbarGroup.wing-segmented {
+  flex-wrap: wrap !important;
+  border-radius: 12px !important;
+  padding: 4px !important;
+  gap: 4px !important;
+  overflow: visible !important;
+}
+
+#camera3DToolbarGroup .camera-btn {
+  flex: 1 1 calc(33.333% - 4px) !important;
+  font-size: 0.65rem !important;
+  padding: 5px 2px !important;
+  border-radius: 8px !important;
+  letter-spacing: -0.01em !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+#camera3DToolbarGroup #camFlipBtn,
+#camera3DToolbarGroup #camResetBtn {
+  flex: 1 1 calc(50% - 4px) !important;
 }
 
 .multiplayer-action-strip {
@@ -6865,11 +6890,15 @@ body.play-screen-active .play-page-container {
    Tactical Combat Replay Scrubber & Controls (v2.9.8)
    -------------------------------------------------------------------------- */
 .tactical-replay-bar {
-  margin-top: 14px;
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  right: 14px;
+  z-index: 25;
   background: rgba(13, 16, 23, 0.92);
   border: 1px solid rgba(212, 175, 55, 0.35);
   border-radius: var(--radius-md, 12px);
-  padding: 14px 18px;
+  padding: 12px 16px;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65), 0 0 20px rgba(212, 175, 55, 0.15);
@@ -8768,20 +8797,25 @@ body.play-screen-active .play-page-container {
 
 .archess-2d-frame .classic-fide-bar {
   width: 100%;
-  padding: 6px 14px;
-  margin-bottom: 8px;
+  padding: 4px 10px;
+  margin-bottom: 6px;
   background: rgba(15, 20, 28, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.75rem;
+  font-size: clamp(0.60rem, 1.2vw, 0.74rem);
   color: var(--text-secondary);
   box-sizing: border-box;
   gap: 8px;
   letter-spacing: 0.04em;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 26px;
+  max-height: 28px;
 }
 
 .archess-2d-canvas-box {
@@ -9187,19 +9221,38 @@ body.play-screen-active .play-page-container {
    Tactical Deployables Dock (Mines & Fortified Walls)
    -------------------------------------------------------------------------- */
 .tactical-deploy-dock {
-  margin-top: 10px;
+  position: absolute !important;
+  top: 14px !important;
+  bottom: auto !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 50 !important;
   background: rgba(14, 19, 29, 0.94);
-  border: 1px solid rgba(212, 175, 55, 0.35);
-  border-radius: var(--radius-md, 12px);
-  padding: 8px 14px;
-  display: flex;
+  border: 1px solid rgba(212, 175, 55, 0.50);
+  border-radius: 9999px;
+  padding: 6px 18px;
+  display: none !important;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 12px;
-  flex-wrap: wrap;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55), 0 0 14px rgba(212, 175, 55, 0.12);
+  flex-wrap: nowrap;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.75), 0 0 16px rgba(212, 175, 55, 0.25);
+  pointer-events: auto;
+  max-width: calc(100% - 24px);
+  box-sizing: border-box;
+}
+
+.tactical-deploy-dock.active-deploy {
+  display: flex !important;
+}
+
+/* Eliminate duplicate Landmine/Wall buttons on the board dock - they are already in the Left Wing */
+.tactical-deploy-dock .deploy-dock-left .deploy-dock-tag,
+.tactical-deploy-dock #btnDeployMine,
+.tactical-deploy-dock #btnDeployWall {
+  display: none !important;
 }
 
 .deploy-dock-left {
@@ -9327,4 +9380,47 @@ body.play-screen-active .play-page-container {
   border-radius: 10px;
   padding: 2px 7px;
 }
+
+/* --------------------------------------------------------------------------
+   Cinematic Slo-Mo Action Replay Vignette & Badge
+   -------------------------------------------------------------------------- */
+#threeCanvasContainer {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 2 !important;
+  transition: box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#threeCanvasContainer.archess-slomo-active {
+  box-shadow: inset 0 0 70px rgba(0, 243, 255, 0.35), inset 0 0 140px rgba(0, 0, 0, 0.75) !important;
+}
+
+#threeCanvasContainer.archess-slomo-active::after {
+  content: "⚡ SLOW MOTION";
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(0, 243, 255, 0.60);
+  box-shadow: 0 0 20px rgba(0, 243, 255, 0.40);
+  color: #67e8f9;
+  font-family: 'Outfit', -apple-system, sans-serif;
+  font-weight: 800;
+  font-size: 0.74rem;
+  letter-spacing: 0.12em;
+  padding: 5px 12px;
+  border-radius: 20px;
+  pointer-events: none;
+  animation: pulseSlomoBadge 0.65s infinite alternate ease-in-out;
+  z-index: 50;
+  backdrop-filter: blur(8px);
+}
+
+@keyframes pulseSlomoBadge {
+  0% { opacity: 0.82; transform: scale(0.97); }
+  100% { opacity: 1.0; transform: scale(1.03); }
+}
+
 
