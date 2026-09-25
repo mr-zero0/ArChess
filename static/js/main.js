@@ -1010,40 +1010,27 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* -------------------------------------------------------------
-     Tactical Deployments Controls (Landmines & Indestructible Walls)
+     3D Camera Perspective Angle Preset Controls
   ------------------------------------------------------------- */
-  const btnDeployMine = document.getElementById('btnDeployMine');
-  const btnDeployWall = document.getElementById('btnDeployWall');
-  const btnWingDeployMine = document.getElementById('btnWingDeployMine');
-  const btnWingDeployWall = document.getElementById('btnWingDeployWall');
-  const btnCancelDeploy = document.getElementById('btnCancelDeploy');
-
-  const toggleMineDeploy = () => {
-    const a = window.archessGame || arena;
-    if (a) {
-      a.setDeployMode(a.deployMode === 'mine' ? null : 'mine');
-    }
-  };
-
-  const toggleWallDeploy = () => {
-    const a = window.archessGame || arena;
-    if (a) {
-      a.setDeployMode(a.deployMode === 'wall' ? null : 'wall');
-    }
-  };
-
-  const cancelDeploy = () => {
-    const a = window.archessGame || arena;
-    if (a && a.deployMode) {
-      a.setDeployMode(null);
-    }
-  };
-
-  if (btnDeployMine) btnDeployMine.addEventListener('click', toggleMineDeploy);
-  if (btnWingDeployMine) btnWingDeployMine.addEventListener('click', toggleMineDeploy);
-  if (btnDeployWall) btnDeployWall.addEventListener('click', toggleWallDeploy);
-  if (btnWingDeployWall) btnWingDeployWall.addEventListener('click', toggleWallDeploy);
-  if (btnCancelDeploy) btnCancelDeploy.addEventListener('click', cancelDeploy);
+  const cameraBtns = document.querySelectorAll('#camera3DToolbarGroup .camera-btn');
+  cameraBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const a = window.archessGame || arena;
+      if (!a || !a.engine3d) return;
+      const camMode = btn.getAttribute('data-cam');
+      if (camMode === 'flipped') {
+        a.engine3d.toggleFlip();
+      } else if (camMode) {
+        a.engine3d.setCameraPreset(camMode);
+      } else if (btn.id === 'camResetBtn') {
+        a.engine3d.resetCamera();
+      }
+      cameraBtns.forEach(b => b.classList.remove('active'));
+      const activePreset = a.engine3d.activePreset;
+      const activeBtn = document.querySelector(`#camera3DToolbarGroup [data-cam="${activePreset}"]`) || btn;
+      if (activeBtn) activeBtn.classList.add('active');
+    });
+  });
 
   // Audio Toggle with LocalStorage Persistence
   const audioBtn = document.getElementById('audioToggleBtn');

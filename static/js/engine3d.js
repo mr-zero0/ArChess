@@ -55,6 +55,7 @@
 
       // Tumbling pieces on defeat / capture
       this.tumblingPieces = [];
+      this.defeatedPieceIds = new Set();
 
       // Realistic 3D Camera Action Dynamics
       this.baseFov = 40;
@@ -1024,6 +1025,39 @@
 
       this.arena.pieces.forEach(p => {
         activeIds.add(p.id);
+        // Check if piece is defeated (trigger dramatic 3D tumble knockdown once, never recreate duplicate meshes)
+        if (p.dead) {
+          const meshGroup = this.pieceMeshes.get(p.id);
+          if (!this.defeatedPieceIds.has(p.id)) {
+            this.defeatedPieceIds.add(p.id);
+            if (meshGroup) {
+              let pos3D;
+              if (isFinite(p.x) && isFinite(p.y)) {
+                pos3D = this.boardToWorld(p.x, p.y);
+              } else if (p.col !== undefined && p.row !== undefined) {
+                pos3D = this.tileToWorld(p.col, p.row);
+              } else {
+                pos3D = { x: meshGroup.position.x, z: meshGroup.position.z };
+              }
+              meshGroup.position.x = pos3D.x;
+              meshGroup.position.z = pos3D.z;
+              this.startPieceTumble(p, meshGroup);
+            }
+          } else {
+            // Already recorded as defeated; if an untumbled active mesh remains in pieceMeshes, remove it
+            if (meshGroup && !meshGroup.userData.isTumbling) {
+              if (meshGroup.parent) meshGroup.parent.remove(meshGroup);
+              this.pieceMeshes.delete(p.id);
+            }
+          }
+          return;
+        }
+
+        // If piece is revived or reset, ensure it is removed from defeatedPieceIds
+        if (this.defeatedPieceIds.has(p.id)) {
+          this.defeatedPieceIds.delete(p.id);
+        }
+
         let meshGroup = this.pieceMeshes.get(p.id);
 
         // Check if piece changed type (e.g. Pawn promoted to Queen!)
@@ -1037,14 +1071,6 @@
           meshGroup = this.buildPieceMesh(p);
           this.piecesGroup.add(meshGroup);
           this.pieceMeshes.set(p.id, meshGroup);
-        }
-
-        // Check if piece is defeated (trigger dramatic 3D tumble knockdown)
-        if (p.dead) {
-          if (!meshGroup.userData.isTumbling) {
-            this.startPieceTumble(p, meshGroup);
-          }
-          return;
         }
 
         // Convert 2D Arena Board Space (x, y) to 3D World Space (X, Z)
@@ -2538,6 +2564,7 @@
     startPieceTumble(piece, meshGroup) {
       if (meshGroup.userData.isTumbling) return;
       meshGroup.userData.isTumbling = true;
+      if (this.defeatedPieceIds) this.defeatedPieceIds.add(piece.id);
       this.pieceMeshes.delete(piece.id);
 
       // Determine topple vector from piece's last velocity or impact angle
@@ -2607,11 +2634,20 @@
           });
         }
 
-        // 4. Remove completely after maxLife
+        // 4. Remove completely after maxLife and dispose geometries & materials
         if (item.life >= item.maxLife) {
           if (item.meshGroup.parent) {
             item.meshGroup.parent.remove(item.meshGroup);
           }
+          item.meshGroup.traverse(child => {
+            if (child.isMesh) {
+              if (child.geometry) child.geometry.dispose();
+              if (child.material) {
+                if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                else child.material.dispose();
+              }
+            }
+          });
           this.tumblingPieces.splice(i, 1);
         }
       }
@@ -2624,6 +2660,7 @@
         }
       }
       this.tumblingPieces = [];
+      if (this.defeatedPieceIds) this.defeatedPieceIds.clear();
       for (const p of this.landingDustParticles) {
         if (p.mesh && p.mesh.parent) {
           p.mesh.parent.remove(p.mesh);

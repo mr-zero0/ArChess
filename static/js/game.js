@@ -1283,6 +1283,10 @@ class ArchessArena {
       pullX = this.dragScreenCurrent.x - this.dragScreenAnchor.x;
       pullY = this.dragScreenCurrent.y - this.dragScreenAnchor.y;
     }
+    if (this.renderMode === '3d' && this.engine3d && this.engine3d.activePreset === 'flipped') {
+      pullX = -pullX;
+      pullY = -pullY;
+    }
     if (piece && piece.type === 'pawn' && !piece.promoted) {
       return this.clampLaunchVector(piece, pullX, pullY);
     }
