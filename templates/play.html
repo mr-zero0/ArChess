@@ -440,34 +440,19 @@
           </div>
         </div>
 
-        <!-- 3. Unified Tactical Intelligence Card (Commentary & AI Advisor) -->
+        <!-- 3. AI Agentic Tactical Advisor Card -->
         <div class="sidebar-commentary-card unified-intel-card" id="sidebarCommentaryCard">
           <div class="intel-tabs-header">
             <div class="intel-tabs-nav" role="tablist">
-              <button type="button" class="intel-tab-btn active" id="tabLiveIntelBtn" role="tab" aria-selected="true">
-                <span class="live-commentary-pulse"></span>
-                <span>Commentary</span>
-              </button>
-              <button type="button" class="intel-tab-btn" id="tabAiAdvisorBtn" role="tab" aria-selected="false">
-                <span>🤖 AI Advisor</span>
-              </button>
+              <span class="intel-tab-btn active" id="tabAiAdvisorBtn" role="tab" aria-selected="true" style="cursor: default;">
+                <span>🤖 AI Tactical Advisor</span>
+              </span>
             </div>
-            <span class="commentary-feed-badge" id="commentaryModeBadge">Live Telemetry</span>
+            <span class="commentary-feed-badge" id="commentaryModeBadge">Tactical Engine</span>
           </div>
 
-          <!-- Tab Panel 1: Live Commentary -->
-          <div class="intel-tab-panel active" id="panelLiveIntel" role="tabpanel">
-            <div class="commentary-ticker-wrap" id="tacticalCommentaryTicker">
-              <span class="ticker-icon" id="commentaryTickerIcon">🎙️</span>
-              <span class="ticker-message" id="commentaryTickerText">Awaiting opening engagement...</span>
-            </div>
-            <div class="commentary-feed-scroll" id="tacticalCommentaryFeed">
-              <!-- Dynamically populated from commentary events -->
-            </div>
-          </div>
-
-          <!-- Tab Panel 2: AI Agentic Tactical Advisor -->
-          <div class="intel-tab-panel" id="panelAiAdvisor" role="tabpanel" style="display: none;">
+          <!-- AI Agentic Tactical Advisor -->
+          <div class="intel-tab-panel active" id="panelAiAdvisor" role="tabpanel">
             <div class="ai-advisor-container" id="aiAdvisorCard">
               <div class="ai-advisor-controls">
                 <select id="aiPersonaSelect" class="ai-persona-select" title="Select AI Tactical Persona">
@@ -1065,7 +1050,7 @@
   <script src="/static/js/three.min.js?v=4.6.9"></script>
   <script src="/static/js/engine3d.js?v=4.6.9"></script>
   <script src="/static/js/react-chessboard-bundle.js?v=4.6.9"></script>
-  <script src="/static/js/game.js?v=4.6.9"></script>
+  <script src="/static/js/game.js?v=4.7.0"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       // Sync current logged in user name with White player card
@@ -1168,5 +1153,5 @@
       if (currentScale !== 100) applyBoardScale(currentScale);
     });
   </script>
-  <script src="/static/js/ai_advisor.js?v=4.4.2"></script>
+  <script src="/static/js/ai_advisor.js?v=4.7.0"></script>
 {% endblock %}

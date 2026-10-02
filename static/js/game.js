@@ -1272,23 +1272,12 @@ class ArchessArena {
     if (!this.dragScreenAnchor || !this.dragScreenCurrent) {
       return { pullX: 0, pullY: 0, dist: 0, angle: 0 };
     }
-    const mode = this.aimMode || 'direct';
-    let pullX, pullY;
-    if (mode === 'slingshot') {
-      // Slingshot: Pull backward away from target, release launches forward
-      pullX = this.dragScreenAnchor.x - this.dragScreenCurrent.x;
-      pullY = this.dragScreenAnchor.y - this.dragScreenCurrent.y;
-    } else {
-      // Direct Drag & Drop Aim: Drag towards target, release launches towards target
-      pullX = this.dragScreenCurrent.x - this.dragScreenAnchor.x;
-      pullY = this.dragScreenCurrent.y - this.dragScreenAnchor.y;
-    }
+    // Pull back away from target, release launches opposite (pure slingshot across all 360 degrees for all pieces)
+    let pullX = this.dragScreenAnchor.x - this.dragScreenCurrent.x;
+    let pullY = this.dragScreenAnchor.y - this.dragScreenCurrent.y;
     if (this.renderMode === '3d' && this.engine3d && this.engine3d.activePreset === 'flipped') {
       pullX = -pullX;
       pullY = -pullY;
-    }
-    if (piece && piece.type === 'pawn' && !piece.promoted) {
-      return this.clampLaunchVector(piece, pullX, pullY);
     }
     const dist = Math.hypot(pullX, pullY);
     const angle = Math.atan2(pullY, pullX);
@@ -1757,6 +1746,9 @@ class ArchessArena {
    * AI tactical decision making for deploying walls or mines
    */
   botAttemptTacticalDeployment(activeTeam) {
+    // STRICT RULE: No wall or mine can be placed before 10 moves, even AI opponent cannot place
+    if (this.turns < 10) return false;
+
     const inv = this.deployableInventory ? this.deployableInventory[activeTeam] : null;
     if (!inv || (inv.walls <= 0 && inv.mines <= 0)) return false;
 
@@ -1814,19 +1806,18 @@ class ArchessArena {
     if (this.gameMode === 'bot' && this.currentTurn === 'black') return;
     if (this.gameMode === 'ai-vs-ai') return;
 
-    if (mode === 'mine') {
-      if (this.turns < 10) {
-        const movesLeft = 10 - this.turns;
-        if (window.ArchessToast) {
-          window.ArchessToast.show(
-            `Landmines locked! Available after 10 moves (${movesLeft} move${movesLeft > 1 ? 's' : ''} remaining).`,
-            'warning',
-            2200,
-            'TACTICAL LOCK'
-          );
-        }
-        return;
+    if (mode && this.turns < 10) {
+      const movesLeft = 10 - this.turns;
+      const itemName = mode === 'mine' ? 'Landmines' : 'Tactical Walls';
+      if (window.ArchessToast) {
+        window.ArchessToast.show(
+          `Tactical deployment locked! Available after 10 moves (${movesLeft} move${movesLeft > 1 ? 's' : ''} remaining).`,
+          'warning',
+          2200,
+          'TACTICAL LOCK'
+        );
       }
+      return;
     }
 
     if (mode) {
@@ -1869,6 +1860,8 @@ class ArchessArena {
    * Validates if a square is open and eligible for tactical deployment
    */
   canDeployAt(col, row, type = 'wall') {
+    // STRICT RULE: No wall or mine can be placed before 10 moves by anyone
+    if (this.turns < 10) return false;
     if (col < 0 || col > 7 || row < 0 || row > 7) return false;
     const layout = this.getBoardLayout();
     const sqSize = layout.sqSize;
@@ -1876,9 +1869,7 @@ class ArchessArena {
     const tileCenterY = layout.gridOriginY + (row + 0.5) * sqSize;
 
     // For mine: can be placed anywhere except if there is already an active mine on that square
-    // AND user requirement: cannot be placed before 10 moves!
     if (type === 'mine') {
-      if (this.turns < 10) return false;
       const alreadyHasMine = (this.deployables || []).some(d => d.active && d.type === 'mine' && d.col === col && d.row === row);
       return !alreadyHasMine;
     }
@@ -1923,10 +1914,11 @@ class ArchessArena {
     const anyMoving = (this.pieces || []).some(p => !p.dead && (Math.hypot(p.vx, p.vy) > 0.15 || p.inMotion));
     if (anyMoving) return false;
 
-    if (type === 'mine' && this.turns < 10) {
+    if (this.turns < 10) {
       const movesLeft = 10 - this.turns;
+      const itemName = type === 'mine' ? 'Landmines' : 'Tactical Walls';
       if (window.ArchessToast) {
-        window.ArchessToast.show(`Landmines locked! Available after 10 moves (${movesLeft} move${movesLeft > 1 ? 's' : ''} left).`, 'warning', 2000, 'TACTICAL LOCK');
+        window.ArchessToast.show(`${itemName} locked! Available after 10 moves (${movesLeft} move${movesLeft > 1 ? 's' : ''} left).`, 'warning', 2000, 'TACTICAL LOCK');
       }
       return false;
     }
@@ -2208,6 +2200,15 @@ class ArchessArena {
     if (this.turnHasMoved || this.simulationSettling) return;
     const anyMoving = (this.pieces || []).some(p => !p.dead && (Math.hypot(p.vx, p.vy) > 0.15 || p.inMotion));
     if (anyMoving) return;
+
+    if (this.turns < 10) {
+      const movesLeft = 10 - this.turns;
+      if (window.ArchessToast) {
+        window.ArchessToast.show(`Tactical walls locked! Available after 10 moves (${movesLeft} move${movesLeft > 1 ? 's' : ''} left).`, 'warning', 2000, 'TACTICAL LOCK');
+      }
+      if (this.audio) this.audio.playImpact(0.4);
+      return;
+    }
 
     const inv = this.deployableInventory ? this.deployableInventory[this.currentTurn] : null;
     if (!inv || inv.walls <= 0) {
@@ -3086,12 +3087,6 @@ class ArchessArena {
         this.keyboardAimPower = Math.max(0.15, this.keyboardAimPower - 0.08);
       }
 
-      // Clamp pawn keyboard aiming angle to forward cone
-      if (this.selectedPiece.type === 'pawn' && !this.selectedPiece.promoted) {
-        const minA = this.selectedPiece.team === 'white' ? (-5 * Math.PI / 6) : (Math.PI / 6);
-        const maxA = this.selectedPiece.team === 'white' ? (-Math.PI / 6) : (5 * Math.PI / 6);
-        this.keyboardAimAngle = Math.max(minA, Math.min(maxA, this.keyboardAimAngle));
-      }
 
       if (e.code === 'Space' || e.code === 'Enter') {
         e.preventDefault();
@@ -3114,46 +3109,15 @@ class ArchessArena {
   }
 
   /**
-   * Clamps vector to pawn's 120-degree forward corridor (±60 deg from forward).
-   * Within this 120-deg arc, the pawn launches freely anywhere between the left and right limits.
-   * If aiming outside the arc, it cleanly clamps to the nearest left or right limit.
+   * Universal 360 launch vector: all pieces launch freely in the exact opposite direction of drag.
    */
   clampLaunchVector(piece, pullX, pullY) {
     const dist = Math.hypot(pullX, pullY);
-    if (dist < 0.001 || !piece || piece.type !== 'pawn' || piece.promoted) {
-      return { pullX, pullY, angle: Math.atan2(pullY, pullX), dist };
-    }
-
-    const rawAngle = Math.atan2(pullY, pullX);
-    // Forward direction: White moves towards negative Y (-PI/2), Black moves towards positive Y (+PI/2)
-    const forwardAngle = piece.team === 'white' ? -Math.PI / 2 : Math.PI / 2;
-    const halfArc = Math.PI / 3; // 60 degrees (total 120-degree corridor)
-
-    let diff = rawAngle - forwardAngle;
-    // Normalize diff to [-PI, PI]
-    while (diff > Math.PI) diff -= 2 * Math.PI;
-    while (diff < -Math.PI) diff += 2 * Math.PI;
-
-    // Smoothly handle rear/backward dragging (natural slingshot pull or reverse drag):
-    // Maps rear hemisphere into the forward corridor so pulling backward smoothly aims forward
-    // without locking or pinning the aim line to extreme edges.
-    if (Math.abs(diff) > Math.PI / 2) {
-      const sign = diff >= 0 ? 1 : -1;
-      diff = sign * (Math.PI - Math.abs(diff));
-    }
-
-    // Smoothly allow any angle within [-60 deg, +60 deg]; clamp at left and right boundaries
-    if (diff > halfArc) {
-      diff = halfArc;
-    } else if (diff < -halfArc) {
-      diff = -halfArc;
-    }
-
-    const clampedAngle = forwardAngle + diff;
+    const angle = Math.atan2(pullY, pullX);
     return {
-      pullX: Math.cos(clampedAngle) * dist,
-      pullY: Math.sin(clampedAngle) * dist,
-      angle: clampedAngle,
+      pullX,
+      pullY,
+      angle,
       dist
     };
   }
@@ -3280,29 +3244,11 @@ class ArchessArena {
   }
 
   /* -------------------------------------------------------------
-     Automated Tactical Match Commentary Stream (v3.3.0)
+     Automated Tactical Match Commentary Stream (Disabled per preference)
   ------------------------------------------------------------- */
   addCommentary(text, type = 'info', icon = '🎙️') {
-    const entry = {
-      id: 'comm_' + Math.random().toString(36).substring(2, 9),
-      text,
-      type, // 'strike', 'rebound', 'breach', 'shatter', 'sovereign', 'sudden_death', 'emote', 'victory', 'info'
-      icon,
-      timestamp: Date.now(),
-      turn: this.currentTurn
-    };
-    if (!this.commentaryLog) this.commentaryLog = [];
-    this.commentaryLog.unshift(entry);
-    if (this.commentaryLog.length > 50) {
-      this.commentaryLog.pop();
-    }
-    if (typeof this.onCommentary === 'function') {
-      try {
-        this.onCommentary(entry);
-      } catch (e) {
-        console.warn('onCommentary error:', e);
-      }
-    }
+    // Commentary removed per user request
+    return;
   }
 
   spawnShockwave(x, y, color = '#ffd700', maxRadius = 55, lineWidth = 3.5) {
@@ -4310,15 +4256,19 @@ class ArchessArena {
       : { mines: 0, walls: 0 };
     const isHumanTurn = !(this.gameMode === 'bot' && this.currentTurn === 'black') && this.gameMode !== 'ai-vs-ai' && !this.isGameOver;
 
-    const mineLocked = this.turns < 10;
+    const tacticalLocked = this.turns < 10;
     const mineBadges = [document.getElementById('badgeMineCount'), document.getElementById('wingBadgeMineCount')];
     const wallBadges = [document.getElementById('badgeWallCount'), document.getElementById('wingBadgeWallCount')];
     mineBadges.forEach(b => {
       if (b) {
-        b.textContent = mineLocked ? `Move 10 (${this.turns}/10)` : `${curInv.mines}/2`;
+        b.textContent = tacticalLocked ? `Move 10 (${this.turns}/10)` : `${curInv.mines}/2`;
       }
     });
-    wallBadges.forEach(b => { if (b) b.textContent = `${curInv.walls}/2`; });
+    wallBadges.forEach(b => {
+      if (b) {
+        b.textContent = tacticalLocked ? `Move 10 (${this.turns}/10)` : `${curInv.walls}/2`;
+      }
+    });
 
     const mineBtns = [document.getElementById('btnDeployMine'), document.getElementById('btnWingDeployMine')];
     const wallBtns = [document.getElementById('btnDeployWall'), document.getElementById('btnWingDeployWall')];
@@ -4327,8 +4277,8 @@ class ArchessArena {
 
     mineBtns.forEach(btn => {
       if (btn) {
-        btn.disabled = !isHumanTurn || curInv.mines <= 0 || mineLocked;
-        if (mineLocked) {
+        btn.disabled = !isHumanTurn || curInv.mines <= 0 || tacticalLocked;
+        if (tacticalLocked) {
           btn.title = `Landmines locked until 10 moves have elapsed (${this.turns}/10 moves)`;
         } else {
           btn.title = `Arm Landmine (${curInv.mines}/2 left, blasts off on placement)`;
@@ -4338,7 +4288,12 @@ class ArchessArena {
     });
     wallBtns.forEach(btn => {
       if (btn) {
-        btn.disabled = !isHumanTurn || curInv.walls <= 0;
+        btn.disabled = !isHumanTurn || curInv.walls <= 0 || tacticalLocked;
+        if (tacticalLocked) {
+          btn.title = `Tactical Walls locked until 10 moves have elapsed (${this.turns}/10 moves)`;
+        } else {
+          btn.title = `Erect Indestructible Wall (${curInv.walls}/2 left, blocks opponents)`;
+        }
         if (btn.classList) btn.classList.toggle('active', this.deployMode === 'wall');
       }
     });
