@@ -1,14 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}ARCHESS | Kinetic Chess Variant — Physical Strategy Reimagined{% endblock %}</title>
-  <meta name="description" content="{% block meta_description %}Archess is a minimalist tactical chess variant. Aim, launch pieces across the board with momentum, and shatter enemy lines in real time across 2D and 3D perspectives.{% endblock %}">
-  
+  <title>{% block title %}ARCHESS{% endblock %}</title>
+  <meta name="description"
+    content="{% block meta_description %}Archess is a minimalist tactical chess variant. Aim, launch pieces across the board with momentum, and shatter enemy lines in real time across 2D and 3D perspectives.{% endblock %}">
+
   <script>
     window.ARCHESS_GOOGLE_CLIENT_ID = "{{ google_client_id or '' }}";
-    (function() {
+    (function () {
       var design = localStorage.getItem('archess_ui_design') || 'ios-native';
       document.documentElement.setAttribute('data-ui-design', design);
       var mode = localStorage.getItem('archess_theme_mode');
@@ -28,10 +30,12 @@
   <meta name="apple-mobile-web-app-title" content="ArChess">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
-  <link rel="stylesheet" href="/static/css/style.css?v=4.6.1">
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="/static/css/style.css?v=4.6.4">
   {% block extra_head %}{% endblock %}
 </head>
+
 <body class="{% if active_page == 'play' %}play-screen-active{% endif %}">
 
   <!-- Dynamic Motion Background Canvas -->
@@ -44,7 +48,7 @@
   {% block content %}{% endblock %}
 
   {% block footer %}
-    {% include "components/footer.html" %}
+  {% include "components/footer.html" %}
   {% endblock %}
 
   {% include "components/design_modal.html" %}
@@ -57,4 +61,5 @@
   <script src="/static/js/main.js?v=4.6.4"></script>
   {% block extra_scripts %}{% endblock %}
 </body>
+
 </html>
