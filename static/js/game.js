@@ -3114,42 +3114,14 @@ class ArchessArena {
   }
 
   /**
-   * Clamps vector to piece's natural forward corridor (e.g. 120-deg forward cone for Pawns).
-   * Unpromoted pawns cannot be launched backwards or purely sideways.
+   * Returns vector for piece launching (pawns launch freely in full 360-deg space).
    */
   clampLaunchVector(piece, pullX, pullY) {
     const dist = Math.hypot(pullX, pullY);
-    if (dist < 0.001 || !piece || piece.type !== 'pawn' || piece.promoted) {
-      return { pullX, pullY, angle: Math.atan2(pullY, pullX), dist };
-    }
-
-    let angle = Math.atan2(pullY, pullX);
-    if (piece.team === 'white') {
-      // White pawns launch forward (upwards, negative Y): -150 deg to -30 deg
-      const minAngle = -5 * Math.PI / 6;
-      const maxAngle = -Math.PI / 6;
-      if (angle < minAngle || angle > maxAngle) {
-        if (angle > maxAngle && angle <= Math.PI / 2) {
-          angle = maxAngle;
-        } else {
-          angle = minAngle;
-        }
-      }
-    } else {
-      // Black pawns launch forward (downwards, positive Y): +30 deg to +150 deg
-      const minAngle = Math.PI / 6;
-      const maxAngle = 5 * Math.PI / 6;
-      if (angle < minAngle || angle > maxAngle) {
-        if (angle < minAngle && angle >= -Math.PI / 2) {
-          angle = minAngle;
-        } else {
-          angle = maxAngle;
-        }
-      }
-    }
+    const angle = Math.atan2(pullY, pullX);
     return {
-      pullX: Math.cos(angle) * dist,
-      pullY: Math.sin(angle) * dist,
+      pullX,
+      pullY,
       angle,
       dist
     };
