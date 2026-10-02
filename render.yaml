@@ -19,3 +19,5 @@ services:
         generateValue: true
       - key: SESSION_COOKIE_SECURE
         value: "1"
+      - key: GOOGLE_CLIENT_ID
+        value: 840055683039-5ugsnc9n91gob0jpjltbn993bpo0ije5.apps.googleusercontent.com

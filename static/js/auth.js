@@ -144,6 +144,7 @@ window.ArchessAuth = {
     }
 
     modal.classList.add('active');
+    this.setupGoogleAuthClient();
   },
 
   closeModal() {
@@ -296,7 +297,75 @@ window.ArchessAuth = {
 
   setupGoogleAuthClient() {
     const clientId = window.ARCHESS_GOOGLE_CLIENT_ID;
-    if (window.google && window.google.accounts && window.google.accounts.id && clientId) {
+    if (!clientId) return;
+
+    const doInit = () => {
+      if (window.google && window.google.accounts && window.google.accounts.id) {
+        try {
+          window.google.accounts.id.initialize({
+            client_id: clientId,
+            callback: (response) => {
+              if (response && response.credential) {
+                this.loginWithGoogle(response.credential);
+              }
+            }
+          });
+
+          // Render official Google button into container to avoid One-Tap cooldown suppression
+          const btnContainer = document.getElementById('googleButtonContainer');
+          const fallbackBtn = document.getElementById('btnGoogleAuth');
+          if (btnContainer) {
+            btnContainer.innerHTML = '';
+            window.google.accounts.id.renderButton(btnContainer, {
+              type: 'standard',
+              theme: 'filled_black',
+              size: 'large',
+              text: 'continue_with',
+              shape: 'pill',
+              width: 320
+            });
+            if (fallbackBtn) {
+              fallbackBtn.style.display = 'none';
+            }
+            btnContainer.style.display = 'flex';
+          }
+        } catch (e) {
+          console.warn('Google Identity initialization notice:', e);
+        }
+      }
+    };
+
+    if (window.google && window.google.accounts && window.google.accounts.id) {
+      doInit();
+    } else {
+      let attempts = 0;
+      const interval = setInterval(() => {
+        attempts++;
+        if (window.google && window.google.accounts && window.google.accounts.id) {
+          clearInterval(interval);
+          doInit();
+        } else if (attempts > 30) {
+          clearInterval(interval);
+        }
+      }, 150);
+    }
+  },
+
+  triggerGoogleSignIn() {
+    const clientId = window.ARCHESS_GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      this.showToast('Google Sign-In is not configured on this server. Please use Email Sign-In.', 'warning');
+      return;
+    }
+
+    // If official button exists inside container, click it directly
+    const renderedBtn = document.querySelector('#googleButtonContainer div[role="button"]');
+    if (renderedBtn) {
+      renderedBtn.click();
+      return;
+    }
+
+    if (window.google && window.google.accounts && window.google.accounts.id) {
       try {
         window.google.accounts.id.initialize({
           client_id: clientId,
@@ -306,30 +375,17 @@ window.ArchessAuth = {
             }
           }
         });
-      } catch (e) {
-        console.warn('Google Identity initialization notice:', e);
-      }
-    }
-  },
-
-  triggerGoogleSignIn() {
-    const clientId = window.ARCHESS_GOOGLE_CLIENT_ID;
-    if (window.google && window.google.accounts && window.google.accounts.id && clientId) {
-      try {
         window.google.accounts.id.prompt((notification) => {
           if (notification && notification.isNotDisplayed()) {
-            this.showToast('Please enable popups or select account in Google dialog.', 'info');
+            const reason = notification.getNotDisplayedReason ? notification.getNotDisplayedReason() : '';
+            console.info('Google One-Tap not displayed reason:', reason);
+            this.showToast('Please click the Google button directly or sign in with email.', 'info');
           }
         });
         return;
       } catch (e) {
-        console.warn('Google One-Tap prompt notice:', e);
+        console.warn('Google Identity prompt notice:', e);
       }
-    }
-
-    if (!clientId) {
-      this.showToast('Google Sign-In is not configured on this server. Please use Email Sign-In.', 'warning');
-      return;
     }
 
     this.showToast('Connecting to Google Identity Services...', 'info');
@@ -420,6 +476,7 @@ window.ArchessAuth = {
 
           <!-- Social Google Sign-In Option -->
           <div class="auth-social-wrap">
+            <div id="googleButtonContainer" class="google-button-container" style="display: none; justify-content: center; margin-bottom: 8px;"></div>
             <button type="button" class="btn-google-auth" id="btnGoogleAuth">
               <svg width="18" height="18" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>

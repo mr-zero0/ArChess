@@ -58,6 +58,14 @@ from backend.ai_engine import (
 )
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+try:
+    from dotenv import load_dotenv
+    _env_file = os.path.join(BASE_DIR, ".env")
+    if os.path.exists(_env_file):
+        load_dotenv(_env_file)
+except ImportError:
+    pass
+
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 
