@@ -3114,15 +3114,38 @@ class ArchessArena {
   }
 
   /**
-   * Returns vector for piece launching (pawns launch freely in full 360-deg space).
+   * Clamps vector to pawn's 120-degree forward corridor (±60 deg from forward).
+   * Within this 120-deg arc, the pawn launches freely anywhere between the left and right limits.
+   * If aiming outside the arc, it cleanly clamps to the nearest left or right limit.
    */
   clampLaunchVector(piece, pullX, pullY) {
     const dist = Math.hypot(pullX, pullY);
-    const angle = Math.atan2(pullY, pullX);
+    if (dist < 0.001 || !piece || piece.type !== 'pawn' || piece.promoted) {
+      return { pullX, pullY, angle: Math.atan2(pullY, pullX), dist };
+    }
+
+    const rawAngle = Math.atan2(pullY, pullX);
+    // Forward direction: White moves towards negative Y (-PI/2), Black moves towards positive Y (+PI/2)
+    const forwardAngle = piece.team === 'white' ? -Math.PI / 2 : Math.PI / 2;
+    const halfArc = Math.PI / 3; // 60 degrees (total 120-degree corridor)
+
+    let diff = rawAngle - forwardAngle;
+    // Normalize diff to [-PI, PI]
+    while (diff > Math.PI) diff -= 2 * Math.PI;
+    while (diff < -Math.PI) diff += 2 * Math.PI;
+
+    // Smoothly allow any angle within [-60 deg, +60 deg]; clamp at left and right boundaries
+    if (diff > halfArc) {
+      diff = halfArc;
+    } else if (diff < -halfArc) {
+      diff = -halfArc;
+    }
+
+    const clampedAngle = forwardAngle + diff;
     return {
-      pullX,
-      pullY,
-      angle,
+      pullX: Math.cos(clampedAngle) * dist,
+      pullY: Math.sin(clampedAngle) * dist,
+      angle: clampedAngle,
       dist
     };
   }

@@ -3,20 +3,20 @@
  * Version: 2.9.7
  */
 
-const CACHE_NAME = 'archess-cache-v4.6.5';
+const CACHE_NAME = 'archess-cache-v4.6.6';
 const CORE_ASSETS = [
   '/',
   '/play',
   '/arsenal',
   '/leaderboard',
   '/manifest.json',
-  '/static/css/style.css?v=4.6.5',
-  '/static/js/main.js?v=4.6.5',
-  '/static/js/auth.js?v=4.6.5',
-  '/static/js/three.min.js?v=4.6.5',
-  '/static/js/engine3d.js?v=4.6.5',
-  '/static/js/game.js?v=4.6.5',
-  '/static/js/react-chessboard-bundle.js?v=4.6.5',
+  '/static/css/style.css?v=4.6.6',
+  '/static/js/main.js?v=4.6.6',
+  '/static/js/auth.js?v=4.6.6',
+  '/static/js/three.min.js?v=4.6.6',
+  '/static/js/engine3d.js?v=4.6.6',
+  '/static/js/game.js?v=4.6.6',
+  '/static/js/react-chessboard-bundle.js?v=4.6.6',
   '/static/media/logo.png'
 ];
 
