@@ -51,8 +51,8 @@
 
           <!-- Aim Control Mode Toggle (Drag & Aim vs Slingshot) -->
           <div class="aim-mode-toggle cupertino-segmented-control wing-segmented" id="aimModeToolbarGroup" role="group" aria-label="Aim Control Mode" style="margin-top: 6px;">
-            <button type="button" class="theme-pill-btn aim-mode-btn active" id="aimDirectBtn" data-aim="direct" title="Drag &amp; Drop Aim: Drag piece towards target to launch directly">🎯 Drag &amp; Aim</button>
-            <button type="button" class="theme-pill-btn aim-mode-btn" id="aimSlingshotBtn" data-aim="slingshot" title="Slingshot: Pull backward away from target to launch forward">🏹 Slingshot</button>
+            <button type="button" class="theme-pill-btn aim-mode-btn active" id="aimSlingshotBtn" data-aim="slingshot" title="Slingshot: Pull backward away from target to launch forward">🏹 Slingshot</button>
+            <button type="button" class="theme-pill-btn aim-mode-btn" id="aimDirectBtn" data-aim="direct" title="Drag &amp; Drop Aim: Drag piece towards target to launch directly">🎯 Drag &amp; Aim</button>
           </div>
         </div>
 
@@ -1062,10 +1062,10 @@
 {% endblock %}
 
 {% block extra_scripts %}
-  <script src="/static/js/three.min.js?v=4.6.8"></script>
-  <script src="/static/js/engine3d.js?v=4.6.8"></script>
-  <script src="/static/js/react-chessboard-bundle.js?v=4.6.8"></script>
-  <script src="/static/js/game.js?v=4.6.8"></script>
+  <script src="/static/js/three.min.js?v=4.6.9"></script>
+  <script src="/static/js/engine3d.js?v=4.6.9"></script>
+  <script src="/static/js/react-chessboard-bundle.js?v=4.6.9"></script>
+  <script src="/static/js/game.js?v=4.6.9"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       // Sync current logged in user name with White player card
@@ -1090,7 +1090,7 @@
         }
       }
 
-      const savedAimMode = localStorage.getItem('archess_aim_mode') || 'direct';
+      const savedAimMode = localStorage.getItem('archess_aim_mode') || 'slingshot';
       updateAimModeUI(savedAimMode);
 
       if (aimDirectBtn) aimDirectBtn.addEventListener('click', () => updateAimModeUI('direct'));

@@ -661,7 +661,7 @@ class ArchessArena {
     this.keyboardAimPower = 0.5;
     this.keyboardAiming = false;
 
-    this.aimMode = localStorage.getItem('archess_aim_mode') || 'direct'; // 'direct' (drag to target) or 'slingshot' (pull back)
+    this.aimMode = localStorage.getItem('archess_aim_mode') || 'slingshot'; // 'slingshot' (pull back, launch opposite) or 'direct'
     this._capturedPointerId = undefined;
     this.isDragging = false;
     this.dragStart = { x: 0, y: 0 };
@@ -4718,77 +4718,6 @@ class ArchessArena {
 
     const isMaxPower = powerRatio > 0.85;
     const themeColor = isMaxPower ? '#ff3b4e' : '#ffd700';
-
-    // 0. Visual 120-Degree Forward Corridor Guide (Pawns only)
-    if (sourcePiece.type === 'pawn' && !sourcePiece.promoted) {
-      const fwdAngle = sourcePiece.team === 'white' ? -Math.PI / 2 : Math.PI / 2;
-      const hArc = Math.PI / 3; // 60 deg (120 deg corridor)
-      const leftLimitAngle = fwdAngle - hArc;
-      const rightLimitAngle = fwdAngle + hArc;
-      const corridorRadius = Math.max(130, aimLen + 18);
-      const curAimAngle = Math.atan2(dirScreenY, dirScreenX);
-      const isAtLeftLimit = Math.abs(curAimAngle - leftLimitAngle) < 0.04;
-      const isAtRightLimit = Math.abs(curAimAngle - rightLimitAngle) < 0.04;
-
-      ctx.save();
-      // Translucent sector fan
-      ctx.beginPath();
-      ctx.moveTo(start.x, start.y);
-      ctx.arc(start.x, start.y, corridorRadius, leftLimitAngle, rightLimitAngle);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(0, 225, 217, 0.08)';
-      ctx.fill();
-
-      // Outer dashed arc boundary
-      ctx.beginPath();
-      ctx.arc(start.x, start.y, corridorRadius, leftLimitAngle, rightLimitAngle);
-      ctx.strokeStyle = 'rgba(0, 225, 217, 0.4)';
-      ctx.lineWidth = 1.6;
-      ctx.setLineDash([5, 5]);
-      ctx.stroke();
-
-      // Left limit boundary ray
-      ctx.beginPath();
-      ctx.moveTo(start.x, start.y);
-      ctx.lineTo(start.x + Math.cos(leftLimitAngle) * corridorRadius, start.y + Math.sin(leftLimitAngle) * corridorRadius);
-      ctx.strokeStyle = isAtLeftLimit ? '#ff3b4e' : 'rgba(0, 225, 217, 0.6)';
-      ctx.lineWidth = isAtLeftLimit ? 2.8 : 1.6;
-      ctx.setLineDash([6, 4]);
-      if (isAtLeftLimit) {
-        ctx.shadowColor = '#ff3b4e';
-        ctx.shadowBlur = 10;
-      }
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-
-      // Right limit boundary ray
-      ctx.beginPath();
-      ctx.moveTo(start.x, start.y);
-      ctx.lineTo(start.x + Math.cos(rightLimitAngle) * corridorRadius, start.y + Math.sin(rightLimitAngle) * corridorRadius);
-      ctx.strokeStyle = isAtRightLimit ? '#ff3b4e' : 'rgba(0, 225, 217, 0.6)';
-      ctx.lineWidth = isAtRightLimit ? 2.8 : 1.6;
-      ctx.setLineDash([6, 4]);
-      if (isAtRightLimit) {
-        ctx.shadowColor = '#ff3b4e';
-        ctx.shadowBlur = 10;
-      }
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-
-      // Corridor badge / watermark
-      const midAngle = fwdAngle;
-      const labelDist = corridorRadius * 0.52;
-      const lx = start.x + Math.cos(midAngle) * labelDist;
-      const ly = start.y + Math.sin(midAngle) * labelDist;
-      ctx.setLineDash([]);
-      ctx.font = '600 10px Inter, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = 'rgba(0, 225, 217, 0.55)';
-      ctx.fillText('120° FORWARD CORRIDOR', lx, ly);
-
-      ctx.restore();
-    }
 
     // 1. Animated Marching-Dash Aim Vector
     const dashOffset = -(performance.now() * 0.04) % 18;
