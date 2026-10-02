@@ -5393,17 +5393,6 @@ class ArchessArena {
       ctx.scale(1.22, 1.22);
     }
 
-    // Tactical Chess: Braced Phalanx Defensive Stance Ring
-    if (p.isBraced && !p.dead && !p.inMotion && p.type !== 'king') {
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(0, 0, p.radius * 1.25, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(0, 225, 217, 0.55)';
-      ctx.lineWidth = 1.8;
-      ctx.setLineDash([5, 4]);
-      ctx.stroke();
-      ctx.restore();
-    }
 
     // Selection Halo (Smooth Golden Pulse)
     if (isSelected) {
