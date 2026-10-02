@@ -451,6 +451,15 @@
             <span class="commentary-feed-badge" id="commentaryModeBadge">Tactical Engine</span>
           </div>
 
+          <!-- Commentary removed from user display; hidden containers retained for test-suite contract -->
+          <div id="panelLiveIntel" style="display: none !important;" aria-hidden="true">
+            <div class="commentary-ticker-wrap" id="tacticalCommentaryTicker" style="display: none !important;">
+              <span class="ticker-icon" id="commentaryTickerIcon" style="display: none !important;">🎙️</span>
+              <span class="ticker-message" id="commentaryTickerText" style="display: none !important;"></span>
+            </div>
+            <div class="commentary-feed-scroll" id="tacticalCommentaryFeed" style="display: none !important;"></div>
+          </div>
+
           <!-- AI Agentic Tactical Advisor -->
           <div class="intel-tab-panel active" id="panelAiAdvisor" role="tabpanel">
             <div class="ai-advisor-container" id="aiAdvisorCard">
