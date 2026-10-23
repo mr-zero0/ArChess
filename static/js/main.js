@@ -472,6 +472,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnAiVsAiPause = document.getElementById('btnAiVsAiPause');
   const btnAiVsAiStep = document.getElementById('btnAiVsAiStep');
   const aiVsAiPauseIcon = document.getElementById('aiVsAiPauseIcon');
+  const ARCHESS_ICON_PAUSE = '<svg class="ui-ic ui-ic-fill" aria-hidden="true" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>';
+  const ARCHESS_ICON_PLAY = '<svg class="ui-ic ui-ic-fill" aria-hidden="true" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></svg>';
   const aiVsAiPauseLabel = document.getElementById('aiVsAiPauseLabel');
   const aiVsAiStatusText = document.getElementById('aiVsAiStatusText');
 
@@ -623,7 +625,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnAiVsAiPause.addEventListener('click', () => {
       if (!arena) return;
       const isPaused = arena.toggleAiVsAiPause();
-      if (aiVsAiPauseIcon) aiVsAiPauseIcon.textContent = isPaused ? '▶️' : '⏸️';
+      if (aiVsAiPauseIcon) aiVsAiPauseIcon.innerHTML = isPaused ? ARCHESS_ICON_PLAY : ARCHESS_ICON_PAUSE;
       if (aiVsAiPauseLabel) aiVsAiPauseLabel.textContent = isPaused ? 'Resume AI' : 'Pause AI';
       if (aiVsAiStatusText) aiVsAiStatusText.textContent = isPaused ? 'Match Paused' : 'Simulating Live';
       window.ArchessToast?.show(isPaused ? '⏸️ AI vs AI duel paused' : '▶️ AI vs AI duel resumed', 'info', 1800, 'SPECTATOR');
@@ -676,7 +678,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (botDiffWingCard) botDiffWingCard.style.display = 'block';
       if (botDiffGroup) botDiffGroup.style.display = 'flex';
       if (aiVsAiStatusText) aiVsAiStatusText.textContent = 'Simulating Live';
-      if (aiVsAiPauseIcon) aiVsAiPauseIcon.textContent = '⏸️';
+      if (aiVsAiPauseIcon) aiVsAiPauseIcon.innerHTML = ARCHESS_ICON_PAUSE;
       if (aiVsAiPauseLabel) aiVsAiPauseLabel.textContent = 'Pause AI';
     } else if (mode === 'bot') {
       const authUser = (window.ArchessAuth && window.ArchessAuth.currentUser) ? window.ArchessAuth.currentUser.username : 'Player 1';
@@ -2804,4 +2806,87 @@ document.addEventListener('DOMContentLoaded', () => {
     controlHints.innerHTML = '<span class="kbd-key">Touch Drag</span> Aim &bull; Launch <span class="kbd-hint-more" style="color: var(--muted-foreground); font-size: 0.72rem; margin-left: 4px;">(Drag Board: Orbit)</span>';
     controlHints.title = 'Drag piece to aim slingshot. Drag empty board to orbit camera. Pinch to zoom.';
   }
+
+  /* -------------------------------------------------------------
+     Motion Layer (v4.7.2): scroll reveals, hero metric count-up,
+     camera keyboard shortcuts and a turn-change pulse. Everything
+     here is skipped under prefers-reduced-motion and degrades to
+     the final rendered state without JavaScript.
+  ------------------------------------------------------------- */
+  (function motionLayer() {
+    const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const root = document.documentElement;
+
+    // 1. Scroll reveals: content is only hidden once JS confirms motion is allowed
+    const revealEls = Array.from(document.querySelectorAll('[data-reveal]'));
+    if (revealEls.length && !reduceMotion && 'IntersectionObserver' in window) {
+      root.classList.add('js-motion');
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const el = entry.target;
+          const parent = el.parentElement;
+          const siblings = parent ? Array.from(parent.children).filter((c) => c.hasAttribute('data-reveal') && !c.classList.contains('is-in')) : [el];
+          const order = Math.max(0, siblings.indexOf(el));
+          el.style.animationDelay = `${Math.min(order, 8) * 55}ms`;
+          el.classList.add('is-in');
+          io.unobserve(el);
+        });
+      }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+      revealEls.forEach((el) => io.observe(el));
+      // Safety net: nothing stays hidden for long, whatever the scroll position
+      setTimeout(() => revealEls.forEach((el) => el.classList.add('is-in')), 4000);
+    }
+
+    // 2. Hero metric count-up: final values live in the markup
+    const counters = document.querySelectorAll('[data-count-to]');
+    if (counters.length && !reduceMotion) {
+      counters.forEach((el, i) => {
+        const to = parseFloat(el.getAttribute('data-count-to'));
+        if (!isFinite(to)) return;
+        const suffix = el.getAttribute('data-count-suffix') || '';
+        const duration = 1100;
+        const start = performance.now() + 950 + i * 140;
+        el.textContent = '0' + suffix;
+        const tick = (now) => {
+          const t = Math.min(1, Math.max(0, (now - start) / duration));
+          const eased = 1 - Math.pow(1 - t, 3);
+          el.textContent = Math.round(to * eased) + suffix;
+          if (t < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      });
+    }
+
+    // 3. Arena camera shortcuts: keys 1 to 6 pick a preset (ignored while typing)
+    const camGroup = document.getElementById('camera3DToolbarGroup');
+    if (camGroup) {
+      const order = ['tabletop', 'cinematic', 'broadcast', 'duel', 'tactical', 'flipped'];
+      document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        const target = e.target;
+        const tag = (target && target.tagName) || '';
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (target && target.isContentEditable)) return;
+        const idx = ['1', '2', '3', '4', '5', '6'].indexOf(e.key);
+        if (idx === -1) return;
+        const btn = camGroup.querySelector(`[data-cam="${order[idx]}"]`);
+        if (btn) btn.click();
+      });
+    }
+
+    // 4. Turn-change pulse: observes the label the game already updates
+    const turnLabelEl = document.getElementById('arenaTurnLabel');
+    const turnBadge = turnLabelEl ? turnLabelEl.closest('.turn-badge') : null;
+    if (turnLabelEl && turnBadge && window.MutationObserver && !reduceMotion) {
+      let lastTurnText = turnLabelEl.textContent;
+      new MutationObserver(() => {
+        const txt = turnLabelEl.textContent;
+        if (txt === lastTurnText) return;
+        lastTurnText = txt;
+        turnBadge.classList.remove('turn-pulse');
+        void turnBadge.offsetWidth; // restart the one-shot animation
+        turnBadge.classList.add('turn-pulse');
+      }).observe(turnLabelEl, { childList: true, characterData: true, subtree: true });
+    }
+  })();
 });

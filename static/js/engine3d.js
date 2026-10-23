@@ -67,14 +67,21 @@
       // Camera preset targets
       // Camera preset targets (Refined for real 3D perspective depth)
       this.cameraPresets = {
-        tabletop: { pos: new THREE.Vector3(0, 24, 25), look: new THREE.Vector3(0, 0, -0.6) },
-        cinematic: { pos: new THREE.Vector3(0, 13, 20), look: new THREE.Vector3(0, 1.2, 0) },
-        tactical: { pos: new THREE.Vector3(0, 34, 5), look: new THREE.Vector3(0, 0, 0) },
-        flipped: { pos: new THREE.Vector3(0, 24, -25), look: new THREE.Vector3(0, 0, 0.6) }
+        tabletop:  { pos: new THREE.Vector3(0, 24, 25),     look: new THREE.Vector3(0, 0, -0.6) },
+        cinematic: { pos: new THREE.Vector3(0, 13, 20),     look: new THREE.Vector3(0, 1.2, 0) },
+        broadcast: { pos: new THREE.Vector3(19, 14.5, 19),  look: new THREE.Vector3(0, 0.6, 0) },
+        duel:      { pos: new THREE.Vector3(0, 6.2, 21.5),  look: new THREE.Vector3(0, 1.6, -2.5) },
+        tactical:  { pos: new THREE.Vector3(0, 34, 5),      look: new THREE.Vector3(0, 0, 0) },
+        flipped:   { pos: new THREE.Vector3(0, 24, -25),    look: new THREE.Vector3(0, 0, 0.6) }
       };
       this.activePreset = 'tabletop';
       this._targetCamPos = null;
       this._targetCamLook = null;
+      // Time-based camera flights (eased crane moves between presets) and transient focus pulls
+      this._camFlight = null;     // { fromPos, fromLook, toPos, toLook, t, duration, arc }
+      this._focusPull = null;     // { point, until, weight } kill-cam drift of the orbit target
+      this._followPiece = null;   // fastest live piece this frame, for a subtle action-cam drift
+      this._followSpeed = 0;
 
       // Raycaster for mouse/touch interactions
       this.raycaster = new THREE.Raycaster();
@@ -99,6 +106,8 @@
       // 1. Scene setup
       this.scene = new THREE.Scene();
       this.scene.background = null; // Transparent background to blend with page theme
+      // Faint exponential haze: the far table rim recedes, the pieces in play stay crisp
+      this.scene.fog = new THREE.FogExp2(0x070a10, 0.0075);
 
       // 2. Camera setup (FOV 40 for realistic perspective depth without wide-angle fish-eye)
       this.camera = new THREE.PerspectiveCamera(40, width / height, 0.5, 200);
@@ -153,8 +162,10 @@
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
         this.controls.maxPolarAngle = Math.PI / 2.15; // Don't allow dipping below the table
-        this.controls.minDistance = 18;
+        this.controls.minDistance = 14;   // close enough to inspect a single piece
         this.controls.maxDistance = 55;
+        this.controls.zoomSpeed = 0.9;
+        this.controls.rotateSpeed = 0.8;
         this.controls.target.set(0, 0, 0);
         this.controls.enabled = true; // Enabled for right-click and middle-wheel; LEFT is disabled below
 
@@ -196,6 +207,15 @@
       // 10. Sync Initial Pieces
       this.syncPieces();
 
+      // 10b. Establishing shot: open high and wide, then settle onto the tabletop preset
+      const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!reduceMotion) {
+        const home = this.cameraPresets.tabletop;
+        this.camera.position.set(home.pos.x * 1.3, home.pos.y * 1.45, home.pos.z * 1.3);
+        if (this.controls) this.controls.target.set(0, 3, 0);
+        this.flyCameraTo(home.pos, home.look, 1.6);
+      }
+
       // 11. Wire Input Events
       this.setupInteractionListeners();
 
@@ -221,6 +241,8 @@
       const marbleTex = this.createMarbleTexture(256, 256);
 
       // 2. Board Frame (Polished Dark Walnut / Mahogany with warm gold trim)
+      const grainTex = this.createGrainTexture(256);
+
       this.materials.boardFrame = new THREE.MeshStandardMaterial({
         color: 0x24150c,
         map: frameWoodTex,
@@ -241,18 +263,26 @@
       });
 
       // 3. Board Tiles (Warm maple/birch cream vs rich walnut espresso - high contrast without glare)
-      this.materials.tileLight = new THREE.MeshStandardMaterial({
+      this.materials.tileLight = new THREE.MeshPhysicalMaterial({
         color: 0xdcd0bb,
         map: lightWoodTex,
-        roughness: 0.44,
-        metalness: 0.02
+        roughnessMap: grainTex,
+        roughness: 0.50,
+        metalness: 0.02,
+        clearcoat: 0.20,
+        clearcoatRoughness: 0.42,
+        envMapIntensity: 0.55
       });
 
-      this.materials.tileDark = new THREE.MeshStandardMaterial({
+      this.materials.tileDark = new THREE.MeshPhysicalMaterial({
         color: 0x483526,
         map: darkWoodTex,
-        roughness: 0.46,
-        metalness: 0.04
+        roughnessMap: grainTex,
+        roughness: 0.52,
+        metalness: 0.04,
+        clearcoat: 0.22,
+        clearcoatRoughness: 0.40,
+        envMapIntensity: 0.55
       });
 
       // 4. White Army: Polished Alabaster Ivory (Clearcoat gloss, subsurface softness, warm tone)
@@ -468,33 +498,66 @@
     /* -------------------------------------------------------------
        Studio Lighting (Key Light, Fill Light, Rear Rim Light, Spotlight & Environment)
     ------------------------------------------------------------- */
+    createGrainTexture(size = 256) {
+      // Mid-grey micro grain used as a roughnessMap: breaks up specular highlights so lacquer reads as real
+      const c = document.createElement('canvas');
+      c.width = size;
+      c.height = size;
+      const cx = c.getContext('2d');
+      const img = cx.createImageData(size, size);
+      for (let i = 0; i < img.data.length; i += 4) {
+        const v = 200 + Math.floor(Math.random() * 55);
+        img.data[i] = v; img.data[i + 1] = v; img.data[i + 2] = v; img.data[i + 3] = 255;
+      }
+      cx.putImageData(img, 0, 0);
+      const tex = new THREE.CanvasTexture(c);
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(3, 3);
+      return tex;
+    }
+
     setupEnvironment() {
-      // Procedural studio environment map for physically-based reflections on lacquered pieces & brass
+      // Procedural studio environment (equirectangular; three filters it for PBR reflections).
+      // Top: ceiling with key and fill soft boxes. Middle: lit horizon. Bottom: warm bounce from the table.
       const envCanvas = document.createElement('canvas');
-      envCanvas.width = 512;
-      envCanvas.height = 256;
+      envCanvas.width = 1024;
+      envCanvas.height = 512;
       const ctx = envCanvas.getContext('2d');
 
-      const bgGrad = ctx.createLinearGradient(0, 0, 0, 256);
-      bgGrad.addColorStop(0, '#1c2638');
-      bgGrad.addColorStop(0.45, '#0e1522');
-      bgGrad.addColorStop(1, '#070b12');
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, 512);
+      bgGrad.addColorStop(0, '#222c3d');
+      bgGrad.addColorStop(0.42, '#0f1522');
+      bgGrad.addColorStop(0.58, '#0a0e16');
+      bgGrad.addColorStop(0.80, '#1a130b');
+      bgGrad.addColorStop(1, '#2a1d0e');
       ctx.fillStyle = bgGrad;
-      ctx.fillRect(0, 0, 512, 256);
+      ctx.fillRect(0, 0, 1024, 512);
 
-      const softbox1 = ctx.createRadialGradient(160, 60, 5, 160, 60, 95);
-      softbox1.addColorStop(0, 'rgba(255, 252, 245, 0.95)');
-      softbox1.addColorStop(0.5, 'rgba(255, 242, 225, 0.35)');
-      softbox1.addColorStop(1, 'rgba(255, 242, 225, 0.0)');
-      ctx.fillStyle = softbox1;
-      ctx.fillRect(70, 0, 180, 130);
+      const softbox = (x, y, rx, ry, inner, mid) => {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(rx / 100, ry / 100);
+        const g = ctx.createRadialGradient(0, 0, 4, 0, 0, 100);
+        g.addColorStop(0, inner);
+        g.addColorStop(0.45, mid);
+        g.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(-100, -100, 200, 200);
+        ctx.restore();
+      };
+      softbox(300, 118, 190, 95, 'rgba(255, 250, 240, 0.98)', 'rgba(255, 240, 220, 0.38)');   // warm key
+      softbox(760, 150, 220, 110, 'rgba(214, 232, 255, 0.85)', 'rgba(190, 220, 255, 0.26)');  // cool fill
+      softbox(24, 170, 140, 60, 'rgba(255, 236, 200, 0.55)', 'rgba(255, 230, 190, 0.18)');    // rear rim (wraps)
+      softbox(1000, 170, 140, 60, 'rgba(255, 236, 200, 0.55)', 'rgba(255, 230, 190, 0.18)');
 
-      const softbox2 = ctx.createRadialGradient(380, 80, 5, 380, 80, 110);
-      softbox2.addColorStop(0, 'rgba(215, 235, 255, 0.80)');
-      softbox2.addColorStop(0.5, 'rgba(190, 220, 255, 0.25)');
-      softbox2.addColorStop(1, 'rgba(190, 220, 255, 0.0)');
-      ctx.fillStyle = softbox2;
-      ctx.fillRect(270, 0, 220, 150);
+      const hz = ctx.createLinearGradient(0, 248, 0, 268);
+      hz.addColorStop(0, 'rgba(255, 228, 180, 0)');
+      hz.addColorStop(0.5, 'rgba(255, 228, 180, 0.22)');
+      hz.addColorStop(1, 'rgba(255, 228, 180, 0)');
+      ctx.fillStyle = hz;
+      ctx.fillRect(0, 248, 1024, 20);
+
+      softbox(512, 470, 420, 90, 'rgba(212, 175, 55, 0.30)', 'rgba(160, 120, 40, 0.12)');     // floor bounce
 
       const envTexture = new THREE.CanvasTexture(envCanvas);
       envTexture.mapping = THREE.EquirectangularReflectionMapping;
@@ -505,9 +568,14 @@
       this.setupEnvironment();
 
       // 1. Soft Warm Ambient Light
-      const ambientLight = new THREE.AmbientLight(0xfff6ea, 0.48);
+      const ambientLight = new THREE.AmbientLight(0xfff6ea, 0.36);
       this.scene.add(ambientLight);
       this.lights.ambient = ambientLight;
+
+      // 1b. Sky / table hemisphere: cool from above, warm bounce from the walnut table
+      const hemiLight = new THREE.HemisphereLight(0xcfd8e6, 0x3a2a14, 0.30);
+      this.scene.add(hemiLight);
+      this.lights.hemi = hemiLight;
 
       // 2. Main Key Directional Light (Warm sunlight, crisp realistic soft shadows)
       const keyLight = new THREE.DirectionalLight(0xfff8ee, 1.15);
@@ -523,7 +591,8 @@
       keyLight.shadow.camera.top = d;
       keyLight.shadow.camera.bottom = -d;
       keyLight.shadow.bias = -0.0003;
-      keyLight.shadow.radius = 2.2;
+      keyLight.shadow.radius = 3.0;
+      keyLight.shadow.normalBias = 0.02;
       this.scene.add(keyLight);
       this.lights.key = keyLight;
 
@@ -1022,6 +1091,17 @@
 
       const activeIds = new Set();
       const now = performance.now();
+
+      // Action-cam follow candidate: the fastest live piece with sane coordinates
+      let fastest = null;
+      let fastestSpeed = 0;
+      for (const q of this.arena.pieces) {
+        if (q.dead || !isFinite(q.x) || !isFinite(q.y)) continue;
+        const s = Math.hypot(q.vx || 0, q.vy || 0);
+        if (s > fastestSpeed) { fastestSpeed = s; fastest = q; }
+      }
+      this._followPiece = fastest;
+      this._followSpeed = fastestSpeed;
 
       this.arena.pieces.forEach(p => {
         activeIds.add(p.id);
@@ -2511,13 +2591,38 @@
     /* -------------------------------------------------------------
        Camera Presets & View Controls with Smooth Interpolation
     ------------------------------------------------------------- */
-    setCameraPreset(presetName) {
-      if (this.cameraPresets[presetName]) {
-        this.activePreset = presetName;
-        const target = this.cameraPresets[presetName];
-        this._targetCamPos = target.pos.clone();
-        this._targetCamLook = target.look.clone();
-      }
+    setCameraPreset(presetName, opts = {}) {
+      if (!this.cameraPresets[presetName]) return;
+      this.activePreset = presetName;
+      const target = this.cameraPresets[presetName];
+      this.flyCameraTo(target.pos, target.look, opts.duration);
+    }
+
+    /** Time-based crane move: ease-out quintic with a gentle vertical arc, so a cut reads as a camera move. */
+    flyCameraTo(pos, look, duration = 1.05) {
+      if (!this.camera) return;
+      const fromLook = this.controls ? this.controls.target.clone() : (this._targetCamLook ? this._targetCamLook.clone() : look.clone());
+      this._camFlight = {
+        fromPos: this.camera.position.clone(),
+        fromLook,
+        toPos: pos.clone(),
+        toLook: look.clone(),
+        t: 0,
+        duration: Math.max(0.2, duration || 1.05),
+        arc: Math.min(6, this.camera.position.distanceTo(pos) * 0.12)
+      };
+      // Other systems read a pending target as "camera busy"
+      this._targetCamPos = pos.clone();
+      this._targetCamLook = look.clone();
+    }
+
+    /** Kill-cam: drift the orbit target toward a world point for a moment (the camera body never teleports). */
+    pullFocus(point, seconds = 0.9, weight = 0.5) {
+      this._focusPull = {
+        point: point.clone(),
+        until: performance.now() + seconds * 1000,
+        weight: Math.max(0, Math.min(1, weight))
+      };
     }
 
     resetCamera() {
@@ -2525,11 +2630,9 @@
     }
 
     toggleFlip() {
-      if (this.activePreset === 'flipped') {
-        this.setCameraPreset('tabletop');
-      } else {
-        this.setCameraPreset('flipped');
-      }
+      const nowFlipped = this.activePreset !== 'flipped';
+      this.setCameraPreset(nowFlipped ? 'flipped' : 'tabletop');
+      return nowFlipped;
     }
 
     /* -------------------------------------------------------------
@@ -2593,6 +2696,7 @@
 
       this.spawnLandingDust(meshGroup.position.x, meshGroup.position.z, 1.4);
       this.triggerZoomPunch(0.75);
+      this.pullFocus(new THREE.Vector3(meshGroup.position.x, 0.6, meshGroup.position.z), 0.9, 0.5);
     }
 
     updateTumbles(dt) {
@@ -2755,9 +2859,22 @@
           this.controls.target.lerp(aimLookTarget, Math.min(1.0, dt * 4.0));
         }
       } else if (!this._targetCamPos && this.controls) {
-        // Return look target to center
         const defaultLook = (this.cameraPresets[this.activePreset] || this.cameraPresets.tabletop).look;
-        this.controls.target.lerp(defaultLook, Math.min(1.0, dt * 5.0));
+        const nowMs = performance.now();
+        const pull = (this._focusPull && nowMs < this._focusPull.until) ? this._focusPull : null;
+        const follow = (!pull && this._followPiece && this._followSpeed > 1.2) ? this._followPiece : null;
+        if (pull) {
+          // Kill-cam: lean the frame toward the fallen piece, then release
+          const goal = defaultLook.clone().lerp(pull.point, pull.weight);
+          this.controls.target.lerp(goal, Math.min(1.0, dt * 5.5));
+        } else if (follow) {
+          // Action cam: a low-gain drift toward the piece in flight keeps the shot alive without losing the board
+          const fp = this.boardToWorld(follow.x, follow.y);
+          const goal = defaultLook.clone().lerp(new THREE.Vector3(fp.x, 0.4, fp.z), 0.22);
+          this.controls.target.lerp(goal, Math.min(1.0, dt * 3.0));
+        } else {
+          this.controls.target.lerp(defaultLook, Math.min(1.0, dt * 5.0));
+        }
       }
 
       // 5. 3D Camera Shake from impacts & arena screenShake
@@ -2796,19 +2913,30 @@
        Main 3D Animation & Render Loop
     ------------------------------------------------------------- */
     update(dt = 0.016) {
-      // 0. Smooth Camera Preset Interpolation & Action Cam / Aim Zoom / Zoom Punch / 3D Shake
-      if (this._targetCamPos) {
-        this.camera.position.lerp(this._targetCamPos, 0.09);
+      // 0. Eased camera flight between presets (time-based, frame-rate independent)
+      if (this._camFlight) {
+        const f = this._camFlight;
+        f.t = Math.min(1, f.t + Math.max(0, dt) / f.duration);
+        const e = 1 - Math.pow(1 - f.t, 5);             // ease-out quintic: brisk departure, soft landing
+        const lift = Math.sin(Math.PI * f.t) * f.arc;   // crane arc
+        this.camera.position.lerpVectors(f.fromPos, f.toPos, e);
+        this.camera.position.y += lift;
         if (this.controls) {
-          this.controls.target.lerp(this._targetCamLook, 0.09);
+          this.controls.target.lerpVectors(f.fromLook, f.toLook, e);
           this.controls.update();
+        } else {
+          this.camera.lookAt(f.toLook);
         }
-        if (this.camera.position.distanceTo(this._targetCamPos) < 0.04) {
-          this.camera.position.copy(this._targetCamPos);
-          if (this.controls) this.controls.target.copy(this._targetCamLook);
+        if (f.t >= 1) {
+          this.camera.position.copy(f.toPos);
+          if (this.controls) this.controls.target.copy(f.toLook);
+          this._camFlight = null;
           this._targetCamPos = null;
           this._targetCamLook = null;
         }
+      } else if (this._targetCamPos) {
+        // Defensive: a target without a flight (should not happen) still resolves
+        this.flyCameraTo(this._targetCamPos, this._targetCamLook || this.cameraPresets.tabletop.look, 0.8);
       }
 
       this.updateCamera(dt);

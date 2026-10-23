@@ -6,7 +6,7 @@
 {% block meta_description %}Official ARCHESS Global ELO Rankings, Grandmaster divisions, and real-time kinetic match standings.{% endblock %}
 
 {% block content %}
-  <main class="container" style="padding-top: 130px; padding-bottom: 90px;">
+  <main class="container" id="mainContent" style="padding-top: 130px; padding-bottom: 90px;">
     
     <div class="section-header">
       <div class="section-subtitle">Competitive Ladder</div>
@@ -21,8 +21,8 @@
       <!-- Rank #1 Gold Champion Spotlight -->
       <div class="bento-card bento-col-4" id="podiumCard1" style="border-color: rgba(212, 175, 55, 0.4); background: linear-gradient(145deg, rgba(212, 175, 55, 0.08) 0%, rgba(12, 17, 26, 0.9) 100%);">
         <div class="bento-header" style="margin-bottom: 8px;">
-          <span class="bento-eyebrow" id="podium1Eyebrow" style="color: #ffd700;">
-            👑 Rank #1 &bull; Reigning Champion
+          <span class="bento-eyebrow" id="podium1Eyebrow" style="color: var(--metal-gold);">
+            Rank #1 &bull; Reigning Champion
           </span>
           <div style="display: flex; align-items: center; gap: 14px; margin-top: 6px;">
             <div id="podium1Avatar" style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #ffe066 0%, #d4af37 100%); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #000; box-shadow: 0 0 16px rgba(255, 215, 0, 0.5);">
@@ -36,7 +36,7 @@
         </div>
 
         <div class="bento-stat-cluster" style="margin: 12px 0;">
-          <div class="bento-stat-hero tabular-nums" id="podium1Elo" style="color: #ffd700; font-size: 2.5rem;">2850</div>
+          <div class="bento-stat-hero tabular-nums" id="podium1Elo" style="color: var(--metal-gold); font-size: 2.5rem;">2850</div>
           <div class="bento-stat-meta">
             <span class="bento-stat-label">Official ELO</span>
             <span class="bento-stat-sub" id="podium1Sub">94.2% Win Rate &bull; 48W 3L 2D</span>
@@ -44,15 +44,15 @@
         </div>
 
         <div class="bento-badge-row">
-          <span class="tag-badge" id="podium1Badge" style="border-color: #ffd700; color: #ffd700;">Active Vanguard</span>
+          <span class="tag-badge" id="podium1Badge" style="border-color: var(--metal-gold); color: var(--metal-gold);">Active Vanguard</span>
         </div>
       </div>
 
       <!-- Rank #2 Silver Challenger Spotlight -->
       <div class="bento-card bento-col-4" id="podiumCard2" style="border-color: rgba(203, 213, 225, 0.3);">
         <div class="bento-header" style="margin-bottom: 8px;">
-          <span class="bento-eyebrow" id="podium2Eyebrow" style="color: #cbd5e1;">
-            🥈 Rank #2 &bull; Apex Challenger
+          <span class="bento-eyebrow" id="podium2Eyebrow" style="color: var(--metal-silver);">
+            Rank #2 &bull; Apex Challenger
           </span>
           <div style="display: flex; align-items: center; gap: 14px; margin-top: 6px;">
             <div id="podium2Avatar" style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #f8fafc 0%, #94a3b8 100%); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #000;">
@@ -60,13 +60,13 @@
             </div>
             <div>
               <h3 class="bento-title" id="podium2Name" style="font-size: 1.3rem; margin: 0;">Loading Challenger...</h3>
-              <span id="podium2Tier" style="font-size: 0.74rem; color: #cbd5e1; font-weight: 600;">Master Tactician</span>
+              <span id="podium2Tier" style="font-size: 0.74rem; color: var(--metal-silver); font-weight: 600;">Master Tactician</span>
             </div>
           </div>
         </div>
 
         <div class="bento-stat-cluster" style="margin: 12px 0;">
-          <div class="bento-stat-hero tabular-nums" id="podium2Elo" style="color: #cbd5e1; font-size: 2.5rem;">--</div>
+          <div class="bento-stat-hero tabular-nums" id="podium2Elo" style="color: var(--metal-silver); font-size: 2.5rem;">--</div>
           <div class="bento-stat-meta">
             <span class="bento-stat-label">Official ELO</span>
             <span class="bento-stat-sub" id="podium2Sub">Fetching live ladder data...</span>
@@ -81,8 +81,8 @@
       <!-- Rank #3 Bronze Sentinel Spotlight -->
       <div class="bento-card bento-col-4" id="podiumCard3" style="border-color: rgba(205, 127, 50, 0.3);">
         <div class="bento-header" style="margin-bottom: 8px;">
-          <span class="bento-eyebrow" id="podium3Eyebrow" style="color: #cd7f32;">
-            🥉 Rank #3 &bull; Master Sentinel
+          <span class="bento-eyebrow" id="podium3Eyebrow" style="color: var(--metal-bronze);">
+            Rank #3 &bull; Master Sentinel
           </span>
           <div style="display: flex; align-items: center; gap: 14px; margin-top: 6px;">
             <div id="podium3Avatar" style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #e69138 0%, #a64d79 100%); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #fff;">
@@ -90,13 +90,13 @@
             </div>
             <div>
               <h3 class="bento-title" id="podium3Name" style="font-size: 1.3rem; margin: 0;">Loading Sentinel...</h3>
-              <span id="podium3Tier" style="font-size: 0.74rem; color: #e69138; font-weight: 600;">Tactical Sentinel</span>
+              <span id="podium3Tier" style="font-size: 0.74rem; color: var(--metal-bronze); font-weight: 600;">Tactical Sentinel</span>
             </div>
           </div>
         </div>
 
         <div class="bento-stat-cluster" style="margin: 12px 0;">
-          <div class="bento-stat-hero tabular-nums" id="podium3Elo" style="color: #e69138; font-size: 2.5rem;">--</div>
+          <div class="bento-stat-hero tabular-nums" id="podium3Elo" style="color: var(--metal-bronze); font-size: 2.5rem;">--</div>
           <div class="bento-stat-meta">
             <span class="bento-stat-label">Official ELO</span>
             <span class="bento-stat-sub" id="podium3Sub">Fetching live ladder data...</span>
@@ -239,7 +239,7 @@
         </div>
         <div class="bracket-controls-wrap">
           <button class="btn btn-gold btn-sm" id="btnSimulateRound">
-            <span id="btnSimulateText">⚡ Simulate Next Round</span>
+            <span id="btnSimulateText">Simulate Next Round</span>
           </button>
           <button class="btn btn-outline btn-sm" id="btnResetTournament" title="Reset tournament and seed a new season">
             <span>↺ New Season</span>
@@ -252,14 +252,14 @@
 
       <!-- Champion Banner (Displayed when tournament is completed) -->
       <div class="tournament-champion-banner" id="tournamentChampionBanner" style="display: none;">
-        <div class="champion-glow-disc">👑</div>
+        <div class="champion-glow-disc">&#9812;</div>
         <div class="champion-meta">
           <span class="champion-eyebrow">REIGNING TOURNAMENT CHAMPION</span>
           <h2 class="champion-name" id="tournamentChampionName">Vanguard_Prime</h2>
           <span class="champion-desc" id="tournamentChampionSub">Season 1 Golden Sovereign Champion &bull; Undefeated Run</span>
         </div>
         <a href="/play?opponent=Vanguard_Prime&mode=3d" class="btn btn-gold btn-md" id="btnChallengeChampion">
-          <span>⚔️ Challenge Champion</span>
+          <span><svg class="ui-ic" aria-hidden="true" viewBox="0 0 24 24"><path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2"/><path d="M14.5 6.5 18 3h3v3l-3.5 3.5M5 14l4 4M7 17l-3 3M3 19l2 2"/></svg> Challenge Champion</span>
         </a>
       </div>
 
@@ -446,7 +446,7 @@
             if (el1Tier) el1Tier.textContent = 'Unclaimed Rank #1';
             if (el1Elo) el1Elo.textContent = '1200';
             if (el1Sub) el1Sub.textContent = 'Play a match to claim Rank #1';
-            if (el1Badge) el1Badge.textContent = '⚡ Awaiting Champion';
+            if (el1Badge) el1Badge.textContent = 'Awaiting Champion';
             if (card1) {
               card1.style.cursor = 'pointer';
               card1.onclick = () => window.location.href = '/play';
@@ -481,7 +481,7 @@
             if (el2Tier) el2Tier.textContent = 'Unclaimed Rank #2';
             if (el2Elo) el2Elo.textContent = '1200';
             if (el2Sub) el2Sub.textContent = 'Play a match to claim Rank #2';
-            if (el2Badge) el2Badge.textContent = '⚡ Awaiting Contender';
+            if (el2Badge) el2Badge.textContent = 'Awaiting Contender';
             if (card2) {
               card2.style.cursor = 'pointer';
               card2.onclick = () => window.location.href = '/play';
@@ -516,7 +516,7 @@
             if (el3Tier) el3Tier.textContent = 'Unclaimed Rank #3';
             if (el3Elo) el3Elo.textContent = '1200';
             if (el3Sub) el3Sub.textContent = 'Play a match to claim Rank #3';
-            if (el3Badge) el3Badge.textContent = '⚡ Awaiting Contender';
+            if (el3Badge) el3Badge.textContent = 'Awaiting Contender';
             if (card3) {
               card3.style.cursor = 'pointer';
               card3.onclick = () => window.location.href = '/play';
@@ -835,7 +835,7 @@
             return `
               <div class="bracket-player-row ${winClass}">
                 <span class="seed-badge">#${p.seed || p.id}</span>
-                <span class="player-name">${p.username} ${p.is_bot ? '<span style="font-size: 0.62rem; color: #60a5fa; border: 1px solid rgba(96,165,250,0.3); padding: 1px 5px; border-radius: 4px; margin-left: 5px; font-weight: 600;">AI BOT</span>' : ''}</span>
+                <span class="player-name">${p.username} ${p.is_bot ? '<span style="font-size: 0.72rem; color: var(--gold-light); border: 1px solid var(--gold-border); padding: 1px 6px; border-radius: 4px; margin-left: 5px; font-weight: 600;">AI BOT</span>' : ''}</span>
                 <span class="player-score">${score}</span>
               </div>
             `;
@@ -854,7 +854,7 @@
                 ${renderPlayerRow(p2, match.score2, winnerId && p2 && p2.id === winnerId)}
               </div>
               <div class="match-card-foot">
-                ${(p1 && p2) ? `<a href="${duelLink}" class="btn-match-spectate">⚔️ Spectate / Duel</a>` : '<span style="font-size: 0.68rem; color: var(--muted-foreground);">Awaiting Prior Round</span>'}
+                ${(p1 && p2) ? `<a href="${duelLink}" class="btn-match-spectate">Spectate / Duel</a>` : '<span style="font-size: 0.68rem; color: var(--muted-foreground);">Awaiting Prior Round</span>'}
               </div>
             </div>
           `;
@@ -884,7 +884,7 @@
                 if (btnSimulate) {
                   btnSimulate.style.display = 'inline-flex';
                   if (btnSimulateText) {
-                    btnSimulateText.textContent = t.status === 'quarterfinals' ? '⚡ Simulate Quarterfinals' : (t.status === 'semifinals' ? '⚡ Simulate Semifinals' : '⚡ Simulate Grand Finals');
+                    btnSimulateText.textContent = t.status === 'quarterfinals' ? 'Simulate Quarterfinals' : (t.status === 'semifinals' ? 'Simulate Semifinals' : 'Simulate Grand Finals');
                   }
                 }
               }

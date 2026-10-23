@@ -3,7 +3,7 @@
    Full-Width Hero Video, Side Expansion Menu, Dedicated Chess Themes, Zero Clutter.
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+/* Web fonts load once from base.html (<link rel="stylesheet">); no render-blocking @import here. */
 
 :root {
   /* shadcn/ui Core Design Tokens (Obsidian Dark Default) */
@@ -66,7 +66,7 @@
   
   --font-serif: 'Cinzel', serif;
   --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-tech: 'Plus Jakarta Sans', sans-serif;
+  --font-tech: 'Outfit', 'Plus Jakarta Sans', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
   
   --radius-sm: calc(var(--radius) - 4px);
@@ -233,7 +233,6 @@ a {
 button {
   cursor: pointer;
   border: none;
-  outline: none;
   font-family: inherit;
 }
 
@@ -250,7 +249,7 @@ button {
   background: rgba(212, 175, 55, 0.09);
   border: 1px solid var(--gold-border);
   color: var(--gold-light);
-  font-size: 0.76rem;
+  font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -935,7 +934,7 @@ button {
   color: var(--primary-foreground);
   padding: 2px 8px;
   border-radius: var(--radius-full);
-  font-size: 0.68rem;
+  font-size: 0.76rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -1210,19 +1209,19 @@ button {
 }
 
 .hero-title-minimal {
-  font-family: var(--font-sans);
-  font-size: clamp(2.6rem, 5.2vw, 4.4rem);
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 4.4vw, 3.7rem);
   font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1.15;
-  color: #ffffff;
-  margin-top: 18px;
+  letter-spacing: 0.015em;
+  line-height: 1.12;
+  color: #f4ecd8;
+  margin-top: 22px;
+  text-wrap: balance;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.45);
 }
 
 .hero-title-minimal span {
-  background: linear-gradient(135deg, #ffffff 30%, #e6ca65 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: inherit;
 }
 
 .hero-subhead-minimal {
@@ -1275,7 +1274,7 @@ button {
 }
 
 .metric-col .metric-lbl {
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -1322,12 +1321,13 @@ button {
 }
 
 .section-head-chess .rank-file-label {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.25em;
+  font-family: var(--font-serif);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
   color: var(--gold-primary);
   text-transform: uppercase;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .section-head-chess h2 {
@@ -1335,11 +1335,12 @@ button {
   font-size: clamp(1.8rem, 3.2vw, 2.5rem);
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: #fff;
+  color: #f4ecd8;
+  text-wrap: balance;
 }
 
 .section-head-chess p {
-  font-size: 0.94rem;
+  font-size: 1rem;
   color: var(--text-secondary);
   margin-top: 10px;
   line-height: 1.6;
@@ -1467,12 +1468,12 @@ button {
   font-family: var(--font-serif);
   font-size: 1.25rem;
   font-weight: 700;
-  color: #fff;
+  color: #f4ecd8;
   letter-spacing: 0.04em;
 }
 
 .theme-card-desc {
-  font-size: 0.88rem;
+  font-size: 0.92rem;
   color: var(--text-secondary);
   line-height: 1.6;
   flex: 1;
@@ -1493,11 +1494,11 @@ button {
 }
 
 .chip-tag {
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.04);
-  padding: 2px 8px;
-  border-radius: 4px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 3px 9px;
+  border-radius: 6px;
 }
 
 /* ==========================================================================
@@ -1564,7 +1565,7 @@ button {
 .action-banner-box h2 {
   font-family: var(--font-serif);
   font-size: clamp(1.8rem, 3.2vw, 2.5rem);
-  color: #fff;
+  color: #f4ecd8;
   letter-spacing: 0.04em;
   margin-bottom: 12px;
 }
@@ -1719,7 +1720,9 @@ button {
 
 .footer-nav a {
   color: var(--text-secondary);
-  font-size: 0.82rem;
+  font-size: 0.88rem;
+  display: inline-block;
+  padding: 6px 2px;
 }
 
 .footer-nav a:hover { color: #fff; }
@@ -1729,7 +1732,7 @@ button {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   color: var(--text-muted);
   flex-wrap: wrap;
   gap: 12px;
@@ -1771,12 +1774,13 @@ button {
 }
 
 .section-subtitle {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.25em;
+  font-family: var(--font-serif);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
   color: var(--gold-primary);
   text-transform: uppercase;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .section-title {
@@ -1784,11 +1788,12 @@ button {
   font-size: clamp(2rem, 3.5vw, 2.8rem);
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: #fff;
+  color: #f4ecd8;
+  text-wrap: balance;
 }
 
 .section-desc {
-  font-size: 0.95rem;
+  font-size: 1rem;
   color: var(--text-secondary);
   margin-top: 10px;
   line-height: 1.6;
@@ -2101,7 +2106,7 @@ button {
   border-radius: var(--radius-sm);
   padding: 3px 8px;
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.76rem;
   font-weight: 600;
   color: var(--muted-foreground);
   letter-spacing: 0.02em;
@@ -2443,7 +2448,7 @@ body.play-screen-active .play-page-container {
 
 .wing-card-title {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.76rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -3410,7 +3415,7 @@ body.play-screen-active .play-page-container {
 }
 
 .no-casualties {
-  font-size: 0.72rem;
+  font-size: 0.76rem;
   color: var(--muted-foreground);
   opacity: 0.75;
   font-style: italic;
@@ -3830,7 +3835,7 @@ body.play-screen-active .play-page-container {
 
 .leaderboard-table th {
   padding: 16px 26px;
-  font-size: 0.76rem;
+  font-size: 0.8rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -4432,16 +4437,15 @@ body.play-screen-active .play-page-container {
 
 [data-theme="light"] .hero-title-minimal {
   color: #111520;
+  text-shadow: none;
 }
 
 [data-theme="light"] .hero-title-minimal span {
-  background: linear-gradient(135deg, #111520 30%, #b38600 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: inherit;
 }
 
 [data-theme="light"] .hero-subhead-minimal {
-  color: #4b5568;
+  color: #2b3140;
 }
 
 [data-theme="light"] .hero-metric-strip {
@@ -5811,7 +5815,7 @@ body.play-screen-active .play-page-container {
   align-items: center;
   gap: 6px;
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.76rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -5864,7 +5868,7 @@ body.play-screen-active .play-page-container {
 }
 
 .bento-stat-sub {
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   color: var(--muted-foreground);
 }
 
@@ -6188,15 +6192,16 @@ body.play-screen-active .play-page-container {
   --bento-border: 1px solid rgba(255, 255, 255, 0.1);
   --bento-radius: 24px;
   --bento-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-  --bento-hover-border: 1px solid rgba(10, 132, 255, 0.45);
+  --bento-hover-border: 1px solid rgba(212, 175, 55, 0.45);
   --bento-hover-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
-  --bento-accent: #0a84ff;
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+  --bento-accent: var(--gold-light);
+  /* Brand face first; the Apple system stack stays as fallback (avoids Arial on Windows). */
+  --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
 }
 
 [data-ui-design="ios-native"] body {
-  background: #000000;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+  background: var(--background, #000000);
+  font-family: var(--font-sans);
 }
 
 [data-ui-design="ios-native"] .site-header,
@@ -6230,18 +6235,18 @@ body.play-screen-active .play-page-container {
 
 [data-ui-design="ios-native"] .btn-gold,
 [data-ui-design="ios-native"] .btn-default {
-  background: #0a84ff !important;
-  color: #ffffff !important;
+  background: var(--gold-metallic) !important;
+  color: #15110a !important;
   font-weight: 600 !important;
-  border: none !important;
-  box-shadow: 0 4px 14px rgba(10, 132, 255, 0.4) !important;
+  border: 1px solid rgba(255, 244, 200, 0.45) !important;
+  box-shadow: 0 4px 16px rgba(212, 175, 55, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.55) !important;
   border-radius: 9999px !important;
 }
 
 [data-ui-design="ios-native"] .btn-gold:hover,
 [data-ui-design="ios-native"] .btn-default:hover {
-  background: #0071e3 !important;
-  transform: scale(1.02) !important;
+  filter: brightness(1.05) !important;
+  transform: translateY(-1px) !important;
 }
 
 [data-ui-design="ios-native"] .btn-outline,
@@ -6657,7 +6662,7 @@ body.play-screen-active .play-page-container {
   border: 1px solid var(--border);
   color: var(--muted-foreground);
   font-family: 'Space Grotesk', sans-serif;
-  font-size: 0.76rem;
+  font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.18s ease;
@@ -7562,7 +7567,7 @@ body.play-screen-active .play-page-container {
 
 .bracket-badge-pill {
   font-family: var(--font-mono, monospace);
-  font-size: 0.68rem;
+  font-size: 0.74rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -7575,7 +7580,7 @@ body.play-screen-active .play-page-container {
 
 .bracket-status-tag {
   font-family: var(--font-mono, monospace);
-  font-size: 0.68rem;
+  font-size: 0.74rem;
   font-weight: 700;
   text-transform: uppercase;
   color: #10b981;
@@ -7739,14 +7744,14 @@ body.play-screen-active .play-page-container {
 
 .match-id-badge {
   font-family: var(--font-mono, monospace);
-  font-size: 0.68rem;
+  font-size: 0.74rem;
   font-weight: 800;
   color: var(--muted-foreground, #a1a1aa);
 }
 
 .match-status-pill {
   font-family: var(--font-mono, monospace);
-  font-size: 0.62rem;
+  font-size: 0.7rem;
   font-weight: 700;
   color: var(--gold-light, #f5d061);
   letter-spacing: 0.05em;
@@ -7787,7 +7792,7 @@ body.play-screen-active .play-page-container {
 
 .seed-badge {
   font-family: var(--font-mono, monospace);
-  font-size: 0.64rem;
+  font-size: 0.7rem;
   font-weight: 700;
   padding: 1px 4px;
   background: rgba(255, 255, 255, 0.08);
@@ -7822,7 +7827,9 @@ body.play-screen-active .play-page-container {
 }
 
 .btn-match-spectate {
-  font-size: 0.72rem;
+  display: inline-block;
+  padding: 4px 2px;
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--gold-light, #f5d061);
   text-decoration: none;
@@ -9373,7 +9380,7 @@ body.play-screen-active .play-page-container {
 }
 
 .deploy-pill {
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 700;
   color: var(--gold-light, #ffd700);
   background: rgba(212, 175, 55, 0.18);
@@ -9424,3 +9431,740 @@ body.play-screen-active .play-page-container {
 }
 
 
+
+
+/* ==========================================================================
+   v4.7.1 REFINEMENT LAYER
+   Accessibility floor, light-mode cascade repair, icon utility, target sizes.
+   Appended last on purpose: it must win against the design-system layers
+   above without rewriting their rules. Keep future additions below this line.
+   ========================================================================== */
+
+/* 1. Keyboard focus is always visible (WCAG 2.4.7); pointer focus stays clean. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--ring, #d4af37);
+  outline-offset: 2px;
+}
+
+:where(a, button, input, select, textarea, summary, [tabindex]):focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Pills clipped by overflow:hidden draw the ring inside instead of losing it. */
+.cupertino-segmented-control .theme-pill-btn:focus-visible,
+.cupertino-segmented-control .view-btn:focus-visible,
+.wing-segmented button:focus-visible,
+.mobile-arena-tab:focus-visible,
+.live-palette-swatch:focus-visible {
+  outline: 2px solid var(--ring, #d4af37) !important;
+  outline-offset: -2px !important;
+}
+
+/* 2. Skip link: first tab stop on every page */
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: 16px;
+  z-index: 10000;
+  padding: 10px 18px;
+  border-radius: 9999px;
+  background: var(--gold-primary, #d4af37);
+  color: #15110a;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  transition: top 160ms var(--ease-out, ease-out);
+}
+
+.skip-link:focus-visible {
+  top: 16px;
+  outline-offset: 3px;
+}
+
+/* 3. Inline icon utility: replaces emoji glyphs so icons render identically on every OS */
+.ui-ic {
+  width: 1em;
+  height: 1em;
+  flex: 0 0 auto;
+  display: inline-block;
+  vertical-align: -0.125em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ui-ic.ui-ic-fill {
+  fill: currentColor;
+  stroke: none;
+}
+
+.ui-glyph {
+  color: var(--gold-light);
+  font-size: 1.05em;
+  line-height: 1;
+}
+
+.mobile-arena-tab .tab-icon {
+  display: inline-flex;
+  align-items: center;
+}
+
+.mobile-arena-tab .tab-icon .ui-ic {
+  width: 1.1em;
+  height: 1.1em;
+}
+
+.deploy-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--gold-light);
+}
+
+.deploy-icon .ui-ic {
+  width: 16px;
+  height: 16px;
+}
+
+.intel-tab-btn .ui-ic,
+.btn-advise-action .ui-ic {
+  margin-right: 2px;
+}
+
+.sidebar-context-link .ui-ic {
+  width: 0.9em;
+  height: 0.9em;
+  vertical-align: -0.1em;
+}
+
+.btn .ui-ic,
+.btn-outline .ui-ic,
+.btn-ghost .ui-ic {
+  width: 0.95em;
+  height: 0.95em;
+}
+
+/* 4. Pointer targets of at least 24px (WCAG 2.5.8) inside the dense arena controls */
+.wing-segmented button,
+.wing-segmented .theme-pill-btn,
+.wing-segmented .view-btn {
+  min-height: 28px !important;
+}
+
+.sidebar-context-link {
+  display: inline-block;
+  padding: 4px 2px;
+}
+
+/* 5. Motion restraint: the CTA banner keeps its gold border and loses the perpetual shimmer sweep */
+.action-banner-box.magic-border-beam::after {
+  display: none;
+}
+
+/* 6. Light mode: warm ivory paper instead of cool slate, and readable secondary text */
+html[data-theme="light"] {
+  --bg-darkest: #f6f3ec;
+  --bg-dark: #efe9dc;
+  --background: #fbf9f4;
+  --card: #ffffff;
+  --popover: #ffffff;
+  --muted: #f1ede4;
+  --muted-foreground: #5c5c68;
+  --text-muted: #6b6b76;
+  --border: #e5dfd2;
+  --border-hover: #d3c9b4;
+  --gold-light: #7a5c00;
+  --surface-1: #ffffff;
+  --surface-2: #faf7f0;
+  --surface-3: #f3eee3;
+  --uiverse-glass-card: linear-gradient(145deg, #ffffff 0%, #faf7f0 100%);
+}
+
+/* 7. Light mode: cascade repair for the marketing pages (home, codex, rankings, admin).
+      The default design layer re-declares these surfaces with !important at equal
+      specificity, so light mode never applied. Specificity here is deliberately higher. */
+html[data-theme="light"] body:not(.play-screen-active) {
+  background: var(--bg-darkest) !important;
+  color: var(--text-main) !important;
+}
+
+html[data-theme="light"] body:not(.play-screen-active) .site-header {
+  background: rgba(251, 249, 244, 0.86) !important;
+  border-bottom-color: rgba(20, 25, 35, 0.08) !important;
+  box-shadow: 0 4px 20px rgba(20, 25, 35, 0.05) !important;
+}
+
+html[data-theme="light"] body:not(.play-screen-active) .nav-links a:hover {
+  background: rgba(20, 25, 35, 0.05);
+}
+
+html[data-theme="light"] body:not(.play-screen-active) .nav-links a.active {
+  background: rgba(179, 134, 0, 0.1);
+  box-shadow: none;
+}
+
+html[data-theme="light"] body:not(.play-screen-active) .side-expansion-drawer {
+  background: rgba(251, 249, 244, 0.97) !important;
+  border-color: rgba(20, 25, 35, 0.08) !important;
+  box-shadow: -8px 0 32px rgba(20, 25, 35, 0.08) !important;
+}
+
+html[data-theme="light"] body:not(.play-screen-active) .btn-outline,
+html[data-theme="light"] body:not(.play-screen-active) .btn-ghost {
+  background: rgba(20, 25, 35, 0.04) !important;
+  color: #141923 !important;
+  border: 1px solid rgba(20, 25, 35, 0.14) !important;
+}
+
+html[data-theme="light"] body:not(.play-screen-active) .btn-outline:hover,
+html[data-theme="light"] body:not(.play-screen-active) .btn-ghost:hover {
+  background: rgba(179, 134, 0, 0.08) !important;
+  border-color: var(--gold-border) !important;
+  color: var(--gold-light) !important;
+}
+
+html[data-theme="light"] body:not(.play-screen-active) .announcement-pill {
+  background: rgba(255, 255, 255, 0.78) !important;
+  border-color: rgba(20, 25, 35, 0.1) !important;
+  color: #141923 !important;
+}
+
+html[data-theme="light"] body:not(.play-screen-active) .hero-video-vignette {
+  background:
+    radial-gradient(circle at center, rgba(246, 243, 236, 0.15) 0%, rgba(246, 243, 236, 0.82) 75%, #f6f3ec 100%),
+    linear-gradient(to bottom, rgba(246, 243, 236, 0.6) 0%, transparent 25%, transparent 75%, #f6f3ec 100%);
+}
+
+html[data-theme="light"] body:not(.play-screen-active) .metric-col:not(:last-child) {
+  border-right-color: rgba(20, 25, 35, 0.08);
+}
+
+html[data-theme="light"] body:not(.play-screen-active) .card,
+html[data-theme="light"] body:not(.play-screen-active) .bento-card,
+html[data-theme="light"] body:not(.play-screen-active) .theme-card,
+html[data-theme="light"] body:not(.play-screen-active) .leaderboard-table-card,
+html[data-theme="light"] body:not(.play-screen-active) .piece-detail-card,
+html[data-theme="light"] body:not(.play-screen-active) .tournament-bracket-card,
+html[data-theme="light"] body:not(.play-screen-active) .action-banner-box {
+  background: #ffffff !important;
+  border: 1px solid rgba(20, 25, 35, 0.09) !important;
+  box-shadow: 0 12px 32px rgba(20, 25, 35, 0.06) !important;
+}
+
+html[data-theme="light"] body:not(.play-screen-active) .piece-detail-card .bento-card,
+html[data-theme="light"] body:not(.play-screen-active) .bracket-match-card {
+  background: #faf7f0 !important;
+  border-color: rgba(20, 25, 35, 0.08) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="light"] body:not(.play-screen-active) .bracket-player-row {
+  background: rgba(20, 25, 35, 0.04);
+}
+
+html[data-theme="light"] body:not(.play-screen-active) .site-footer {
+  background: #efebe1 !important;
+  border-top-color: rgba(20, 25, 35, 0.08) !important;
+}
+
+html[data-theme="light"] body:not(.play-screen-active) .arsenal-ai-search {
+  background: #ffffff !important;
+  box-shadow: 0 10px 30px rgba(20, 25, 35, 0.06) !important;
+}
+
+html[data-theme="light"] body:not(.play-screen-active) :is(.theme-card-title, .bento-title, .section-title, .section-head-chess h2, .action-banner-box h2, .table-card-header h3, .bracket-heading, .detail-name, .piece-title-wrap h4, .ability-content h5, .hero-title-minimal) {
+  color: #141923;
+}
+
+/* 8. The arena is always obsidian. Light mode re-skins the chrome around it only, so the
+      play screen pins the dark tokens and reverses the few hard-coded light rules. */
+html[data-theme="light"] body.play-screen-active {
+  color-scheme: dark;
+  --background: #09090b;
+  --foreground: #fafafa;
+  --card: #0c0d12;
+  --card-foreground: #fafafa;
+  --popover: #0c0d12;
+  --popover-foreground: #fafafa;
+  --primary: #d4af37;
+  --primary-foreground: #09090b;
+  --secondary: #18181b;
+  --secondary-foreground: #fafafa;
+  --muted: #18181b;
+  --muted-foreground: #a1a1aa;
+  --accent: #18181b;
+  --accent-foreground: #fafafa;
+  --border: rgba(255, 255, 255, 0.09);
+  --border-hover: rgba(255, 255, 255, 0.18);
+  --input: rgba(255, 255, 255, 0.12);
+  --ring: #d4af37;
+  --bg-darkest: #09090b;
+  --bg-dark: #0f1118;
+  --bg-card: rgba(12, 13, 18, 0.78);
+  --bg-card-hover: rgba(24, 24, 27, 0.92);
+  --surface-0: #06080e;
+  --surface-1: rgba(13, 17, 26, 0.82);
+  --surface-2: rgba(20, 26, 38, 0.88);
+  --surface-3: rgba(28, 36, 52, 0.95);
+  --gold-primary: #d4af37;
+  --gold-light: #f5e29f;
+  --gold-bright: #ffd700;
+  --gold-dark: #997c22;
+  --gold-subtle: rgba(212, 175, 55, 0.08);
+  --gold-border: rgba(212, 175, 55, 0.24);
+  --gold-border-bright: rgba(245, 223, 136, 0.75);
+  --gold-gradient: linear-gradient(135deg, #f5e4a8 0%, #d4af37 60%, #a88627 100%);
+  --border-subtle: rgba(255, 255, 255, 0.09);
+  --border-card: rgba(255, 255, 255, 0.09);
+  --text-main: #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.25);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.35), 0 1px 2px -1px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.45), 0 4px 6px -4px rgba(0, 0, 0, 0.25);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.25);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.65);
+  --uiverse-glass-surface: linear-gradient(145deg, rgba(18, 22, 32, 0.82) 0%, rgba(9, 11, 16, 0.90) 100%);
+  --uiverse-glass-card: linear-gradient(145deg, rgba(18, 22, 32, 0.78) 0%, rgba(12, 14, 20, 0.85) 100%);
+  --uiverse-glass-border: 1px solid rgba(255, 255, 255, 0.08);
+  --uiverse-glass-border-gold: 1px solid rgba(212, 175, 55, 0.28);
+  --uiverse-inset-bevel: inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 -1px 0 rgba(0, 0, 0, 0.5);
+  background-color: #09090b !important;
+  color: #fafafa !important;
+}
+
+html[data-theme="light"] body.play-screen-active::after {
+  opacity: 1;
+  filter: none;
+}
+
+html[data-theme="light"] body.play-screen-active .brand-text {
+  color: #ffffff;
+}
+
+html[data-theme="light"] body.play-screen-active .btn-theme-mode-toggle,
+html[data-theme="light"] body.play-screen-active .btn-audio-toggle,
+html[data-theme="light"] body.play-screen-active .btn-side-menu-toggle {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.09);
+  color: #a1a1aa;
+}
+
+html[data-theme="light"] body.play-screen-active .btn-side-menu-toggle {
+  color: #ffffff;
+}
+
+html[data-theme="light"] body.play-screen-active .drawer-nav-list a {
+  color: var(--foreground);
+}
+
+html[data-theme="light"] body.play-screen-active .intel-tabs-nav {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme="light"] body.play-screen-active .intel-tab-btn.active {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--foreground);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+html[data-theme="light"] body.play-screen-active .intel-tab-btn:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+html[data-theme="light"] body.play-screen-active .ai-advisor-box {
+  background: rgba(0, 0, 0, 0.25);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+html[data-theme="light"] body.play-screen-active .casualty-rack {
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: none;
+}
+
+html[data-theme="light"] body.play-screen-active .victory-close-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: var(--muted-foreground);
+}
+
+html[data-theme="light"] body.play-screen-active .arena-canvas-stage {
+  background: radial-gradient(circle at 50% 45%, #0d111a 0%, #050608 100%);
+  border-color: var(--gold-border);
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.88), inset 0 0 60px rgba(0, 0, 0, 0.7);
+}
+
+/* 9. Muted text clears 4.5:1 on its surfaces in both themes; podium metals get light-safe values */
+:root {
+  --text-muted: #8b8b96;
+  --metal-gold: #ffd700;
+  --metal-silver: #cbd5e1;
+  --metal-bronze: #e69138;
+}
+
+html[data-theme="light"] {
+  --text-muted: #62626d;
+  --primary-foreground: #15110a;
+  --metal-gold: #8a6a00;
+  --metal-silver: #5b6472;
+  --metal-bronze: #9a4f00;
+}
+
+/* 10. Theme-card badges: identity colours live in classes so light mode can deepen them */
+.tag-badge-compact {
+  font-size: 0.78rem;
+  padding: 4px 10px;
+}
+
+.tag-accent-cyan { border-color: #00f3ff; color: #00f3ff; }
+.tag-accent-crimson { border-color: #e84158; color: #e84158; }
+.tag-accent-sky { border-color: #38bdf8; color: #38bdf8; }
+
+html[data-theme="light"] .tag-accent-cyan { border-color: #0e7490; color: #0e7490; }
+html[data-theme="light"] .tag-accent-crimson { border-color: #b3203a; color: #b3203a; }
+html[data-theme="light"] .tag-accent-sky { border-color: #0369a1; color: #0369a1; }
+
+/* 11. Light mode: eyebrows, numerals, primary buttons, rankings bands */
+html[data-theme="light"] :is(.section-subtitle, .section-head-chess .rank-file-label, .bento-eyebrow) {
+  color: var(--gold-light);
+}
+
+html[data-theme="light"] .metric-num {
+  color: var(--gold-light);
+}
+
+html[data-theme="light"] body:not(.play-screen-active) .btn-primary,
+html[data-theme="light"] body:not(.play-screen-active) .badge-default {
+  background: var(--gold-metallic) !important;
+  color: #15110a !important;
+  border-color: rgba(255, 244, 200, 0.45) !important;
+}
+
+html[data-theme="light"] body:not(.play-screen-active) :is(.table-card-header, .table-card-subbar, .tournament-card-header, .leaderboard-table th) {
+  background: #f6f2e9 !important;
+  border-color: rgba(20, 25, 35, 0.08) !important;
+}
+
+html[data-theme="light"] body:not(.play-screen-active) .tier-filter-pill {
+  background: rgba(20, 25, 35, 0.04);
+  color: var(--muted-foreground);
+  border-color: rgba(20, 25, 35, 0.12);
+}
+
+html[data-theme="light"] body:not(.play-screen-active) .tier-filter-pill.active {
+  background: rgba(179, 134, 0, 0.12);
+  color: var(--gold-light);
+  border-color: var(--gold-primary);
+}
+
+html[data-theme="light"] body:not(.play-screen-active) .bracket-badge-pill {
+  color: var(--gold-light);
+}
+
+html[data-theme="light"] body:not(.play-screen-active) .bracket-status-tag {
+  color: #047857;
+}
+
+html[data-theme="light"] body:not(.play-screen-active) .bento-stat-sub {
+  background: rgba(20, 25, 35, 0.05);
+}
+
+html[data-theme="light"] body:not(.play-screen-active) .stage-finals .bracket-match-card {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.08) 0%, #faf7f0 100%) !important;
+}
+
+html[data-theme="light"] body:not(.play-screen-active) .tournament-champion-banner {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.12) 0%, #ffffff 100%) !important;
+}
+
+html[data-theme="light"] body:not(.play-screen-active) #podiumBentoGrid :is(.bento-title, .bento-stat-label) {
+  color: #141923 !important;
+}
+
+html[data-theme="light"] body:not(.play-screen-active) #podiumBentoGrid .bento-stat-sub {
+  color: var(--muted-foreground) !important;
+}
+
+/* 12. Arena HUD: slider tier labels clear 10px; they stay inside the 242px track at this size */
+#aiSliderLabels .scale-step-label {
+  font-size: 0.68rem;
+}
+
+
+/* ==========================================================================
+   v4.7.2 MOTION LAYER
+   One orchestrated hero entrance, quiet scroll reveals, theme boards that play
+   a move on hover, the bank-shot demo, arena HUD entrance and a turn pulse.
+   Every rule is transform/opacity only and collapses to its final state under
+   prefers-reduced-motion through the global reduce block near the top of this file.
+   ========================================================================== */
+
+/* 1. Hero entrance: pill, title, subhead, actions, metrics land in sequence */
+@keyframes heroRise {
+  from { opacity: 0; translate: 0 18px; }
+  to   { opacity: 1; translate: 0 0; }
+}
+
+@keyframes heroVideoIn {
+  from { opacity: 0; transform: scale(1.045); }
+  to   { opacity: 0.82; transform: scale(1); }
+}
+
+.hero-content-layer > * {
+  animation: heroRise 900ms var(--ease-out, cubic-bezier(0, 0, 0.2, 1)) both;
+}
+
+.hero-content-layer > :nth-child(1) { animation-delay: 140ms; }
+.hero-content-layer > :nth-child(2) { animation-delay: 300ms; animation-duration: 1100ms; }
+.hero-content-layer > :nth-child(3) { animation-delay: 560ms; }
+.hero-content-layer > :nth-child(4) { animation-delay: 720ms; }
+.hero-content-layer > :nth-child(5) { animation-delay: 900ms; }
+
+.hero-video-element {
+  animation: heroVideoIn 1800ms ease-out both;
+}
+
+/* 2. Scroll reveals: content is hidden only after JS confirms motion is allowed (html.js-motion) */
+@keyframes revealIn {
+  from { opacity: 0; translate: 0 14px; }
+  to   { opacity: 1; translate: 0 0; }
+}
+
+html.js-motion [data-reveal] {
+  opacity: 0;
+}
+
+html.js-motion [data-reveal].is-in {
+  opacity: 1;
+  animation: revealIn 620ms var(--ease-out, cubic-bezier(0, 0, 0.2, 1)) both;
+}
+
+/* 3. Theme cards: the mini board tilts and a knight plays a move on hover */
+.theme-preview-box {
+  perspective: 900px;
+}
+
+.theme-grid-tiles {
+  transition: transform 640ms var(--ease-spring), box-shadow 640ms var(--ease-spring);
+}
+
+.theme-card:hover .theme-grid-tiles {
+  transform: rotateX(10deg) rotateZ(-2deg) scale(1.04);
+  box-shadow: 0 26px 44px rgba(0, 0, 0, 0.62);
+}
+
+.preview-piece {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  width: 42px;
+  height: 42px;
+  margin: -84px 0 0 -84px; /* square a8 of the centred 4x4 (168px) mini board */
+  display: grid;
+  place-items: center;
+  font-size: 30px;
+  line-height: 1;
+  color: #f4ecd8;
+  text-shadow: 0 6px 10px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  transform: translate3d(0, 0, 0);
+  transition: transform 720ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.theme-ivory-bg .preview-piece,
+.theme-emerald-bg .preview-piece,
+.theme-woodland-bg .preview-piece {
+  color: #1a1f2b;
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+}
+
+.theme-card:hover .preview-piece {
+  transform: translate3d(84px, 42px, 0) rotate(-6deg); /* knight: two files right, one rank down */
+}
+
+/* 4. Bank-shot demo inside the physics bento tile */
+.trajectory-demo {
+  padding: 18px 16px 12px;
+}
+
+.trajectory-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.tj-rail { fill: rgba(212, 175, 55, 0.35); }
+
+.tj-path {
+  fill: none;
+  stroke: rgba(245, 226, 159, 0.55);
+  stroke-width: 2;
+  stroke-dasharray: 6 8;
+  stroke-linecap: round;
+}
+
+.tj-glyph {
+  font-size: 17px;
+  font-family: var(--font-serif);
+  fill: #15110a;
+}
+
+.tj-shooter-body { fill: #e8c45a; stroke: #fff2b2; stroke-width: 1.5; }
+.tj-target-body { fill: #2a2f3a; stroke: rgba(255, 255, 255, 0.35); stroke-width: 1.5; }
+.tj-target .tj-glyph { fill: #f1f1f1; }
+
+.tj-shooter {
+  offset-path: path('M 56 118 L 258 20 L 426 104');
+  offset-rotate: 0deg;
+  animation: tjTravel 4.2s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
+}
+
+@supports not (offset-path: path('M 0 0 L 1 1')) {
+  .tj-shooter { transform: translate(426px, 104px); animation: none; }
+}
+
+.tj-target {
+  transform: translate(452px, 112px);
+  animation: tjRecoil 4.2s ease-out infinite;
+}
+
+.tj-impact {
+  fill: none;
+  stroke: #f5e29f;
+  stroke-width: 2;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: tjImpact 4.2s ease-out infinite;
+}
+
+/* The loop resets while invisible at 0% and rests at the impact point at 100%,
+   so one reduced-motion iteration lands on a readable final frame. */
+@keyframes tjTravel {
+  0%   { offset-distance: 0%;   opacity: 0; }
+  5%   { offset-distance: 0%;   opacity: 1; }
+  12%  { offset-distance: 0%;   opacity: 1; }
+  38%  { offset-distance: 52%;  opacity: 1; }
+  58%  { offset-distance: 100%; opacity: 1; }
+  96%  { offset-distance: 100%; opacity: 1; }
+  100% { offset-distance: 100%; opacity: 0; }
+}
+
+@keyframes tjRecoil {
+  0%, 57%   { transform: translate(452px, 112px) rotate(0deg); }
+  61%       { transform: translate(468px, 119px) rotate(16deg); }
+  76%       { transform: translate(463px, 117px) rotate(9deg); }
+  94%, 100% { transform: translate(452px, 112px) rotate(0deg); }
+}
+
+@keyframes tjImpact {
+  0%, 57% { opacity: 0;   transform: scale(0.6); }
+  59%     { opacity: 0.9; transform: scale(0.8); }
+  78%     { opacity: 0;   transform: scale(2.4); }
+  100%    { opacity: 0;   transform: scale(2.4); }
+}
+
+.trajectory-caption {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: 0.82rem;
+  color: var(--muted-foreground);
+}
+
+.trajectory-formula {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--gold-light);
+}
+
+html[data-theme="light"] .tj-path { stroke: rgba(122, 92, 0, 0.5); }
+html[data-theme="light"] .tj-rail { fill: rgba(179, 134, 0, 0.35); }
+html[data-theme="light"] .tj-impact { stroke: #b38600; }
+
+html[data-theme="light"] body:not(.play-screen-active) .bento-visual-box {
+  background: #f6f2e9;
+  border-color: rgba(20, 25, 35, 0.08);
+}
+
+
+/* 5. Primary button sheen, on hover only */
+.btn-default {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-default::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(60deg, transparent 20%, rgba(255, 255, 255, 0.38) 25%, transparent 30%);
+  transform: rotate(25deg) translateY(-140%);
+  transition: transform 650ms ease;
+  pointer-events: none;
+}
+
+.btn-default:hover::after {
+  transform: rotate(25deg) translateY(140%);
+}
+
+/* 6. Arena HUD: wing cards slide in once, the stage settles in */
+@keyframes wingIn {
+  from { opacity: 0; translate: 0 10px; }
+  to   { opacity: 1; translate: 0 0; }
+}
+
+@keyframes stageIn {
+  from { opacity: 0; transform: scale(0.985); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+body.play-screen-active .arena-wing > * {
+  animation: wingIn 520ms var(--ease-out, cubic-bezier(0, 0, 0.2, 1)) both;
+}
+
+body.play-screen-active .arena-wing > :nth-child(1) { animation-delay: 80ms; }
+body.play-screen-active .arena-wing > :nth-child(2) { animation-delay: 140ms; }
+body.play-screen-active .arena-wing > :nth-child(3) { animation-delay: 200ms; }
+body.play-screen-active .arena-wing > :nth-child(4) { animation-delay: 260ms; }
+body.play-screen-active .arena-wing > :nth-child(5) { animation-delay: 320ms; }
+body.play-screen-active .arena-wing > :nth-child(6) { animation-delay: 380ms; }
+body.play-screen-active .arena-wing > :nth-child(7) { animation-delay: 440ms; }
+body.play-screen-active .arena-wing > :nth-child(n+8) { animation-delay: 500ms; }
+
+body.play-screen-active .arena-canvas-stage {
+  animation: stageIn 900ms var(--ease-out, cubic-bezier(0, 0, 0.2, 1)) both;
+}
+
+/* 7. Turn change: one ring pulse around the timer */
+@keyframes turnPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.55); }
+  100% { box-shadow: 0 0 0 14px rgba(212, 175, 55, 0); }
+}
+
+.turn-badge.turn-pulse .turn-timer-wrap {
+  border-radius: 50%;
+  animation: turnPulse 700ms ease-out 1;
+}
+
+/* 8. Seven camera presets: keep three per row, Flip and Reset share the last row */
+#camera3DToolbarGroup #camFlipBtn,
+#camera3DToolbarGroup #camResetBtn {
+  flex: 1 1 calc(50% - 4px) !important;
+}
